@@ -1,5 +1,5 @@
 {
-  "name": "lif_peer",
+  "name": "lif_server",
   "version": "0.1.0",
   "scripts": {
     "start:server": "node server.js"
