@@ -1,6 +1,7 @@
 {
   "name": "lif_server",
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "start:server": "node server.js"
   },
