@@ -1,0 +1,17 @@
+{
+  "name": "lif_peer",
+  "version": "0.1.0",
+  "scripts": {
+    "start:server": "node server.js"
+  },
+  "dependencies": {
+    "dns2": "2.0.1"
+  },
+  "devDependencies": {
+    "eslint-plugin-react": "7.22.0",
+    "autoprefixer": "10.2.4",
+    "babel-eslint": "10.1.0",
+    "eslint": "7.22.0",
+    "mocha": "8.3.2"
+  }
+}
