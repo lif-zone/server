@@ -1,7 +1,7 @@
 'use strict'; /*jslint node:true*/
 import conf from './server.conf.js';
 import dnss from './lib/dnss.js';
-import https from './lib/https.js';
+import https from './lib/https.js'; // XXX: rename httpd.js
 
 function start(){
   console.log('lif server start');

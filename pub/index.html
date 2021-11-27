@@ -1,0 +1,18 @@
+<html>
+  <body></body>
+  <script>
+    if (location.pathname=='/')
+    {
+      document.body.innerHTML = '<b>LIF</b>';
+    }
+    else if (window.self!==window.top)
+    {
+      document.body.innerHTML = 'iframe '+location.pathname;
+    }
+    else
+    {
+      document.body.innerHTML = '<iframe src="'+location.pathname+'">'+
+        '</iframe>';
+    }
+  </script>
+</html>
