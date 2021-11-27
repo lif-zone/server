@@ -1,14 +1,13 @@
 <html>
   <body></body>
   <script>
-    if (location.pathname=='/')
+    if (location.pathname=='/' &&
+      location.hostname=='poc.lif.zone')
     {
       document.body.innerHTML = '<b>LIF</b>';
     }
     else if (window.self!==window.top)
-    {
-      document.body.innerHTML = 'iframe '+location.pathname;
-    }
+      document.body.innerHTML = 'iframe for '+location.href;
     else
     {
       document.body.innerHTML = '<iframe src="'+location.pathname+'">'+
