@@ -1,13 +1,7 @@
 'use strict'; /*jslint node:true*/
+import conf from './server.conf.js';
 import dnss from './lib/dnss.js';
 import https from './lib/https.js';
-
-let DEV = true;
-const conf = DEV ? {
-  dnss: {port: 53, ip: '127.0.0.1', dns: '8.8.8.8', domain: 'poc.lif.zone'}
-} : {
-  dnss: {port: 53, ip: '3.12.37.122', dns: '8.8.8.8', domain: 'poc.lif.zone'}
-};
 
 function start(){
   console.log('lif server start');
