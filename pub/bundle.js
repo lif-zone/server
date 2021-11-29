@@ -6,10 +6,9 @@ const through2 = require('through2');
 const inherits = require('inherits');
 const WebSocket = window.WebSocket;
 
-function SignalhubWs(app, urls, WebSocketClass){
+function SignalhubWs(urls, WebSocketClass){
   this.opened = false;
   this.sockets = [];
-  this.app = app;
   const channels = this.channels = new Map();
   this.subscribers = {get length(){ return channels.size; }};
 
@@ -20,7 +19,7 @@ function SignalhubWs(app, urls, WebSocketClass){
   let countOpen = 0;
   for (let index = 0; index < urls.length; index++)
   {
-    const socket = new WebSocketClass(`${urls[index]}/${app}`);
+    const socket = new WebSocketClass(`${urls[index]}/`);
     this.sockets.push(socket);
     socket.addEventListener('open', ()=>{
       if (++countOpen===urls.length)
@@ -64,7 +63,7 @@ SignalhubWs.prototype.subscribe = function(channel){
 SignalhubWs.prototype.broadcast = function(channel, message, cb){
   if (this.closed)
     throw new Error('ws_client: annot broadcast after close');
-  const data = {app: this.app, channel, message};
+  const data = {channel, message};
   this.sockets.forEach(socket=>socket.send(JSON.stringify(data)));
   cb && cb();
 };
@@ -139,8 +138,8 @@ SignalhubWs.prototype._closeChannels = function(){
   }
 };
 
-module.exports = function(app, urls){
-  return new SignalhubWs(app, urls, WebSocket); };
+module.exports = function(urls){
+  return new SignalhubWs(urls, WebSocket); };
 
 }).call(this)}).call(this,require('_process'))
 },{"_process":11,"events":6,"inherits":8,"through2":25}],2:[function(require,module,exports){
@@ -5912,9 +5911,7 @@ var signalhub = require('../lib/ws_client.js');
 
 function test_signalhub(){
   console.log('xxx hello %o %o', require, signalhub);
-  var hub = signalhub('my-app-name', [
-    'ws://poc.lif.zone:3030'
-  ]);
+  var hub = signalhub(['ws://poc.lif.zone:3030']);
   hub.subscribe('my-channel')
     .on('data', function(message){
       console.log('new message received', message);
