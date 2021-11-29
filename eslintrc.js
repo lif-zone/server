@@ -10,6 +10,7 @@ module.exports = {
         sourceType: 'module',
         ecmaVersion: 8,
     },
+    ignorePatterns: ['bundle.js'],
     rules: {
         // Possible errors
         indent: 'off',
