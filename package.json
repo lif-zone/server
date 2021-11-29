@@ -4,14 +4,16 @@
   "type": "module",
   "scripts": {
     "all": "node ./server.js",
-    "all-dev": "DEV=1 node ./server.js"
+    "all-dev": "DEV=1 node ./server.js",
+    "bundle": "browserify -s pub/index.js > pub/bundle.js"
   },
   "dependencies": {
     "dns2": "2.0.1",
     "express": "4.17.1",
     "escape-string-regexp": "5.0.0",
     "iniparser": "1.0.5",
-    "signalhub": "4.9.0"
+    "signalhub": "4.9.0",
+    "browserify": "17.0.0"
   },
   "devDependencies": {
     "eslint-plugin-react": "7.22.0",
