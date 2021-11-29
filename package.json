@@ -10,7 +10,8 @@
     "dns2": "2.0.1",
     "express": "4.17.1",
     "escape-string-regexp": "5.0.0",
-    "iniparser": "1.0.5"
+    "iniparser": "1.0.5",
+    "signalhub": "4.9.0"
   },
   "devDependencies": {
     "eslint-plugin-react": "7.22.0",
