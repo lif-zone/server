@@ -5916,6 +5916,22 @@ function test_signalhub(){
   ws.on('open', ()=>ws.broadcast('my_channel', {hello: 'world '+Date.now()}));
 }
 
-test_signalhub();
+function init(){
+  if (location.pathname=='/' &&
+    location.hostname=='poc.lif.zone')
+  {
+    document.body.innerHTML = '<b>LIF</b>';
+    test_signalhub();
+  }
+  else if (window.self!==window.top)
+    document.body.innerHTML = 'iframe for '+location.href;
+  else
+  {
+    document.body.innerHTML = '<iframe src="'+
+      encodeURI(location.pathname)+'"></iframe>';
+  }
+}
+
+init();
 
 },{"../lib/ws_client.js":1}]},{},[28]);

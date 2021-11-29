@@ -1,18 +1,1 @@
-<html>
-  <body></body>
-  <script>
-    if (location.pathname=='/' &&
-      location.hostname=='poc.lif.zone')
-    {
-      document.body.innerHTML = '<b>LIF</b>';
-    }
-    else if (window.self!==window.top)
-      document.body.innerHTML = 'iframe for '+location.href;
-    else
-    {
-      document.body.innerHTML = '<iframe src="'+
-        encodeURI(location.pathname)+'"></iframe>';
-    }
-  </script>
-  <script src="/bundle.js"></script>
-</html>
+<html><body></body><script src="/bundle.js"></script></html>
