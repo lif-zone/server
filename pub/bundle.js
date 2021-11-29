@@ -5907,19 +5907,17 @@ function config (name) {
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],28:[function(require,module,exports){
 // XXX: replace require with import
-var signalhub = require('../lib/ws_client.js');
+var ws_client = require('../lib/ws_client.js');
 
 function test_signalhub(){
-  console.log('xxx hello %o %o', require, signalhub);
-  var hub = signalhub(['ws://poc.lif.zone:3030']);
-  hub.subscribe('my-channel')
-    .on('data', function(message){
-      console.log('new message received', message);
-    });
-    setTimeout(function(){
-      console.log('XXX broadcast');
-      hub.broadcast('my-channel', {hello: 'world '+Date.now()});
-    }, 2000);
+  console.log('xxx hello %o %o', require, ws_client);
+  var ws = ws_client(['ws://poc.lif.zone:3030']);
+  ws.subscribe('my-channel').on('data', message=>
+    console.log('new message received', message));
+  ws.on('open', ()=>{
+    console.log('XXX broadcast');
+    ws.broadcast('my-channel', {hello: 'world '+Date.now()});
+  });
 }
 
 test_signalhub();
