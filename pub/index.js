@@ -2,13 +2,17 @@
 const ws_client = require('../lib/ws_client.js');
 const wsc = ws_client(['ws://poc.lif.zone:3030']);
 function test_signalhub(){
-  wsc.subscribe('my_channel').on('data', message=>
-    console.log('new message received', message));
+  var messages = [];
+  wsc.subscribe('my_channel').on('data', msg=>{
+    console.log('got msg', msg);
+    messages.push(JSON.stringify(msg));
+    document.querySelector('#ws_incoming').innerText = messages.join('\n');
+  });
 }
 
 window.ws_test_send = function ws_test_send(){
   let msg = document.querySelector('#ws_msg').value;
-  wsc.broadcast('my_channel', {msg, ts: +Date.now()});
+  wsc.broadcast('my_channel', {ts: +Date.now(), msg});
 };
 
 function init(){
@@ -22,6 +26,8 @@ function init(){
           <input id=ws_msg value=Message>
           <input type=button value=Broadcast onClick="ws_test_send()">
         </div>
+        <pre id=ws_incoming>
+        <pre>
       </div>
     `;
     test_signalhub();
