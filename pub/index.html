@@ -10,8 +10,8 @@
       document.body.innerHTML = 'iframe for '+location.href;
     else
     {
-      document.body.innerHTML = '<iframe src="'+location.pathname+'">'+
-        '</iframe>';
+      document.body.innerHTML = '<iframe src="'+
+        encodeURI(location.pathname)+'"></iframe>';
     }
   </script>
 </html>
