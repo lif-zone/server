@@ -1,6 +1,6 @@
 // XXX: replace require with import
 const ws_client = require('../lib/ws_client.js');
-const wsc = ws_client(['ws://poc.lif.zone:3030']);
+const wsc = ws_client(['wss://poc.lif.zone:3031']);
 function test_signalhub(){
   var messages = [];
   wsc.subscribe('my_channel').on('data', msg=>{

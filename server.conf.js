@@ -6,7 +6,10 @@ const E = {
   }, http_server: {
     ssl: {key: '/var/lif/ssl/STAR_lif_zone.key',
       cert: '/var/lif/ssl/STAR_lif_zone.crt'}
-  }, ws_server: {port: 3030},
+  }, ws_server: {ws_port: 3030, wss_port: 3031,
+    ssl: {key: '/var/lif/ssl/STAR_lif_zone.key',
+      cert: '/var/lif/ssl/STAR_lif_zone.crt'}
+  },
 };
 
 export default E;
