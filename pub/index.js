@@ -1,6 +1,8 @@
 // XXX: replace require with import
 const ws_client = require('../lib/ws_client.js');
+const SimplePeerWrapper = require('simple-peer-wrapper');
 const wsc = ws_client(['wss://poc.lif.zone:3031']);
+
 function test_signalhub(){
   var messages = [];
   wsc.subscribe('my_channel').on('data', msg=>{
@@ -14,6 +16,24 @@ window.ws_test_send = function ws_test_send(){
   let msg = document.querySelector('#ws_msg').value;
   wsc.broadcast('my_channel', {ts: +Date.now(), msg});
 };
+
+function test_simple_peer(){
+  console.log('simple_peer: init');
+  const options = {
+    debug: true,
+    serverUrl: 'http://localhost:3030',
+    simplePeerOptions: {},
+  };
+  const spw = new SimplePeerWrapper(options);
+  spw.connect();
+  spw.on('data', data=>{
+    console.log('simple_peer: data %o', data);
+  });
+  setInterval(()=>{
+    spw.send({ts: Date.now()});
+  }, 1000);
+  window.onbeforeunload = ()=>spw.close();
+}
 
 function init(){
   if (location.pathname=='/' &&
@@ -30,7 +50,8 @@ function init(){
         <pre>
       </div>
     `;
-    test_signalhub();
+    if (0) test_signalhub();
+    test_simple_peer();
   }
   else if (window.self!==window.top)
     document.body.innerHTML = 'iframe for '+location.href;
