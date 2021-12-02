@@ -5911,8 +5911,10 @@ function config (name) {
 const ws_client = require('../lib/ws_client.js');
 
 function connect(){
-  const wsc = ws_client({urls: ['wss://poc.lif.zone:3031']});
+  const uuid = crypto.randomUUID();
+  document.querySelector('#uuid').innerText = uuid;
   var messages = [];
+  const wsc = ws_client({uuid, urls: ['wss://poc.lif.zone:3031']});
   wsc.subscribe('my_channel').on('data', msg=>{
     console.log('got msg', msg);
     messages.push(JSON.stringify(msg));
@@ -5920,7 +5922,7 @@ function connect(){
   });
   window.ws_test_send = function ws_test_send(){
     let msg = document.querySelector('#ws_msg').value;
-    wsc.broadcast('my_channel', {ts: +Date.now(), msg});
+    wsc.broadcast('my_channel', {uuid, ts: +Date.now(), msg});
   };
 }
 
@@ -5935,8 +5937,9 @@ function init(){
           <input id=ws_msg value=Message>
           <input type=button value=Broadcast onClick="ws_test_send()">
         </div>
-        <pre id=ws_incoming>
-        <pre>
+        <br>
+        <div>UUID: <span id=uuid></span></div>
+        <pre id=ws_incoming><pre>
       </div>
     `;
     connect();
