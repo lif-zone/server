@@ -5,6 +5,7 @@
   "scripts": {
     "all": "node ./server.js",
     "all-dev": "DEV=1 node ./server.js",
+    "dev": "eslint . && npm run bundle && npm run all-dev",
     "bundle": "browserify pub/index.js > pub/bundle.js"
   },
   "dependencies": {
