@@ -15124,7 +15124,7 @@ function test_simple_peer(){
   console.log('simple_peer: init');
   const options = {
     debug: true,
-    serverUrl: 'http://localhost:3030',
+    serverUrl: 'ws://poc.lif.zone:3030',
     simplePeerOptions: {},
   };
   const spw = new SimplePeerWrapper(options);
