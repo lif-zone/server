@@ -1,19 +1,19 @@
 // XXX: replace require with import
 const ws_client = require('../lib/ws_client.js');
-const wsc = ws_client(['wss://poc.lif.zone:3031']);
-function test_signalhub(){
+
+function connect(){
+  const wsc = ws_client(['wss://poc.lif.zone:3031']);
   var messages = [];
   wsc.subscribe('my_channel').on('data', msg=>{
     console.log('got msg', msg);
     messages.push(JSON.stringify(msg));
     document.querySelector('#ws_incoming').innerText = messages.join('\n');
   });
+  window.ws_test_send = function ws_test_send(){
+    let msg = document.querySelector('#ws_msg').value;
+    wsc.broadcast('my_channel', {ts: +Date.now(), msg});
+  };
 }
-
-window.ws_test_send = function ws_test_send(){
-  let msg = document.querySelector('#ws_msg').value;
-  wsc.broadcast('my_channel', {ts: +Date.now(), msg});
-};
 
 function init(){
   if (location.pathname=='/' &&
@@ -30,7 +30,7 @@ function init(){
         <pre>
       </div>
     `;
-    test_signalhub();
+    connect();
   }
   else if (window.self!==window.top)
     document.body.innerHTML = 'iframe for '+location.href;
