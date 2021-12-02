@@ -2,7 +2,7 @@
 const ws_client = require('../lib/ws_client.js');
 
 function connect(){
-  const wsc = ws_client(['wss://poc.lif.zone:3031']);
+  const wsc = ws_client({urls: ['wss://poc.lif.zone:3031']});
   var messages = [];
   wsc.subscribe('my_channel').on('data', msg=>{
     console.log('got msg', msg);

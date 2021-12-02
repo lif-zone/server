@@ -6,7 +6,8 @@ const through2 = require('through2');
 const inherits = require('inherits');
 const WebSocket = window.WebSocket;
 
-function SignalhubWs(urls, WebSocketClass){
+function SignalhubWs(opt, WebSocketClass){
+  let {urls} = opt;
   this.opened = false;
   this.sockets = [];
   const channels = this.channels = new Map();
@@ -138,8 +139,8 @@ SignalhubWs.prototype._closeChannels = function(){
   }
 };
 
-module.exports = function(urls){
-  return new SignalhubWs(urls, WebSocket); };
+module.exports = function(opt){
+  return new SignalhubWs(opt, WebSocket); };
 
 }).call(this)}).call(this,require('_process'))
 },{"_process":11,"events":6,"inherits":8,"through2":25}],2:[function(require,module,exports){
@@ -5910,7 +5911,7 @@ function config (name) {
 const ws_client = require('../lib/ws_client.js');
 
 function connect(){
-  const wsc = ws_client(['wss://poc.lif.zone:3031']);
+  const wsc = ws_client({urls: ['wss://poc.lif.zone:3031']});
   var messages = [];
   wsc.subscribe('my_channel').on('data', msg=>{
     console.log('got msg', msg);
