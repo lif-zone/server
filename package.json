@@ -5,7 +5,7 @@
   "scripts": {
     "all": "node ./server.js",
     "all-dev": "DEV=1 node ./server.js",
-    "dev": "eslint . && npm run bundle && npm run all-dev",
+    "dev": "sudo systemctl stop systemd-resolved && sudo chmod 777  /etc/resolv.conf && echo \"nameserver 127.0.0.1\" > /etc/resolv.conf && eslint . && npm run bundle && npm run all-dev",
     "bundle": "browserify pub/index.js > pub/bundle.js"
   },
   "dependencies": {
