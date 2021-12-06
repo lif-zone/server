@@ -1,10 +1,49 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 (function (process){(function (){
 'use strict'; /*jslint node:true*/
+// XXX: rename file to signal_client.js
 const events = require('events');
 const through2 = require('through2');
 const inherits = require('inherits');
+// XXX: const json6 = require('json-6');
+// XXX: use npm ws instead?
 const WebSocket = window.WebSocket;
+
+class SignalClient extends events.EventEmitter {
+  // XXX arik: need auto-reconnect
+  constructor(opt){
+    super();
+    if (!opt.url)
+      throw new Error('signal_client: missing url');
+    const ws = this.ws = new WebSocket(opt.url);
+    ws.addEventListener('open', ()=>{
+      console.log('signal_client: open');
+      this.opened = true;
+      this.emit('open');
+    });
+    ws.addEventListener('close', ()=>{
+      console.log('signal_client: close');
+      this.opened = false;
+      this.emit('close');
+    });
+    ws.addEventListener('error', err=>{
+      console.log('signal_client: error %o', err);
+      this.emit('error', err);
+    });
+    ws.addEventListener('message', o=>{
+      console.log('signal_client: message %o', o);
+      this.emit('message', o);
+    });
+  }
+  broadcast(message){
+    console.log('signal_client: broadcast %o', message);
+    if (!this.opened)
+      throw new Error('signal_client: closed');
+    this.ws.send(JSON.stringify({cmd: 'broadcast', message}));
+  }
+}
+
+module.exports = SignalClient;
 
 function SignalhubWs(opt, WebSocketClass){
   let {urls} = opt;
@@ -139,6 +178,7 @@ SignalhubWs.prototype._closeChannels = function(){
   }
 };
 
+if (0) // XXX: rm
 module.exports = function(opt){
   return new SignalhubWs(opt, WebSocket); };
 
@@ -5908,9 +5948,14 @@ function config (name) {
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],28:[function(require,module,exports){
 // XXX: replace require with import
-const ws_client = require('../lib/ws_client.js');
+const SignalClient = require('../lib/ws_client.js');
 
 function connect(){
+  const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
+  window.sc_broadcast = function sc_broadcast(){
+    sc.broadcast({ts: +Date.now()});
+  };
+  /* XXX: obsolete, rm
   const peer_id = crypto.randomUUID();
   document.querySelector('#peer_id').innerText = peer_id;
   var messages = [];
@@ -5920,10 +5965,11 @@ function connect(){
     messages.push(JSON.stringify(msg));
     document.querySelector('#ws_incoming').innerText = messages.join('\n');
   });
-  window.ws_test_send = function ws_test_send(){
+  window.sc_broadcast= function sc_broadcast(){
     let msg = document.querySelector('#ws_msg').value;
     wsc.broadcast('my_channel', {peer_id, ts: +Date.now(), msg});
   };
+  */
 }
 
 function init(){
@@ -5935,7 +5981,7 @@ function init(){
         <div><b>LIF</b></div>
         <div>
           <input id=ws_msg value=Message>
-          <input type=button value=Broadcast onClick="ws_test_send()">
+          <input type=button value=Broadcast onClick="sc_broadcast()">
         </div>
         <br>
         <div>peer_id: <span id=peer_id></span></div>
