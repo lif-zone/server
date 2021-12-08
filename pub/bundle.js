@@ -44,6 +44,7 @@ class SignalClient extends events.EventEmitter {
       {
       case 'ping':
         this.json({cmd: 'pong', dst: src, resp_id: req_id, resp: params});
+        this.emit('ping', {req_id, src, params});
         break;
       default: this.emit('message', message);
       }
@@ -6031,8 +6032,14 @@ function connect(){
       console.log('XXX error %o', err);
       html = `<div><b>Error getting clients ${err}</b></div>`;
     }
-    document.querySelector('#ws_incoming').innerHTML = html;
+    document.querySelector('#ws_clients').innerHTML = html;
   };
+  var pings = [];
+  sc.on('ping', o=>{
+    console.log('XXX got ping %o', o);
+    pings.push(JSON.stringify(o));
+    document.querySelector('#ws_pings').innerText = pings.join('\n');
+  });
   /* XXX: obsolete, rm
   const peer_id = crypto.randomUUID();
   document.querySelector('#peer_id').innerText = peer_id;
@@ -6069,10 +6076,14 @@ function init(){
         <div id=ws_ping></div>
         <br>
         <div>peer_id: <span id=peer_id></span></div>
-        <div>Clients:
+        <div>
+          Clients:
           <div id=ws_clients></div>
         </div>
-        <pre id=ws_incoming><pre>
+        <div>
+          Pings:
+          <div id=ws_pings></div>
+        <div>
       </div>
     `;
     connect();

@@ -41,8 +41,13 @@ function connect(){
       console.log('XXX error %o', err);
       html = `<div><b>Error getting clients ${err}</b></div>`;
     }
-    document.querySelector('#ws_incoming').innerHTML = html;
+    document.querySelector('#ws_clients').innerHTML = html;
   };
+  var pings = [];
+  sc.on('ping', o=>{
+    pings.push(JSON.stringify(o));
+    document.querySelector('#ws_pings').innerText = pings.join('\n');
+  });
   /* XXX: obsolete, rm
   const peer_id = crypto.randomUUID();
   document.querySelector('#peer_id').innerText = peer_id;
@@ -79,10 +84,14 @@ function init(){
         <div id=ws_ping></div>
         <br>
         <div>peer_id: <span id=peer_id></span></div>
-        <div>Clients:
+        <div>
+          Clients:
           <div id=ws_clients></div>
         </div>
-        <pre id=ws_incoming><pre>
+        <div>
+          Pings we got:
+          <div id=ws_pings></div>
+        <div>
       </div>
     `;
     connect();
