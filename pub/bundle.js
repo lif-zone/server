@@ -4,15 +4,17 @@
 // XXX: rename file to signal_client.js
 const events = require('events');
 const through2 = require('through2');
-const inherits = require('inherits');
+const util = require('../util/util.js');
 // XXX: const json6 = require('json-6');
 // XXX: use npm ws instead?
 const WebSocket = window.WebSocket;
+const SEC = 1000; // XXX: use util.ms.SEC
 
 class SignalClient extends events.EventEmitter {
   // XXX arik: need auto-reconnect
   constructor(opt){
     super();
+    this.req_id = 0;
     if (!opt.url)
       throw new Error('signal_client: missing url');
     const ws = this.ws = new WebSocket(opt.url);
@@ -34,6 +36,35 @@ class SignalClient extends events.EventEmitter {
       console.log('signal_client: message %o', o);
       this.emit('message', o);
     });
+  }
+  send(o){
+    this.ws.send(JSON.stringify(o));
+  }
+  cmd(cmd, params, opt){
+    let wait = util.wait();
+    opt = opt||{};
+    let timer, timeout = opt.timeout||10*SEC, req_id = ++this.req_id;
+    this.send({req_id, cmd, params});
+    let timeout_cb = ()=>{
+      this.off('message', cb);
+      wait.throw('signal_client: cmd timeout '+cmd);
+    };
+    let cb = o=>{
+      if (!o.data)
+        return;
+      let data;
+      // XXX: not efficient, parse it once in message, and emit 'json'
+      try { data = JSON.parse(o.data); }
+      catch(err){
+        return console.error('signal_client: parse error %o', o.data); }
+      if (data.resp_id!=req_id)
+        return;
+      clearTimeout(timer);
+      wait.continue(data.resp);
+    };
+    this.on('message', cb);
+    timer = setTimeout(timeout_cb, timeout);
+    return wait;
   }
   broadcast(message){
     console.log('signal_client: broadcast %o', message);
@@ -79,8 +110,6 @@ function SignalhubWs(opt, WebSocketClass){
     });
   }
 }
-
-inherits(SignalhubWs, events.EventEmitter);
 
 SignalhubWs.prototype.subscribe = function(channel){
   if (this.closed)
@@ -183,7 +212,7 @@ module.exports = function(opt){
   return new SignalhubWs(opt, WebSocket); };
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":11,"events":6,"inherits":8,"through2":25}],2:[function(require,module,exports){
+},{"../util/util.js":29,"_process":11,"events":6,"through2":25}],2:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -5955,6 +5984,15 @@ function connect(){
   window.sc_broadcast = function sc_broadcast(){
     sc.broadcast({ts: +Date.now()});
   };
+  window.sc_get_clients = async function sc_get_clients(){
+    try {
+      let o = await sc.cmd('get_clients');
+      // let o = await sc.cmd('webrtc_connect', {ws_id: 1}, {timeout: 10});
+      console.log('XXX clients %o', o);
+    } catch(err){
+      console.log('XXX error %o', err);
+    }
+  };
   /* XXX: obsolete, rm
   const peer_id = crypto.randomUUID();
   document.querySelector('#peer_id').innerText = peer_id;
@@ -5980,6 +6018,9 @@ function init(){
       <div>
         <div><b>LIF</b></div>
         <div>
+          <input type=button value="Get clients" onClick="sc_get_clients()">
+        </div>
+        <div>
           <input id=ws_msg value=Message>
           <input type=button value=Broadcast onClick="sc_broadcast()">
         </div>
@@ -6002,4 +6043,29 @@ function init(){
 init();
 
 
-},{"../lib/ws_client.js":1}]},{},[28]);
+},{"../lib/ws_client.js":1}],29:[function(require,module,exports){
+'use strict'; /*jslint node:true*/
+// XXX: rename file to signal_server.js
+const E = module.exports = {};
+
+// XXX: add test, optimize for node
+E.monotonic = function(){
+    let now = Date.now(), last = E.monotonic.last||0;
+    if (now < last)
+        now = last;
+    last = now;
+    return now;
+};
+
+E.wait = function(){
+  let resolve, reject;
+  let p = new Promise((_resolve, _reject)=>{
+    resolve = _resolve;
+    reject = _reject;
+  });
+  p.continue = o=>resolve(o);
+  p.throw = error=>reject(error);
+  return p;
+};
+
+},{}]},{},[28]);

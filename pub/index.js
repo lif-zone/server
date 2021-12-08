@@ -6,6 +6,15 @@ function connect(){
   window.sc_broadcast = function sc_broadcast(){
     sc.broadcast({ts: +Date.now()});
   };
+  window.sc_get_clients = async function sc_get_clients(){
+    try {
+      let o = await sc.cmd('get_clients');
+      // let o = await sc.cmd('webrtc_connect', {ws_id: 1}, {timeout: 10});
+      console.log('XXX clients %o', o);
+    } catch(err){
+      console.log('XXX error %o', err);
+    }
+  };
   /* XXX: obsolete, rm
   const peer_id = crypto.randomUUID();
   document.querySelector('#peer_id').innerText = peer_id;
@@ -30,6 +39,9 @@ function init(){
     document.body.innerHTML = `
       <div>
         <div><b>LIF</b></div>
+        <div>
+          <input type=button value="Get clients" onClick="sc_get_clients()">
+        </div>
         <div>
           <input id=ws_msg value=Message>
           <input type=button value=Broadcast onClick="sc_broadcast()">
