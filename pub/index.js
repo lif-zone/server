@@ -1,10 +1,11 @@
 // XXX: replace require with import
 const SignalClient = require('../lib/ws_client.js');
+const Peer = require('simple-peer');
 
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
   window.sc_broadcast = function(){ sc.broadcast({ts: +Date.now()}); };
-  window.sc_ping = async function sc_ping(){
+  window.sc_ping = async function(){
     let html;
     let dst = document.querySelector('#ws_dst').value;
     let ts = new Date();
@@ -23,7 +24,7 @@ function connect(){
   window.sc_set_client= function sc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id;
   };
-  window.sc_get_clients = async function sc_get_clients(){
+  window.sc_get_clients = async function(){
     let html = '';
     try {
       let o = await sc.cmd('get_clients');
@@ -42,6 +43,31 @@ function connect(){
       html = `<div><b>Error getting clients ${err}</b></div>`;
     }
     document.querySelector('#ws_clients').innerHTML = html;
+  };
+  window.sc_webrtc_connect = async function(){
+    let peer1 = new Peer({initiator: true, config: {
+      iceServers: [
+        {urls: 'stun:stun.l.google.com:19302'},
+        {urls: 'stun:global.stun.twilio.com:3478?transport=udp'},
+      ]
+    }
+    });
+    var peer2 = new Peer();
+    peer1.on('signal', data=>{
+      console.log('XXX peer1 signal %o', peer1);
+      peer2.signal(data);
+    });
+    peer2.on('signal', data=>{
+      console.log('XXX peer2 signal %o', peer1);
+      peer1.signal(data);
+    });
+    peer1.on('connect', ()=>{
+      console.log('XXX peer1 connect');
+      peer1.send('hey peer2, how is it going?');
+    });
+    peer2.on('data', data=>{
+      console.log('got a message from peer1: ' + data);
+    });
   };
   var pings = [];
   sc.on('ping', o=>{
@@ -79,6 +105,8 @@ function init(){
           Connect to: <input id=ws_dst>
           <input id=ws_msg value=Message>
           <input type=button value=Ping onClick="sc_ping()">
+          <input type=button value="WebRTC Connect"
+            onClick="sc_webrtc_connect()">
           <input type=button value=Broadcast onClick="sc_broadcast()">
         </div>
         <div id=ws_ping></div>
