@@ -11,6 +11,7 @@ E.monotonic = function(){
     return now;
 };
 
+// XXX: use etask
 E.wait = function(){
   let resolve, reject;
   let p = new Promise((_resolve, _reject)=>{
