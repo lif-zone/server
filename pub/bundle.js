@@ -32,19 +32,31 @@ class SignalClient extends events.EventEmitter {
       console.log('signal_client: error %o', err);
       this.emit('error', err);
     });
-    ws.addEventListener('message', o=>{
-      console.log('signal_client: message %o', o);
-      this.emit('message', o);
+    ws.addEventListener('message', (message, bin)=>{
+      console.log('signal_client: message %o', message);
+      if (bin)
+        return console.error('bin not supported');
+      const o = JSON.parse(message.data);
+      if (!o)
+        return console.error('invalid message %o', message);
+      let {cmd, req_id, src, params} = o;
+      switch (cmd)
+      {
+      case 'ping':
+        this.json({cmd: 'pong', dst: src, resp_id: req_id, resp: params});
+        break;
+      default: this.emit('message', message);
+      }
     });
   }
-  send(o){
+  json(o){
     this.ws.send(JSON.stringify(o));
   }
-  cmd(cmd, params, opt){
+  cmd(cmd, dst, params, opt){
     let wait = util.wait();
     opt = opt||{};
     let timer, timeout = opt.timeout||10*SEC, req_id = ++this.req_id;
-    this.send({req_id, cmd, params});
+    this.json({cmd, req_id, dst, params});
     let timeout_cb = ()=>{
       this.off('message', cb);
       wait.throw('signal_client: cmd timeout '+cmd);
@@ -5981,8 +5993,22 @@ const SignalClient = require('../lib/ws_client.js');
 
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
-  window.sc_broadcast = function sc_broadcast(){
-    sc.broadcast({ts: +Date.now()});
+  window.sc_broadcast = function(){ sc.broadcast({ts: +Date.now()}); };
+  window.sc_ping = async function sc_ping(){
+    let html;
+    let dst = document.querySelector('#ws_dst').value;
+    let ts = new Date();
+    let data = document.querySelector('#ws_msg').value;
+    try {
+      let pong = await sc.cmd('ping', dst, {ts, data});
+      if (pong.error)
+        html = `<div><b>ping Error ${pong.error}</b></div>`;
+      else
+        html = `<div>${pong.ts} ping ok</div>`;
+    } catch(err){
+      html = `<div><b>ping Error ${err}</b></div>`;
+    }
+    document.querySelector('#ws_ping').innerHTML = html;
   };
   window.sc_set_client= function sc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id;
@@ -6037,8 +6063,10 @@ function init(){
         <div>
           Connect to: <input id=ws_dst>
           <input id=ws_msg value=Message>
+          <input type=button value=Ping onClick="sc_ping()">
           <input type=button value=Broadcast onClick="sc_broadcast()">
         </div>
+        <div id=ws_ping></div>
         <br>
         <div>peer_id: <span id=peer_id></span></div>
         <div>Clients:
