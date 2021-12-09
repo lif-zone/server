@@ -44,51 +44,55 @@ function connect(){
     }
     document.querySelector('#ws_clients').innerHTML = html;
   };
-  window.sc_webrtc_connect = async function(){
-    let peer1 = new Peer({initiator: true, config: {
-      iceServers: [
-        {urls: 'stun:stun.l.google.com:19302'},
-        {urls: 'stun:global.stun.twilio.com:3478?transport=udp'},
-      ]
-    }
-    });
-    var peer2 = new Peer();
-    peer1.on('signal', data=>{
-      console.log('XXX peer1 signal %o', peer1);
-      peer2.signal(data);
-    });
-    peer2.on('signal', data=>{
-      console.log('XXX peer2 signal %o', peer1);
-      peer1.signal(data);
-    });
-    peer1.on('connect', ()=>{
-      console.log('XXX peer1 connect');
-      peer1.send('hey peer2, how is it going?');
-    });
-    peer2.on('data', data=>{
-      console.log('got a message from peer1: ' + data);
-    });
-  };
   var pings = [];
   sc.on('ping', o=>{
     pings.push(JSON.stringify(o));
     document.querySelector('#ws_pings').innerText = pings.join('\n');
   });
-  /* XXX: obsolete, rm
-  const peer_id = crypto.randomUUID();
-  document.querySelector('#peer_id').innerText = peer_id;
-  var messages = [];
-  const wsc = ws_client({peer_id, urls: ['wss://poc.lif.zone:3031']});
-  wsc.subscribe('my_channel').on('data', msg=>{
-    console.log('got msg', msg);
-    messages.push(JSON.stringify(msg));
-    document.querySelector('#ws_incoming').innerText = messages.join('\n');
-  });
-  window.sc_broadcast= function sc_broadcast(){
-    let msg = document.querySelector('#ws_msg').value;
-    wsc.broadcast('my_channel', {peer_id, ts: +Date.now(), msg});
+  window.sc_webrtc_connect = async function(){
+    let dst = document.querySelector('#ws_dst').value;
+    console.log('XXX sc_webrtc_connect %s', dst);
+    let peer = new Peer({initiator: true, config: {iceServers: [
+      {urls: 'stun:stun.l.google.com:19302'},
+      {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]}});
+    peer.on('signal', async data=>{
+      console.log('XXX peer got self data %o', data);
+      let eid = Math.random();
+      sc.json({event: 'webrtc_connect', dst, data: {eid, data}});
+    });
+    peer.on('connect', ()=>{
+      console.log('XXX peer CONNECT');
+      peer.send('peer1 -> peer2');
+    });
+    peer.on('data', data=>{
+      console.log('XXX peer DATA %s', data.toString());
+    });
+    sc.on('event-reply_webrtc_connect', e=>{
+      console.log('XXX got event-reply_webrtc_connect %o', e);
+      peer.signal(e.data.data);
+    });
   };
-  */
+  var peer2 = new Peer(), peer2_data, peer2_dst;
+  peer2.on('signal', async data=>{
+    peer2_data = data;
+    console.log('XXX peer2 got self data %o', peer2_data);
+    sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
+  });
+  sc.on('event-webrtc_connect', e=>{
+    console.log('XXX got event-webrtc_connect %o', e);
+    let src = e.src, edata = e.data;
+    if (peer2_dst && peer2_dst!=src)
+      throw new Error('peer2_dst changed');
+    peer2_dst = src;
+    peer2.signal(edata.data);
+  });
+  peer2.on('connect', ()=>{
+    console.log('XXX peer2 CONNECT');
+    peer2.send('reply peer2 -> peer1');
+  });
+  peer2.on('data', data=>{
+    console.log('XXX peer2 DATA %s', data.toString());
+  });
 }
 
 function init(){
