@@ -1,6 +1,8 @@
 // XXX: replace require with import
 const SignalClient = require('../lib/ws_client.js');
 const Peer = require('simple-peer');
+const React = require('react');
+const ReactDOM = require('react-dom');
 
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
@@ -95,6 +97,16 @@ function connect(){
   });
 }
 
+class Page extends React.Component {
+  render(){
+    const e = React.createElement;
+    return e(
+      'button',
+      { onClick: () => this.setState({ liked: true }) },
+      'React');
+  }
+}
+
 function init(){
   if (location.pathname=='/' &&
     location.hostname=='poc.lif.zone')
@@ -125,8 +137,12 @@ function init(){
           <div id=ws_pings></div>
         <div>
       </div>
+      <div id=react_root></div>
     `;
     connect();
+    const react_root = document.querySelector('#react_root');
+    const e = React.createElement;
+    ReactDOM.render(e(Page), react_root);
   }
   else if (window.self!==window.top)
     document.body.innerHTML = 'iframe for '+location.href;
