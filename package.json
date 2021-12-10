@@ -18,9 +18,8 @@
     "inherits": "2.0.3",
     "through2": "^3.0.0",
     "ws": "8.3.0",
-    "simple-peer-wrapper": "0.0.2",
-    "socket.io": "4.4.0",
-    "json-6": "1.1.4"
+    "json-6": "1.1.4",
+    "simple-peer": "9.11.0"
   },
   "devDependencies": {
     "eslint-plugin-react": "7.22.0",
