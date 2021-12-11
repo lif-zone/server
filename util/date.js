@@ -1,19 +1,12 @@
 'use strict'; /*jslint node:true*/
-// XXX: rename file to signal_server.js
-const E = {};
-export default E;
+const E = module.exports = {};
 
+E.months_long = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+E.months_short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+    'Sep', 'Oct', 'Nov', 'Dec'];
 const months_short_lc = E.months_short.map(function(m){
   return m.toLowerCase(); });
-
-// XXX: add test, optimize for node
-E.monotonic = function(){
-    let now = Date.now(), last = E.monotonic.last||0;
-    if (now < last)
-        now = last;
-    last = now;
-    return now;
-};
 
 function pad(num, size){ return ('000'+num).slice(-size); }
 
@@ -79,4 +72,13 @@ E.to_sql_ms = function(d){
 E.to_sql_sec = function(d){ return E.to_sql_ms(d).slice(0, -4); };
 E.to_sql = function(d){
   return E.to_sql_ms(d).replace(/( 00:00:00)?....$/, ''); };
+
+// XXX: add test, optimize for node
+E.monotonic = function(){
+    let now = Date.now(), last = E.monotonic.last||0;
+    if (now < last)
+        now = last;
+    last = now;
+    return now;
+};
 

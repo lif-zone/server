@@ -1,5 +1,6 @@
 // XXX: replace require with import
 const SignalClient = require('../lib/ws_client.js');
+const date = require('../util/date.js');
 const Peer = require('simple-peer');
 const React = require('react');
 const ReactDOM = require('react-dom');
@@ -8,19 +9,16 @@ function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
   var pings = [];
   sc.on('event-pong', e=>{
-    console.log('XXX event-pong %o', e);
-    pings.push(JSON.stringify(e));
+    pings.push(`${date.to_sql_ms()} <pong src ${e.src}`);
     document.querySelector('#ws_ping').innerText = pings.join('\n');
 
   });
   sc.on('event-ping', e=>{
-    console.log('XXX event-ping %o', e);
-    pings.push(JSON.stringify(e));
+    pings.push(`${date.to_sql_ms()} <ping src ${e.src}`);
     document.querySelector('#ws_ping').innerText = pings.join('\n');
     sc.json({event: 'pong', dst: e.src, data: {src: e.src, data: e.data}});
   });
   sc.on('event-reply_get_clients', e=>{
-    console.log('XXX event-reply_get_clients %o', e);
     let clients = e.data.clients;
     let html = '';
     if (!clients.length)
@@ -36,7 +34,7 @@ function connect(){
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    pings.push('send ping to '+dst);
+    pings.push(`${date.to_sql_ms()} >ping dst ${dst}`);
     document.querySelector('#ws_ping').innerText = pings.join('\n');
     sc.json({event: 'ping', dst, data: {data}});
   };
