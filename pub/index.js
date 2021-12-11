@@ -6,7 +6,6 @@ const ReactDOM = require('react-dom');
 
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
-  window.sc_broadcast = function(){ sc.broadcast({ts: +Date.now()}); };
   window.sc_ping = async function(){
     let html;
     let dst = document.querySelector('#ws_dst').value;
@@ -120,7 +119,6 @@ function init(){
           <input type=button value=Ping onClick="sc_ping()">
           <input type=button value="WebRTC Connect"
             onClick="sc_webrtc_connect()">
-          <input type=button value=Broadcast onClick="sc_broadcast()">
         </div>
         <div id=ws_ping></div>
         <br>
