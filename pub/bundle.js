@@ -38405,6 +38405,10 @@ const ReactDOM = require('react-dom');
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
   var pings = [];
+  sc.on('event-error', e=>{
+    pings.push(`${date.to_sql_ms()} >error ${JSON.stringify(e)}`);
+    document.querySelector('#log').innerText = pings.join('\n');
+  });
   sc.on('event-pong', e=>{
     pings.push(`${date.to_sql_ms()} <pong src ${e.src}`);
     document.querySelector('#log').innerText = pings.join('\n');
