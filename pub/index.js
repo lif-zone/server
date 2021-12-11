@@ -10,12 +10,13 @@ function connect(){
   var pings = [];
   sc.on('event-pong', e=>{
     pings.push(`${date.to_sql_ms()} <pong src ${e.src}`);
-    document.querySelector('#ws_ping').innerText = pings.join('\n');
+    document.querySelector('#log').innerText = pings.join('\n');
 
   });
   sc.on('event-ping', e=>{
     pings.push(`${date.to_sql_ms()} <ping src ${e.src}`);
-    document.querySelector('#ws_ping').innerText = pings.join('\n');
+    pings.push(`${date.to_sql_ms()} >pong dst ${e.src}`);
+    document.querySelector('#log').innerText = pings.join('\n');
     sc.json({event: 'pong', dst: e.src, data: {src: e.src, data: e.data}});
   });
   sc.on('event-reply_get_clients', e=>{
@@ -29,13 +30,13 @@ function connect(){
       html += `<div onClick="sc_set_client(${client.ws_id})">`+
         `WS_ID ${client.ws_id} IP ${client.ip} PORT ${client.port}</div>`;
     }
-    document.querySelector('#ws_clients').innerHTML = html;
+    document.querySelector('#clients').innerHTML = html;
   });
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
     pings.push(`${date.to_sql_ms()} >ping dst ${dst}`);
-    document.querySelector('#ws_ping').innerText = pings.join('\n');
+    document.querySelector('#log').innerText = pings.join('\n');
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
@@ -114,11 +115,11 @@ function init(){
         <div>peer_id: <span id=peer_id></span></div>
         <div>
           Clients:
-          <div id=ws_clients></div>
+          <div id=clients></div>
         </div>
         <div>
           Pings we got:
-          <div id=ws_ping></div>
+          <div id=log></div>
         <div>
       </div>
       <div id=react_root></div>
