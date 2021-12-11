@@ -2,17 +2,14 @@
 'use strict'; /*jslint node:true*/
 // XXX: rename file to signal_client.js
 const events = require('events');
-const util = require('../util/util.js');
 // XXX: const json6 = require('json-6');
 // XXX: use npm ws instead?
 const WebSocket = window.WebSocket;
-const SEC = 1000; // XXX: use util.ms.SEC
 
 class SignalClient extends events.EventEmitter {
   // XXX arik: need auto-reconnect
   constructor(opt){
     super();
-    this.req_id = 0; // XXX: change to random uuid
     if (!opt.url)
       throw new Error('signal_client: missing url');
     const ws = this.ws = new WebSocket(opt.url);
@@ -38,53 +35,15 @@ class SignalClient extends events.EventEmitter {
       if (!o)
         return console.error('invalid message %o', message);
       if (o.event)
-      {
         this.emit('event-'+o.event, o);
-        return;
-      }
-      let {cmd, req_id, src, params} = o;
-      switch (cmd)
-      {
-      case 'ping':
-        this.json({cmd: 'pong', dst: src, resp_id: req_id, resp: params});
-        break;
-      default: this.emit('message', message);
-      }
-      this.emit(cmd, {req_id, src, params});
     });
   }
   json(o){ this.ws.send(JSON.stringify(o)); }
-  cmd(cmd, dst, params, opt){
-    let wait = util.wait();
-    opt = opt||{};
-    let timer, timeout = opt.timeout||10*SEC, req_id = ++this.req_id;
-    this.json({cmd, req_id, dst, params});
-    let timeout_cb = ()=>{
-      this.off('message', cb);
-      wait.throw('signal_client: cmd timeout '+cmd);
-    };
-    let cb = o=>{
-      if (!o.data)
-        return;
-      let data;
-      // XXX: not efficient, parse it once in message, and emit 'json'
-      try { data = JSON.parse(o.data); }
-      catch(err){
-        return console.error('signal_client: parse error %o', o.data); }
-      if (data.resp_id!=req_id)
-        return;
-      clearTimeout(timer);
-      wait.continue(data.resp);
-    };
-    this.on('message', cb);
-    timer = setTimeout(timeout_cb, timeout);
-    return wait;
-  }
 }
 
 module.exports = SignalClient;
 
-},{"../util/util.js":50,"events":8}],2:[function(require,module,exports){
+},{"events":8}],2:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -38580,30 +38539,4 @@ function init(){
 init();
 
 
-},{"../lib/ws_client.js":1,"react":22,"react-dom":19,"simple-peer":30}],50:[function(require,module,exports){
-'use strict'; /*jslint node:true*/
-// XXX: rename file to signal_server.js
-const E = module.exports = {};
-
-// XXX: add test, optimize for node
-E.monotonic = function(){
-    let now = Date.now(), last = E.monotonic.last||0;
-    if (now < last)
-        now = last;
-    last = now;
-    return now;
-};
-
-// XXX: use etask
-E.wait = function(){
-  let resolve, reject;
-  let p = new Promise((_resolve, _reject)=>{
-    resolve = _resolve;
-    reject = _reject;
-  });
-  p.continue = o=>resolve(o);
-  p.throw = error=>reject(error);
-  return p;
-};
-
-},{}]},{},[49]);
+},{"../lib/ws_client.js":1,"react":22,"react-dom":19,"simple-peer":30}]},{},[49]);
