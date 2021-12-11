@@ -38457,7 +38457,21 @@ function connect(){
     document.querySelector('#ws_ping').innerText = pings.join('\n');
     sc.json({event: 'pong', dst: e.src, data: {src: e.src, data: e.data}});
   });
-  window.sc_ping = async function(){
+  sc.on('event-reply_get_clients', e=>{
+    console.log('XXX event-reply_get_clients %o', e);
+    let clients = e.data.clients;
+    let html = '';
+    if (!clients.length)
+      html += '<div><b>No clients</b></div>';
+    for (let i=0; i<clients.length; i++)
+    {
+      let client = clients[i];
+      html += `<div onClick="sc_set_client(${client.ws_id})">`+
+        `WS_ID ${client.ws_id} IP ${client.ip} PORT ${client.port}</div>`;
+    }
+    document.querySelector('#ws_clients').innerHTML = html;
+  });
+  window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
     pings.push('send ping to '+dst);
@@ -38467,33 +38481,14 @@ function connect(){
   window.sc_set_client= function sc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id;
   };
-  window.sc_get_clients = async function(){
-    let html = '';
-    try {
-      let o = await sc.cmd('get_clients');
-      // let o = await sc.cmd('webrtc_connect', {ws_id: 1}, {timeout: 10});
-      console.log('XXX clients %o', o);
-      if (!o.clients.length)
-        html += '<div><b>No clients</b></div>';
-      for (let i=0; i<o.clients.length; i++)
-      {
-        let client = o.clients[i];
-        html += `<div onClick="sc_set_client(${client.ws_id})">`+
-          `WS_ID ${client.ws_id} IP ${client.ip} PORT ${client.port}</div>`;
-      }
-    } catch(err){
-      console.log('XXX error %o', err);
-      html = `<div><b>Error getting clients ${err}</b></div>`;
-    }
-    document.querySelector('#ws_clients').innerHTML = html;
-  };
-  window.sc_webrtc_connect = async function(){
+  window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
+  window.sc_webrtc_connect = function(){
     let dst = document.querySelector('#ws_dst').value;
     console.log('XXX sc_webrtc_connect %s', dst);
     let peer = new Peer({initiator: true, config: {iceServers: [
       {urls: 'stun:stun.l.google.com:19302'},
       {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]}});
-    peer.on('signal', async data=>{
+    peer.on('signal', data=>{
       console.log('XXX peer got self data %o', data);
       sc.json({event: 'webrtc_connect', dst, data: {data}});
     });
@@ -38510,7 +38505,7 @@ function connect(){
     });
   };
   var peer2 = new Peer(), peer2_data, peer2_dst;
-  peer2.on('signal', async data=>{
+  peer2.on('signal', data=>{
     peer2_data = data;
     console.log('XXX peer2 got self data %o', peer2_data);
     sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
