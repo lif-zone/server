@@ -22,3 +22,44 @@ E.wait = function(){
   p.throw = error=>reject(error);
   return p;
 };
+
+E.path = function(path){
+    if (Array.isArray(path))
+        return path;
+    path = ''+path;
+    if (!path)
+        return [];
+    return path.split('.');
+};
+E.get = function(o, path, def){
+    path = E.path(path);
+    for (var i=0; i<path.length; i++)
+    {
+        if (!o || typeof o!='object'&&typeof o!='function' || !(path[i] in o))
+            return def;
+        o = o[path[i]];
+    }
+    return o;
+};
+E.set = function(o, path, value){
+    var orig = o;
+    path = E.path(path);
+    for (var i=0; i<path.length-1; i++)
+    {
+        var p = path[i];
+        o = o[p] || (o[p] = {});
+    }
+    o[path[path.length-1]] = value;
+    return orig;
+};
+E.unset = function(o, path){
+    path = E.path(path);
+    for (var i=0; i<path.length-1; i++)
+    {
+        var p = path[i];
+        if (!o[p])
+            return;
+        o = o[p];
+    }
+    delete o[path[path.length-1]];
+};
