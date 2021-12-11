@@ -100,10 +100,7 @@ function connect(){
 class Page extends React.Component {
   render(){
     const e = React.createElement;
-    return e(
-      'button',
-      { onClick: () => this.setState({ liked: true }) },
-      'React');
+    return e('button', {onClick: ()=>this.setState({liked: true})}, 'React');
   }
 }
 
