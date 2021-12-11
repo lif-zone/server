@@ -38398,27 +38398,29 @@ function config (name) {
 // XXX: replace require with import
 const SignalClient = require('../lib/ws_client.js');
 const date = require('../util/date.js');
+const util = require('../util/util.js');
 const Peer = require('simple-peer');
 const React = require('react');
 const ReactDOM = require('react-dom');
 
+var log_a = [];
+
+function log(s){
+  log_a.push(s);
+  document.querySelector('#log').innerText = log_a.join('\n');
+}
+
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
-  var pings = [];
-  sc.on('event-error', e=>{
-    pings.push(`${date.to_sql_ms()} >error ${JSON.stringify(e)}`);
-    document.querySelector('#log').innerText = pings.join('\n');
-  });
-  sc.on('event-pong', e=>{
-    pings.push(`${date.to_sql_ms()} <pong src ${e.src}`);
-    document.querySelector('#log').innerText = pings.join('\n');
-
-  });
+  sc.on('event-error',
+    e=>log(`${date.to_sql_ms()} >error ${JSON.stringify(e)}`));
+  sc.on('event-pong', e=>log(
+    `${date.to_sql_ms()} <pong src ${e.src} ${util.get(e, 'data.data')}`));
   sc.on('event-ping', e=>{
-    pings.push(`${date.to_sql_ms()} <ping src ${e.src}`);
-    pings.push(`${date.to_sql_ms()} >pong dst ${e.src}`);
-    document.querySelector('#log').innerText = pings.join('\n');
-    sc.json({event: 'pong', dst: e.src, data: {src: e.src, data: e.data}});
+    log(`${date.to_sql_ms()} <ping src ${e.src} ${util.get(e, 'data.data')}`);
+    log(`${date.to_sql_ms()} >pong dst ${e.src} ${util.get(e, 'data.data')}`);
+    sc.json({event: 'pong', dst: e.src, data: {src: e.src,
+      data: util.get(e, 'data.data')}});
   });
   sc.on('event-reply_get_clients', e=>{
     let clients = e.data.clients;
@@ -38436,8 +38438,7 @@ function connect(){
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    pings.push(`${date.to_sql_ms()} >ping dst ${dst}`);
-    document.querySelector('#log').innerText = pings.join('\n');
+    log(`${date.to_sql_ms()} >ping dst ${dst} ${data}`);
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
@@ -38542,7 +38543,7 @@ function init(){
 init();
 
 
-},{"../lib/ws_client.js":1,"../util/date.js":50,"react":22,"react-dom":19,"simple-peer":30}],50:[function(require,module,exports){
+},{"../lib/ws_client.js":1,"../util/date.js":50,"../util/util.js":51,"react":22,"react-dom":19,"simple-peer":30}],50:[function(require,module,exports){
 'use strict'; /*jslint node:true*/
 const E = module.exports = {};
 
@@ -38627,5 +38628,72 @@ E.monotonic = function(){
     return now;
 };
 
+
+},{}],51:[function(require,module,exports){
+'use strict'; /*jslint node:true*/
+// XXX: rename file to signal_server.js
+const E = module.exports = {};
+
+// XXX: add test, optimize for node
+E.monotonic = function(){
+    let now = Date.now(), last = E.monotonic.last||0;
+    if (now < last)
+        now = last;
+    last = now;
+    return now;
+};
+
+// XXX: use etask
+E.wait = function(){
+  let resolve, reject;
+  let p = new Promise((_resolve, _reject)=>{
+    resolve = _resolve;
+    reject = _reject;
+  });
+  p.continue = o=>resolve(o);
+  p.throw = error=>reject(error);
+  return p;
+};
+
+E.path = function(path){
+    if (Array.isArray(path))
+        return path;
+    path = ''+path;
+    if (!path)
+        return [];
+    return path.split('.');
+};
+E.get = function(o, path, def){
+    path = E.path(path);
+    for (var i=0; i<path.length; i++)
+    {
+        if (!o || typeof o!='object'&&typeof o!='function' || !(path[i] in o))
+            return def;
+        o = o[path[i]];
+    }
+    return o;
+};
+E.set = function(o, path, value){
+    var orig = o;
+    path = E.path(path);
+    for (var i=0; i<path.length-1; i++)
+    {
+        var p = path[i];
+        o = o[p] || (o[p] = {});
+    }
+    o[path[path.length-1]] = value;
+    return orig;
+};
+E.unset = function(o, path){
+    path = E.path(path);
+    for (var i=0; i<path.length-1; i++)
+    {
+        var p = path[i];
+        if (!o[p])
+            return;
+        o = o[p];
+    }
+    delete o[path[path.length-1]];
+};
 
 },{}]},{},[49]);

@@ -1,27 +1,29 @@
 // XXX: replace require with import
 const SignalClient = require('../lib/ws_client.js');
 const date = require('../util/date.js');
+const util = require('../util/util.js');
 const Peer = require('simple-peer');
 const React = require('react');
 const ReactDOM = require('react-dom');
 
+var log_a = [];
+
+function log(s){
+  log_a.push(s);
+  document.querySelector('#log').innerText = log_a.join('\n');
+}
+
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
-  var pings = [];
-  sc.on('event-error', e=>{
-    pings.push(`${date.to_sql_ms()} >error ${JSON.stringify(e)}`);
-    document.querySelector('#log').innerText = pings.join('\n');
-  });
-  sc.on('event-pong', e=>{
-    pings.push(`${date.to_sql_ms()} <pong src ${e.src}`);
-    document.querySelector('#log').innerText = pings.join('\n');
-
-  });
+  sc.on('event-error',
+    e=>log(`${date.to_sql_ms()} >error ${JSON.stringify(e)}`));
+  sc.on('event-pong', e=>log(
+    `${date.to_sql_ms()} <pong src ${e.src} ${util.get(e, 'data.data')}`));
   sc.on('event-ping', e=>{
-    pings.push(`${date.to_sql_ms()} <ping src ${e.src}`);
-    pings.push(`${date.to_sql_ms()} >pong dst ${e.src}`);
-    document.querySelector('#log').innerText = pings.join('\n');
-    sc.json({event: 'pong', dst: e.src, data: {src: e.src, data: e.data}});
+    log(`${date.to_sql_ms()} <ping src ${e.src} ${util.get(e, 'data.data')}`);
+    log(`${date.to_sql_ms()} >pong dst ${e.src} ${util.get(e, 'data.data')}`);
+    sc.json({event: 'pong', dst: e.src, data: {src: e.src,
+      data: util.get(e, 'data.data')}});
   });
   sc.on('event-reply_get_clients', e=>{
     let clients = e.data.clients;
@@ -39,8 +41,7 @@ function connect(){
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    pings.push(`${date.to_sql_ms()} >ping dst ${dst}`);
-    document.querySelector('#log').innerText = pings.join('\n');
+    log(`${date.to_sql_ms()} >ping dst ${dst} ${data}`);
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
