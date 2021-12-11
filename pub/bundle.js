@@ -53,12 +53,7 @@ class SignalClient extends events.EventEmitter {
       this.emit(cmd, {req_id, src, params});
     });
   }
-  reply(o, params){
-     this.json({cmd: 'reply', dst: o.src, resp_id: o.req_id, resp: params});
-  }
-  json(o){
-    this.ws.send(JSON.stringify(o));
-  }
+  json(o){ this.ws.send(JSON.stringify(o)); }
   cmd(cmd, dst, params, opt){
     let wait = util.wait();
     opt = opt||{};
@@ -38449,21 +38444,25 @@ const ReactDOM = require('react-dom');
 
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
+  var pings = [];
+  sc.on('event-pong', e=>{
+    console.log('XXX event-pong %o', e);
+    pings.push(JSON.stringify(e));
+    document.querySelector('#ws_ping').innerText = pings.join('\n');
+
+  });
+  sc.on('event-ping', e=>{
+    console.log('XXX event-ping %o', e);
+    pings.push(JSON.stringify(e));
+    document.querySelector('#ws_ping').innerText = pings.join('\n');
+    sc.json({event: 'pong', dst: e.src, data: {src: e.src, data: e.data}});
+  });
   window.sc_ping = async function(){
-    let html;
     let dst = document.querySelector('#ws_dst').value;
-    let ts = new Date();
     let data = document.querySelector('#ws_msg').value;
-    try {
-      let pong = await sc.cmd('ping', dst, {ts, data});
-      if (pong.error)
-        html = `<div><b>ping Error ${pong.error}</b></div>`;
-      else
-        html = `<div>${pong.ts} ping ok</div>`;
-    } catch(err){
-      html = `<div><b>ping Error ${err}</b></div>`;
-    }
-    document.querySelector('#ws_ping').innerHTML = html;
+    pings.push('send ping to '+dst);
+    document.querySelector('#ws_ping').innerText = pings.join('\n');
+    sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id;
@@ -38488,11 +38487,6 @@ function connect(){
     }
     document.querySelector('#ws_clients').innerHTML = html;
   };
-  var pings = [];
-  sc.on('ping', o=>{
-    pings.push(JSON.stringify(o));
-    document.querySelector('#ws_pings').innerText = pings.join('\n');
-  });
   window.sc_webrtc_connect = async function(){
     let dst = document.querySelector('#ws_dst').value;
     console.log('XXX sc_webrtc_connect %s', dst);
@@ -38501,8 +38495,7 @@ function connect(){
       {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]}});
     peer.on('signal', async data=>{
       console.log('XXX peer got self data %o', data);
-      let eid = Math.random();
-      sc.json({event: 'webrtc_connect', dst, data: {eid, data}});
+      sc.json({event: 'webrtc_connect', dst, data: {data}});
     });
     peer.on('connect', ()=>{
       console.log('XXX peer CONNECT');
@@ -38563,8 +38556,6 @@ function init(){
           <input type=button value="WebRTC Connect"
             onClick="sc_webrtc_connect()">
         </div>
-        <div id=ws_ping></div>
-        <br>
         <div>peer_id: <span id=peer_id></span></div>
         <div>
           Clients:
@@ -38572,7 +38563,7 @@ function init(){
         </div>
         <div>
           Pings we got:
-          <div id=ws_pings></div>
+          <div id=ws_ping></div>
         <div>
       </div>
       <div id=react_root></div>
