@@ -38452,17 +38452,22 @@ function connect(){
       {urls: 'stun:stun.l.google.com:19302'},
       {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]}});
     peer.on('signal', data=>{
-      console.log('XXX peer got self data %o', data);
+      log(`${date.to_sql_ms()} >webrtc sdp ready type ${data.type}`);
+      console.log('peer got self data %o', data);
+      log(`${date.to_sql_ms()} >webrtc_connect dst ${dst}`);
       sc.json({event: 'webrtc_connect', dst, data: {data}});
     });
     peer.on('connect', ()=>{
+      log(`${date.to_sql_ms()} <CONNECT`);
       console.log('XXX peer CONNECT');
       peer.send('peer1 -> peer2');
     });
     peer.on('data', data=>{
+      log(`${date.to_sql_ms()} <webrtc DATA ${data.toString()}`);
       console.log('XXX peer DATA %s', data.toString());
     });
     sc.on('event-reply_webrtc_connect', e=>{
+      log(`${date.to_sql_ms()} <webrtc got peer ${e.src} sdp`);
       console.log('XXX got event-reply_webrtc_connect %o', e);
       peer.signal(e.data.data);
     });
@@ -38482,10 +38487,12 @@ function connect(){
     peer2.signal(edata.data);
   });
   peer2.on('connect', ()=>{
+    log(`${date.to_sql_ms()} <webrtc CONNECT`);
     console.log('XXX peer2 CONNECT');
     peer2.send('reply peer2 -> peer1');
   });
   peer2.on('data', data=>{
+    log(`${date.to_sql_ms()} <webrtc DATA ${data.toString()}`);
     console.log('XXX peer2 DATA %s', data.toString());
   });
 }
