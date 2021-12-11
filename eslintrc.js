@@ -26,7 +26,7 @@ module.exports = {
         'no-unexpected-multiline': 'warn',
         'use-isnan': 'warn',
         'valid-typeof': 'warn',
-        'no-shadow': 'warn',
+        'no-shadow': 'off',
         'no-restricted-globals': ['error', 'event'],
         // Best practices
         'block-scoped-var': 'warn',
