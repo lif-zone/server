@@ -38412,6 +38412,9 @@ function log(s, o){
 }
 
 function connect(){
+  let config = {iceServers: [
+    {urls: 'stun:stun.l.google.com:19302'},
+    {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]};
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
@@ -38445,9 +38448,6 @@ function connect(){
   window.sc_set_client= function sc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id; };
   window.sc_webrtc_connect = function(){
-    let config = {iceServers: [
-      {urls: 'stun:stun.l.google.com:19302'},
-      {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]};
     let dst = document.querySelector('#ws_dst').value;
     log(`#webrtc initiate NEW peer ${dst}`, config);
     let peer = new Peer({initiator: true, config});
@@ -38472,7 +38472,7 @@ function connect(){
     });
   };
   log(`#webrtc listen NEW peer`);
-  var peer2 = new Peer(), peer2_dst;
+  var peer2 = new Peer({config}), peer2_dst;
   peer2.on('signal', data=>{
     log(`>webrtc SDP listen ready type ${data.type}`, data);
     log(`>webrtc_reply_connect dst ${peer2_dst}`, data);
