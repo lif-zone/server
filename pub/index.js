@@ -131,6 +131,7 @@ function init(){
         <p><a href="https://test.webrtc.org/">https://test.webrtc.org/</a></p>
         <p><a href="https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/">https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/</a></p>
         <p><a href="https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them">https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them</a></p>
+        <p><a href="https://webrtchacks.com/sdp-anatomy/">https://webrtchacks.com/sdp-anatomy/</a></p>
         <pre>window.localStorage.debug = 'simple-peer';</pre>
       </div>
     `;
