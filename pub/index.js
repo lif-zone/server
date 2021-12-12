@@ -49,10 +49,13 @@ function connect(){
   };
   window.sc_set_client= function sc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id; };
+  let peer;
   window.sc_webrtc_connect = function(){
+    if (peer)
+      peer.destroy();
     let dst = document.querySelector('#ws_dst').value;
     log(`#webrtc initiate NEW peer ${dst}`, config);
-    let peer = new Peer({initiator: true, config});
+    peer = new Peer({initiator: true, config});
     peer.on('error', e=>log('> webrtc error '+e, e));
     peer.on('signal', data=>{
       // XXX: temporary debug code, rm and organize
