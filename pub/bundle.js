@@ -9148,7 +9148,7 @@ function connect(){
       throw new Error('peer2_dst changed');
     peer2_dst = src;
       log(`webrtc: local_peer ${webrtc_str(data)}`, data);
-    log(`signal: <webrtc_connect XXX src ${src} rmt_peer ${webrtc_str(data)}`,
+    log(`signal: <webrtc_connect src ${src} rmt_peer ${webrtc_str(data)}`,
       e);
     peer2.signal(data);
   });
