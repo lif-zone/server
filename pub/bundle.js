@@ -9036,8 +9036,14 @@ function log(s, o){
 function connect(){
   let config = {iceServers: [
     {urls: 'stun:stun.l.google.com:19302'},
-    {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]};
+    // XXX: {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}
+  ]};
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
+  sc.on('error', e=>log(`signal: >error ${JSON.stringify(e)}`, e));
+  sc.on('close', e=>log(`signal: >close`));
+  sc.on('event-error', e=>log(`signal: >error ${JSON.stringify(e)}`, e));
+  sc.on('event-connect',
+    e=>log(`signal: >CONNECT ws_id ${util.get(e, 'data.ws_id')}`, e));
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
     let clients = e.data.clients;
@@ -9052,19 +9058,18 @@ function connect(){
     }
     document.querySelector('#clients').innerHTML = html;
   });
-  sc.on('event-error', e=>log(`>error ${JSON.stringify(e)}`, e));
   sc.on('event-pong', e=>log(
-    `<pong src ${e.src} ${util.get(e, 'data.data')}`, e));
+    `signal: <pong src ${e.src} ${util.get(e, 'data.data')}`, e));
   sc.on('event-ping', e=>{
-    log(`<ping src ${e.src} ${util.get(e, 'data.data')}`, e);
-    log(`>pong dst ${e.src} ${util.get(e, 'data.data')}`);
+    log(`signal: <ping src ${e.src} ${util.get(e, 'data.data')}`, e);
+    log(`signal: >pong dst ${e.src} ${util.get(e, 'data.data')}`);
     sc.json({event: 'pong', dst: e.src, data: {src: e.src,
       data: util.get(e, 'data.data')}});
   });
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    log(`>ping dst ${dst} ${data}`);
+    log(`signal: >ping dst ${dst} ${data}`);
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
@@ -9076,7 +9081,7 @@ function connect(){
     let dst = document.querySelector('#ws_dst').value;
     log(`#webrtc initiate NEW peer ${dst}`, config);
     peer = new Peer({initiator: true, config});
-    peer.on('error', e=>log('> webrtc error '+e, e));
+    peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
       // XXX: temporary debug code, rm and organize
       if (data.sdp)
@@ -9092,26 +9097,26 @@ function connect(){
     });
     peer.on('connect', ()=>{
       let data = document.querySelector('#ws_msg').value;
-      log(`<webrtc CONNECT`);
-      log(`#webrtc SEND`, data);
+      log(`webrtc: <CONNECT`);
+      log(`webrtc: SEND`, data);
       peer.send(data);
     });
-    peer.on('data', data=>log(`<webrtc DATA ${data.toString()}`, data));
+    peer.on('data', data=>log(`webrtc: <DATA ${data.toString()}`, data));
     sc.on('event-reply_webrtc_connect', e=>{
-      log(`<webrtc got peer SDP ${e.src}`, e);
+      log(`signal: <webrtc got peer SDP ${e.src}`, e);
       peer.signal(e.data.data);
     });
   };
   log(`#webrtc listen NEW peer`);
   var peer2 = new Peer({config}), peer2_dst;
-  peer2.on('error', e=>log('> webrtc error '+e, e));
+  peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
   peer2.on('signal', data=>{
     log(`>webrtc SDP listen ready type ${data.type}`, data);
     log(`>webrtc_reply_connect dst ${peer2_dst}`, data);
     sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
   });
   sc.on('event-webrtc_connect', e=>{
-    log(`event-webrtc_connect`, e);
+    log(`signal: event-webrtc_connect`, e);
     let src = e.src, edata = e.data;
     if (peer2_dst && peer2_dst!=src)
       throw new Error('peer2_dst changed');
@@ -9124,7 +9129,7 @@ function connect(){
     peer2.send('ack from peer');
   });
   peer2.on('data', data=>{
-    log(`<webrtc DATA ${data.toString()}`, data);
+    log(`webrtc: <DATA ${data.toString()}`, data);
     console.log('XXX peer2 DATA %s', data.toString());
   });
 }
