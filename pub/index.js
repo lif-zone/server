@@ -73,7 +73,7 @@ function connect(){
       {
         let sdp = SdpTransform.parse(data.sdp);
         log(`webrtc: local_peer SDP ${data.type} `+
-          `${util.get(sdp, 'origin.address')}' `+
+          `${util.get(sdp, 'origin.address')} `+
           `sessionId ${util.get(sdp, 'origin.sessionId')}`,
           {sdp, data});
       }
