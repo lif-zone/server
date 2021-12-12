@@ -9039,9 +9039,9 @@ function connect(){
     // XXX: {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}
   ]};
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
-  sc.on('error', e=>log(`signal: >ERROR ${JSON.stringify(e)}`, e));
-  sc.on('close', e=>log(`signal: >CLOSE`));
-  sc.on('event-error', e=>log(`signal: >ERROR ${JSON.stringify(e)}`, e));
+  sc.on('error', e=>log(`signal: <ERROR ${JSON.stringify(e)}`, e));
+  sc.on('close', e=>log(`signal: <CLOSE`));
+  sc.on('event-error', e=>log(`signal: <ERROR ${JSON.stringify(e)}`, e));
   sc.on('event-connect', e=>{
     let ws_id = util.get(e, 'data.ws_id');
     document.querySelector('#ws_id').innerHTML = ws_id;
