@@ -56,6 +56,8 @@ function connect(){
     document.querySelector('#ws_dst').value = ws_id; };
   let peer;
   window.sc_webrtc_connect = function(){
+    document.querySelector('#webrtc_connect_btn').outerHTML =
+      '<b>RELOAD TO CONNECT AGAIN</b>';
     if (peer)
       peer.destroy();
     let dst = document.querySelector('#ws_dst').value;
@@ -128,7 +130,7 @@ function init(){
           Connect to: <input id=ws_dst>
           <input id=ws_msg value=PUT_HERE_YOUR_MESSAGE>
           <input type=button value=Ping onClick="sc_ping()">
-          <input type=button value="WebRTC Connect"
+          <input type=button id=webrtc_connect_btn value="WebRTC Connect"
             onClick="sc_webrtc_connect()">
         </div>
         <div>peer_id: <span id=peer_id></span></div>
