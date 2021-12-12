@@ -16,7 +16,8 @@ function log(s, o){
 function connect(){
   let config = {iceServers: [
     {urls: 'stun:stun.l.google.com:19302'},
-    {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]};
+    // XXX: {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}
+  ]};
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
