@@ -23,9 +23,10 @@ function connect(){
   sc.on('close', e=>log(`signal: <CLOSE`));
   sc.on('event-error', e=>log(`signal: <ERROR ${JSON.stringify(e)}`, e));
   sc.on('event-connect', e=>{
-    let ws_id = util.get(e, 'data.ws_id');
-    document.querySelector('#ws_id').innerHTML = ws_id;
-    log(`signal: >CONNECTED ws_id ${ws_id}`, e);
+    let data = e.data||{};
+    let s = `ws_id ${data.ws_id} ${data.ip}:${data.port}`;
+    document.querySelector('#ws_id').innerHTML = s;
+    log(`signal: >CONNECTED `+s, e);
   });
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
@@ -37,7 +38,7 @@ function connect(){
     {
       let client = clients[i];
       html += `<div onClick="sc_set_client(${client.ws_id})">`+
-        `WS_ID ${client.ws_id} IP ${client.ip} PORT ${client.port}</div>`;
+        `WS_ID ${client.ws_id} IP ${client.ip}:${client.port}</div>`;
     }
     document.querySelector('#clients').innerHTML = html;
   });
