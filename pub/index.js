@@ -123,12 +123,14 @@ function connect(){
     sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
   });
   sc.on('event-webrtc_connect', e=>{
-    log(`signal: event-webrtc_connect`, e);
-    let src = e.src, edata = e.data;
+    let src = e.src, data = util.get(e, 'data.data');
     if (peer2_dst && peer2_dst!=src)
       throw new Error('peer2_dst changed');
     peer2_dst = src;
-    peer2.signal(edata.data);
+      log(`webrtc: local_peer ${webrtc_str(data)}`, data);
+    log(`signal: <webrtc_connect src ${src} rmt_peer ${webrtc_str(data)}`,
+      e);
+    peer2.signal(data);
   });
   peer2.on('connect', ()=>{
     let data = 'REMOTE_ACK';
