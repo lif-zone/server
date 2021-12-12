@@ -3,8 +3,6 @@ const SignalClient = require('../lib/ws_client.js');
 const date = require('../util/date.js');
 const util = require('../util/util.js');
 const Peer = require('simple-peer');
-const React = require('react');
-const ReactDOM = require('react-dom');
 
 var log_a = [];
 
@@ -100,13 +98,6 @@ function connect(){
   });
 }
 
-class Page extends React.Component {
-  render(){
-    const e = React.createElement;
-    return e('button', {onClick: ()=>this.setState({liked: true})}, 'React');
-  }
-}
-
 function init(){
   if (location.pathname=='/' &&
     location.hostname=='poc.lif.zone')
@@ -134,12 +125,16 @@ function init(){
           <div id=log></div>
         <div>
       </div>
-      <div id=react_root></div>
+      <div>
+        <b>debugging:</b>
+        <p><a href="chrome://webrtc-internals">chrome://webrtc-internals</a></p>
+        <p><a href="https://test.webrtc.org/">https://test.webrtc.org/</a></p>
+        <p><a href="https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/">https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/</a></p>
+        <p><a href="https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them">https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them</a></p>
+        <pre>window.localStorage.debug = 'simple-peer';</pre>
+      </div>
     `;
     connect();
-    const react_root = document.querySelector('#react_root');
-    const e = React.createElement;
-    ReactDOM.render(e(Page), react_root);
   }
   else if (window.self!==window.top)
     document.body.innerHTML = 'iframe for '+location.href;
