@@ -22,8 +22,11 @@ function connect(){
   sc.on('error', e=>log(`signal: >ERROR ${JSON.stringify(e)}`, e));
   sc.on('close', e=>log(`signal: >CLOSE`));
   sc.on('event-error', e=>log(`signal: >ERROR ${JSON.stringify(e)}`, e));
-  sc.on('event-connect',
-    e=>log(`signal: >CONNECT ws_id ${util.get(e, 'data.ws_id')}`, e));
+  sc.on('event-connect', e=>{
+    let ws_id = util.get(e, 'data.ws_id');
+    document.querySelector('#ws_id').innerHTML = ws_id;
+    log(`signal: >CONNECT ws_id ${ws_id}`, e);
+  });
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
     let clients = e.data.clients;
@@ -128,12 +131,12 @@ function init(){
         </div>
         <div>
           Connect to: <input id=ws_dst>
-          <input id=ws_msg value=PUT_HERE_YOUR_MESSAGE>
+          <input id=ws_msg value=MY_MESSAGE>
           <input type=button value=Ping onClick="sc_ping()">
           <input type=button id=webrtc_connect_btn value="WebRTC Connect"
             onClick="sc_webrtc_connect()">
         </div>
-        <div>peer_id: <span id=peer_id></span></div>
+        <div>ws_id: <span id=ws_id></span></div>
         <div>
           Clients:
           <div id=clients></div>
