@@ -13,6 +13,31 @@ function log(s, o){
   document.querySelector('#log').innerText = log_a.join('\n');
 }
 
+// XXX: mv to webrtc_util.js
+function webrtc_str(data){
+  let s = '';
+  if (data.sdp)
+  {
+    let sdp = SdpTransform.parse(data.sdp);
+    s += `SDP ${data.type} ${util.get(sdp, 'origin.address')} `+
+      `sessionId ${util.get(sdp, 'origin.sessionId')}`;
+    console.log('sdp ', sdp, data);
+  }
+  if (data.candidate)
+  {
+    let _candidate = util.get(data, 'candidate.candidate');
+    let candidate = SdpTransform.parseRemoteCandidates(_candidate);
+    s += `SDP ${data.type} ${_candidate}`;
+    console.log('sdp ', candidate, data);
+  }
+  if (!data.sdp && !data.candidate)
+  {
+    s += `SDP unknown ${data.type}`;
+    console.log('sdp ', data);
+  }
+  return s;
+}
+
 function connect(){
   let config = {iceServers: [
     {urls: 'stun:stun.l.google.com:19302'},
@@ -70,23 +95,7 @@ function connect(){
     peer = new Peer({initiator: true, config});
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
-      if (data.sdp)
-      {
-        let sdp = SdpTransform.parse(data.sdp);
-        log(`webrtc: local_peer SDP ${data.type} `+
-          `${util.get(sdp, 'origin.address')} `+
-          `sessionId ${util.get(sdp, 'origin.sessionId')}`,
-          {sdp, data});
-      }
-      if (data.candidate)
-      {
-          let _candidate = util.get(data, 'candidate.candidate');
-          let candidate = SdpTransform.parseRemoteCandidates(_candidate);
-        log(`webrtc: local_peer SDP ${data.type} ${_candidate}`,
-          {candidate, data});
-      }
-      if (!data.sdp && !data.candidate)
-        log(`webrtc: local_peer SDP unknown ${data.type}`, data);
+      log(`webrtc: local_peer ${webrtc_str(data)}`, data);
       log(`signal: >webrtc_connect dst ${dst}`, data);
       sc.json({event: 'webrtc_connect', dst, data: {data}});
     });
@@ -99,26 +108,8 @@ function connect(){
     peer.on('data', data=>log(`webrtc: <DATA ${data.toString()}`, data));
     sc.on('event-reply_webrtc_connect', e=>{
       let data = util.get(e, 'data.data');
-      if (data.sdp)
-      {
-        let sdp = SdpTransform.parse(data.sdp);
-        log(`signal: <reply_webrtc_connect rmt ${e.src} SDP ${data.type} `+
-          `${util.get(sdp, 'origin.address')} `+
-          `sessionId ${util.get(sdp, 'origin.sessionId')}`,
-          {sdp, e});
-      }
-      if (data.candidate)
-      {
-        let _candidate = util.get(data, 'candidate.candidate');
-        let candidate = SdpTransform.parseRemoteCandidates(_candidate);
-        log(`signal: <reply_webrtc_connect rmt ${e.src} SDP `+
-          `${data.type} ${_candidate}`, {candidate, e});
-      }
-      if (!data.sdp && !data.candidate)
-      {
-        log(`signal: <reply_webrtc_connect rmt ${e.src} SDP `+
-          `unknown ${data.type}`, e);
-      }
+      log(`signal: <reply_webrtc_connect rmt ${e.src} `+
+        `${webrtc_str(data)}`, data);
       peer.signal(e.data.data);
     });
   };
@@ -126,8 +117,8 @@ function connect(){
   var peer2 = new Peer({config}), peer2_dst;
   peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
   peer2.on('signal', data=>{
-    log(`>webrtc SDP listen ready type ${data.type}`, data);
-    log(`>webrtc_reply_connect dst ${peer2_dst}`, data);
+    log(`webrtc: rmt_peer ${webrtc_str(data)}`, data);
+    log(`signal: >webrtc_reply_connect dst ${peer2_dst}`, data);
     sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
   });
   sc.on('event-webrtc_connect', e=>{
