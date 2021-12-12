@@ -25,7 +25,7 @@ function connect(){
   sc.on('event-connect', e=>{
     let ws_id = util.get(e, 'data.ws_id');
     document.querySelector('#ws_id').innerHTML = ws_id;
-    log(`signal: >CONNECT ws_id ${ws_id}`, e);
+    log(`signal: >CONNECTED ws_id ${ws_id}`, e);
   });
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
@@ -64,20 +64,29 @@ function connect(){
     if (peer)
       peer.destroy();
     let dst = document.querySelector('#ws_dst').value;
-    log(`#webrtc initiate NEW peer ${dst}`, config);
+    log(`webrtc: CONNECT ${dst}`, config);
     peer = new Peer({initiator: true, config});
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
       // XXX: temporary debug code, rm and organize
       if (data.sdp)
-        console.log('XXX sdp %o', SdpTransform.parse(data.sdp));
+      {
+        let sdp = SdpTransform.parse(data.sdp);
+        log(`webrtc: local_peer SDP ${data.type} `+
+          `${util.get(sdp, 'origin.address')}' `+
+          `sessionId ${util.get(sdp, 'origin.sessionId')}`,
+          {sdp, data});
+      }
       if (data.candidate)
       {
-        console.log('XXX candidate %o',
-          SdpTransform.parseRemoteCandidates(data.candidate.candidate));
+          let _candidate = util.get(data, 'candidate.candidate');
+          let candidate = SdpTransform.parseRemoteCandidates(_candidate);
+        log(`webrtc: local_peer SDP ${data.type} ${_candidate}`,
+          {candidate, data});
       }
-      log(`>webrtc SDP ready type ${data.type}`, data);
-      log(`>webrtc_connect dst ${dst}`, data);
+      if (!data.sdp && !data.candidate)
+        log(`webrtc: local_peer SDP unknown ${data.type}`, data);
+      log(`signal: >webrtc_connect dst ${dst}`, data);
       sc.json({event: 'webrtc_connect', dst, data: {data}});
     });
     peer.on('connect', ()=>{
@@ -92,7 +101,7 @@ function connect(){
       peer.signal(e.data.data);
     });
   };
-  log(`#webrtc listen NEW peer`);
+  log(`webrtc: LISTEN`);
   var peer2 = new Peer({config}), peer2_dst;
   peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
   peer2.on('signal', data=>{
