@@ -139,7 +139,6 @@ function connect(){
 }
 
 function init(){
-  const s = ' STYLE="font-size:30px; padding: 10px" ';
   if (location.pathname=='/' &&
     location.hostname=='poc.lif.zone')
   {
@@ -147,14 +146,13 @@ function init(){
       <div>
         <div><b>LIF</b></div>
         <div>
-          <input ${s} type=button value="Get clients"
-            onClick="sc_get_clients()">
+          <input type=button value="Get clients" onClick="sc_get_clients()">
         </div>
         <div>
-          <span>Connect to: <span><input ${s} id=ws_dst>
-          <input ${s} id=ws_msg value=MY_MESSAGE>
-          <input ${s} type=button value=Ping onClick="sc_ping()">
-          <input ${s} type=button id=webrtc_connect_btn value="WebRTC Connect"
+          Connect to: <input id=ws_dst>
+          <input id=ws_msg value=MY_MESSAGE>
+          <input type=button value=Ping onClick="sc_ping()">
+          <input type=button id=webrtc_connect_btn value="WebRTC Connect"
             onClick="sc_webrtc_connect()">
         </div>
         <div>ws_id: <span id=ws_id></span></div>
