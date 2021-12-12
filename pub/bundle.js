@@ -38405,23 +38405,15 @@ const ReactDOM = require('react-dom');
 
 var log_a = [];
 
-function log(s){
-  log_a.push(s);
+function log(s, o){
+  log_a.push(date.to_sql_ms()+' '+s);
+  console.log(date.to_sql_ms()+' '+s, o);
   document.querySelector('#log').innerText = log_a.join('\n');
 }
 
 function connect(){
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
-  sc.on('event-error',
-    e=>log(`${date.to_sql_ms()} >error ${JSON.stringify(e)}`));
-  sc.on('event-pong', e=>log(
-    `${date.to_sql_ms()} <pong src ${e.src} ${util.get(e, 'data.data')}`));
-  sc.on('event-ping', e=>{
-    log(`${date.to_sql_ms()} <ping src ${e.src} ${util.get(e, 'data.data')}`);
-    log(`${date.to_sql_ms()} >pong dst ${e.src} ${util.get(e, 'data.data')}`);
-    sc.json({event: 'pong', dst: e.src, data: {src: e.src,
-      data: util.get(e, 'data.data')}});
-  });
+  window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
     let clients = e.data.clients;
     let html = '';
@@ -38435,51 +38427,59 @@ function connect(){
     }
     document.querySelector('#clients').innerHTML = html;
   });
+  sc.on('event-error', e=>log(`>error ${JSON.stringify(e)}`, e));
+  sc.on('event-pong', e=>log(
+    `<pong src ${e.src} ${util.get(e, 'data.data')}`, e));
+  sc.on('event-ping', e=>{
+    log(`<ping src ${e.src} ${util.get(e, 'data.data')}`, e);
+    log(`>pong dst ${e.src} ${util.get(e, 'data.data')}`);
+    sc.json({event: 'pong', dst: e.src, data: {src: e.src,
+      data: util.get(e, 'data.data')}});
+  });
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    log(`${date.to_sql_ms()} >ping dst ${dst} ${data}`);
+    log(`>ping dst ${dst} ${data}`);
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
-    document.querySelector('#ws_dst').value = ws_id;
-  };
-  window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
+    document.querySelector('#ws_dst').value = ws_id; };
   window.sc_webrtc_connect = function(){
-    let dst = document.querySelector('#ws_dst').value;
-    console.log('XXX sc_webrtc_connect %s', dst);
-    let peer = new Peer({initiator: true, config: {iceServers: [
+    let config = {iceServers: [
       {urls: 'stun:stun.l.google.com:19302'},
-      {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]}});
+      {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}]};
+    let dst = document.querySelector('#ws_dst').value;
+    log(`#webrtc initiate NEW peer ${dst}`, config);
+    let peer = new Peer({initiator: true, config});
     peer.on('signal', data=>{
-      log(`${date.to_sql_ms()} >webrtc sdp ready type ${data.type}`);
-      console.log('peer got self data %o', data);
-      log(`${date.to_sql_ms()} >webrtc_connect dst ${dst}`);
+      log(`>webrtc SDP ready type ${data.type}`, data);
+      log(`>webrtc_connect dst ${dst}`, data);
       sc.json({event: 'webrtc_connect', dst, data: {data}});
     });
     peer.on('connect', ()=>{
-      log(`${date.to_sql_ms()} <CONNECT`);
-      console.log('XXX peer CONNECT');
-      peer.send('peer1 -> peer2');
+      let data = document.querySelector('#ws_msg').value;
+      log(`<webrtc CONNECT`);
+      log(`#webrtc SEND`, data);
+      peer.send(data);
     });
     peer.on('data', data=>{
-      log(`${date.to_sql_ms()} <webrtc DATA ${data.toString()}`);
+      log(`<webrtc DATA ${data.toString()}`, data);
       console.log('XXX peer DATA %s', data.toString());
     });
     sc.on('event-reply_webrtc_connect', e=>{
-      log(`${date.to_sql_ms()} <webrtc got peer ${e.src} sdp`);
-      console.log('XXX got event-reply_webrtc_connect %o', e);
+      log(`<webrtc got peer SDP ${e.src}`, e);
       peer.signal(e.data.data);
     });
   };
-  var peer2 = new Peer(), peer2_data, peer2_dst;
+  log(`#webrtc listen NEW peer`);
+  var peer2 = new Peer(), peer2_dst;
   peer2.on('signal', data=>{
-    peer2_data = data;
-    console.log('XXX peer2 got self data %o', peer2_data);
+    log(`>webrtc SDP listen ready type ${data.type}`, data);
+    log(`>webrtc_reply_connect dst ${peer2_dst}`, data);
     sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
   });
   sc.on('event-webrtc_connect', e=>{
-    console.log('XXX got event-webrtc_connect %o', e);
+    log(`event-webrtc_connect`, e);
     let src = e.src, edata = e.data;
     if (peer2_dst && peer2_dst!=src)
       throw new Error('peer2_dst changed');
@@ -38487,12 +38487,12 @@ function connect(){
     peer2.signal(edata.data);
   });
   peer2.on('connect', ()=>{
-    log(`${date.to_sql_ms()} <webrtc CONNECT`);
-    console.log('XXX peer2 CONNECT');
-    peer2.send('reply peer2 -> peer1');
+    log(`<webrtc listen CONNECT`);
+    log(`#webrtc SEND`);
+    peer2.send('ack from peer');
   });
   peer2.on('data', data=>{
-    log(`${date.to_sql_ms()} <webrtc DATA ${data.toString()}`);
+    log(`<webrtc DATA ${data.toString()}`, data);
     console.log('XXX peer2 DATA %s', data.toString());
   });
 }
