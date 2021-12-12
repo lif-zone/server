@@ -53,7 +53,7 @@ function connect(){
     let dst = document.querySelector('#ws_dst').value;
     log(`#webrtc initiate NEW peer ${dst}`, config);
     let peer = new Peer({initiator: true, config});
-    peer.on('error', e=>log('> webrtc error '+e, e);
+    peer.on('error', e=>log('> webrtc error '+e, e));
     peer.on('signal', data=>{
       // XXX: temporary debug code, rm and organize
       if (data.sdp)
@@ -81,7 +81,7 @@ function connect(){
   };
   log(`#webrtc listen NEW peer`);
   var peer2 = new Peer({config}), peer2_dst;
-  peer2.on('error', e=>log('> webrtc error '+e, e);
+  peer2.on('error', e=>log('> webrtc error '+e, e));
   peer2.on('signal', data=>{
     log(`>webrtc SDP listen ready type ${data.type}`, data);
     log(`>webrtc_reply_connect dst ${peer2_dst}`, data);
