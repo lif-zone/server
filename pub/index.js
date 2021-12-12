@@ -3,6 +3,7 @@ const SignalClient = require('../lib/ws_client.js');
 const date = require('../util/date.js');
 const util = require('../util/util.js');
 const Peer = require('simple-peer');
+const SdpTransform = require('sdp-transform');
 
 var log_a = [];
 
@@ -53,6 +54,14 @@ function connect(){
     log(`#webrtc initiate NEW peer ${dst}`, config);
     let peer = new Peer({initiator: true, config});
     peer.on('signal', data=>{
+      // XXX: temporary debug code, rm and organize
+      if (data.sdp)
+        console.log('XXX sdp %o', SdpTransform.parse(data.sdp));
+      if (data.candidate)
+      {
+        console.log('XXX candidate %o',
+          SdpTransform.parseRemoteCandidates(data.candidate.candidate));
+      }
       log(`>webrtc SDP ready type ${data.type}`, data);
       log(`>webrtc_connect dst ${dst}`, data);
       sc.json({event: 'webrtc_connect', dst, data: {data}});
