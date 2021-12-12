@@ -63,7 +63,8 @@ function connect(){
     {
       let client = clients[i];
       html += `<div onClick="sc_set_client(${client.ws_id})">`+
-        `WS_ID ${client.ws_id} IP ${client.ip}:${client.port}</div>`;
+        `<button>WS_ID ${client.ws_id} IP ${client.ip}:${client.port}`+
+        `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
   });
