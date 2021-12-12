@@ -9039,9 +9039,9 @@ function connect(){
     // XXX: {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}
   ]};
   const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
-  sc.on('error', e=>log(`signal: >error ${JSON.stringify(e)}`, e));
-  sc.on('close', e=>log(`signal: >close`));
-  sc.on('event-error', e=>log(`signal: >error ${JSON.stringify(e)}`, e));
+  sc.on('error', e=>log(`signal: >ERROR ${JSON.stringify(e)}`, e));
+  sc.on('close', e=>log(`signal: >CLOSE`));
+  sc.on('event-error', e=>log(`signal: >ERROR ${JSON.stringify(e)}`, e));
   sc.on('event-connect',
     e=>log(`signal: >CONNECT ws_id ${util.get(e, 'data.ws_id')}`, e));
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
@@ -9061,15 +9061,15 @@ function connect(){
   sc.on('event-pong', e=>log(
     `signal: <pong src ${e.src} ${util.get(e, 'data.data')}`, e));
   sc.on('event-ping', e=>{
-    log(`signal: <ping src ${e.src} ${util.get(e, 'data.data')}`, e);
-    log(`signal: >pong dst ${e.src} ${util.get(e, 'data.data')}`);
+    log(`signal: <PING src ${e.src} ${util.get(e, 'data.data')}`, e);
+    log(`signal: >PONG dst ${e.src} ${util.get(e, 'data.data')}`);
     sc.json({event: 'pong', dst: e.src, data: {src: e.src,
       data: util.get(e, 'data.data')}});
   });
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    log(`signal: >ping dst ${dst} ${data}`);
+    log(`signal: >PING dst ${dst} ${data}`);
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
@@ -9146,7 +9146,7 @@ function init(){
         </div>
         <div>
           Connect to: <input id=ws_dst>
-          <input id=ws_msg value=Message>
+          <input id=ws_msg value=PUT_HERE_YOUR_MESSAGE>
           <input type=button value=Ping onClick="sc_ping()">
           <input type=button value="WebRTC Connect"
             onClick="sc_webrtc_connect()">
