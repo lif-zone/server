@@ -68,7 +68,6 @@ function connect(){
     peer = new Peer({initiator: true, config});
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
-      // XXX: temporary debug code, rm and organize
       if (data.sdp)
       {
         let sdp = SdpTransform.parse(data.sdp);
@@ -91,13 +90,33 @@ function connect(){
     });
     peer.on('connect', ()=>{
       let data = document.querySelector('#ws_msg').value;
-      log(`webrtc: <CONNECT`);
-      log(`webrtc: SEND`, data);
+      log(`webrtc: <CONNECTED`);
+      log(`webrtc: >SEND ${data}`);
       peer.send(data);
     });
     peer.on('data', data=>log(`webrtc: <DATA ${data.toString()}`, data));
     sc.on('event-reply_webrtc_connect', e=>{
-      log(`signal: <webrtc got peer SDP ${e.src}`, e);
+      let data = util.get(e, 'data.data');
+      if (data.sdp)
+      {
+        let sdp = SdpTransform.parse(data.sdp);
+        log(`signal: <reply_webrtc_connect rmt ${e.src} SDP ${data.type} `+
+          `${util.get(sdp, 'origin.address')} `+
+          `sessionId ${util.get(sdp, 'origin.sessionId')}`,
+          {sdp, e});
+      }
+      if (data.candidate)
+      {
+        let _candidate = util.get(data, 'candidate.candidate');
+        let candidate = SdpTransform.parseRemoteCandidates(_candidate);
+        log(`signal: <reply_webrtc_connect rmt ${e.src} SDP `+
+          `${data.type} ${_candidate}`, {candidate, e});
+      }
+      if (!data.sdp && !data.candidate)
+      {
+        log(`signal: <reply_webrtc_connect rmt ${e.src} SDP `+
+          `unknown ${data.type}`, e);
+      }
       peer.signal(e.data.data);
     });
   };
@@ -118,14 +137,12 @@ function connect(){
     peer2.signal(edata.data);
   });
   peer2.on('connect', ()=>{
-    log(`<webrtc listen CONNECT`);
-    log(`#webrtc SEND`);
-    peer2.send('ack from peer');
+    let data = 'REMOTE_ACK';
+    log(`webrtc: <CONNECTED`);
+    log(`webrtc: >SEND ${data}`);
+    peer2.send(data);
   });
-  peer2.on('data', data=>{
-    log(`webrtc: <DATA ${data.toString()}`, data);
-    console.log('XXX peer2 DATA %s', data.toString());
-  });
+  peer2.on('data', data=>log(`webrtc: <DATA ${data.toString()}`, data));
 }
 
 function init(){
