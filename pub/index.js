@@ -65,7 +65,8 @@ function connect(){
     if (peer)
       peer.destroy();
     let dst = document.querySelector('#ws_dst').value;
-    log(`webrtc: CONNECT ${dst}`, config);
+    let stun = JSON.stringify(config.iceServers);
+    log(`webrtc: CONNECT ${dst} ${stun}`, config);
     peer = new Peer({initiator: true, config});
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
