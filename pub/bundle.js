@@ -9203,11 +9203,12 @@ function init(){
           <div id=remote></div>
         <div>
         <div>
-          <b>Pings we got:</b>
+          <br><b>Events:</b>
           <div id=log></div>
         <div>
       </div>
       <div>
+        <hr>
         <b>debugging:</b>
         <p><a href="chrome://webrtc-internals">chrome://webrtc-internals</a></p>
         <p><a href="https://test.webrtc.org/">https://test.webrtc.org/</a></p>
