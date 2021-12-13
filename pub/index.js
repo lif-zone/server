@@ -5,7 +5,7 @@ const util = require('../util/util.js');
 const Peer = require('simple-peer');
 const SdpTransform = require('sdp-transform');
 
-var log_a = [];
+let log_a = [];
 
 function log(s, o){
   log_a.push(date.to_sql_ms()+' '+s);
@@ -91,7 +91,8 @@ function connect(){
     let dst = document.querySelector('#ws_dst').value;
     let stun = JSON.stringify(config.iceServers);
     log(`webrtc: CONNECT ${dst} ${stun}`, config);
-    peer = new Peer({initiator: true, config});
+    peer = new Peer({initiator: true, config,
+      trickle: document.querySelector('#trickle').checked});
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
       let s = webrtc_str(data);
@@ -116,7 +117,9 @@ function connect(){
     });
   };
   log(`webrtc: LISTEN`);
-  var peer2 = new Peer({config}), peer2_dst;
+  let peer2 = new Peer({config,
+      trickle: document.querySelector('#trickle').checked});
+  let peer2_dst;
   peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
   peer2.on('signal', data=>{
     let s = webrtc_str(data);
@@ -162,6 +165,7 @@ function init(){
           <input type=button value=Ping onClick="sc_ping()">
           <input type=button id=webrtc_connect_btn value="WebRTC Connect"
             onClick="sc_webrtc_connect()">
+          <input type=checkbox id=trickle checked>Trickle</checkbox>
         </div>
         <div>ws_id: <span id=ws_id></span></div>
         <div>
