@@ -93,7 +93,7 @@ function connect(){
     let dst = document.querySelector('#ws_dst').value;
     let stun = JSON.stringify(config.iceServers);
     log(`webrtc: CONNECT ${dst} ${stun}`, config);
-    peer = new Peer({initiator: true, config});
+    peer = new Peer({initiator: true, config, trickle: false});
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
       log(`webrtc: local_peer ${webrtc_str(data)}`, data);
@@ -115,7 +115,7 @@ function connect(){
     });
   };
   log(`webrtc: LISTEN`);
-  var peer2 = new Peer({config}), peer2_dst;
+  var peer2 = new Peer({config, trickle: false}), peer2_dst;
   peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
   peer2.on('signal', data=>{
     log(`webrtc: rmt_peer ${webrtc_str(data)}`, data);
