@@ -9058,11 +9058,10 @@ function webrtc_str(data){
 }
 
 function connect(){
-  let config = {iceServers: [
-    {urls: 'stun:stun.l.google.com:19302'},
-    // XXX: {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}
-  ]};
   let ws_url = 'wss://poc.lif.zone:3031';
+  let stun_url = 'stun:stun.l.google.com:19302';
+  // XXX: add stun fallback, eg stun:global.stun.twilio.com:3478?transport=udp
+  let config = {iceServers: [{urls: stun_url}]};
   let peer, peer2;
   log(`signal: CONNECT ${ws_url}`);
   const sc = new SignalClient({url: ws_url});
@@ -9130,8 +9129,7 @@ function connect(){
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
     let dst = document.querySelector('#ws_dst').value;
-    let stun = JSON.stringify(config.iceServers);
-    log(`webrtc: CONNECT ${dst} ${stun}`, config);
+    log(`webrtc: CONNECT dst ${dst} ${stun_url}`, config);
     peer = new Peer({initiator: true, config,
       trickle: document.querySelector('#trickle').checked});
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
