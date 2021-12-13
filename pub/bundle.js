@@ -9077,6 +9077,7 @@ function connect(){
     log(`webrtc: listen`);
     peer2 = new Peer({config,
         trickle: document.querySelector('#trickle').checked});
+    console.log('peer2 %o', peer2);
     peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer2.on('signal', data=>{
       let s = webrtc_str(data);
@@ -9131,6 +9132,7 @@ function connect(){
     log(`webrtc: connect dst ${dst} ${stun_url}`, config);
     peer = new Peer({initiator: true, config,
       trickle: document.querySelector('#trickle').checked});
+    console.log('peer %o', peer);
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
       let s = webrtc_str(data);
