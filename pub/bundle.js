@@ -9083,7 +9083,7 @@ function connect(){
       log(`webrtc: local_peer ${s}`, data);
       log(`signal: >webrtc_reply_connect dst ${peer2_dst}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
-      sc.json({event: 'slave_sdp', dst: peer2_dst, data: {data}});
+      sc.json({event: 'sdp', dst: peer2_dst, data: {data}});
     });
     peer2.on('connect', ()=>{
       let data = 'REMOTE_ACK';
@@ -9135,22 +9135,23 @@ function connect(){
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
       let s = webrtc_str(data);
-      log(`signal: >initiator_sdp dst ${dst} ${s}`, data);
+      log(`signal: >sdp dst ${dst} ${s}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
+      // XXX HACK: rename initiator_sdp -> sdp
       sc.json({event: 'initiator_sdp', dst, data: {data}});
     });
     peer.on('connect', ()=>{
       let data = document.querySelector('#ws_msg').value;
-      log(`webrtc: <connectedD`);
+      log(`webrtc: <connected`);
       log(`webrtc: >data '${data}'`);
       peer.send(data);
     });
     peer.on('data', data=>log(`webrtc: <data '${data.toString()}'`, data));
-    sc.on('event-slave_sdp', e=>{
+    sc.on('event-sdp', e=>{
       let data = util.get(e, 'data.data');
       let s = webrtc_str(data);
       document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
-      log(`signal: <slave_sdp src ${e.src} ${s}`, data);
+      log(`signal: <sdp src ${e.src} ${s}`, data);
       peer.signal(data);
     });
   };
@@ -9161,7 +9162,7 @@ function connect(){
       throw new Error('peer2_dst changed');
     let s = webrtc_str(data);
     peer2_dst = src;
-    log(`signal: <initiator_sdp src ${src} ${webrtc_str(data)}`, e);
+    log(`signal: <sdp src ${src} ${webrtc_str(data)}`, e);
     document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
     peer2.signal(data);
   });
