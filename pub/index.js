@@ -19,8 +19,7 @@ function webrtc_str(data){
   if (data.sdp)
   {
     let sdp = SdpTransform.parse(data.sdp);
-    s += `SDP ${data.type} ${util.get(sdp, 'origin.address')} `+
-      `sessionId ${util.get(sdp, 'origin.sessionId')}`;
+    s += `SDP ${data.type} ${util.get(sdp, 'origin.address')} `;
     console.log('sdp ', sdp, data);
   }
   if (data.candidate)
@@ -59,11 +58,12 @@ function connect(){
     let html = '';
     if (!clients.length)
       html += '<div><b>No clients</b></div>';
+    let s = ' STYLE="margin-top: 10px;" ';
     for (let i=0; i<clients.length; i++)
     {
       let client = clients[i];
       html += `<div onClick="sc_set_client(${client.ws_id})">`+
-        `<button>WS_ID ${client.ws_id} IP ${client.ip}:${client.port}`+
+        `<button ${s}>WS_ID ${client.ws_id} IP ${client.ip}:${client.port}`+
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
@@ -87,30 +87,31 @@ function connect(){
   let peer;
   window.sc_webrtc_connect = function(){
     document.querySelector('#webrtc_connect_btn').outerHTML =
-      '<b>RELOAD TO CONNECT AGAIN</b>';
-    if (peer)
-      peer.destroy();
+      '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
     let dst = document.querySelector('#ws_dst').value;
     let stun = JSON.stringify(config.iceServers);
     log(`webrtc: CONNECT ${dst} ${stun}`, config);
     peer = new Peer({initiator: true, config});
     peer.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
-      log(`webrtc: local_peer ${webrtc_str(data)}`, data);
+      let s = webrtc_str(data);
+      log(`webrtc: local_peer ${s}`, data);
       log(`signal: >webrtc_connect dst ${dst}`, data);
+      document.querySelector('#local').innerHTML += `<div>${s}</div>`;
       sc.json({event: 'webrtc_connect', dst, data: {data}});
     });
     peer.on('connect', ()=>{
       let data = document.querySelector('#ws_msg').value;
       log(`webrtc: <CONNECTED`);
-      log(`webrtc: >SEND ${data}`);
+      log(`webrtc: >SEND '${data}'`);
       peer.send(data);
     });
-    peer.on('data', data=>log(`webrtc: <DATA ${data.toString()}`, data));
+    peer.on('data', data=>log(`webrtc: <DATA '${data.toString()}'`, data));
     sc.on('event-reply_webrtc_connect', e=>{
       let data = util.get(e, 'data.data');
-      log(`signal: <reply_webrtc_connect rmt ${e.src} `+
-        `${webrtc_str(data)}`, data);
+      let s = webrtc_str(data);
+      document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
+      log(`signal: <reply_webrtc_connect rmt ${e.src} ${s}`, data);
       peer.signal(e.data.data);
     });
   };
@@ -135,10 +136,10 @@ function connect(){
   peer2.on('connect', ()=>{
     let data = 'REMOTE_ACK';
     log(`webrtc: <CONNECTED`);
-    log(`webrtc: >SEND ${data}`);
+    log(`webrtc: >SEND '${data}'`);
     peer2.send(data);
   });
-  peer2.on('data', data=>log(`webrtc: <DATA ${data.toString()}`, data));
+  peer2.on('data', data=>log(`webrtc: <DATA '${data.toString()}'`, data));
 }
 
 function init(){
@@ -164,7 +165,15 @@ function init(){
           <div id=clients></div>
         </div>
         <div>
-          Pings we got:
+          <b>Local SDP</b>
+          <div id=local></div>
+        <div>
+        <div>
+          <b>Remote SDP</b>
+          <div id=remote></div>
+        <div>
+        <div>
+          <b>Pings we got:</b>
           <div id=log></div>
         <div>
       </div>
