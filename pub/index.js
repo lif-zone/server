@@ -42,15 +42,36 @@ function connect(){
     {urls: 'stun:stun.l.google.com:19302'},
     // XXX: {urls: 'stun:global.stun.twilio.com:3478?transport=udp'}
   ]};
-  const sc = new SignalClient({url: 'wss://poc.lif.zone:3031'});
+  let ws_url = 'wss://poc.lif.zone:3031';
+  let peer, peer2;
+  log(`signal: CONNECT ${ws_url}`);
+  const sc = new SignalClient({url: ws_url});
   sc.on('error', e=>log(`signal: <ERROR ${JSON.stringify(e)}`, e));
   sc.on('close', e=>log(`signal: <CLOSE`));
   sc.on('event-error', e=>log(`signal: <ERROR ${JSON.stringify(e)}`, e));
   sc.on('event-connect', e=>{
     let data = e.data||{};
-    let s = `ws_id ${data.ws_id} ${data.ip}:${data.port}`;
+    let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
     document.querySelector('#ws_id').innerHTML = s;
-    log(`signal: >CONNECTED `+s, e);
+    log(`signal: <CONNECTED `+s, e);
+    log(`webrtc: LISTEN`);
+    peer2 = new Peer({config,
+        trickle: document.querySelector('#trickle').checked});
+    peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
+    peer2.on('signal', data=>{
+      let s = webrtc_str(data);
+      log(`webrtc: local_peer ${s}`, data);
+      log(`signal: >webrtc_reply_connect dst ${peer2_dst}`, data);
+      document.querySelector('#local').innerHTML += `<div>${s}</div>`;
+      sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
+    });
+    peer2.on('connect', ()=>{
+      let data = 'REMOTE_ACK';
+      log(`webrtc: <CONNECTED`);
+      log(`webrtc: >SEND '${data}'`);
+      peer2.send(data);
+    });
+    peer2.on('data', data=>log(`webrtc: <DATA '${data.toString()}'`, data));
   });
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
@@ -63,7 +84,7 @@ function connect(){
     {
       let client = clients[i];
       html += `<div onClick="sc_set_client(${client.ws_id})">`+
-        `<button ${s}>WS_ID ${client.ws_id} IP ${client.ip}:${client.port}`+
+        `<button ${s}>WS${client.ws_id} ${client.ip}:${client.port}`+
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
@@ -84,7 +105,6 @@ function connect(){
   };
   window.sc_set_client= function sc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id; };
-  let peer;
   window.sc_webrtc_connect = function(){
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
@@ -116,18 +136,7 @@ function connect(){
       peer.signal(e.data.data);
     });
   };
-  log(`webrtc: LISTEN`);
-  let peer2 = new Peer({config,
-      trickle: document.querySelector('#trickle').checked});
   let peer2_dst;
-  peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
-  peer2.on('signal', data=>{
-    let s = webrtc_str(data);
-    log(`webrtc: local_peer ${s}`, data);
-    log(`signal: >webrtc_reply_connect dst ${peer2_dst}`, data);
-    document.querySelector('#local').innerHTML += `<div>${s}</div>`;
-    sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
-  });
   sc.on('event-webrtc_connect', e=>{
     let src = e.src, data = util.get(e, 'data.data');
     if (peer2_dst && peer2_dst!=src)
@@ -140,13 +149,6 @@ function connect(){
     document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
     peer2.signal(data);
   });
-  peer2.on('connect', ()=>{
-    let data = 'REMOTE_ACK';
-    log(`webrtc: <CONNECTED`);
-    log(`webrtc: >SEND '${data}'`);
-    peer2.send(data);
-  });
-  peer2.on('data', data=>log(`webrtc: <DATA '${data.toString()}'`, data));
 }
 
 function init(){
@@ -167,7 +169,7 @@ function init(){
             onClick="sc_webrtc_connect()">
           <input type=checkbox id=trickle checked>Trickle</checkbox>
         </div>
-        <div>ws_id: <span id=ws_id></span></div>
+        <div><b id=ws_id></b></div>
         <div>
           Clients:
           <div id=clients></div>
