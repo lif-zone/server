@@ -9073,7 +9073,7 @@ function connect(){
     let data = e.data||{};
     let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
     document.querySelector('#ws_id').innerHTML = s;
-    log(`signal: <CONNECTED `+s, e);
+    log(`signal: <CONNECTED`);
     log(`webrtc: LISTEN`);
     peer2 = new Peer({config,
         trickle: document.querySelector('#trickle').checked});
