@@ -24,7 +24,7 @@ class SignalClient extends events.EventEmitter {
       this.emit('close');
     });
     ws.addEventListener('error', err=>{
-      console.log('signal_client: error %o', err);
+      console.error('signal_client: error %o', err);
       this.emit('error', err);
     });
     ws.addEventListener('message', (message, bin)=>{
@@ -9068,7 +9068,8 @@ function connect(){
   const sc = new SignalClient({url: ws_url});
   sc.on('error', e=>log(`signal: <ERROR ${JSON.stringify(e)}`, e));
   sc.on('close', e=>log(`signal: <CLOSE`));
-  sc.on('event-error', e=>log(`signal: <ERROR ${JSON.stringify(e)}`, e));
+  sc.on('event-error', e=>
+    log(`signal: <ERROR ${util.get(e, 'data.desc')} ${JSON.stringify(e)}`, e));
   sc.on('event-connect', e=>{
     let data = e.data||{};
     let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
