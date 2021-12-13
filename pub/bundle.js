@@ -9212,6 +9212,7 @@ function init(){
         <p><a href="https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/">https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/</a></p>
         <p><a href="https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them">https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them</a></p>
         <p><a href="https://webrtchacks.com/sdp-anatomy/">https://webrtchacks.com/sdp-anatomy/</a></p>
+        <p><a href="https://datatracker.ietf.org/doc/html/rfc5245">ICE rfc5245</a></p>
         <pre>window.localStorage.debug = 'simple-peer';</pre>
       </div>
     `;
