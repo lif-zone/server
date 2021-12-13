@@ -9080,8 +9080,7 @@ function connect(){
     peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
     peer2.on('signal', data=>{
       let s = webrtc_str(data);
-      log(`webrtc: local_peer ${s}`, data);
-      log(`signal: >webrtc_reply_connect dst ${peer2_dst}`, data);
+      log(`signal: >sdp dst ${peer2_dst}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
       sc.json({event: 'sdp', dst: peer2_dst, data: {data}});
     });
@@ -9092,6 +9091,15 @@ function connect(){
       peer2.send(data);
     });
     peer2.on('data', data=>log(`webrtc: <data '${data.toString()}'`, data));
+    peer2.on('iceTimeout', e=>log(`ice: iceTimeout ${JSON.stringify(e)}`));
+    peer2.on('_iceComplete', e=>log(`ice: _iceComplete ${JSON.stringify(e)}`));
+    peer2.on('iceStateChange',
+      e=>log(`ice: iceStateChange ${JSON.stringify(e)}`));
+    peer2.on('negotiated',
+      e=>log(`ice: negotiated ${JSON.stringify(e)}`));
+    peer2.on('signalingState',
+      e=>log(`ice: signalingState ${JSON.stringify(e)}`));
+    peer2.on('close', e=>log(`ice: close ${JSON.stringify(e)}`));
   });
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
@@ -9147,6 +9155,15 @@ function connect(){
       peer.send(data);
     });
     peer.on('data', data=>log(`webrtc: <data '${data.toString()}'`, data));
+    peer.on('iceTimeout', e=>log(`ice: iceTimeout ${JSON.stringify(e)}`));
+    peer.on('_iceComplete', e=>log(`ice: _iceComplete ${JSON.stringify(e)}`));
+    peer.on('iceStateChange',
+      e=>log(`ice: iceStateChange ${JSON.stringify(e)}`));
+    peer.on('negotiated',
+      e=>log(`ice: negotiated ${JSON.stringify(e)}`));
+    peer.on('signalingState',
+      e=>log(`ice: signalingState ${JSON.stringify(e)}`));
+    peer.on('close', e=>log(`ice: close ${JSON.stringify(e)}`));
     sc.on('event-sdp', e=>{
       let data = util.get(e, 'data.data');
       let s = webrtc_str(data);
