@@ -119,18 +119,22 @@ function connect(){
   var peer2 = new Peer({config}), peer2_dst;
   peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
   peer2.on('signal', data=>{
-    log(`webrtc: rmt_peer ${webrtc_str(data)}`, data);
+    let s = webrtc_str(data);
+    log(`webrtc: local_peer ${s}`, data);
     log(`signal: >webrtc_reply_connect dst ${peer2_dst}`, data);
+    document.querySelector('#local').innerHTML += `<div>${s}</div>`;
     sc.json({event: 'reply_webrtc_connect', dst: peer2_dst, data: {data}});
   });
   sc.on('event-webrtc_connect', e=>{
     let src = e.src, data = util.get(e, 'data.data');
     if (peer2_dst && peer2_dst!=src)
       throw new Error('peer2_dst changed');
+    let s = webrtc_str(data);
     peer2_dst = src;
-      log(`webrtc: local_peer ${webrtc_str(data)}`, data);
+      log(`webrtc: rmt_peer ${s}`, data);
     log(`signal: <webrtc_connect src ${src} rmt_peer ${webrtc_str(data)}`,
       e);
+    document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
     peer2.signal(data);
   });
   peer2.on('connect', ()=>{
