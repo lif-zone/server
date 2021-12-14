@@ -1,5 +1,4 @@
 'use strict'; /*jslint node:true*/
-// XXX: rename file to signal_server.js
 const E = module.exports = {};
 
 // XXX: add test, optimize for node
