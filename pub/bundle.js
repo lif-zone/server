@@ -9063,6 +9063,8 @@ function get_ice_servers(val){
   let stun = {urls: 'stun:'+location.hostname};
   let turn = {urls: 'turn:'+location.hostname, username: 'username',
     credential: 'password'};
+  let stun_bad = {urls: 'stun:stun.bad.com'};
+  let turn_bad = {urls: 'turn:turn.bad.com', credential: 'password'};
   switch (val)
   {
   case 'google': return {iceServers: [google]};
@@ -9070,6 +9072,8 @@ function get_ice_servers(val){
   case 'stun': return {iceServers: [stun]};
   case 'turn': return {iceServers: [turn]};
   case 'all': return {iceServers: [google, twilio, stun, turn]};
+  case 'stun_bad': return {iceServers: [stun_bad]};
+  case 'turn_bad': return {iceServers: [turn_bad]};
   default: throw new Error('invalid option '+val);
   }
 }
@@ -9234,6 +9238,8 @@ function init(){
             <option value="twilio">Twilio Stun</option>
             <option value="stun">LIF Stun</option>
             <option value="turn">LIF TURN</option>
+            <option value="stun_bad">Not working Stun</option>
+            <option value="turn_bad">Not working TURN</option>
           </select>
           <input type=button value=Ping onClick="wsc_ping()">
           <input type=button id=webrtc_connect_btn value="WebRTC Connect"
