@@ -37,14 +37,28 @@ function webrtc_str(data){
   return s;
 }
 
+function get_ice_servers(val){
+  // XXX: get list of public available stun servers
+  let google = {urls: 'stun:stun.l.google.com:19302'};
+  let twilio = {urls: 'stun:global.stun.twilio.com:3478?transport=udp'};
+  let stun = {urls: 'stun:'+location.hostname};
+  let turn = {urls: 'turn:'+location.hostname, username: 'username',
+    credential: 'password'};
+  switch (val)
+  {
+  case 'google': return {iceServers: [google]};
+  case 'twilio': return {iceServers: [twilio]};
+  case 'stun': return {iceServers: [stun]};
+  case 'turn': return {iceServers: [turn]};
+  case 'all': return {iceServers: [google, twilio, stun, turn]};
+  default: throw new Error('invalid option '+val);
+  }
+}
+
 function connect(){
   let ws_url = 'wss://poc.lif.zone:3031';
-  //  let stun_url = 'stun:stun.l.google.com:19302';
-  // let stun_url = 'stun:poc.lif.zone';
-  let turn_url = 'turn:poc.lif.zone';
-  // XXX: add stun fallback, eg stun:global.stun.twilio.com:3478?transport=udp
-  let config = {iceServers: [{urls: turn_url,
-    username: 'username', credential: 'password'}]};
+  let config = get_ice_servers(document.querySelector('#ice_servers').value);
+  let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
   let peer, peer2;
   log(`ws: connect ${ws_url}`);
   const wsc = new ws_client({url: ws_url});
@@ -57,7 +71,7 @@ function connect(){
     let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
     document.querySelector('#ws_id').innerHTML = s;
     log(`ws: <connected`);
-    log(`wrtc: listen`);
+    log(`wrtc: listen ${ice_servers}`);
     peer2 = new Peer({config,
         trickle: document.querySelector('#trickle').checked});
     console.log('peer2 %o', peer2);
@@ -123,7 +137,7 @@ function connect(){
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
     let dst = document.querySelector('#ws_dst').value;
-    log(`wrtc: connect dst ${dst} ${turn_url}`, config);
+    log(`wrtc: connect dst ${dst} ${ice_servers}`, config);
     peer = new Peer({initiator: true, config,
       trickle: document.querySelector('#trickle').checked});
     console.log('peer %o', peer);
@@ -187,12 +201,12 @@ function init(){
         <div>
           Connect to: <input id=ws_dst>
           <input id=ws_msg value=MY_MESSAGE>
-          <select>
+          <select id=ice_servers>
             <option value="all">All STUN/TURN</option>
-            <option value="goole">Google Stun</option>
+            <option value="google">Google Stun</option>
             <option value="twilio">Twilio Stun</option>
-            <option value="lif_stun">LIF Stun</option>
-            <option value="lif_turn">LIF TURN</option>
+            <option value="stun">LIF Stun</option>
+            <option value="turn">LIF TURN</option>
           </select>
           <input type=button value=Ping onClick="wsc_ping()">
           <input type=button id=webrtc_connect_btn value="WebRTC Connect"
