@@ -9028,8 +9028,8 @@ const SdpTransform = require('sdp-transform');
 let log_a = [];
 
 function log(s, o){
-  log_a.push(date.to_sql_ms()+' '+s);
-  console.log(date.to_sql_ms()+' '+s, o);
+  log_a.push(date.to_sql_time_ms()+' '+s);
+  console.log(date.to_sql_time_ms()+' '+s, o);
   document.querySelector('#log').innerText = log_a.join('\n');
 }
 
@@ -9063,35 +9063,35 @@ function connect(){
   // XXX: add stun fallback, eg stun:global.stun.twilio.com:3478?transport=udp
   let config = {iceServers: [{urls: stun_url}]};
   let peer, peer2;
-  log(`signal: connect ${ws_url}`);
+  log(`ws: connect ${ws_url}`);
   const sc = new SignalClient({url: ws_url});
-  sc.on('error', e=>log(`signal: <ERROR ${JSON.stringify(e)}`, e));
-  sc.on('close', e=>log(`signal: <CLOSE`));
+  sc.on('error', e=>log(`ws: <ERROR ${JSON.stringify(e)}`, e));
+  sc.on('close', e=>log(`ws: <CLOSE`));
   sc.on('event-error', e=>
-    log(`signal: <ERROR ${util.get(e, 'data.desc')} ${JSON.stringify(e)}`, e));
+    log(`ws: <ERROR ${util.get(e, 'data.desc')} ${JSON.stringify(e)}`, e));
   sc.on('event-connect', e=>{
     let data = e.data||{};
     let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
     document.querySelector('#ws_id').innerHTML = s;
-    log(`signal: <connected`);
-    log(`webrtc: listen`);
+    log(`ws: <connected`);
+    log(`wrtc: listen`);
     peer2 = new Peer({config,
         trickle: document.querySelector('#trickle').checked});
     console.log('peer2 %o', peer2);
-    peer2.on('error', e=>log('webrtc: <ERROR '+e, e));
+    peer2.on('error', e=>log('wrtc: <ERROR '+e, e));
     peer2.on('signal', data=>{
       let s = webrtc_str(data);
-      log(`signal: >sdp dst ${peer2_dst}`, data);
+      log(`ws: >sdp dst ${peer2_dst}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
       sc.json({event: 'sdp', dst: peer2_dst, data: {data}});
     });
     peer2.on('connect', ()=>{
       let data = 'REMOTE_ACK';
-      log(`webrtc: <connected`);
-      log(`webrtc: >data '${data}'`);
+      log(`wrtc: <connected`);
+      log(`wrtc: >data '${data}'`);
       peer2.send(data);
     });
-    peer2.on('data', data=>log(`webrtc: <data '${data.toString()}'`, data));
+    peer2.on('data', data=>log(`wrtc: <data '${data.toString()}'`, data));
   });
   window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
   sc.on('event-reply_get_clients', e=>{
@@ -9110,17 +9110,17 @@ function connect(){
     document.querySelector('#clients').innerHTML = html;
   });
   sc.on('event-pong', e=>log(
-    `signal: <PONG src ${e.src} '${util.get(e, 'data.data')}'`, e));
+    `ws: <PONG src ${e.src} '${util.get(e, 'data.data')}'`, e));
   sc.on('event-ping', e=>{
-    log(`signal: <PING src ${e.src} '${util.get(e, 'data.data')}'`, e);
-    log(`signal: >PONG dst ${e.src} '${util.get(e, 'data.data')}'`);
+    log(`ws: <PING src ${e.src} '${util.get(e, 'data.data')}'`, e);
+    log(`ws: >PONG dst ${e.src} '${util.get(e, 'data.data')}'`);
     sc.json({event: 'pong', dst: e.src, data: {src: e.src,
       data: util.get(e, 'data.data')}});
   });
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    log(`signal: >PING dst ${dst} '${data}'`);
+    log(`ws: >PING dst ${dst} '${data}'`);
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
@@ -9129,30 +9129,30 @@ function connect(){
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
     let dst = document.querySelector('#ws_dst').value;
-    log(`webrtc: connect dst ${dst} ${stun_url}`, config);
+    log(`wrtc: connect dst ${dst} ${stun_url}`, config);
     peer = new Peer({initiator: true, config,
       trickle: document.querySelector('#trickle').checked});
     console.log('peer %o', peer);
-    peer.on('error', e=>log('webrtc: <ERROR '+e, e));
+    peer.on('error', e=>log('wrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
       let s = webrtc_str(data);
-      log(`signal: >sdp dst ${dst} ${s}`, data);
+      log(`ws: >sdp dst ${dst} ${s}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
       // XXX HACK: rename initiator_sdp -> sdp
       sc.json({event: 'initiator_sdp', dst, data: {data}});
     });
     peer.on('connect', ()=>{
       let data = document.querySelector('#ws_msg').value;
-      log(`webrtc: <connected`);
-      log(`webrtc: >data '${data}'`);
+      log(`wrtc: <connected`);
+      log(`wrtc: >data '${data}'`);
       peer.send(data);
     });
-    peer.on('data', data=>log(`webrtc: <data '${data.toString()}'`, data));
+    peer.on('data', data=>log(`wrtc: <data '${data.toString()}'`, data));
     sc.on('event-sdp', e=>{
       let data = util.get(e, 'data.data');
       let s = webrtc_str(data);
       document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
-      log(`signal: <sdp src ${e.src} ${s}`, data);
+      log(`ws: <sdp src ${e.src} ${s}`, data);
       peer.signal(data);
     });
   };
@@ -9163,7 +9163,7 @@ function connect(){
       throw new Error('peer2_dst changed');
     let s = webrtc_str(data);
     peer2_dst = src;
-    log(`signal: <sdp src ${src} ${webrtc_str(data)}`, e);
+    log(`ws: <sdp src ${src} ${webrtc_str(data)}`, e);
     document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
     peer2.signal(data);
   });
@@ -9306,6 +9306,14 @@ E.to_sql_ms = function(d){
 E.to_sql_sec = function(d){ return E.to_sql_ms(d).slice(0, -4); };
 E.to_sql = function(d){
   return E.to_sql_ms(d).replace(/( 00:00:00)?....$/, ''); };
+E.to_sql_time_ms = function(d){
+  d = E.get(d);
+  if (isNaN(d))
+      return '00:00:00.000';
+  return pad(d.getUTCHours(), 2)+':'+pad(d.getUTCMinutes(), 2)
+  +':'+pad(d.getUTCSeconds(), 2)
+  +'.'+pad(d.getUTCMilliseconds(), 3);
+};
 
 // XXX: add test, optimize for node
 E.monotonic = function(){

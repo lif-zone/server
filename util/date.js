@@ -72,6 +72,14 @@ E.to_sql_ms = function(d){
 E.to_sql_sec = function(d){ return E.to_sql_ms(d).slice(0, -4); };
 E.to_sql = function(d){
   return E.to_sql_ms(d).replace(/( 00:00:00)?....$/, ''); };
+E.to_sql_time_ms = function(d){
+  d = E.get(d);
+  if (isNaN(d))
+      return '00:00:00.000';
+  return pad(d.getUTCHours(), 2)+':'+pad(d.getUTCMinutes(), 2)
+  +':'+pad(d.getUTCSeconds(), 2)
+  +'.'+pad(d.getUTCMilliseconds(), 3);
+};
 
 // XXX: add test, optimize for node
 E.monotonic = function(){
