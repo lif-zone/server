@@ -9061,10 +9061,11 @@ function get_ice_servers(val){
   let google = {urls: 'stun:stun.l.google.com:19302'};
   let twilio = {urls: 'stun:global.stun.twilio.com:3478?transport=udp'};
   let stun = {urls: 'stun:'+location.hostname};
-  let turn = {urls: 'turn:'+location.hostname, username: 'username',
-    credential: 'password'};
+  let turn = {urls: 'turn:'+location.hostname,
+    username: 'username', credential: 'password'};
   let stun_bad = {urls: 'stun:stun.bad.com'};
-  let turn_bad = {urls: 'turn:turn.bad.com', credential: 'password'};
+  let turn_bad = {urls: 'turn:turn.bad.com',
+    username: 'username', credential: 'password'};
   switch (val)
   {
   case 'google': return {iceServers: [google]};
