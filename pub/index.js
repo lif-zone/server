@@ -187,6 +187,13 @@ function init(){
         <div>
           Connect to: <input id=ws_dst>
           <input id=ws_msg value=MY_MESSAGE>
+          <select>
+            <option value="all">All STUN/TURN</option>
+            <option value="goole">Google Stun</option>
+            <option value="twilio">Twilio Stun</option>
+            <option value="lif_stun">LIF Stun</option>
+            <option value="lif_turn">LIF TURN</option>
+          </select>
           <input type=button value=Ping onClick="wsc_ping()">
           <input type=button id=webrtc_connect_btn value="WebRTC Connect"
             onClick="wsc_webrtc_connect()">
