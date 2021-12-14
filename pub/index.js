@@ -66,8 +66,8 @@ function connect(){
         e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
       peer2._pc.onnegotiationneeded =
         e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
-      peer2._pc.onconnectionstatechange =
-        e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+      // peer2._pc.onconnectionstatechange =
+      //  e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
     }
     peer2.on('error', e=>log('wrtc: <ERROR '+e, e));
     peer2.on('signal', data=>{
@@ -132,8 +132,8 @@ function connect(){
         e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
       peer._pc.onnegotiationneeded =
         e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
-      peer._pc.onconnectionstatechange =
-        e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+      // peer._pc.onconnectionstatechange =
+      //  e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
     }
     peer.on('error', e=>log('wrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
