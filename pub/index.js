@@ -95,7 +95,7 @@ function connect(){
     {
       let client = clients[i];
       html += `<div onClick="sc_set_client(${client.ws_id})">`+
-        `<button ${s}>WS${client.ws_id} ${client.ip}:${client.port}`+
+        `<button ${s}>ws${client.ws_id} ${client.ip}:${client.port}`+
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
@@ -103,15 +103,15 @@ function connect(){
   sc.on('event-pong', e=>log(
     `ws: <PONG src ${e.src} '${util.get(e, 'data.data')}'`, e));
   sc.on('event-ping', e=>{
-    log(`ws: <PING src ${e.src} '${util.get(e, 'data.data')}'`, e);
-    log(`ws: >PONG dst ${e.src} '${util.get(e, 'data.data')}'`);
+    log(`ws: <ping src ${e.src} '${util.get(e, 'data.data')}'`, e);
+    log(`ws: >pong dst ${e.src} '${util.get(e, 'data.data')}'`);
     sc.json({event: 'pong', dst: e.src, data: {src: e.src,
       data: util.get(e, 'data.data')}});
   });
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    log(`ws: >PING dst ${dst} '${data}'`);
+    log(`ws: >ping dst ${dst} '${data}'`);
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
