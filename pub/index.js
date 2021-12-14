@@ -215,11 +215,11 @@ function init(){
           <input id=ws_msg value=MY_MESSAGE>
           <select id=ice_servers>
             <option value="all">All STUN/TURN</option>
-            <option value="google">Google Stun</option>
-            <option value="twilio">Twilio Stun</option>
-            <option value="stun">LIF Stun</option>
+            <option value="google">Google STUN</option>
+            <option value="twilio">Twilio STUN</option>
+            <option value="stun">LIF STUN</option>
             <option value="turn">LIF TURN</option>
-            <option value="stun_bad">Not working Stun</option>
+            <option value="stun_bad">Not working STUN</option>
             <option value="turn_bad">Not working TURN</option>
           </select>
           <input type=button value=Ping onClick="wsc_ping()">
