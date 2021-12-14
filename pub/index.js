@@ -58,14 +58,17 @@ function connect(){
     peer2 = new Peer({config,
         trickle: document.querySelector('#trickle').checked});
     console.log('peer2 %o', peer2);
-    peer2._pc.onicecandidateerror =
-      e=>log(`ice: onicecandidateerror ${JSON.stringify(e)}`, e);
-    peer2._pc.onfingerprintfailure =
-      e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
-    peer2._pc.onnegotiationneeded =
-      e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
-    peer2._pc.onconnectionstatechange =
-      e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+    if (window && window.xxx_debug)
+    {
+      peer2._pc.onicecandidateerror =
+        e=>log(`ice: onicecandidateerror ${JSON.stringify(e)}`, e);
+      peer2._pc.onfingerprintfailure =
+        e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
+      peer2._pc.onnegotiationneeded =
+        e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
+      peer2._pc.onconnectionstatechange =
+        e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+    }
     peer2.on('error', e=>log('wrtc: <ERROR '+e, e));
     peer2.on('signal', data=>{
       let s = webrtc_str(data);
@@ -121,14 +124,17 @@ function connect(){
     peer = new Peer({initiator: true, config,
       trickle: document.querySelector('#trickle').checked});
     console.log('peer %o', peer);
-    peer._pc.onicecandidateerror =
-      e=>log(`ice: onicecandidateerror ${JSON.stringify(e)}`, e);
-    peer._pc.onfingerprintfailure =
-      e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
-    peer._pc.onnegotiationneeded =
-      e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
-    peer._pc.onconnectionstatechange =
-      e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+    if (window && window.xxx_debug)
+    {
+      peer._pc.onicecandidateerror =
+        e=>log(`ice: onicecandidateerror ${JSON.stringify(e)}`, e);
+      peer._pc.onfingerprintfailure =
+        e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
+      peer._pc.onnegotiationneeded =
+        e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
+      peer._pc.onconnectionstatechange =
+        e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+    }
     peer.on('error', e=>log('wrtc: <ERROR '+e, e));
     peer.on('signal', data=>{
       let s = webrtc_str(data);
