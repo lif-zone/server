@@ -9092,7 +9092,7 @@ function connect(){
     peer2.on('error', e=>log('wrtc: <ERROR '+e, e));
     peer2.on('signal', data=>{
       let s = webrtc_str(data);
-      log(`ws: >sdp dst ${peer2_dst}`, data);
+      log(`ws: >sdp dst ${peer2_dst} ${s}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
       sc.json({event: 'sdp', dst: peer2_dst, data: {data}});
     });
@@ -9115,7 +9115,7 @@ function connect(){
     {
       let client = clients[i];
       html += `<div onClick="sc_set_client(${client.ws_id})">`+
-        `<button ${s}>WS${client.ws_id} ${client.ip}:${client.port}`+
+        `<button ${s}>ws${client.ws_id} ${client.ip}:${client.port}`+
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
@@ -9123,15 +9123,15 @@ function connect(){
   sc.on('event-pong', e=>log(
     `ws: <PONG src ${e.src} '${util.get(e, 'data.data')}'`, e));
   sc.on('event-ping', e=>{
-    log(`ws: <PING src ${e.src} '${util.get(e, 'data.data')}'`, e);
-    log(`ws: >PONG dst ${e.src} '${util.get(e, 'data.data')}'`);
+    log(`ws: <ping src ${e.src} '${util.get(e, 'data.data')}'`, e);
+    log(`ws: >pong dst ${e.src} '${util.get(e, 'data.data')}'`);
     sc.json({event: 'pong', dst: e.src, data: {src: e.src,
       data: util.get(e, 'data.data')}});
   });
   window.sc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
-    log(`ws: >PING dst ${dst} '${data}'`);
+    log(`ws: >ping dst ${dst} '${data}'`);
     sc.json({event: 'ping', dst, data: {data}});
   };
   window.sc_set_client= function sc_set_client(ws_id){
@@ -9185,7 +9185,7 @@ function connect(){
       throw new Error('peer2_dst changed');
     let s = webrtc_str(data);
     peer2_dst = src;
-    log(`ws: <sdp src ${src} ${webrtc_str(data)}`, e);
+    log(`ws: <sdp src ${src} ${s}`, e);
     document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
     peer2.signal(data);
   });

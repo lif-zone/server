@@ -72,7 +72,7 @@ function connect(){
     peer2.on('error', e=>log('wrtc: <ERROR '+e, e));
     peer2.on('signal', data=>{
       let s = webrtc_str(data);
-      log(`ws: >sdp dst ${peer2_dst}`, data);
+      log(`ws: >sdp dst ${peer2_dst} ${s}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
       sc.json({event: 'sdp', dst: peer2_dst, data: {data}});
     });
@@ -165,7 +165,7 @@ function connect(){
       throw new Error('peer2_dst changed');
     let s = webrtc_str(data);
     peer2_dst = src;
-    log(`ws: <sdp src ${src} ${webrtc_str(data)}`, e);
+    log(`ws: <sdp src ${src} ${s}`, e);
     document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
     peer2.signal(data);
   });
