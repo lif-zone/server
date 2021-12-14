@@ -39,10 +39,12 @@ function webrtc_str(data){
 
 function connect(){
   let ws_url = 'wss://poc.lif.zone:3031';
-//  let stun_url = 'stun:stun.l.google.com:19302';
-  let stun_url = 'stun:poc.lif.zone';
+  //  let stun_url = 'stun:stun.l.google.com:19302';
+  // let stun_url = 'stun:poc.lif.zone';
+  let turn_url = 'turn:poc.lif.zone';
   // XXX: add stun fallback, eg stun:global.stun.twilio.com:3478?transport=udp
-  let config = {iceServers: [{urls: stun_url}]};
+  let config = {iceServers: [{urls: turn_url,
+    username: 'username', credential: 'password'}]};
   let peer, peer2;
   log(`ws: connect ${ws_url}`);
   const wsc = new ws_client({url: ws_url});
@@ -121,7 +123,7 @@ function connect(){
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
     let dst = document.querySelector('#ws_dst').value;
-    log(`wrtc: connect dst ${dst} ${stun_url}`, config);
+    log(`wrtc: connect dst ${dst} ${turn_url}`, config);
     peer = new Peer({initiator: true, config,
       trickle: document.querySelector('#trickle').checked});
     console.log('peer %o', peer);
