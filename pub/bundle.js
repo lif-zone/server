@@ -9088,39 +9088,6 @@ function connect(){
     let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
     document.querySelector('#ws_id').innerHTML = s;
     log(`ws: <connected`);
-    let config = get_ice_servers(document.querySelector('#ice_servers').value);
-    let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
-    log(`wrtc: listen ${ice_servers}`);
-    peer2 = new Peer({config,
-        trickle: document.querySelector('#trickle').checked});
-    console.log('peer2 %o', peer2);
-    if (window && window.xxx_debug)
-    {
-      peer2._pc.onicecandidateerror =
-        e=>log(`ice: onicecandidateerror ${JSON.stringify(e)}`, e);
-      peer2._pc.onfingerprintfailure =
-        e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
-      peer2._pc.onnegotiationneeded =
-        e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
-      // peer2._pc.onconnectionstatechange =
-      //  e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
-    }
-    peer2.on('error', e=>log('wrtc: <ERROR '+e, e));
-    peer2.on('signal', data=>{
-      let s = webrtc_str(data);
-      log(`ws: >sdp dst ${peer2_dst} ${s}`, data);
-      document.querySelector('#local').innerHTML += `<div>${s}</div>`;
-      wsc.json({event: 'sdp', dst: peer2_dst, data: {data}});
-    });
-    peer2.on('connect', ()=>{
-      log(`wrtc: <connected`);
-    });
-    peer2.on('data', data=>{
-      log(`wrtc: <data '${data.toString()}'`, data);
-      let data2 = 'REMOTE_ACK';
-      log(`wrtc: >data '${data2}'`);
-      peer2.send(data2);
-    });
   });
   window.wsc_get_clients = function(){ wsc.json({event: 'get_clients'}); };
   wsc.on('event-reply_get_clients', e=>{
@@ -9207,6 +9174,43 @@ function connect(){
     peer2_dst = src;
     log(`ws: <sdp src ${src} ${s}`, e);
     document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
+    if (!peer2)
+    {
+      let config = get_ice_servers(
+        document.querySelector('#ice_servers').value);
+      let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
+      log(`wrtc: listen ${ice_servers}`);
+      peer2 = new Peer({config,
+          trickle: document.querySelector('#trickle').checked});
+      console.log('peer2 %o', peer2);
+      if (window && window.xxx_debug)
+      {
+        peer2._pc.onicecandidateerror =
+          e=>log(`ice: onicecandidateerror ${JSON.stringify(e)}`, e);
+        peer2._pc.onfingerprintfailure =
+          e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
+        peer2._pc.onnegotiationneeded =
+          e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
+        // peer2._pc.onconnectionstatechange =
+        //  e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+      }
+      peer2.on('error', e=>log('wrtc: <ERROR '+e, e));
+      peer2.on('signal', data=>{
+        let s = webrtc_str(data);
+        log(`ws: >sdp dst ${peer2_dst} ${s}`, data);
+        document.querySelector('#local').innerHTML += `<div>${s}</div>`;
+        wsc.json({event: 'sdp', dst: peer2_dst, data: {data}});
+      });
+      peer2.on('connect', ()=>{
+        log(`wrtc: <connected`);
+      });
+      peer2.on('data', data=>{
+        log(`wrtc: <data '${data.toString()}'`, data);
+        let data2 = 'REMOTE_ACK';
+        log(`wrtc: >data '${data2}'`);
+        peer2.send(data2);
+      });
+    }
     peer2.signal(data);
   });
 }
