@@ -1,5 +1,5 @@
 // XXX: replace require with import
-const SignalClient = require('../lib/ws_client.js');
+const ws_client = require('../lib/ws_client.js');
 const date = require('../util/date.js');
 const util = require('../util/util.js');
 const Peer = require('simple-peer');
@@ -44,12 +44,12 @@ function connect(){
   let config = {iceServers: [{urls: stun_url}]};
   let peer, peer2;
   log(`ws: connect ${ws_url}`);
-  const sc = new SignalClient({url: ws_url});
-  sc.on('error', e=>log(`ws: <ERROR ${JSON.stringify(e)}`, e));
-  sc.on('close', e=>log(`ws: <close`));
-  sc.on('event-error', e=>
+  const wsc = new ws_client({url: ws_url});
+  wsc.on('error', e=>log(`ws: <ERROR ${JSON.stringify(e)}`, e));
+  wsc.on('close', e=>log(`ws: <close`));
+  wsc.on('event-error', e=>
     log(`ws: <ERROR ${util.get(e, 'data.desc')} ${JSON.stringify(e)}`, e));
-  sc.on('event-connect', e=>{
+  wsc.on('event-connect', e=>{
     let data = e.data||{};
     let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
     document.querySelector('#ws_id').innerHTML = s;
@@ -74,7 +74,7 @@ function connect(){
       let s = webrtc_str(data);
       log(`ws: >sdp dst ${peer2_dst} ${s}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
-      sc.json({event: 'sdp', dst: peer2_dst, data: {data}});
+      wsc.json({event: 'sdp', dst: peer2_dst, data: {data}});
     });
     peer2.on('connect', ()=>{
       let data = 'REMOTE_ACK';
@@ -84,8 +84,8 @@ function connect(){
     });
     peer2.on('data', data=>log(`wrtc: <data '${data.toString()}'`, data));
   });
-  window.sc_get_clients = function(){ sc.json({event: 'get_clients'}); };
-  sc.on('event-reply_get_clients', e=>{
+  window.wsc_get_clients = function(){ wsc.json({event: 'get_clients'}); };
+  wsc.on('event-reply_get_clients', e=>{
     let clients = e.data.clients;
     let html = '';
     if (!clients.length)
@@ -94,29 +94,29 @@ function connect(){
     for (let i=0; i<clients.length; i++)
     {
       let client = clients[i];
-      html += `<div onClick="sc_set_client(${client.ws_id})">`+
+      html += `<div onClick="wsc_set_client(${client.ws_id})">`+
         `<button ${s}>ws${client.ws_id} ${client.ip}:${client.port}`+
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
   });
-  sc.on('event-pong', e=>log(
+  wsc.on('event-pong', e=>log(
     `ws: <pong src ${e.src} '${util.get(e, 'data.data')}'`, e));
-  sc.on('event-ping', e=>{
+  wsc.on('event-ping', e=>{
     log(`ws: <ping src ${e.src} '${util.get(e, 'data.data')}'`, e);
     log(`ws: >pong dst ${e.src} '${util.get(e, 'data.data')}'`);
-    sc.json({event: 'pong', dst: e.src, data: {src: e.src,
+    wsc.json({event: 'pong', dst: e.src, data: {src: e.src,
       data: util.get(e, 'data.data')}});
   });
-  window.sc_ping = function(){
+  window.wsc_ping = function(){
     let dst = document.querySelector('#ws_dst').value;
     let data = document.querySelector('#ws_msg').value;
     log(`ws: >ping dst ${dst} '${data}'`);
-    sc.json({event: 'ping', dst, data: {data}});
+    wsc.json({event: 'ping', dst, data: {data}});
   };
-  window.sc_set_client= function sc_set_client(ws_id){
+  window.wsc_set_client= function wsc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id; };
-  window.sc_webrtc_connect = function(){
+  window.wsc_webrtc_connect = function(){
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
     let dst = document.querySelector('#ws_dst').value;
@@ -141,7 +141,7 @@ function connect(){
       log(`ws: >sdp dst ${dst} ${s}`, data);
       document.querySelector('#local').innerHTML += `<div>${s}</div>`;
       // XXX HACK: rename initiator_sdp -> sdp
-      sc.json({event: 'initiator_sdp', dst, data: {data}});
+      wsc.json({event: 'initiator_sdp', dst, data: {data}});
     });
     peer.on('connect', ()=>{
       let data = document.querySelector('#ws_msg').value;
@@ -150,7 +150,7 @@ function connect(){
       peer.send(data);
     });
     peer.on('data', data=>log(`wrtc: <data '${data.toString()}'`, data));
-    sc.on('event-sdp', e=>{
+    wsc.on('event-sdp', e=>{
       let data = util.get(e, 'data.data');
       let s = webrtc_str(data);
       document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
@@ -159,7 +159,7 @@ function connect(){
     });
   };
   let peer2_dst;
-  sc.on('event-initiator_sdp', e=>{
+  wsc.on('event-initiator_sdp', e=>{
     let src = e.src, data = util.get(e, 'data.data');
     if (peer2_dst && peer2_dst!=src)
       throw new Error('peer2_dst changed');
@@ -179,14 +179,14 @@ function init(){
       <div>
         <div><b>LIF</b></div>
         <div>
-          <input type=button value="Get clients" onClick="sc_get_clients()">
+          <input type=button value="Get clients" onClick="wsc_get_clients()">
         </div>
         <div>
           Connect to: <input id=ws_dst>
           <input id=ws_msg value=MY_MESSAGE>
-          <input type=button value=Ping onClick="sc_ping()">
+          <input type=button value=Ping onClick="wsc_ping()">
           <input type=button id=webrtc_connect_btn value="WebRTC Connect"
-            onClick="sc_webrtc_connect()">
+            onClick="wsc_webrtc_connect()">
           <input type=checkbox id=trickle checked>Trickle</checkbox>
         </div>
         <div><b id=ws_id></b></div>
