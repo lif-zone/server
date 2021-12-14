@@ -9113,12 +9113,14 @@ function connect(){
       wsc.json({event: 'sdp', dst: peer2_dst, data: {data}});
     });
     peer2.on('connect', ()=>{
-      let data = 'REMOTE_ACK';
       log(`wrtc: <connected`);
-      log(`wrtc: >data '${data}'`);
-      peer2.send(data);
     });
-    peer2.on('data', data=>log(`wrtc: <data '${data.toString()}'`, data));
+    peer2.on('data', data=>{
+      log(`wrtc: <data '${data.toString()}'`, data);
+      let data2 = 'REMOTE_ACK';
+      log(`wrtc: >data '${data2}'`);
+      peer2.send(data2);
+    });
   });
   window.wsc_get_clients = function(){ wsc.json({event: 'get_clients'}); };
   wsc.on('event-reply_get_clients', e=>{
