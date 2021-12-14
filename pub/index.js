@@ -39,7 +39,8 @@ function webrtc_str(data){
 
 function connect(){
   let ws_url = 'wss://poc.lif.zone:3031';
-  let stun_url = 'stun:stun.l.google.com:19302';
+//  let stun_url = 'stun:stun.l.google.com:19302';
+  let stun_url = 'stun:poc.lif.zone';
   // XXX: add stun fallback, eg stun:global.stun.twilio.com:3478?transport=udp
   let config = {iceServers: [{urls: stun_url}]};
   let peer, peer2;
