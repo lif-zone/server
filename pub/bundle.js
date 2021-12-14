@@ -9066,7 +9066,7 @@ function connect(){
   log(`ws: connect ${ws_url}`);
   const sc = new SignalClient({url: ws_url});
   sc.on('error', e=>log(`ws: <ERROR ${JSON.stringify(e)}`, e));
-  sc.on('close', e=>log(`ws: <CLOSE`));
+  sc.on('close', e=>log(`ws: <close`));
   sc.on('event-error', e=>
     log(`ws: <ERROR ${util.get(e, 'data.desc')} ${JSON.stringify(e)}`, e));
   sc.on('event-connect', e=>{
@@ -9121,7 +9121,7 @@ function connect(){
     document.querySelector('#clients').innerHTML = html;
   });
   sc.on('event-pong', e=>log(
-    `ws: <PONG src ${e.src} '${util.get(e, 'data.data')}'`, e));
+    `ws: <pong src ${e.src} '${util.get(e, 'data.data')}'`, e));
   sc.on('event-ping', e=>{
     log(`ws: <ping src ${e.src} '${util.get(e, 'data.data')}'`, e);
     log(`ws: >pong dst ${e.src} '${util.get(e, 'data.data')}'`);
