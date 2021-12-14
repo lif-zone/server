@@ -9076,8 +9076,6 @@ function get_ice_servers(val){
 
 function connect(){
   let ws_url = 'wss://poc.lif.zone:3031';
-  let config = get_ice_servers(document.querySelector('#ice_servers').value);
-  let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
   let peer, peer2;
   log(`ws: connect ${ws_url}`);
   const wsc = new ws_client({url: ws_url});
@@ -9090,6 +9088,8 @@ function connect(){
     let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
     document.querySelector('#ws_id').innerHTML = s;
     log(`ws: <connected`);
+    let config = get_ice_servers(document.querySelector('#ice_servers').value);
+    let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
     log(`wrtc: listen ${ice_servers}`);
     peer2 = new Peer({config,
         trickle: document.querySelector('#trickle').checked});
@@ -9155,6 +9155,8 @@ function connect(){
   window.wsc_set_client= function wsc_set_client(ws_id){
     document.querySelector('#ws_dst').value = ws_id; };
   window.wsc_webrtc_connect = function(){
+    let config = get_ice_servers(document.querySelector('#ice_servers').value);
+    let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
     let dst = document.querySelector('#ws_dst').value;
