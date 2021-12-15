@@ -71,7 +71,7 @@ function connect(){
   wsc.on('event-error', e=>
     log(`ws: <ERROR ${util.get(e, 'data.desc')} ${JSON.stringify(e)}`, e));
   wsc.on('open', ()=>{
-    document.querySelector('#ws_id').innerHTML = wsc.uuid;
+    document.querySelector('#uuid').innerHTML = wsc.uuid;
     log(`ws: <connected`);
   });
   window.wsc_get_clients = function(){ wsc.json({event: 'get_clients'}); };
@@ -86,8 +86,8 @@ function connect(){
       let client = clients[i];
       // XXX: check what is the correct way to encode it
       html += `<div
-        onClick="wsc_set_client('${encodeURIComponent(client.ws_id)}')">`+
-        `<button ${s}>${client.ws_id} ${client.ip}:${client.port}`+
+        onClick="wsc_set_client('${encodeURIComponent(client.uuid)}')">`+
+        `<button ${s}>${client.uuid} ${client.ip}:${client.port}`+
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
@@ -106,8 +106,8 @@ function connect(){
     log(`ws: >ping dst ${dst} '${data}'`);
     wsc.json({event: 'ping', dst, data: {data}});
   };
-  window.wsc_set_client= function wsc_set_client(ws_id){
-    document.querySelector('#ws_dst').value = ws_id; };
+  window.wsc_set_client= function wsc_set_client(uuid){
+    document.querySelector('#ws_dst').value = uuid; };
   window.wsc_webrtc_connect = function(){
     let config = get_ice_servers(document.querySelector('#ice_servers').value);
     let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
@@ -230,7 +230,7 @@ function init(){
             onClick="wsc_webrtc_connect()">
           <input type=checkbox id=trickle checked>Trickle</checkbox>
         </div>
-        <div><b id=ws_id></b></div>
+        <div><b id=uuid></b></div>
         <div>
           Clients:
           <div id=clients></div>
