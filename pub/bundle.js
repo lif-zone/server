@@ -5,6 +5,7 @@ const events = require('events');
 // XXX: use npm ws instead?
 const WebSocket = window.WebSocket;
 const uuidv4 = require('uuid').v4;
+const log = require('../util/log.js');
 
 class SignalClient extends events.EventEmitter {
   // XXX arik: need auto-reconnect
@@ -44,11 +45,15 @@ class SignalClient extends events.EventEmitter {
   }
   // XXX: rename to send
   json(o){ this.ws.send(JSON.stringify(o)); }
+  ping(dst){
+    log(`ws: >ping dst ${dst}`);
+    this.json({event: 'ping', dst});
+  }
 }
 
 module.exports = SignalClient;
 
-},{"events":8,"uuid":40}],2:[function(require,module,exports){
+},{"../util/log.js":57,"events":8,"uuid":40}],2:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -9864,18 +9869,10 @@ exports.default = _default;
 },{"./validate.js":53}],55:[function(require,module,exports){
 // XXX: replace require with import
 const ws_client = require('../lib/ws_client.js');
-const date = require('../util/date.js');
 const util = require('../util/util.js');
+const log = require('../util/log.js');
 const Peer = require('simple-peer');
 const SdpTransform = require('sdp-transform');
-
-let log_a = [];
-
-function log(s, o){
-  log_a.push(date.to_sql_time_ms()+' '+s);
-  console.log(date.to_sql_time_ms()+' '+s, o);
-  document.querySelector('#log').innerText = log_a.join('\n');
-}
 
 // XXX: mv to webrtc_util.js
 function webrtc_str(data){
@@ -9965,19 +9962,15 @@ function connect(){
       data: util.get(e, 'data.data')}});
   });
   window.wsc_ping = function(){
-    let dst = document.querySelector('#ws_dst').value;
-    let data = document.querySelector('#ws_msg').value;
-    log(`ws: >ping dst ${dst} '${data}'`);
-    wsc.json({event: 'ping', dst, data: {data}});
-  };
+    wsc.ping(document.querySelector('#dst').value); };
   window.wsc_set_client= function wsc_set_client(uuid){
-    document.querySelector('#ws_dst').value = uuid; };
+    document.querySelector('#dst').value = uuid; };
   window.wsc_webrtc_connect = function(){
     let config = get_ice_servers(document.querySelector('#ice_servers').value);
     let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
-    let dst = document.querySelector('#ws_dst').value;
+    let dst = document.querySelector('#dst').value;
     log(`wrtc: connect dst ${dst} ${ice_servers}`, config);
     peer = new Peer({initiator: true, config,
       trickle: document.querySelector('#trickle').checked});
@@ -10077,7 +10070,7 @@ function init(){
           <input type=button value="Get clients" onClick="wsc_get_clients()">
         </div>
         <div>
-          Connect to: <input size=30 id=ws_dst>
+          Connect to: <input size=30 id=dst>
           <input id=ws_msg value=MY_MESSAGE>
           <select id=ice_servers>
             <option value="all_stun">All STUN</option>
@@ -10138,7 +10131,7 @@ function init(){
 init();
 
 
-},{"../lib/ws_client.js":1,"../util/date.js":56,"../util/util.js":57,"sdp-transform":18,"simple-peer":21}],56:[function(require,module,exports){
+},{"../lib/ws_client.js":1,"../util/log.js":57,"../util/util.js":58,"sdp-transform":18,"simple-peer":21}],56:[function(require,module,exports){
 'use strict'; /*jslint node:true*/
 const E = module.exports = {};
 
@@ -10233,6 +10226,20 @@ E.monotonic = function(){
 
 
 },{}],57:[function(require,module,exports){
+'use strict'; /*jslint node:true*/
+const date = require('./date.js');
+module.exports = log;
+
+let log_a = [];
+
+function log(s, o){
+  log_a.push(date.to_sql_time_ms()+' '+s);
+  console.log(date.to_sql_time_ms()+' '+s, o);
+  document.querySelector('#log').innerText = log_a.join('\n');
+}
+
+
+},{"./date.js":56}],58:[function(require,module,exports){
 'use strict'; /*jslint node:true*/
 const E = module.exports = {};
 

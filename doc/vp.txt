@@ -1,7 +1,12 @@
 - debug
   - wrap all debug with npm 'debug' and use correct log levels
-- ws client
-  - handle disconnect
-- ws server
-  - cleanup disconnected connection
-  - limit number of max connections
+- ws
+  - ws client
+    - handle disconnect
+  - ws server
+    - cleanup disconnected connection
+    - limit number of max connections
+
+future:
+- ws
+  - optimize "wire" format (today we use json for headers)

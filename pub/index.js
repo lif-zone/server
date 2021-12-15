@@ -1,17 +1,9 @@
 // XXX: replace require with import
 const ws_client = require('../lib/ws_client.js');
-const date = require('../util/date.js');
 const util = require('../util/util.js');
+const log = require('../util/log.js');
 const Peer = require('simple-peer');
 const SdpTransform = require('sdp-transform');
-
-let log_a = [];
-
-function log(s, o){
-  log_a.push(date.to_sql_time_ms()+' '+s);
-  console.log(date.to_sql_time_ms()+' '+s, o);
-  document.querySelector('#log').innerText = log_a.join('\n');
-}
 
 // XXX: mv to webrtc_util.js
 function webrtc_str(data){
@@ -101,19 +93,15 @@ function connect(){
       data: util.get(e, 'data.data')}});
   });
   window.wsc_ping = function(){
-    let dst = document.querySelector('#ws_dst').value;
-    let data = document.querySelector('#ws_msg').value;
-    log(`ws: >ping dst ${dst} '${data}'`);
-    wsc.json({event: 'ping', dst, data: {data}});
-  };
+    wsc.ping(document.querySelector('#dst').value); };
   window.wsc_set_client= function wsc_set_client(uuid){
-    document.querySelector('#ws_dst').value = uuid; };
+    document.querySelector('#dst').value = uuid; };
   window.wsc_webrtc_connect = function(){
     let config = get_ice_servers(document.querySelector('#ice_servers').value);
     let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
     document.querySelector('#webrtc_connect_btn').outerHTML =
       '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
-    let dst = document.querySelector('#ws_dst').value;
+    let dst = document.querySelector('#dst').value;
     log(`wrtc: connect dst ${dst} ${ice_servers}`, config);
     peer = new Peer({initiator: true, config,
       trickle: document.querySelector('#trickle').checked});
@@ -213,7 +201,7 @@ function init(){
           <input type=button value="Get clients" onClick="wsc_get_clients()">
         </div>
         <div>
-          Connect to: <input size=30 id=ws_dst>
+          Connect to: <input size=30 id=dst>
           <input id=ws_msg value=MY_MESSAGE>
           <select id=ice_servers>
             <option value="all_stun">All STUN</option>
