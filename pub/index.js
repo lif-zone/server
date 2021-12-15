@@ -84,14 +84,6 @@ function connect(){
     }
     document.querySelector('#clients').innerHTML = html;
   });
-  wsc.on('event-pong', e=>log(
-    `ws: <pong src ${e.src} '${util.get(e, 'data.data')}'`, e));
-  wsc.on('event-ping', e=>{
-    log(`ws: <ping src ${e.src} '${util.get(e, 'data.data')}'`, e);
-    log(`ws: >pong dst ${e.src} '${util.get(e, 'data.data')}'`);
-    wsc.json({event: 'pong', dst: e.src, data: {src: e.src,
-      data: util.get(e, 'data.data')}});
-  });
   window.wsc_ping = function(){
     wsc.ping(document.querySelector('#dst').value); };
   window.wsc_set_client= function wsc_set_client(uuid){

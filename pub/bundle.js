@@ -6,6 +6,7 @@ const events = require('events');
 const WebSocket = window.WebSocket;
 const uuidv4 = require('uuid').v4;
 const log = require('../util/log.js');
+const date = require('../util/date.js');
 
 class SignalClient extends events.EventEmitter {
   // XXX arik: need auto-reconnect
@@ -39,28 +40,35 @@ class SignalClient extends events.EventEmitter {
       const o = JSON.parse(message.data);
       if (!o)
         return console.error('invalid message %o', message);
-      if (o.event=='ping')
-        this.emit(o.event, o);
-      else if (o.event) // XXX HACK: rm
-        this.emit('event-'+o.event, o);
+      switch (o.event)
+      {
+        case 'ping':
+        case 'pong':
+          this.emit(o.event, o);
+          break;
+        default: this.emit('event-'+o.event, o); // XXX HACK: rm
+      }
     });
     this.on('ping', e=>{
       log(`ws: <ping src ${e.src}`, e);
       log(`ws: >pong dst ${e.src}`);
-      this.json({event: 'pong', src: this.uuid, dst: e.src});
+      this.json({event: 'pong', src: this.uuid, dst: e.src, ts: Date.now()});
+    });
+    this.on('pong', e=>{
+      log(`ws: <pong src ${e.src} ts ${date.to_sql_time_ms(+e.ts)}`, e);
     });
   }
   // XXX: rename to send
   json(o){ this.ws.send(JSON.stringify(o)); }
   ping(dst){
     log(`ws: >ping dst ${dst}`);
-    this.json({event: 'ping', src: this.uuid, dst});
+    this.json({event: 'ping', src: this.uuid, dst, ts: Date.now()});
   }
 }
 
 module.exports = SignalClient;
 
-},{"../util/log.js":57,"events":8,"uuid":40}],2:[function(require,module,exports){
+},{"../util/date.js":56,"../util/log.js":57,"events":8,"uuid":40}],2:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -9959,14 +9967,6 @@ function connect(){
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
-  });
-  wsc.on('event-pong', e=>log(
-    `ws: <pong src ${e.src} '${util.get(e, 'data.data')}'`, e));
-  wsc.on('event-ping', e=>{
-    log(`ws: <ping src ${e.src} '${util.get(e, 'data.data')}'`, e);
-    log(`ws: >pong dst ${e.src} '${util.get(e, 'data.data')}'`);
-    wsc.json({event: 'pong', dst: e.src, data: {src: e.src,
-      data: util.get(e, 'data.data')}});
   });
   window.wsc_ping = function(){
     wsc.ping(document.querySelector('#dst').value); };
