@@ -53,6 +53,7 @@ function get_ice_servers(val){
   case 'twilio': return {iceServers: [twilio]};
   case 'stun': return {iceServers: [stun]};
   case 'turn': return {iceServers: [turn]};
+  case 'all_stun': return {iceServers: [google, twilio, stun]};
   case 'all': return {iceServers: [google, twilio, stun, turn]};
   case 'stun_bad': return {iceServers: [stun_bad]};
   case 'turn_bad': return {iceServers: [turn_bad]};
@@ -215,7 +216,8 @@ function init(){
           Connect to: <input id=ws_dst>
           <input id=ws_msg value=MY_MESSAGE>
           <select id=ice_servers>
-            <option value="all">All STUN/TURN</option>
+            <option value="all_stun">All STUN</option>
+            <option value="all">All STUN+TURN</option>
             <option value="google">Google STUN</option>
             <option value="twilio">Twilio STUN</option>
             <option value="stun">LIF STUN</option>
