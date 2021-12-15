@@ -70,10 +70,8 @@ function connect(){
   wsc.on('close', e=>log(`ws: <close`));
   wsc.on('event-error', e=>
     log(`ws: <ERROR ${util.get(e, 'data.desc')} ${JSON.stringify(e)}`, e));
-  wsc.on('event-connect', e=>{
-    let data = e.data||{};
-    let s = `ws${data.ws_id} ${data.ip}:${data.port}`;
-    document.querySelector('#ws_id').innerHTML = s;
+  wsc.on('open', ()=>{
+    document.querySelector('#ws_id').innerHTML = wsc.uuid;
     log(`ws: <connected`);
   });
   window.wsc_get_clients = function(){ wsc.json({event: 'get_clients'}); };
