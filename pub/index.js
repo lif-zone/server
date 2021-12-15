@@ -84,8 +84,10 @@ function connect(){
     for (let i=0; i<clients.length; i++)
     {
       let client = clients[i];
-      html += `<div onClick="wsc_set_client(${client.ws_id})">`+
-        `<button ${s}>ws${client.ws_id} ${client.ip}:${client.port}`+
+      // XXX: check what is the correct way to encode it
+      html += `<div
+        onClick="wsc_set_client('${encodeURIComponent(client.ws_id)}')">`+
+        `<button ${s}>${client.ws_id} ${client.ip}:${client.port}`+
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
@@ -211,7 +213,7 @@ function init(){
           <input type=button value="Get clients" onClick="wsc_get_clients()">
         </div>
         <div>
-          Connect to: <input id=ws_dst>
+          Connect to: <input size=30 id=ws_dst>
           <input id=ws_msg value=MY_MESSAGE>
           <select id=ice_servers>
             <option value="all_stun">All STUN</option>

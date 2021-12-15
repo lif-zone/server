@@ -19,6 +19,8 @@ class SignalClient extends events.EventEmitter {
       console.log('ws: open');
       this.opened = true;
       this.emit('open');
+      // XXX HACK: mv settings src to this.send command
+      this.json({event: 'join', src: this.uuid});
     });
     ws.addEventListener('close', ()=>{
       console.log('ws: close');
@@ -40,6 +42,7 @@ class SignalClient extends events.EventEmitter {
         this.emit('event-'+o.event, o);
     });
   }
+  // XXX: rename to send
   json(o){ this.ws.send(JSON.stringify(o)); }
 }
 
@@ -9945,8 +9948,10 @@ function connect(){
     for (let i=0; i<clients.length; i++)
     {
       let client = clients[i];
-      html += `<div onClick="wsc_set_client(${client.ws_id})">`+
-        `<button ${s}>ws${client.ws_id} ${client.ip}:${client.port}`+
+      // XXX: check what is the correct way to encode it
+      html += `<div
+        onClick="wsc_set_client('${encodeURIComponent(client.ws_id)}')">`+
+        `<button ${s}>${client.ws_id} ${client.ip}:${client.port}`+
         `</button></div>`;
     }
     document.querySelector('#clients').innerHTML = html;
@@ -10072,7 +10077,7 @@ function init(){
           <input type=button value="Get clients" onClick="wsc_get_clients()">
         </div>
         <div>
-          Connect to: <input id=ws_dst>
+          Connect to: <input size=30 id=ws_dst>
           <input id=ws_msg value=MY_MESSAGE>
           <select id=ice_servers>
             <option value="all_stun">All STUN</option>

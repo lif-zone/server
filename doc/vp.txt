@@ -1,2 +1,4 @@
+- debug
+  - wrap all debug with npm 'debug' and use correct log levels
 - ws
   - handle disconnect
