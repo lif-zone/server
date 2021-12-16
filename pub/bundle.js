@@ -1,70 +1,140 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-'use strict'; /*jslint node:true*/
-const events = require('events');
-// XXX: const json6 = require('json-6');
-// XXX: use npm ws instead?
-const WebSocket = window.WebSocket;
-const uuidv4 = require('uuid').v4;
-const log = require('../util/log.js');
-const date = require('../util/date.js');
+'use strict';
+/*jslint node:true*/
 
-class SignalClient extends events.EventEmitter {
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); Object.defineProperty(Constructor, "prototype", { writable: false }); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } Object.defineProperty(subClass, "prototype", { value: Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }), writable: false }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } else if (call !== void 0) { throw new TypeError("Derived constructors may only return object or undefined"); } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+var events = require('events'); // XXX: const json6 = require('json-6');
+// XXX: use npm ws instead?
+
+
+var WebSocket = window.WebSocket;
+
+var uuidv4 = require('uuid').v4;
+
+var log = require('../util/log.js');
+
+var date = require('../util/date.js');
+
+var SignalClient = /*#__PURE__*/function (_events$EventEmitter) {
+  _inherits(SignalClient, _events$EventEmitter);
+
+  var _super = _createSuper(SignalClient);
+
   // XXX arik: need auto-reconnect
-  constructor(opt){
-    super();
-    if (!opt.url)
-      throw new Error('ws: missing url');
-    this.uuid = uuidv4();
-    console.log(`ws: new client uuid ${this.uuid}`, this);
-    const ws = this.ws = new WebSocket(opt.url);
-    ws.addEventListener('open', ()=>{
+  function SignalClient(opt) {
+    var _this;
+
+    _classCallCheck(this, SignalClient);
+
+    _this = _super.call(this);
+    if (!opt.url) throw new Error('ws: missing url');
+    _this.uuid = uuidv4();
+    console.log("ws: new client uuid ".concat(_this.uuid), _assertThisInitialized(_this));
+    var ws = _this.ws = new WebSocket(opt.url);
+    ws.addEventListener('open', function () {
       console.log('ws: open');
-      this.opened = true;
-      this.emit('open');
-      // XXX HACK: mv settings src to this.send command
-      this.json({event: 'join', src: this.uuid});
+      _this.opened = true;
+
+      _this.emit('open'); // XXX HACK: mv settings src to this.send command
+
+
+      _this.json({
+        event: 'join',
+        src: _this.uuid
+      });
     });
-    ws.addEventListener('close', ()=>{
+    ws.addEventListener('close', function () {
       console.log('ws: close');
-      this.opened = false;
-      this.emit('close');
+      _this.opened = false;
+
+      _this.emit('close');
     });
-    ws.addEventListener('error', err=>{
+    ws.addEventListener('error', function (err) {
       console.error('ws: error %o', err);
-      this.emit('error', err);
+
+      _this.emit('error', err);
     });
-    ws.addEventListener('message', (message, bin)=>{
+    ws.addEventListener('message', function (message, bin) {
       console.log('ws: message %o', message);
-      if (bin)
-        return console.error('bin not supported');
-      const o = JSON.parse(message.data);
-      if (!o)
-        return console.error('invalid message %o', message);
-      switch (o.event)
-      {
+      if (bin) return console.error('bin not supported');
+      var o = JSON.parse(message.data);
+      if (!o) return console.error('invalid message %o', message);
+
+      switch (o.event) {
         case 'ping':
         case 'pong':
-          this.emit(o.event, o);
+          _this.emit(o.event, o);
+
           break;
-        default: this.emit('event-'+o.event, o); // XXX HACK: rm
+
+        default:
+          _this.emit('event-' + o.event, o);
+
+        // XXX HACK: rm
       }
     });
-    this.on('ping', e=>{
-      log(`ws: <ping src ${e.src}`, e);
-      log(`ws: >pong dst ${e.src}`);
-      this.json({event: 'pong', src: this.uuid, dst: e.src, ts: Date.now()});
+
+    _this.on('ping', function (e) {
+      log("ws: <ping src ".concat(e.src), e);
+      log("ws: >pong dst ".concat(e.src));
+
+      _this.json({
+        event: 'pong',
+        src: _this.uuid,
+        dst: e.src,
+        ts: Date.now()
+      });
     });
-    this.on('pong', e=>{
-      log(`ws: <pong src ${e.src} ts ${date.to_sql_time_ms(+e.ts)}`, e);
+
+    _this.on('pong', function (e) {
+      log("ws: <pong src ".concat(e.src, " ts ").concat(date.to_sql_time_ms(+e.ts)), e);
     });
-  }
-  // XXX: rename to send
-  json(o){ this.ws.send(JSON.stringify(o)); }
-  ping(dst){
-    log(`ws: >ping dst ${dst}`);
-    this.json({event: 'ping', src: this.uuid, dst, ts: Date.now()});
-  }
-}
+
+    return _this;
+  } // XXX: rename to send
+
+
+  _createClass(SignalClient, [{
+    key: "json",
+    value: function json(o) {
+      this.ws.send(JSON.stringify(o));
+    }
+  }, {
+    key: "ping",
+    value: function ping(dst) {
+      log("ws: >ping dst ".concat(dst));
+      this.json({
+        event: 'ping',
+        src: this.uuid,
+        dst: dst,
+        ts: Date.now()
+      });
+    }
+  }]);
+
+  return SignalClient;
+}(events.EventEmitter);
 
 module.exports = SignalClient;
 
@@ -9882,434 +9952,502 @@ function version(uuid) {
 var _default = version;
 exports.default = _default;
 },{"./validate.js":53}],55:[function(require,module,exports){
-// XXX: replace require with import
-const ws_client = require('../lib/ws_client.js');
-const util = require('../util/util.js');
-const log = require('../util/log.js');
-const Peer = require('simple-peer');
-const SdpTransform = require('sdp-transform');
+"use strict";
 
-// XXX: mv to webrtc_util.js
-function webrtc_str(data){
-  let s = '';
-  if (data.sdp)
-  {
-    let sdp = SdpTransform.parse(data.sdp);
-    s += `${data.type} ${util.get(sdp, 'origin.address')} `;
+var _ws_client = _interopRequireDefault(require("../lib/ws_client.js"));
+
+var _util = _interopRequireDefault(require("../util/util.js"));
+
+var _log = _interopRequireDefault(require("../util/log.js"));
+
+var _simplePeer = _interopRequireDefault(require("simple-peer"));
+
+var _sdpTransform = _interopRequireDefault(require("sdp-transform"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+
+// XXX: replace require with import
+console.log('XXX import'); // XXX: mv to webrtc_util.js
+
+function webrtc_str(data) {
+  var s = '';
+
+  if (data.sdp) {
+    var sdp = _sdpTransform["default"].parse(data.sdp);
+
+    s += "".concat(data.type, " ").concat(_util["default"].get(sdp, 'origin.address'), " ");
     console.log('sdp ', sdp, data);
   }
-  if (data.candidate)
-  {
-    let _candidate = util.get(data, 'candidate.candidate');
-    let candidate = SdpTransform.parseRemoteCandidates(_candidate);
-    s += `${data.type} ${_candidate}`;
+
+  if (data.candidate) {
+    var _candidate = _util["default"].get(data, 'candidate.candidate');
+
+    var candidate = _sdpTransform["default"].parseRemoteCandidates(_candidate);
+
+    s += "".concat(data.type, " ").concat(_candidate);
     console.log('sdp ', candidate, data);
   }
-  if (!data.sdp && !data.candidate)
-  {
-    s += `unknown ${data.type}`;
+
+  if (!data.sdp && !data.candidate) {
+    s += "unknown ".concat(data.type);
     console.log('sdp ', data);
   }
+
   return s;
 }
 
-function get_ice_servers(val){
+function get_ice_servers(val) {
   // XXX: get list of public available stun servers
-  let google = {urls: 'stun:stun.l.google.com:19302'};
-  let twilio = {urls: 'stun:global.stun.twilio.com:3478?transport=udp'};
-  let stun = {urls: 'stun:'+location.hostname};
-  let turn = {urls: 'turn:'+location.hostname,
-    username: 'username', credential: 'password'};
-  let stun_bad = {urls: 'stun:stun.bad.com'};
-  let turn_bad = {urls: 'turn:turn.bad.com',
-    username: 'username', credential: 'password'};
-  switch (val)
-  {
-  case 'google': return {iceServers: [google]};
-  case 'twilio': return {iceServers: [twilio]};
-  case 'stun': return {iceServers: [stun]};
-  case 'turn': return {iceServers: [turn]};
-  case 'all_stun': return {iceServers: [google, twilio, stun]};
-  case 'all': return {iceServers: [google, twilio, stun, turn]};
-  case 'stun_bad': return {iceServers: [stun_bad]};
-  case 'turn_bad': return {iceServers: [turn_bad]};
-  default: throw new Error('invalid option '+val);
+  var google = {
+    urls: 'stun:stun.l.google.com:19302'
+  };
+  var twilio = {
+    urls: 'stun:global.stun.twilio.com:3478?transport=udp'
+  };
+  var stun = {
+    urls: 'stun:' + location.hostname
+  };
+  var turn = {
+    urls: 'turn:' + location.hostname,
+    username: 'username',
+    credential: 'password'
+  };
+  var stun_bad = {
+    urls: 'stun:stun.bad.com'
+  };
+  var turn_bad = {
+    urls: 'turn:turn.bad.com',
+    username: 'username',
+    credential: 'password'
+  };
+
+  switch (val) {
+    case 'google':
+      return {
+        iceServers: [google]
+      };
+
+    case 'twilio':
+      return {
+        iceServers: [twilio]
+      };
+
+    case 'stun':
+      return {
+        iceServers: [stun]
+      };
+
+    case 'turn':
+      return {
+        iceServers: [turn]
+      };
+
+    case 'all_stun':
+      return {
+        iceServers: [google, twilio, stun]
+      };
+
+    case 'all':
+      return {
+        iceServers: [google, twilio, stun, turn]
+      };
+
+    case 'stun_bad':
+      return {
+        iceServers: [stun_bad]
+      };
+
+    case 'turn_bad':
+      return {
+        iceServers: [turn_bad]
+      };
+
+    default:
+      throw new Error('invalid option ' + val);
   }
 }
 
-function connect(){
-  let ws_url = 'wss://poc.lif.zone:3031';
-  let peer, peer2;
-  log(`ws: connect ${ws_url}`);
-  const wsc = new ws_client({url: ws_url});
-  wsc.on('error', e=>log(`ws: <ERROR ${JSON.stringify(e)}`, e));
-  wsc.on('close', e=>log(`ws: <close`));
-  wsc.on('event-error', e=>
-    log(`ws: <ERROR ${util.get(e, 'data.desc')} ${JSON.stringify(e)}`, e));
-  wsc.on('open', ()=>{
-    document.querySelector('#uuid').innerHTML = wsc.uuid;
-    log(`ws: <connected`);
+function connect() {
+  var ws_url = 'wss://poc.lif.zone:3031';
+  var peer, peer2;
+  (0, _log["default"])("ws: connect ".concat(ws_url));
+  var wsc = new _ws_client["default"]({
+    url: ws_url
   });
-  window.wsc_get_clients = function(){ wsc.json({event: 'get_clients'}); };
-  wsc.on('event-reply_get_clients', e=>{
-    let clients = e.data.clients;
-    let html = '';
-    if (!clients.length)
-      html += '<div><b>No clients</b></div>';
-    let s = ' STYLE="margin-top: 10px;" ';
-    for (let i=0; i<clients.length; i++)
-    {
-      let client = clients[i];
-      // XXX: check what is the correct way to encode it
-      html += `<div
-        onClick="wsc_set_client('${encodeURIComponent(client.uuid)}')">`+
-        `<button ${s}>${client.uuid} ${client.ip}:${client.port}`+
-        `</button></div>`;
+  wsc.on('error', function (e) {
+    return (0, _log["default"])("ws: <ERROR ".concat(JSON.stringify(e)), e);
+  });
+  wsc.on('close', function (e) {
+    return (0, _log["default"])("ws: <close");
+  });
+  wsc.on('event-error', function (e) {
+    return (0, _log["default"])("ws: <ERROR ".concat(_util["default"].get(e, 'data.desc'), " ").concat(JSON.stringify(e)), e);
+  });
+  wsc.on('open', function () {
+    document.querySelector('#uuid').innerHTML = wsc.uuid;
+    (0, _log["default"])("ws: <connected");
+  });
+
+  window.wsc_get_clients = function () {
+    wsc.json({
+      event: 'get_clients'
+    });
+  };
+
+  wsc.on('event-reply_get_clients', function (e) {
+    var clients = e.data.clients;
+    var html = '';
+    if (!clients.length) html += '<div><b>No clients</b></div>';
+    var s = ' STYLE="margin-top: 10px;" ';
+
+    for (var i = 0; i < clients.length; i++) {
+      var client = clients[i]; // XXX: check what is the correct way to encode it
+
+      html += "<div\n        onClick=\"wsc_set_client('".concat(encodeURIComponent(client.uuid), "')\">") + "<button ".concat(s, ">").concat(client.uuid, " ").concat(client.ip, ":").concat(client.port) + "</button></div>";
     }
+
     document.querySelector('#clients').innerHTML = html;
   });
-  window.wsc_ping = function(){
-    wsc.ping(document.querySelector('#dst').value); };
-  window.wsc_set_client= function wsc_set_client(uuid){
-    document.querySelector('#dst').value = uuid; };
-  window.wsc_webrtc_connect = function(){
-    let config = get_ice_servers(document.querySelector('#ice_servers').value);
-    let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
-    document.querySelector('#webrtc_connect_btn').outerHTML =
-      '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
-    let dst = document.querySelector('#dst').value;
-    log(`wrtc: connect dst ${dst} ${ice_servers}`, config);
-    peer = new Peer({initiator: true, config,
-      trickle: document.querySelector('#trickle').checked});
-    console.log('peer %o', peer);
-    if (window && window.xxx_debug)
-    {
-      peer._pc.onicecandidateerror =
-        e=>log(`ice: onicecandidateerror ${JSON.stringify(e)}`, e);
-      peer._pc.onfingerprintfailure =
-        e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
-      peer._pc.onnegotiationneeded =
-        e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
-      // peer._pc.onconnectionstatechange =
-      //  e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
-    }
-    peer.on('error', e=>log('wrtc: <ERROR '+e, e));
-    peer.on('signal', data=>{
-      let s = webrtc_str(data);
-      log(`ws: >sdp dst ${dst} ${s}`, data);
-      document.querySelector('#local').innerHTML += `<div>${s}</div>`;
-      // XXX HACK: rename initiator_sdp -> sdp
-      wsc.json({event: 'initiator_sdp', dst, data: {data}});
+
+  window.wsc_ping = function () {
+    wsc.ping(document.querySelector('#dst').value);
+  };
+
+  window.wsc_set_client = function wsc_set_client(uuid) {
+    document.querySelector('#dst').value = uuid;
+  };
+
+  window.wsc_webrtc_connect = function () {
+    var config = get_ice_servers(document.querySelector('#ice_servers').value);
+    var ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
+    document.querySelector('#webrtc_connect_btn').outerHTML = '<b><a href="javascript:location.reload();">NEED RELOAD</a></b>';
+    var dst = document.querySelector('#dst').value;
+    (0, _log["default"])("wrtc: connect dst ".concat(dst, " ").concat(ice_servers), config);
+    peer = new _simplePeer["default"]({
+      initiator: true,
+      config: config,
+      trickle: document.querySelector('#trickle').checked
     });
-    peer.on('connect', ()=>{
-      let data = document.querySelector('#ws_msg').value;
-      log(`wrtc: <connected`);
-      log(`wrtc: >data '${data}'`);
+    console.log('peer %o', peer);
+
+    if (window && window.xxx_debug) {
+      peer._pc.onicecandidateerror = function (e) {
+        return (0, _log["default"])("ice: onicecandidateerror ".concat(JSON.stringify(e)), e);
+      };
+
+      peer._pc.onfingerprintfailure = function (e) {
+        return (0, _log["default"])("ice: onfingerprintfailure ".concat(JSON.stringify(e)), e);
+      };
+
+      peer._pc.onnegotiationneeded = function (e) {
+        return (0, _log["default"])("ice: onnegotiationneeded ".concat(JSON.stringify(e)), e);
+      }; // peer._pc.onconnectionstatechange =
+      //  e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+
+    }
+
+    peer.on('error', function (e) {
+      return (0, _log["default"])('wrtc: <ERROR ' + e, e);
+    });
+    peer.on('signal', function (data) {
+      var s = webrtc_str(data);
+      (0, _log["default"])("ws: >sdp dst ".concat(dst, " ").concat(s), data);
+      document.querySelector('#local').innerHTML += "<div>".concat(s, "</div>"); // XXX HACK: rename initiator_sdp -> sdp
+
+      wsc.json({
+        event: 'initiator_sdp',
+        dst: dst,
+        data: {
+          data: data
+        }
+      });
+    });
+    peer.on('connect', function () {
+      var data = document.querySelector('#ws_msg').value;
+      (0, _log["default"])("wrtc: <connected");
+      (0, _log["default"])("wrtc: >data '".concat(data, "'"));
       peer.send(data);
     });
-    peer.on('data', data=>log(`wrtc: <data '${data.toString()}'`, data));
-    wsc.on('event-sdp', e=>{
-      let data = util.get(e, 'data.data');
-      let s = webrtc_str(data);
-      document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
-      log(`ws: <sdp src ${e.src} ${s}`, data);
+    peer.on('data', function (data) {
+      return (0, _log["default"])("wrtc: <data '".concat(data.toString(), "'"), data);
+    });
+    wsc.on('event-sdp', function (e) {
+      var data = _util["default"].get(e, 'data.data');
+
+      var s = webrtc_str(data);
+      document.querySelector('#remote').innerHTML += "<div>".concat(s, "</div>");
+      (0, _log["default"])("ws: <sdp src ".concat(e.src, " ").concat(s), data);
       peer.signal(data);
     });
   };
-  let peer2_dst;
-  wsc.on('event-initiator_sdp', e=>{
-    let src = e.src, data = util.get(e, 'data.data');
-    if (peer2_dst && peer2_dst!=src)
-      throw new Error('peer2_dst changed');
-    let s = webrtc_str(data);
+
+  var peer2_dst;
+  wsc.on('event-initiator_sdp', function (e) {
+    var src = e.src,
+        data = _util["default"].get(e, 'data.data');
+
+    if (peer2_dst && peer2_dst != src) throw new Error('peer2_dst changed');
+    var s = webrtc_str(data);
     peer2_dst = src;
-    log(`ws: <sdp src ${src} ${s}`, e);
-    document.querySelector('#remote').innerHTML += `<div>${s}</div>`;
-    if (!peer2)
-    {
-      let config = get_ice_servers(
-        document.querySelector('#ice_servers').value);
-      let ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
-      log(`wrtc: listen ${ice_servers}`);
-      peer2 = new Peer({config,
-          trickle: document.querySelector('#trickle').checked});
+    (0, _log["default"])("ws: <sdp src ".concat(src, " ").concat(s), e);
+    document.querySelector('#remote').innerHTML += "<div>".concat(s, "</div>");
+
+    if (!peer2) {
+      var config = get_ice_servers(document.querySelector('#ice_servers').value);
+      var ice_servers = JSON.stringify(config.iceServers).replace(/"/g, '');
+      (0, _log["default"])("wrtc: listen ".concat(ice_servers));
+      peer2 = new _simplePeer["default"]({
+        config: config,
+        trickle: document.querySelector('#trickle').checked
+      });
       console.log('peer2 %o', peer2);
-      if (window && window.xxx_debug)
-      {
-        peer2._pc.onicecandidateerror =
-          e=>log(`ice: onicecandidateerror ${JSON.stringify(e)}`, e);
-        peer2._pc.onfingerprintfailure =
-          e=>log(`ice: onfingerprintfailure ${JSON.stringify(e)}`, e);
-        peer2._pc.onnegotiationneeded =
-          e=>log(`ice: onnegotiationneeded ${JSON.stringify(e)}`, e);
-        // peer2._pc.onconnectionstatechange =
+
+      if (window && window.xxx_debug) {
+        peer2._pc.onicecandidateerror = function (e) {
+          return (0, _log["default"])("ice: onicecandidateerror ".concat(JSON.stringify(e)), e);
+        };
+
+        peer2._pc.onfingerprintfailure = function (e) {
+          return (0, _log["default"])("ice: onfingerprintfailure ".concat(JSON.stringify(e)), e);
+        };
+
+        peer2._pc.onnegotiationneeded = function (e) {
+          return (0, _log["default"])("ice: onnegotiationneeded ".concat(JSON.stringify(e)), e);
+        }; // peer2._pc.onconnectionstatechange =
         //  e=>log(`ice: onconnectionstatechange ${JSON.stringify(e)}`, e);
+
       }
-      peer2.on('error', e=>log('wrtc: <ERROR '+e, e));
-      peer2.on('signal', data=>{
-        let s = webrtc_str(data);
-        log(`ws: >sdp dst ${peer2_dst} ${s}`, data);
-        document.querySelector('#local').innerHTML += `<div>${s}</div>`;
-        wsc.json({event: 'sdp', dst: peer2_dst, data: {data}});
+
+      peer2.on('error', function (e) {
+        return (0, _log["default"])('wrtc: <ERROR ' + e, e);
       });
-      peer2.on('connect', ()=>{
-        log(`wrtc: <connected`);
+      peer2.on('signal', function (data) {
+        var s = webrtc_str(data);
+        (0, _log["default"])("ws: >sdp dst ".concat(peer2_dst, " ").concat(s), data);
+        document.querySelector('#local').innerHTML += "<div>".concat(s, "</div>");
+        wsc.json({
+          event: 'sdp',
+          dst: peer2_dst,
+          data: {
+            data: data
+          }
+        });
       });
-      peer2.on('data', data=>{
-        log(`wrtc: <data '${data.toString()}'`, data);
-        let data2 = 'REMOTE_ACK';
-        log(`wrtc: >data '${data2}'`);
+      peer2.on('connect', function () {
+        (0, _log["default"])("wrtc: <connected");
+      });
+      peer2.on('data', function (data) {
+        (0, _log["default"])("wrtc: <data '".concat(data.toString(), "'"), data);
+        var data2 = 'REMOTE_ACK';
+        (0, _log["default"])("wrtc: >data '".concat(data2, "'"));
         peer2.send(data2);
       });
     }
+
     peer2.signal(data);
   });
 }
 
-function init(){
-  if (location.pathname=='/' &&
-    location.hostname=='poc.lif.zone')
-  {
-    document.body.innerHTML = `
-      <div>
-        <div><b>LIF</b></div>
-        <div>
-          <input type=button value="Get clients" onClick="wsc_get_clients()">
-        </div>
-        <div>
-          Connect to: <input size=30 id=dst>
-          <input id=ws_msg value=MY_MESSAGE>
-          <select id=ice_servers>
-            <option value="all_stun">All STUN</option>
-            <option value="all">All STUN+TURN</option>
-            <option value="google">Google STUN</option>
-            <option value="twilio">Twilio STUN</option>
-            <option value="stun">LIF STUN</option>
-            <option value="turn">LIF TURN</option>
-            <option value="stun_bad">Not working STUN</option>
-            <option value="turn_bad">Not working TURN</option>
-          </select>
-          <input type=button value=Ping onClick="wsc_ping()">
-          <input type=button id=webrtc_connect_btn value="WebRTC Connect"
-            onClick="wsc_webrtc_connect()">
-          <input type=checkbox id=trickle checked>Trickle</checkbox>
-        </div>
-        <div><b id=uuid></b></div>
-        <div>
-          Clients:
-          <div id=clients></div>
-        </div>
-        <div>
-          <b>Local SDP</b>
-          <div id=local></div>
-        <div>
-        <div>
-          <b>Remote SDP</b>
-          <div id=remote></div>
-        <div>
-        <div>
-          <br><b>Events:</b>
-          <div id=log></div>
-        <div>
-      </div>
-      <div>
-        <hr>
-        <b>debugging:</b>
-        <p><a href="chrome://webrtc-internals">chrome://webrtc-internals</a></p>
-        <p><a href="https://test.webrtc.org/">https://test.webrtc.org/</a></p>
-        <p><a href="https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/">https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/</a></p>
-        <p><a href="https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them">https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them</a></p>
-        <p><a href="https://webrtchacks.com/sdp-anatomy/">https://webrtchacks.com/sdp-anatomy/</a></p>
-        <p><a href="https://datatracker.ietf.org/doc/html/rfc5245">ICE rfc5245</a></p>
-        <pre>window.localStorage.debug = 'simple-peer';</pre>
-      </div>
-    `;
+function init() {
+  if (location.pathname == '/' && location.hostname == 'poc.lif.zone') {
+    document.body.innerHTML = "\n      <div>\n        <div><b>LIF</b></div>\n        <div>\n          <input type=button value=\"Get clients\" onClick=\"wsc_get_clients()\">\n        </div>\n        <div>\n          Connect to: <input size=30 id=dst>\n          <input id=ws_msg value=MY_MESSAGE>\n          <select id=ice_servers>\n            <option value=\"all_stun\">All STUN</option>\n            <option value=\"all\">All STUN+TURN</option>\n            <option value=\"google\">Google STUN</option>\n            <option value=\"twilio\">Twilio STUN</option>\n            <option value=\"stun\">LIF STUN</option>\n            <option value=\"turn\">LIF TURN</option>\n            <option value=\"stun_bad\">Not working STUN</option>\n            <option value=\"turn_bad\">Not working TURN</option>\n          </select>\n          <input type=button value=Ping onClick=\"wsc_ping()\">\n          <input type=button id=webrtc_connect_btn value=\"WebRTC Connect\"\n            onClick=\"wsc_webrtc_connect()\">\n          <input type=checkbox id=trickle checked>Trickle</checkbox>\n        </div>\n        <div><b id=uuid></b></div>\n        <div>\n          Clients:\n          <div id=clients></div>\n        </div>\n        <div>\n          <b>Local SDP</b>\n          <div id=local></div>\n        <div>\n        <div>\n          <b>Remote SDP</b>\n          <div id=remote></div>\n        <div>\n        <div>\n          <br><b>Events:</b>\n          <div id=log></div>\n        <div>\n      </div>\n      <div>\n        <hr>\n        <b>debugging:</b>\n        <p><a href=\"chrome://webrtc-internals\">chrome://webrtc-internals</a></p>\n        <p><a href=\"https://test.webrtc.org/\">https://test.webrtc.org/</a></p>\n        <p><a href=\"https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/\">https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/</a></p>\n        <p><a href=\"https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them\">https://cloudbees.com/blog/webrtc-issues-and-how-to-debug-them</a></p>\n        <p><a href=\"https://webrtchacks.com/sdp-anatomy/\">https://webrtchacks.com/sdp-anatomy/</a></p>\n        <p><a href=\"https://datatracker.ietf.org/doc/html/rfc5245\">ICE rfc5245</a></p>\n        <pre>window.localStorage.debug = 'simple-peer';</pre>\n      </div>\n    ";
     connect();
-  }
-  else if (window.self!==window.top)
-    document.body.innerHTML = 'iframe for '+location.href;
-  else
-  {
-    document.body.innerHTML = '<iframe src="'+
-      encodeURI(location.pathname)+'"></iframe>';
+  } else if (window.self !== window.top) document.body.innerHTML = 'iframe for ' + location.href;else {
+    document.body.innerHTML = '<iframe src="' + encodeURI(location.pathname) + '"></iframe>';
   }
 }
 
 init();
 
-
 },{"../lib/ws_client.js":1,"../util/log.js":57,"../util/util.js":58,"sdp-transform":18,"simple-peer":21}],56:[function(require,module,exports){
-'use strict'; /*jslint node:true*/
-const E = module.exports = {};
+'use strict';
+/*jslint node:true*/
 
-E.months_long = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
-E.months_short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
-    'Sep', 'Oct', 'Nov', 'Dec'];
-const months_short_lc = E.months_short.map(function(m){
-  return m.toLowerCase(); });
+var E = module.exports = {};
+E.months_long = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+E.months_short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var months_short_lc = E.months_short.map(function (m) {
+  return m.toLowerCase();
+});
 
-function pad(num, size){ return ('000'+num).slice(-size); }
+function pad(num, size) {
+  return ('000' + num).slice(-size);
+}
 
 E.get = date_get;
-function date_get(d, _new){
+
+function date_get(d, _new) {
   var y, mon, day, H, M, S, _ms;
-  if (d===undefined)
-    return new Date();
-  if (d==null)
-    return new Date(null);
-  if (d instanceof Date)
-    return _new ? new Date(d) : d;
-  if (typeof d=='string')
-  {
+
+  if (d === undefined) return new Date();
+  if (d == null) return new Date(null);
+  if (d instanceof Date) return _new ? new Date(d) : d;
+
+  if (typeof d == 'string') {
     var m;
-    d = d.trim();
-    // check for ISO/SQL/JDate date
-    if (m = /^((\d\d\d\d)-(\d\d)-(\d\d)|(\d\d?)-([A-Za-z]{3})-(\d\d(\d\d)?))\s*([\sT](\d\d):(\d\d)(:(\d\d)(\.(\d\d\d))?)?Z?)?$/
-      .exec(d))
-    {
-      H = +m[10]||0; M = +m[11]||0; S = +m[13]||0; _ms = +m[15]||0;
+    d = d.trim(); // check for ISO/SQL/JDate date
+
+    if (m = /^((\d\d\d\d)-(\d\d)-(\d\d)|(\d\d?)-([A-Za-z]{3})-(\d\d(\d\d)?))\s*([\sT](\d\d):(\d\d)(:(\d\d)(\.(\d\d\d))?)?Z?)?$/.exec(d)) {
+      H = +m[10] || 0;
+      M = +m[11] || 0;
+      S = +m[13] || 0;
+      _ms = +m[15] || 0;
+
       if (m[2]) // SQL or ISO date
-      {
-        y = +m[2]; mon = +m[3]; day = +m[4];
-        if (!y && !mon && !day && !H && !M && !S && !_ms)
-            return new Date(NaN);
-        return new Date(Date.UTC(y, mon-1, day, H, M, S, _ms));
-      }
-      if (m[5]) // jdate
-      {
-        y = +m[7];
-        mon = months_short_lc.indexOf(m[6].toLowerCase())+1;
-        day = +m[5];
-        if (m[7].length==2)
         {
-            y = +y;
-            y += y>=70 ? 1900 : 2000;
+          y = +m[2];
+          mon = +m[3];
+          day = +m[4];
+          if (!y && !mon && !day && !H && !M && !S && !_ms) return new Date(NaN);
+          return new Date(Date.UTC(y, mon - 1, day, H, M, S, _ms));
         }
-        return new Date(Date.UTC(y, mon-1, day, H, M, S, _ms));
-      }
-      // cannot reach here
-    }
-    // check for string timestamp
-    if (/^\d+$/.test(d))
-      return new Date(+d);
-    // else might be parsed as non UTC!
+
+      if (m[5]) // jdate
+        {
+          y = +m[7];
+          mon = months_short_lc.indexOf(m[6].toLowerCase()) + 1;
+          day = +m[5];
+
+          if (m[7].length == 2) {
+            y = +y;
+            y += y >= 70 ? 1900 : 2000;
+          }
+
+          return new Date(Date.UTC(y, mon - 1, day, H, M, S, _ms));
+        } // cannot reach here
+
+    } // check for string timestamp
+
+
+    if (/^\d+$/.test(d)) return new Date(+d); // else might be parsed as non UTC!
+
     return new Date(d);
   }
-  if (typeof d=='number')
-    return new Date(d);
-  throw new TypeError('invalid date '+d);
+
+  if (typeof d == 'number') return new Date(d);
+  throw new TypeError('invalid date ' + d);
 }
-E.to_sql_ms = function(d){
+
+E.to_sql_ms = function (d) {
   d = E.get(d);
-  if (isNaN(d))
-      return '0000-00-00 00:00:00.000';
-  return pad(d.getUTCFullYear(), 4)+'-'+pad(d.getUTCMonth()+1, 2)
-  +'-'+pad(d.getUTCDate(), 2)
-  +' '+pad(d.getUTCHours(), 2)+':'+pad(d.getUTCMinutes(), 2)
-  +':'+pad(d.getUTCSeconds(), 2)
-  +'.'+pad(d.getUTCMilliseconds(), 3);
-};
-E.to_sql_sec = function(d){ return E.to_sql_ms(d).slice(0, -4); };
-E.to_sql = function(d){
-  return E.to_sql_ms(d).replace(/( 00:00:00)?....$/, ''); };
-E.to_sql_time_ms = function(d){
-  d = E.get(d);
-  if (isNaN(d))
-      return '00:00:00.000';
-  return pad(d.getUTCHours(), 2)+':'+pad(d.getUTCMinutes(), 2)
-  +':'+pad(d.getUTCSeconds(), 2)
-  +'.'+pad(d.getUTCMilliseconds(), 3);
+  if (isNaN(d)) return '0000-00-00 00:00:00.000';
+  return pad(d.getUTCFullYear(), 4) + '-' + pad(d.getUTCMonth() + 1, 2) + '-' + pad(d.getUTCDate(), 2) + ' ' + pad(d.getUTCHours(), 2) + ':' + pad(d.getUTCMinutes(), 2) + ':' + pad(d.getUTCSeconds(), 2) + '.' + pad(d.getUTCMilliseconds(), 3);
 };
 
-// XXX: add test, optimize for node
-E.monotonic = function(){
-    let now = Date.now(), last = E.monotonic.last||0;
-    if (now < last)
-        now = last;
-    last = now;
-    return now;
+E.to_sql_sec = function (d) {
+  return E.to_sql_ms(d).slice(0, -4);
 };
 
+E.to_sql = function (d) {
+  return E.to_sql_ms(d).replace(/( 00:00:00)?....$/, '');
+};
+
+E.to_sql_time_ms = function (d) {
+  d = E.get(d);
+  if (isNaN(d)) return '00:00:00.000';
+  return pad(d.getUTCHours(), 2) + ':' + pad(d.getUTCMinutes(), 2) + ':' + pad(d.getUTCSeconds(), 2) + '.' + pad(d.getUTCMilliseconds(), 3);
+}; // XXX: add test, optimize for node
+
+
+E.monotonic = function () {
+  var now = Date.now(),
+      last = E.monotonic.last || 0;
+  if (now < last) now = last;
+  last = now;
+  return now;
+};
 
 },{}],57:[function(require,module,exports){
-'use strict'; /*jslint node:true*/
-const date = require('./date.js');
+'use strict';
+/*jslint node:true*/
+
+var date = require('./date.js');
+
 module.exports = log;
+var log_a = [];
 
-let log_a = [];
-
-function log(s, o){
-  log_a.push(date.to_sql_time_ms()+' '+s);
-  console.log(date.to_sql_time_ms()+' '+s, o);
+function log(s, o) {
+  log_a.push(date.to_sql_time_ms() + ' ' + s);
+  console.log(date.to_sql_time_ms() + ' ' + s, o);
   document.querySelector('#log').innerText = log_a.join('\n');
 }
 
-
 },{"./date.js":56}],58:[function(require,module,exports){
-'use strict'; /*jslint node:true*/
-const E = module.exports = {};
+'use strict';
+/*jslint node:true*/
 
-// XXX: add test, optimize for node
-E.monotonic = function(){
-    let now = Date.now(), last = E.monotonic.last||0;
-    if (now < last)
-        now = last;
-    last = now;
-    return now;
-};
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
-// XXX: use etask
-E.wait = function(){
-  let resolve, reject;
-  let p = new Promise((_resolve, _reject)=>{
+var E = module.exports = {}; // XXX: add test, optimize for node
+
+E.monotonic = function () {
+  var now = Date.now(),
+      last = E.monotonic.last || 0;
+  if (now < last) now = last;
+  last = now;
+  return now;
+}; // XXX: use etask
+
+
+E.wait = function () {
+  var resolve, reject;
+  var p = new Promise(function (_resolve, _reject) {
     resolve = _resolve;
     reject = _reject;
   });
-  p.continue = o=>resolve(o);
-  p.throw = error=>reject(error);
+
+  p["continue"] = function (o) {
+    return resolve(o);
+  };
+
+  p["throw"] = function (error) {
+    return reject(error);
+  };
+
   return p;
 };
 
-E.path = function(path){
-    if (Array.isArray(path))
-        return path;
-    path = ''+path;
-    if (!path)
-        return [];
-    return path.split('.');
+E.path = function (path) {
+  if (Array.isArray(path)) return path;
+  path = '' + path;
+  if (!path) return [];
+  return path.split('.');
 };
-E.get = function(o, path, def){
-    path = E.path(path);
-    for (var i=0; i<path.length; i++)
-    {
-        if (!o || typeof o!='object'&&typeof o!='function' || !(path[i] in o))
-            return def;
-        o = o[path[i]];
-    }
-    return o;
+
+E.get = function (o, path, def) {
+  path = E.path(path);
+
+  for (var i = 0; i < path.length; i++) {
+    if (!o || _typeof(o) != 'object' && typeof o != 'function' || !(path[i] in o)) return def;
+    o = o[path[i]];
+  }
+
+  return o;
 };
-E.set = function(o, path, value){
-    var orig = o;
-    path = E.path(path);
-    for (var i=0; i<path.length-1; i++)
-    {
-        var p = path[i];
-        o = o[p] || (o[p] = {});
-    }
-    o[path[path.length-1]] = value;
-    return orig;
+
+E.set = function (o, path, value) {
+  var orig = o;
+  path = E.path(path);
+
+  for (var i = 0; i < path.length - 1; i++) {
+    var p = path[i];
+    o = o[p] || (o[p] = {});
+  }
+
+  o[path[path.length - 1]] = value;
+  return orig;
 };
-E.unset = function(o, path){
-    path = E.path(path);
-    for (var i=0; i<path.length-1; i++)
-    {
-        var p = path[i];
-        if (!o[p])
-            return;
-        o = o[p];
-    }
-    delete o[path[path.length-1]];
+
+E.unset = function (o, path) {
+  path = E.path(path);
+
+  for (var i = 0; i < path.length - 1; i++) {
+    var p = path[i];
+    if (!o[p]) return;
+    o = o[p];
+  }
+
+  delete o[path[path.length - 1]];
 };
 
 },{}]},{},[55]);

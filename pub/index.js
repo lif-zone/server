@@ -1,9 +1,9 @@
 // XXX: replace require with import
-const ws_client = require('../lib/ws_client.js');
-const util = require('../util/util.js');
-const log = require('../util/log.js');
-const Peer = require('simple-peer');
-const SdpTransform = require('sdp-transform');
+import ws_client from '../lib/ws_client.js';
+import util from '../util/util.js';
+import log from '../util/log.js';
+import Peer from 'simple-peer';
+import SdpTransform from 'sdp-transform';
 
 // XXX: mv to webrtc_util.js
 function webrtc_str(data){
