@@ -32976,6 +32976,10 @@ Client.prototype.destroy = function (cb) {
   }
 };
 
+Client.prototype.get_peers = function () {
+  return this.peers;
+};
+
 }).call(this)}).call(this,require("buffer").Buffer)
 },{"./router.js":257,"./wrtc.js":258,"./ws.js":259,"buffer":66,"crypto":77,"debug":78,"events":111,"k-bucket":157,"util":238}],257:[function(require,module,exports){
 (function (Buffer){(function (){
@@ -33863,11 +33867,13 @@ function init_lif() {
 }
 
 function peer_relay_init() {
-  console.log('XXX peer_relay %o', _client["default"]);
-  var me = new _client["default"]({
+  var node = new _client["default"]({
     bootstrap: ['ws://poc.lif.zone:3032']
   });
-  console.log('XXX peer_id %s %o', _util["default"].buf_to_str(me.id), me);
+  console.log('XXX node_id %s %o', _util["default"].buf_to_str(node.id), node);
+  node.on('peer', function (o) {
+    console.log('XXX peers %o', node.get_peers());
+  });
 }
 
 init();

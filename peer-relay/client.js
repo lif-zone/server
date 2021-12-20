@@ -223,3 +223,6 @@ Client.prototype.destroy = function (cb) {
     peers[i].destroy()
   }
 }
+
+Client.prototype.get_peers = function(){ return this.peers; };
+
