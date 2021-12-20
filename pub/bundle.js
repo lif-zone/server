@@ -62638,7 +62638,7 @@ function send(dst, data) {
 function peer_relay_init() {
   var react_root = document.querySelector('#react_root');
   var create_element = _react["default"].createElement;
-  var port = qs_o.port;
+  var port = qs_o.port || 3032;
 
   _reactDom["default"].render(create_element(Page), react_root);
 
