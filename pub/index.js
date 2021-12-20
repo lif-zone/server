@@ -4,7 +4,7 @@ import Node from '../peer-relay/client.js';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-let page, g_data = 'hello', node;
+let node, page, g_data = 'hello', g_dst;
 
 function init(){
   if (location.pathname=='/' &&
@@ -24,10 +24,14 @@ function init(){
 
 class Peer extends React.Component {
   on_send = ()=>node.send(this.props.peer.id, g_data);
+  on_peer = ()=>page.setState({dst:
+    g_dst = util.buf_to_str(this.props.peer.id)});
   render(){
     let {peer} = this.props;
+    let s = {cursor: 'pointer'};
     return <div>
-      <span>id {util.buf_to_str(peer.id)} </span>
+      <span style={s} onClick={this.on_peer}>
+        id {util.buf_to_str(peer.id)} </span>
       {peer.ws ? <span> ws {peer.ws.url} </span> : <span>wrtc </span>}
       <button onClick={this.on_send}>send</button>
     </div>;
@@ -49,12 +53,22 @@ class Page extends React.Component {
     super(props);
     page = this;
   } // XXX HACK: find proper way to do it
-  state = {};
+  state = {dst: ''};
   on_data = e=>g_data = e.target.value;
+  on_dst = e=>{
+    g_dst = e.target.value;
+    console.log('XXX g_dst %s', g_dst);
+    this.setState({dst: g_dst});
+  };
+  on_send = ()=>node.send(g_dst, g_data);
   render(){
-    let {peers, log, id} = this.state;
+    let {peers, log, id, dst} = this.state;
     return <div>
-      <div>data <input defaultValue={g_data} onChange={this.on_data}/></div>
+      <div>
+        <b>Dst</b> <input value={dst} onChange={this.on_dst}/>
+        <b> Data</b> <input defaultValue={g_data} onChange={this.on_data}/>
+        <button onClick={this.on_send}>send</button>
+      </div>
       <div><b>Self ID</b> {id}</div>
       <div>
         <b>Log</b>

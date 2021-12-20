@@ -61894,9 +61894,10 @@ function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.g
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-var page,
+var node,
+    page,
     g_data = 'hello',
-    node;
+    g_dst;
 
 function init() {
   if (location.pathname == '/' && location.hostname == 'poc.lif.zone') {
@@ -61927,6 +61928,12 @@ var Peer = /*#__PURE__*/function (_React$Component) {
       return node.send(_this.props.peer.id, g_data);
     });
 
+    _defineProperty(_assertThisInitialized(_this), "on_peer", function () {
+      return page.setState({
+        dst: g_dst = _util["default"].buf_to_str(_this.props.peer.id)
+      });
+    });
+
     return _this;
   }
 
@@ -61934,7 +61941,13 @@ var Peer = /*#__PURE__*/function (_React$Component) {
     key: "render",
     value: function render() {
       var peer = this.props.peer;
-      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("span", null, "id ", _util["default"].buf_to_str(peer.id), " "), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url, " ") : /*#__PURE__*/_react["default"].createElement("span", null, "wrtc "), /*#__PURE__*/_react["default"].createElement("button", {
+      var s = {
+        cursor: 'pointer'
+      };
+      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("span", {
+        style: s,
+        onClick: this.on_peer
+      }, "id ", _util["default"].buf_to_str(peer.id), " "), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url, " ") : /*#__PURE__*/_react["default"].createElement("span", null, "wrtc "), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_send
       }, "send"));
     }
@@ -61971,10 +61984,25 @@ var Page = /*#__PURE__*/function (_React$Component2) {
 
     _this2 = _super2.call(this, props);
 
-    _defineProperty(_assertThisInitialized(_this2), "state", {});
+    _defineProperty(_assertThisInitialized(_this2), "state", {
+      dst: ''
+    });
 
     _defineProperty(_assertThisInitialized(_this2), "on_data", function (e) {
       return g_data = e.target.value;
+    });
+
+    _defineProperty(_assertThisInitialized(_this2), "on_dst", function (e) {
+      g_dst = e.target.value;
+      console.log('XXX g_dst %s', g_dst);
+
+      _this2.setState({
+        dst: g_dst
+      });
+    });
+
+    _defineProperty(_assertThisInitialized(_this2), "on_send", function () {
+      return node.send(g_dst, g_data);
     });
 
     page = _assertThisInitialized(_this2);
@@ -61987,11 +62015,18 @@ var Page = /*#__PURE__*/function (_React$Component2) {
     value: function render() {
       var _this$state = this.state,
           peers = _this$state.peers,
-          log = _this$state.log;
-      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("div", null, "data ", /*#__PURE__*/_react["default"].createElement("input", {
+          log = _this$state.log,
+          id = _this$state.id,
+          dst = _this$state.dst;
+      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
+        value: dst,
+        onChange: this.on_dst
+      }), /*#__PURE__*/_react["default"].createElement("b", null, " Data"), " ", /*#__PURE__*/_react["default"].createElement("input", {
         defaultValue: g_data,
         onChange: this.on_data
-      })), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", node && _util["default"].buf_to_str(node.id)), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("div", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
+      }), /*#__PURE__*/_react["default"].createElement("button", {
+        onClick: this.on_send
+      }, "send")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", id), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("div", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
         peers: peers
       }));
     }
@@ -62021,6 +62056,9 @@ function peer_relay_init() {
     return page.setState({
       log: data
     });
+  });
+  page.setState({
+    id: _util["default"].buf_to_str(node.id)
   });
 }
 
