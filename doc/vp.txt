@@ -3,7 +3,9 @@
   * implement basic debug page
     - find_all_peers
   - wss support
-  - fix coding convetion and enable eslint
+  - fix coding convetion
+    - fix eslint
+    - convery to es6
   - make hex str the default for node ids (and use buffer only in interal api)
   - node id
     - use public/private keys for node-id
