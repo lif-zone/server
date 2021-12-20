@@ -1,6 +1,7 @@
 - peer-relay
   + copy peer-relay implementation
   * implement basic debug page
+    - find_all_peers
   - wss support
   - fix coding convetion and enable eslint
   - make hex str the default for node ids (and use buffer only in interal api)
@@ -16,6 +17,7 @@
   - how to handle order or send messages
   - how to handle ack on send messages
   - rewrite with etask
+  - optimize localhost/same-network messaing
 - cleanup
   + add react (+jsx linter)
   - rm old ws/wrtc code and friends
