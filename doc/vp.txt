@@ -15,5 +15,6 @@
   - how to handle ack on send messages
   - rewrite with etask
 - cleanup
+  + add react (+jsx linter)
   - rm old ws/wrtc code and friends
   - move dev modules to dev dependncy in packages.json
