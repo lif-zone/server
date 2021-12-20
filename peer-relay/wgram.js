@@ -1,3 +1,4 @@
+/* eslint-disable */ // XXX: fix and rm
 'use strict'
 
 var EventEmitter = require('events').EventEmitter

@@ -1,3 +1,4 @@
+/* eslint-disable */ // XXX: fix and rm
 var KBucket = require('k-bucket')
 var crypto = require('crypto')
 var inherits = require('util').inherits

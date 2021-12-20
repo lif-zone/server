@@ -1,3 +1,4 @@
+/* eslint-disable */ // XXX: fix and rm
 var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
 var debug = require('debug')('peer-relay:router')
