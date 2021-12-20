@@ -1,10 +1,13 @@
 /* eslint-disable */ // XXX: fix and rm
-var inherits = require('util').inherits
-var EventEmitter = require('events').EventEmitter
-var debug = require('debug')('peer-relay:ws')
-var WebSocket = getWebSocket()
+import {inherits} from 'util';
+import {EventEmitter} from 'events';
+import _debug from 'debug'
+import WS from 'ws';
+const debug = _debug('peer-relay:ws');
+const WebSocket = getWebSocket();
+import {WebSocketServer} from 'ws';
 
-module.exports = WsConnector
+export default WsConnector;
 
 inherits(WsConnector, EventEmitter)
 function WsConnector (id, port) {
@@ -16,7 +19,9 @@ function WsConnector (id, port) {
   self.url = null
 
   if (port != null) {
-    self._wss = new WebSocket.Server({ port: port })
+    console.log('XXX WebSocket %o', Object.keys(WebSocket));
+    console.log('XXX WS %o', Object.keys(WS));
+    self._wss = new WebSocketServer({ port: port })
     self._wss.on('connection', onConnection)
     self._wss.on('listening', onListen)
     if (port !== 0) self.url = 'ws://localhost:' + port
@@ -186,5 +191,5 @@ WsChannel.prototype.destroy = function () {
 
 function getWebSocket () {
   if (typeof window !== 'undefined' && window.WebSocket) return window.WebSocket
-  return require('ws')
+  return WS;
 }

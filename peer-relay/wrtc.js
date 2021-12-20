@@ -1,10 +1,11 @@
 /* eslint-disable */ // XXX: fix and rm
-var inherits = require('util').inherits
-var EventEmitter = require('events').EventEmitter
-var SimplePeer = require('simple-peer')
-var debug = require('debug')('peer-relay:wrtc')
+import {inherits} from 'util';
+import {EventEmitter} from 'events';
+import SimplePeer from 'simple-peer';
+import _debug from 'debug';
+const debug = _debug('peer-relay:wrtc');
 
-module.exports = WrtcConnector
+export default WrtcConnector;
 
 inherits(WrtcConnector, EventEmitter)
 function WrtcConnector (id, router, wrtc) {

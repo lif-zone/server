@@ -1,9 +1,10 @@
 /* eslint-disable */ // XXX: fix and rm
-var EventEmitter = require('events').EventEmitter
-var inherits = require('util').inherits
-var debug = require('debug')('peer-relay:router')
+import {EventEmitter} from 'events';
+import {inherits} from 'util';
+import _debug from 'debug';
+const debug = _debug('peer-relay:router');
 
-module.exports = Router
+export default Router;
 
 inherits(Router, EventEmitter)
 function Router (channels, id) {

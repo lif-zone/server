@@ -1,14 +1,15 @@
 /* eslint-disable */ // XXX: fix and rm
-var KBucket = require('k-bucket')
-var crypto = require('crypto')
-var inherits = require('util').inherits
-var EventEmitter = require('events').EventEmitter
-var debug = require('debug')('peer-relay:client')
-var Router = require('./router')
-var WsConnector = require('./ws')
-var WrtcConnector = require('./wrtc')
+import KBucket from 'k-bucket';
+import crypto from 'crypto';
+import {inherits} from 'util';
+import {EventEmitter} from 'events';
+import _debug from 'debug';
+import Router from './router.js';
+import WsConnector from './ws.js';
+import WrtcConnector from './wrtc.js';
+export default Client;
 
-module.exports = Client
+const debug = _debug('peer-relay:client');
 
 inherits(Client, EventEmitter)
 function Client (opts) {

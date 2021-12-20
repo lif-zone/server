@@ -5,7 +5,7 @@ import util from '../util/util.js';
 import log from '../util/log.js';
 import Peer from 'simple-peer';
 import SdpTransform from 'sdp-transform';
-import peer_relay from 'peer-relay/client.js';
+import peer_relay from '../peer-relay/client.js';
 
 // XXX: mv to webrtc_util.js
 function webrtc_str(data){
@@ -264,6 +264,7 @@ function init_lif(){
 
 function peer_relay_init(){
   console.log('XXX peer_relay %o', peer_relay);
+  new peer_relay({bootstrap: ['ws://poc.lif.zone:3032']});
 }
 
 init();
