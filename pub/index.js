@@ -6,6 +6,8 @@ import log from '../util/log.js';
 import Peer from 'simple-peer';
 import SdpTransform from 'sdp-transform';
 import Node from '../peer-relay/client.js';
+import React from 'react';
+import ReactDOM from 'react-dom';
 
 // XXX: mv to webrtc_util.js
 function webrtc_str(data){
@@ -190,7 +192,9 @@ function init(){
   {
     document.body.innerHTML = `
       <div>
-        <div><b>LIF</b></div>
+        <div id=react_root></div>
+        <hr>
+        <div><b>OBSOLETE</b></div>
         <div>
           <input type=button value="Get clients" onClick="wsc_get_clients()">
         </div>
@@ -253,6 +257,12 @@ function init(){
   }
 }
 
+class Page extends React.Component {
+  render(){
+    return <div>Render with React</div>;
+  }
+}
+
 function init_lif(){
   let peers = [{uuid: '279a8709-3008-48de-a9af-116e7cd43582',
     ws: 'wss://poc.lif.zone:3031'}];
@@ -263,6 +273,9 @@ function init_lif(){
 }
 
 function peer_relay_init(){
+  const react_root = document.querySelector('#react_root');
+  const create_element = React.createElement;
+  ReactDOM.render(create_element(Page), react_root);
   let node = new Node({bootstrap: ['ws://poc.lif.zone:3032']});
   console.log('XXX node_id %s %o', util.buf_to_str(node.id), node);
   node.on('peer', o=>{
