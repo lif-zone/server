@@ -1,12 +1,13 @@
 - peer-relay
   + copy peer-relay implementation
+  - fix coding convetion and enable eslint
+  - make hex str the default for node ids (and use buffer only in interal api)
   - node id
     - use public/private keys for node-id
       - add checksum to messages?
     - save node-id accross runs
     - check whay happen if two nodes have the same id
     - if two tabs, use the same node id?
-  - fix coding convetion and enable eslint
   - add debug information (eg. routing hopes of each packet)
   - install on 3 aws instances for debugging
     (site1, site2, peer1.lif.zone)
