@@ -1,3 +1,4 @@
+'use strict'; /*jslint node:true, browser:true*/
 import {inherits} from 'util';
 import {EventEmitter} from 'events';
 import SimplePeer from 'simple-peer';

@@ -1,3 +1,4 @@
+'use strict'; /*jslint node:true, browser:true*/
 import {EventEmitter} from 'events';
 import {inherits} from 'util';
 import _debug from 'debug';

@@ -1,4 +1,4 @@
-// XXX: replace require with import
+'use strict'; /*jslint node:true, browser:true*/
 import util from '../util/util.js';
 import date from '../util/date.js';
 import Node from '../peer-relay/client.js';

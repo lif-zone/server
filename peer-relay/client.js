@@ -1,3 +1,4 @@
+'use strict'; /*jslint node:true, browser:true*/
 import KBucket from 'k-bucket';
 import crypto from 'crypto';
 import {inherits} from 'util';
