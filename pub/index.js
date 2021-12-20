@@ -105,7 +105,7 @@ function send(dst, data){
 function peer_relay_init(){
   const react_root = document.querySelector('#react_root');
   const create_element = React.createElement;
-  let port = qs_o.port;
+  let port = qs_o.port||3032;
   ReactDOM.render(create_element(Page), react_root);
   node = new Node({bootstrap: ['ws://poc.lif.zone:'+port]});
   console.log('node id %s %o', util.buf_to_str(node.id), node);
