@@ -32,7 +32,8 @@
     "through2": "^3.0.0",
     "util": "0.12.4",
     "uuid": "8.3.2",
-    "ws": "8.3.0"
+    "ws": "8.3.0",
+    "query-string": "7.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.16.5",

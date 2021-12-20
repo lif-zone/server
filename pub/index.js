@@ -4,6 +4,8 @@ import date from '../util/date.js';
 import Node from '../peer-relay/client.js';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import queryString from 'query-string';
+let qs_o = queryString.parse(location.search);
 
 let node, page, g_data = 'hello', g_dst, g_log = [];
 
@@ -61,10 +63,20 @@ class Page extends React.Component {
     this.setState({dst: g_dst});
   };
   on_send = ()=>send(g_dst, g_data);
+  on_server = e=>{
+    // XXX HACK: need proper API for querystring
+    let port = e.target.value;
+    location.href = location.pathname+'?port='+encodeURIComponent(port);
+  }
   render(){
     let {peers, log, id, dst} = this.state;
     return <div>
       <div>
+        <b>Connected to:</b>
+        <select onChange={this.on_server} value={qs_o.port}>
+          <option value='3032'>Port 3032</option>
+          <option value='3033'>Port 3033</option>
+        </select>
         <b>Dst</b> <input value={dst} onChange={this.on_dst}/>
         <b> Data</b> <input defaultValue={g_data} onChange={this.on_data}/>
         <button onClick={this.on_send}>send</button>
@@ -93,8 +105,9 @@ function send(dst, data){
 function peer_relay_init(){
   const react_root = document.querySelector('#react_root');
   const create_element = React.createElement;
+  let port = qs_o.port;
   ReactDOM.render(create_element(Page), react_root);
-  node = new Node({bootstrap: ['ws://poc.lif.zone:3032']});
+  node = new Node({bootstrap: ['ws://poc.lif.zone:'+port]});
   console.log('node id %s %o', util.buf_to_str(node.id), node);
   node.on('peer', o=>{
     let peers = node.get_peers().toArray();

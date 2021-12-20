@@ -6,6 +6,7 @@
   - wss support
   - fix coding convetion
     + fix eslint
+    - fix eslint on test.js/wgram.js
     + coding conventions
     - convery to es6 (eg. class)
   - make hex str the default for node ids (and use buffer only in interal api)
@@ -23,5 +24,7 @@
   - rewrite with etask
 - cleanup
   + add react (+jsx linter)
+  - orgnize all log prints with debug
+    - add ts to debug prints
   - rm old ws/wrtc code and friends
   - move dev modules to dev dependncy in packages.json

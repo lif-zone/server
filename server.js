@@ -13,6 +13,7 @@ function init(){
   ws_server.start(); // XXX: need ws_server.stop()
   turn_server.start(); // XXX: need turn_server.stop()
   new peer_relay({bootstrap: [], port: 3032});
+  new peer_relay({bootstrap: [], port: 3033});
 }
 
 init();
