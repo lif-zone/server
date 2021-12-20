@@ -5,9 +5,9 @@
   - wss support
   - copy test.js
   - fix coding convetion
-    - fix eslint
-    - coding conventions
-    - convery to es6
+    + fix eslint
+    + coding conventions
+    - convery to es6 (eg. class)
   - make hex str the default for node ids (and use buffer only in interal api)
   - node id
     - use public/private keys for node-id
