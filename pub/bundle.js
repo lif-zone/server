@@ -61640,8 +61640,6 @@ function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && 
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
-/* eslint-disable */
-// XXX: fix and rm
 var debug = (0, _debug2["default"])('peer-relay:ws');
 var WebSocket = getWebSocket();
 var _default = WsConnector;
@@ -61656,8 +61654,6 @@ function WsConnector(id, port) {
   self.url = null;
 
   if (port != null) {
-    console.log('XXX WebSocket %o', Object.keys(WebSocket));
-    console.log('XXX WS %o', Object.keys(_ws["default"]));
     self._wss = new _ws.WebSocketServer({
       port: port
     });
@@ -61795,9 +61791,7 @@ WsChannel.prototype._onMessage = function (data) {
     self._debug('OPEN');
 
     self.emit('open');
-  } else {
-    self.emit('message', json);
-  }
+  } else self.emit('message', json);
 };
 
 WsChannel.prototype._onError = function (err) {
