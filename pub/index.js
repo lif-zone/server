@@ -57,7 +57,6 @@ class Page extends React.Component {
   on_data = e=>g_data = e.target.value;
   on_dst = e=>{
     g_dst = e.target.value;
-    console.log('XXX g_dst %s', g_dst);
     this.setState({dst: g_dst});
   };
   on_send = ()=>node.send(g_dst, g_data);
