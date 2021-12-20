@@ -61187,20 +61187,9 @@ Client.prototype.send = function (id, data) {
 
 Client.prototype._onMessage = function (msg, from) {
   var self = this;
-  if (self.destroyed) return;
+  if (self.destroyed) return; // self._debug('RECV', from.toString('hex', 0, 2), JSON.stringify(msg.data))
 
-  if (msg.type === 'user') {
-    // self._debug('RECV', from.toString('hex', 0, 2), JSON.stringify(msg.data))
-    self.emit('message', msg.data, from);
-  } else if (msg.type === 'findPeers') {
-    self._onFindPeers(msg, from);
-  } else if (msg.type === 'foundPeers') {
-    self._onFoundPeers(msg, from);
-  } else if (msg.type === 'handshake-offer') {
-    self._onHandshakeOffer(msg, from);
-  } else if (msg.type === 'handshake-answer') {
-    self._onHandshakeAnswer(msg, from);
-  }
+  if (msg.type === 'user') self.emit('message', msg.data, from);else if (msg.type === 'findPeers') self._onFindPeers(msg, from);else if (msg.type === 'foundPeers') self._onFoundPeers(msg, from);else if (msg.type === 'handshake-offer') self._onHandshakeOffer(msg, from);else if (msg.type === 'handshake-answer') self._onHandshakeAnswer(msg, from);
 };
 
 Client.prototype._onFindPeers = function (msg, from) {

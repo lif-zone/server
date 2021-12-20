@@ -3,8 +3,10 @@
   * implement basic debug page
     - find_all_peers
   - wss support
+  - copy test.js
   - fix coding convetion
     - fix eslint
+    - coding conventions
     - convery to es6
   - make hex str the default for node ids (and use buffer only in interal api)
   - node id
