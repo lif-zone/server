@@ -17,7 +17,6 @@
   - how to handle order or send messages
   - how to handle ack on send messages
   - rewrite with etask
-  - optimize localhost/same-network messaing
 - cleanup
   + add react (+jsx linter)
   - rm old ws/wrtc code and friends
