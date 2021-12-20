@@ -61326,8 +61326,7 @@ function Router(channels, id) {
 
   self._channels.on('added', onChannelAdded);
 
-  self._channels.on('removed', onChannelRemoved); // Add listeners for initial channels
-
+  self._channels.on('removed', onChannelRemoved);
 
   var _iterator = _createForOfIteratorHelper(self._channels.toArray()),
       _step;
@@ -61372,10 +61371,7 @@ Router.prototype._send = function (msg) {
   var self = this;
   if (msg.path.length >= self.maxHops) return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
 
-  if (self._channels.count() === 0) {
-    self._queue.push(msg);
-  }
-
+  if (self._channels.count() === 0) self._queue.push(msg);
   msg.path.push(self.id.toString('hex'));
   var target = new Buffer(msg.to, 'hex');
 
