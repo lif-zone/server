@@ -61894,6 +61894,10 @@ function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.g
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
+var page,
+    g_data = 'hello',
+    node;
+
 function init() {
   if (location.pathname == '/' && location.hostname == 'poc.lif.zone') {
     document.body.innerHTML = '<div id=react_root></div>';
@@ -61919,8 +61923,8 @@ var Peer = /*#__PURE__*/function (_React$Component) {
 
     _this = _super.call.apply(_super, [this].concat(args));
 
-    _defineProperty(_assertThisInitialized(_this), "on_click", function () {
-      console.log('XXX click %o', _this.props.peer);
+    _defineProperty(_assertThisInitialized(_this), "on_send", function () {
+      return node.send(_this.props.peer.id, g_data);
     });
 
     return _this;
@@ -61930,13 +61934,9 @@ var Peer = /*#__PURE__*/function (_React$Component) {
     key: "render",
     value: function render() {
       var peer = this.props.peer;
-      var s = {
-        cursor: 'pointer'
-      };
-      return /*#__PURE__*/_react["default"].createElement("div", {
-        style: s,
-        onClick: this.on_click
-      }, /*#__PURE__*/_react["default"].createElement("span", null, "id ", _util["default"].buf_to_str(peer.id)), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url) : /*#__PURE__*/_react["default"].createElement("span", null, " wrtc "));
+      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("span", null, "id ", _util["default"].buf_to_str(peer.id)), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url) : /*#__PURE__*/_react["default"].createElement("span", null, " wrtc "), /*#__PURE__*/_react["default"].createElement("button", {
+        onClick: this.on_send
+      }, "send"));
     }
   }]);
 
@@ -61959,8 +61959,6 @@ function Peers(props) {
   return a;
 }
 
-var page;
-
 var Page = /*#__PURE__*/function (_React$Component2) {
   _inherits(Page, _React$Component2);
 
@@ -61975,6 +61973,10 @@ var Page = /*#__PURE__*/function (_React$Component2) {
 
     _defineProperty(_assertThisInitialized(_this2), "state", {});
 
+    _defineProperty(_assertThisInitialized(_this2), "on_data", function (e) {
+      return g_data = e.target.value;
+    });
+
     page = _assertThisInitialized(_this2);
     return _this2;
   } // XXX HACK: find proper way to do it
@@ -61984,7 +61986,10 @@ var Page = /*#__PURE__*/function (_React$Component2) {
     key: "render",
     value: function render() {
       var peers = this.state.peers;
-      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Peers:"), /*#__PURE__*/_react["default"].createElement(Peers, {
+      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("div", null, "data ", /*#__PURE__*/_react["default"].createElement("input", {
+        value: g_data,
+        onChange: this.on_data
+      })), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
         peers: peers
       }));
     }
@@ -61999,7 +62004,7 @@ function peer_relay_init() {
 
   _reactDom["default"].render(create_element(Page), react_root);
 
-  var node = new _client["default"]({
+  node = new _client["default"]({
     bootstrap: ['ws://poc.lif.zone:3032']
   });
   console.log('XXX node_id %s %o', _util["default"].buf_to_str(node.id), node);

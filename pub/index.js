@@ -4,6 +4,8 @@ import Node from '../peer-relay/client.js';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+let page, g_data = 'hello', node;
+
 function init(){
   if (location.pathname=='/' &&
     location.hostname=='poc.lif.zone')
@@ -21,13 +23,13 @@ function init(){
 }
 
 class Peer extends React.Component {
-  on_click = ()=>{ console.log('XXX click %o', this.props.peer); };
+  on_send = ()=>node.send(this.props.peer.id, g_data);
   render(){
     let {peer} = this.props;
-    let s = {cursor: 'pointer'};
-    return <div style={s} onClick={this.on_click}>
+    return <div>
       <span>id {util.buf_to_str(peer.id)}</span>
       {peer.ws ? <span> ws {peer.ws.url}</span> : <span> wrtc </span>}
+      <button onClick={this.on_send}>send</button>
     </div>;
   }
 }
@@ -42,17 +44,18 @@ function Peers(props){
   return a;
 }
 
-let page;
 class Page extends React.Component {
   constructor(props){
     super(props);
     page = this;
   } // XXX HACK: find proper way to do it
   state = {};
+  on_data = e=>g_data = e.target.value;
   render(){
     let {peers} = this.state;
     return <div>
-      <b>Peers:</b>
+      <div>data <input value={g_data} onChange={this.on_data}/></div>
+      <b>Peers</b>
       <Peers peers={peers}/>
     </div>;
   }
@@ -62,7 +65,7 @@ function peer_relay_init(){
   const react_root = document.querySelector('#react_root');
   const create_element = React.createElement;
   ReactDOM.render(create_element(Page), react_root);
-  let node = new Node({bootstrap: ['ws://poc.lif.zone:3032']});
+  node = new Node({bootstrap: ['ws://poc.lif.zone:3032']});
   console.log('XXX node_id %s %o', util.buf_to_str(node.id), node);
   node.on('peer', o=>{
     let peers = node.get_peers().toArray();
