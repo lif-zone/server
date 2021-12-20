@@ -20,12 +20,16 @@ function init(){
   }
 }
 
-function Peer(props){
-  let {peer} = props;
-  return <div>
-    <span>id {util.buf_to_str(peer.id)}</span>
-    {peer.ws ? <span> ws {peer.ws.url}</span> : <span> wrtc </span>}
-  </div>;
+class Peer extends React.Component {
+  on_click = ()=>{ console.log('XXX click %o', this.props.peer); };
+  render(){
+    let {peer} = this.props;
+    let s = {cursor: 'pointer'};
+    return <div style={s} onClick={this.on_click}>
+      <span>id {util.buf_to_str(peer.id)}</span>
+      {peer.ws ? <span> ws {peer.ws.url}</span> : <span> wrtc </span>}
+    </div>;
+  }
 }
 
 function Peers(props){

@@ -61903,10 +61903,45 @@ function init() {
   }
 }
 
-function Peer(props) {
-  var peer = props.peer;
-  return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("span", null, "id ", _util["default"].buf_to_str(peer.id)), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url) : /*#__PURE__*/_react["default"].createElement("span", null, " wrtc "));
-}
+var Peer = /*#__PURE__*/function (_React$Component) {
+  _inherits(Peer, _React$Component);
+
+  var _super = _createSuper(Peer);
+
+  function Peer() {
+    var _this;
+
+    _classCallCheck(this, Peer);
+
+    for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    _this = _super.call.apply(_super, [this].concat(args));
+
+    _defineProperty(_assertThisInitialized(_this), "on_click", function () {
+      console.log('XXX click %o', _this.props.peer);
+    });
+
+    return _this;
+  }
+
+  _createClass(Peer, [{
+    key: "render",
+    value: function render() {
+      var peer = this.props.peer;
+      var s = {
+        cursor: 'pointer'
+      };
+      return /*#__PURE__*/_react["default"].createElement("div", {
+        style: s,
+        onClick: this.on_click
+      }, /*#__PURE__*/_react["default"].createElement("span", null, "id ", _util["default"].buf_to_str(peer.id)), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url) : /*#__PURE__*/_react["default"].createElement("span", null, " wrtc "));
+    }
+  }]);
+
+  return Peer;
+}(_react["default"].Component);
 
 function Peers(props) {
   var a = [],
@@ -61926,22 +61961,22 @@ function Peers(props) {
 
 var page;
 
-var Page = /*#__PURE__*/function (_React$Component) {
-  _inherits(Page, _React$Component);
+var Page = /*#__PURE__*/function (_React$Component2) {
+  _inherits(Page, _React$Component2);
 
-  var _super = _createSuper(Page);
+  var _super2 = _createSuper(Page);
 
   function Page(props) {
-    var _this;
+    var _this2;
 
     _classCallCheck(this, Page);
 
-    _this = _super.call(this, props);
+    _this2 = _super2.call(this, props);
 
-    _defineProperty(_assertThisInitialized(_this), "state", {});
+    _defineProperty(_assertThisInitialized(_this2), "state", {});
 
-    page = _assertThisInitialized(_this);
-    return _this;
+    page = _assertThisInitialized(_this2);
+    return _this2;
   } // XXX HACK: find proper way to do it
 
 
