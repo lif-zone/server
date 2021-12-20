@@ -1,4 +1,5 @@
 // XXX: replace require with import
+import lif from '../lib/lif.js';
 import ws_client from '../lib/ws_client.js';
 import util from '../util/util.js';
 import log from '../util/log.js';
@@ -251,5 +252,16 @@ function init(){
   }
 }
 
+function init_lif(){
+  let peers = [{uuid: '279a8709-3008-48de-a9af-116e7cd43582',
+    ws: 'wss://poc.lif.zone:3031'}];
+  let self_uuid = localStorage.lif_self_uuid = localStorage.lif_self_uuid ||
+    lif.new_uuid();
+  let node = lif.new_node(self_uuid);
+  peers.forEach(remote=>node.new_conn(remote));
+}
+
 init();
+init_lif();
+
 
