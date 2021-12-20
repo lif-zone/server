@@ -27,8 +27,8 @@ class Peer extends React.Component {
   render(){
     let {peer} = this.props;
     return <div>
-      <span>id {util.buf_to_str(peer.id)}</span>
-      {peer.ws ? <span> ws {peer.ws.url}</span> : <span> wrtc </span>}
+      <span>id {util.buf_to_str(peer.id)} </span>
+      {peer.ws ? <span> ws {peer.ws.url} </span> : <span>wrtc </span>}
       <button onClick={this.on_send}>send</button>
     </div>;
   }
@@ -52,9 +52,14 @@ class Page extends React.Component {
   state = {};
   on_data = e=>g_data = e.target.value;
   render(){
-    let {peers} = this.state;
+    let {peers, log, id} = this.state;
     return <div>
-      <div>data <input value={g_data} onChange={this.on_data}/></div>
+      <div>data <input defaultValue={g_data} onChange={this.on_data}/></div>
+      <div><b>Self ID</b> {id}</div>
+      <div>
+        <b>Log</b>
+        <div>{log}</div>
+      </div>
       <b>Peers</b>
       <Peers peers={peers}/>
     </div>;
@@ -66,12 +71,14 @@ function peer_relay_init(){
   const create_element = React.createElement;
   ReactDOM.render(create_element(Page), react_root);
   node = new Node({bootstrap: ['ws://poc.lif.zone:3032']});
-  console.log('XXX node_id %s %o', util.buf_to_str(node.id), node);
+  console.log('node id %s %o', util.buf_to_str(node.id), node);
   node.on('peer', o=>{
     let peers = node.get_peers().toArray();
     console.log('XXX peers %o', node.get_peers().toArray());
     page.setState({peers});
   });
+  node.on('message', (data, from)=>page.setState({log: data}));
+  page.setState({id: util.buf_to_str(node.id)});
 }
 
 init();

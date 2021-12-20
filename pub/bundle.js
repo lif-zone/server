@@ -61934,7 +61934,7 @@ var Peer = /*#__PURE__*/function (_React$Component) {
     key: "render",
     value: function render() {
       var peer = this.props.peer;
-      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("span", null, "id ", _util["default"].buf_to_str(peer.id)), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url) : /*#__PURE__*/_react["default"].createElement("span", null, " wrtc "), /*#__PURE__*/_react["default"].createElement("button", {
+      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("span", null, "id ", _util["default"].buf_to_str(peer.id), " "), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url, " ") : /*#__PURE__*/_react["default"].createElement("span", null, "wrtc "), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_send
       }, "send"));
     }
@@ -61985,11 +61985,13 @@ var Page = /*#__PURE__*/function (_React$Component2) {
   _createClass(Page, [{
     key: "render",
     value: function render() {
-      var peers = this.state.peers;
+      var _this$state = this.state,
+          peers = _this$state.peers,
+          log = _this$state.log;
       return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("div", null, "data ", /*#__PURE__*/_react["default"].createElement("input", {
-        value: g_data,
+        defaultValue: g_data,
         onChange: this.on_data
-      })), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
+      })), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", node && _util["default"].buf_to_str(node.id)), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("div", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
         peers: peers
       }));
     }
@@ -62007,12 +62009,17 @@ function peer_relay_init() {
   node = new _client["default"]({
     bootstrap: ['ws://poc.lif.zone:3032']
   });
-  console.log('XXX node_id %s %o', _util["default"].buf_to_str(node.id), node);
+  console.log('node id %s %o', _util["default"].buf_to_str(node.id), node);
   node.on('peer', function (o) {
     var peers = node.get_peers().toArray();
     console.log('XXX peers %o', node.get_peers().toArray());
     page.setState({
       peers: peers
+    });
+  });
+  node.on('message', function (data, from) {
+    return page.setState({
+      log: data
     });
   });
 }
