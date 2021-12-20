@@ -1,10 +1,11 @@
 // XXX: replace require with import
 import util from '../util/util.js';
+import date from '../util/date.js';
 import Node from '../peer-relay/client.js';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-let node, page, g_data = 'hello', g_dst;
+let node, page, g_data = 'hello', g_dst, g_log = [];
 
 function init(){
   if (location.pathname=='/' &&
@@ -71,12 +72,17 @@ class Page extends React.Component {
       <div><b>Self ID</b> {id}</div>
       <div>
         <b>Log</b>
-        <div>{log}</div>
+        <pre>{log}</pre>
       </div>
       <b>Peers</b>
       <Peers peers={peers}/>
     </div>;
   }
+}
+
+function add_log(s){
+  g_log.push(date.to_sql_ms()+': '+s);
+  page.setState({log: g_log.join('\n')});
 }
 
 function peer_relay_init(){
@@ -87,10 +93,10 @@ function peer_relay_init(){
   console.log('node id %s %o', util.buf_to_str(node.id), node);
   node.on('peer', o=>{
     let peers = node.get_peers().toArray();
-    console.log('XXX peers %o', node.get_peers().toArray());
     page.setState({peers});
   });
-  node.on('message', (data, from)=>page.setState({log: data}));
+  node.on('message',
+    (data, from)=>add_log(`<msg ${data} src ${util.buf_to_str(from)}`));
   page.setState({id: util.buf_to_str(node.id)});
 }
 

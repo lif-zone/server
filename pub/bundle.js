@@ -61864,6 +61864,8 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 
 var _util = _interopRequireDefault(require("../util/util.js"));
 
+var _date = _interopRequireDefault(require("../util/date.js"));
+
 var _client = _interopRequireDefault(require("../peer-relay/client.js"));
 
 var _react = _interopRequireDefault(require("react"));
@@ -61897,7 +61899,8 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 var node,
     page,
     g_data = 'hello',
-    g_dst;
+    g_dst,
+    g_log = [];
 
 function init() {
   if (location.pathname == '/' && location.hostname == 'poc.lif.zone') {
@@ -61994,7 +61997,6 @@ var Page = /*#__PURE__*/function (_React$Component2) {
 
     _defineProperty(_assertThisInitialized(_this2), "on_dst", function (e) {
       g_dst = e.target.value;
-      console.log('XXX g_dst %s', g_dst);
 
       _this2.setState({
         dst: g_dst
@@ -62026,7 +62028,7 @@ var Page = /*#__PURE__*/function (_React$Component2) {
         onChange: this.on_data
       }), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_send
-      }, "send")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", id), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("div", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
+      }, "send")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", id), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("pre", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
         peers: peers
       }));
     }
@@ -62034,6 +62036,13 @@ var Page = /*#__PURE__*/function (_React$Component2) {
 
   return Page;
 }(_react["default"].Component);
+
+function add_log(s) {
+  g_log.push(_date["default"].to_sql_ms() + ': ' + s);
+  page.setState({
+    log: g_log.join('\n')
+  });
+}
 
 function peer_relay_init() {
   var react_root = document.querySelector('#react_root');
@@ -62047,15 +62056,12 @@ function peer_relay_init() {
   console.log('node id %s %o', _util["default"].buf_to_str(node.id), node);
   node.on('peer', function (o) {
     var peers = node.get_peers().toArray();
-    console.log('XXX peers %o', node.get_peers().toArray());
     page.setState({
       peers: peers
     });
   });
   node.on('message', function (data, from) {
-    return page.setState({
-      log: data
-    });
+    return add_log("<msg ".concat(data, " src ").concat(_util["default"].buf_to_str(from)));
   });
   page.setState({
     id: _util["default"].buf_to_str(node.id)
@@ -62064,7 +62070,111 @@ function peer_relay_init() {
 
 init();
 
-},{"../peer-relay/client.js":248,"../util/util.js":253,"react":190,"react-dom":187}],253:[function(require,module,exports){
+},{"../peer-relay/client.js":248,"../util/date.js":253,"../util/util.js":254,"react":190,"react-dom":187}],253:[function(require,module,exports){
+'use strict';
+/*jslint node:true*/
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports["default"] = void 0;
+var E = {};
+var _default = E;
+exports["default"] = _default;
+E.months_long = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+E.months_short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var months_short_lc = E.months_short.map(function (m) {
+  return m.toLowerCase();
+});
+
+function pad(num, size) {
+  return ('000' + num).slice(-size);
+}
+
+E.get = date_get;
+
+function date_get(d, _new) {
+  var y, mon, day, H, M, S, _ms;
+
+  if (d === undefined) return new Date();
+  if (d == null) return new Date(null);
+  if (d instanceof Date) return _new ? new Date(d) : d;
+
+  if (typeof d == 'string') {
+    var m;
+    d = d.trim(); // check for ISO/SQL/JDate date
+
+    if (m = /^((\d\d\d\d)-(\d\d)-(\d\d)|(\d\d?)-([A-Za-z]{3})-(\d\d(\d\d)?))\s*([\sT](\d\d):(\d\d)(:(\d\d)(\.(\d\d\d))?)?Z?)?$/.exec(d)) {
+      H = +m[10] || 0;
+      M = +m[11] || 0;
+      S = +m[13] || 0;
+      _ms = +m[15] || 0;
+
+      if (m[2]) // SQL or ISO date
+        {
+          y = +m[2];
+          mon = +m[3];
+          day = +m[4];
+          if (!y && !mon && !day && !H && !M && !S && !_ms) return new Date(NaN);
+          return new Date(Date.UTC(y, mon - 1, day, H, M, S, _ms));
+        }
+
+      if (m[5]) // jdate
+        {
+          y = +m[7];
+          mon = months_short_lc.indexOf(m[6].toLowerCase()) + 1;
+          day = +m[5];
+
+          if (m[7].length == 2) {
+            y = +y;
+            y += y >= 70 ? 1900 : 2000;
+          }
+
+          return new Date(Date.UTC(y, mon - 1, day, H, M, S, _ms));
+        } // cannot reach here
+
+    } // check for string timestamp
+
+
+    if (/^\d+$/.test(d)) return new Date(+d); // else might be parsed as non UTC!
+
+    return new Date(d);
+  }
+
+  if (typeof d == 'number') return new Date(d);
+  throw new TypeError('invalid date ' + d);
+}
+
+E.to_sql_ms = function (d) {
+  d = E.get(d);
+  if (isNaN(d)) return '0000-00-00 00:00:00.000';
+  return pad(d.getUTCFullYear(), 4) + '-' + pad(d.getUTCMonth() + 1, 2) + '-' + pad(d.getUTCDate(), 2) + ' ' + pad(d.getUTCHours(), 2) + ':' + pad(d.getUTCMinutes(), 2) + ':' + pad(d.getUTCSeconds(), 2) + '.' + pad(d.getUTCMilliseconds(), 3);
+};
+
+E.to_sql_sec = function (d) {
+  return E.to_sql_ms(d).slice(0, -4);
+};
+
+E.to_sql = function (d) {
+  return E.to_sql_ms(d).replace(/( 00:00:00)?....$/, '');
+};
+
+E.to_sql_time_ms = function (d) {
+  d = E.get(d);
+  if (isNaN(d)) return '00:00:00.000';
+  return pad(d.getUTCHours(), 2) + ':' + pad(d.getUTCMinutes(), 2) + ':' + pad(d.getUTCSeconds(), 2) + '.' + pad(d.getUTCMilliseconds(), 3);
+}; // XXX: add test, optimize for node
+
+
+E.monotonic = function () {
+  var now = Date.now(),
+      last = E.monotonic.last || 0;
+  if (now < last) now = last;
+  last = now;
+  return now;
+};
+
+},{}],254:[function(require,module,exports){
 'use strict';
 /*jslint node:true*/
 
