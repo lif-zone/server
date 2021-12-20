@@ -1,12 +1,18 @@
-- debug
-  - wrap all debug with npm 'debug' and use correct log levels
-- ws
-  - ws client
-    - handle disconnect
-  - ws server
-    - cleanup disconnected connection
-    - limit number of max connections
-
-future:
-- ws
-  - optimize "wire" format (today we use json for headers)
+- peer-relay
+  + copy peer-relay implementation
+  - node id
+    - use public/private keys for node-id
+      - add checksum to messages?
+    - save node-id accross runs
+    - check whay happen if two nodes have the same id
+    - if two tabs, use the same node id?
+  - fix coding convetion and enable eslint
+  - add debug information (eg. routing hopes of each packet)
+  - install on 3 aws instances for debugging
+    (site1, site2, peer1.lif.zone)
+  - how to handle order or send messages
+  - how to handle ack on send messages
+  - rewrite with etask
+- cleanup
+  - rm old ws/wrtc code and friends
+  - move dev modules to dev dependncy in packages.json
