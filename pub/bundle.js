@@ -61468,8 +61468,6 @@ var _debug2 = _interopRequireDefault(require("debug"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
-/* eslint-disable */
-// XXX: fix and rm
 var debug = (0, _debug2["default"])('peer-relay:wrtc');
 var _default = WrtcConnector;
 exports["default"] = _default;
@@ -61502,12 +61500,7 @@ WrtcConnector.prototype._onSignal = function (signal, from) {
   var self = this;
   if (self.destroyed) return;
   var sp = self._pending[from];
-
-  if (sp != null) {
-    sp.signal(signal);
-  } else {
-    self._setupSimplePeer(from, signal);
-  }
+  if (sp != null) sp.signal(signal);else self._setupSimplePeer(from, signal);
 };
 
 WrtcConnector.prototype._setupSimplePeer = function (remoteID, offer) {
