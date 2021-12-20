@@ -20,6 +20,24 @@ function init(){
   }
 }
 
+function Peer(props){
+  let {peer} = props;
+  return <div>
+    <span>id {util.buf_to_str(peer.id)}</span>
+    {peer.ws ? <span> ws {peer.ws.url}</span> : <span> wrtc </span>}
+  </div>;
+}
+
+function Peers(props){
+  let a = [], {peers} = props;
+  if (peers)
+  {
+    peers.forEach(peer=>a.push(<Peer peer={peer}
+      key={util.buf_to_str(peer.id)}/>));
+  }
+  return a;
+}
+
 let page;
 class Page extends React.Component {
   constructor(props){
@@ -31,9 +49,7 @@ class Page extends React.Component {
     let {peers} = this.state;
     return <div>
       <b>Peers:</b>
-      <div>
-        {JSON.stringify(peers)}
-      </div>
+      <Peers peers={peers}/>
     </div>;
   }
 }

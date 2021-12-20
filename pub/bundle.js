@@ -61903,6 +61903,27 @@ function init() {
   }
 }
 
+function Peer(props) {
+  var peer = props.peer;
+  return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("span", null, "id ", _util["default"].buf_to_str(peer.id)), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url) : /*#__PURE__*/_react["default"].createElement("span", null, " wrtc "));
+}
+
+function Peers(props) {
+  var a = [],
+      peers = props.peers;
+
+  if (peers) {
+    peers.forEach(function (peer) {
+      return a.push( /*#__PURE__*/_react["default"].createElement(Peer, {
+        peer: peer,
+        key: _util["default"].buf_to_str(peer.id)
+      }));
+    });
+  }
+
+  return a;
+}
+
 var page;
 
 var Page = /*#__PURE__*/function (_React$Component) {
@@ -61928,7 +61949,9 @@ var Page = /*#__PURE__*/function (_React$Component) {
     key: "render",
     value: function render() {
       var peers = this.state.peers;
-      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Peers:"), /*#__PURE__*/_react["default"].createElement("div", null, JSON.stringify(peers)));
+      return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Peers:"), /*#__PURE__*/_react["default"].createElement(Peers, {
+        peers: peers
+      }));
     }
   }]);
 
@@ -62037,7 +62060,7 @@ E.unset = function (o, path) {
 };
 
 E.buf_to_str = function (b) {
-  return b.toString('hex');
+  return b ? b.toString('hex') : '';
 };
 
 E.buf_from_str = function (s) {

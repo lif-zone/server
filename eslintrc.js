@@ -94,5 +94,7 @@ module.exports = {
         'require-yield': 'warn',
         'arrow-parens': ['warn', 'as-needed'],
         'no-template-curly-in-string': 'warn',
+        // React
+         'react/prop-types': 'off'
     },
 };
