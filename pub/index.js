@@ -24,7 +24,7 @@ function init(){
 }
 
 class Peer extends React.Component {
-  on_send = ()=>node.send(this.props.peer.id, g_data);
+  on_send = ()=>send(this.props.peer.id, g_data);
   on_peer = ()=>page.setState({dst:
     g_dst = util.buf_to_str(this.props.peer.id)});
   render(){
@@ -60,7 +60,7 @@ class Page extends React.Component {
     g_dst = e.target.value;
     this.setState({dst: g_dst});
   };
-  on_send = ()=>node.send(g_dst, g_data);
+  on_send = ()=>send(g_dst, g_data);
   render(){
     let {peers, log, id, dst} = this.state;
     return <div>
@@ -85,6 +85,11 @@ function add_log(s){
   page.setState({log: g_log.join('\n')});
 }
 
+function send(dst, data){
+  add_log(`>msg ${data} dst ${util.buf_to_str(dst)}`);
+  node.send(dst, data);
+}
+
 function peer_relay_init(){
   const react_root = document.querySelector('#react_root');
   const create_element = React.createElement;
@@ -96,7 +101,7 @@ function peer_relay_init(){
     page.setState({peers});
   });
   node.on('message',
-    (data, from)=>add_log(`<msg ${data} src ${util.buf_to_str(from)}`));
+    (data, src)=>add_log(`<msg ${data} src ${util.buf_to_str(src)}`));
   page.setState({id: util.buf_to_str(node.id)});
 }
 
