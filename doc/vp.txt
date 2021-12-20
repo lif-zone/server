@@ -1,5 +1,7 @@
 - peer-relay
   + copy peer-relay implementation
+  * implement basic debug page
+  - wss support
   - fix coding convetion and enable eslint
   - make hex str the default for node ids (and use buffer only in interal api)
   - node id
