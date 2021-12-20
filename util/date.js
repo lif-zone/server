@@ -1,5 +1,6 @@
 'use strict'; /*jslint node:true*/
-const E = module.exports = {};
+const E = {};
+export default E;
 
 E.months_long = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];

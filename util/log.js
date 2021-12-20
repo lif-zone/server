@@ -1,6 +1,6 @@
 'use strict'; /*jslint node:true*/
-const date = require('./date.js');
-module.exports = log;
+import * as date from './date.js';
+export default log;
 
 let log_a = [];
 

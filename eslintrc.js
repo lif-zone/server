@@ -6,9 +6,14 @@ module.exports = {
         node: true,
     },
     'extends': ['eslint:recommended', 'plugin:react/recommended'],
+    parser: '@babel/eslint-parser',
     parserOptions: {
         sourceType: 'module',
         ecmaVersion: 8,
+        requireConfigFile: false,
+        babelOptions: {
+          presets: ['@babel/preset-react']
+        },
     },
     ignorePatterns: ['bundle*.js'],
     rules: {
