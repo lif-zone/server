@@ -2,8 +2,8 @@
   + copy peer-relay implementation
   * implement basic debug page
     - find_all_peers
+  * copy test.js
   - wss support
-  - copy test.js
   - fix coding convetion
     + fix eslint
     + coding conventions
