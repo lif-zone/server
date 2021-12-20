@@ -1,4 +1,5 @@
 'use strict'; /*jslint node:true*/
+import {Buffer} from 'buffer';
 const E = module.exports = {};
 
 // XXX: add test, optimize for node
@@ -62,3 +63,6 @@ E.unset = function(o, path){
     }
     delete o[path[path.length-1]];
 };
+E.buf_to_str = function(b){ return b.toString('hex'); };
+E.buf_from_str = function(s){ return Buffer.from(s, 'hex'); };
+

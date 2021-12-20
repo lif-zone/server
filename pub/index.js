@@ -264,7 +264,8 @@ function init_lif(){
 
 function peer_relay_init(){
   console.log('XXX peer_relay %o', peer_relay);
-  new peer_relay({bootstrap: ['ws://poc.lif.zone:3032']});
+  let me = new peer_relay({bootstrap: ['ws://poc.lif.zone:3032']});
+  console.log('XXX peer_id %s %o', util.buf_to_str(me.id), me);
 }
 
 init();

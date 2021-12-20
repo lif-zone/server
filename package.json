@@ -27,7 +27,8 @@
     "node-turn": "0.0.6",
     "uuid": "8.3.2",
     "k-bucket": "5.1.0",
-    "util": "0.12.4"
+    "util": "0.12.4",
+    "buffer": "6.0.3"
   },
   "devDependencies": {
     "autoprefixer": "10.2.4",
