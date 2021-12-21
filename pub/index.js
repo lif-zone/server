@@ -37,6 +37,8 @@ function init(){
 
 class Peer extends React.Component {
   on_send = ()=>send(this.props.peer.id, g_data);
+  on_connect = ()=>connect(this.props.peer.id);
+  on_debug_get_log = ()=>debug_get_log(this.props.peer.id);
   on_peer = ()=>page.setState({dst: g_dst = bstr(this.props.peer.id)});
   render(){
     let {peer} = this.props;
@@ -48,6 +50,8 @@ class Peer extends React.Component {
         <span> id {bstr(peer.id)} </span>
       </span>
       <button onClick={this.on_send}>send</button>
+      <button onClick={this.on_connect}>connect</button>
+      <button onClick={this.on_debug_get_log}>get log</button>
     </div>;
   }
 }
@@ -75,6 +79,7 @@ class Page extends React.Component {
   };
   on_send = ()=>send(g_dst, g_data);
   on_connect = ()=>connect(g_dst);
+  on_debug_get_log = ()=>debug_get_log(g_dst);
   on_server = e=>{
     qs_o.port = e.target.value;
     location.search = queryString.stringify(qs_o);
@@ -101,6 +106,7 @@ class Page extends React.Component {
         <b> Data</b> <input defaultValue={g_data} onChange={this.on_data}/>
         <button onClick={this.on_send}>send</button>
         <button onClick={this.on_connect}>connect</button>
+        <button onClick={this.on_debug_get_log}>debug_get_log</button>
       </div>
       <div><b>Self ID</b> {id}</div>
       <div>
@@ -130,6 +136,13 @@ function connect(dst, data){
     return add_log(`error missing dst`);
   add_log(`connect dst ${peer_id(dst)}`);
   node.connect(util.buf_from_str(dst), data);
+}
+
+function debug_get_log(dst){
+  if (!dst)
+    return add_log(`error missing dst`);
+  add_log(`debug_get_log dst ${peer_id(dst)}`);
+  node.debug_get_log(util.buf_from_str(dst));
 }
 
 function peer_relay_init(){

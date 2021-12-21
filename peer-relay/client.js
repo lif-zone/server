@@ -112,6 +112,13 @@ Client.prototype.send = function(id, data){
   self.router.send(id, {type: 'user', data: data});
 };
 
+Client.prototype.debug_get_log = function(id){
+  var self = this;
+  if (self.destroyed)
+    return;
+  self.router.send(id, {type: 'debug-get-log', data: ''});
+};
+
 Client.prototype._onMessage = function(msg, from){
   var self = this;
   if (self.destroyed)
@@ -128,6 +135,8 @@ Client.prototype._onMessage = function(msg, from){
     self._onHandshakeOffer(msg, from);
   else if (msg.type === 'handshake-answer')
     self._onHandshakeAnswer(msg, from);
+  else if (msg.type === 'debug-get-log')
+    self._on_debug_get_log(msg, from);
 };
 
 Client.prototype._onFindPeers = function(msg, from){
@@ -168,6 +177,9 @@ Client.prototype._onHandshakeAnswer = function(msg, from){
   else if (msg.data.ws)
     self.wsConnector.connect(msg.data.ws);
 };
+
+Client.prototype._on_debug_get_log = function(msg, from){
+  this.router.send(from, {type: 'debug-send-log', data: 'XXX-data'}); };
 
 Client.prototype._populate = function(){
   var self = this;
