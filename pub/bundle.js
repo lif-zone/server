@@ -62720,7 +62720,7 @@ var Page = /*#__PURE__*/function (_React$Component2) {
   return Page;
 }(_react["default"].Component);
 
-function add_log(s) {
+function add_to_log(s) {
   g_log.push(_date["default"].to_time_ms() + ': ' + s);
   page.setState({
     log: g_log.join('\n')
@@ -62728,20 +62728,20 @@ function add_log(s) {
 }
 
 function send(dst, data) {
-  if (!dst) return add_log("error missing dst");
-  add_log(">msg dst ".concat(peer_id(dst), " ").concat(data));
+  if (!dst) return add_to_log("error missing dst");
+  add_to_log(">msg dst ".concat(peer_id(dst), " ").concat(data));
   node.send(_util["default"].buf_from_str(dst), data);
 }
 
 function connect(dst, data) {
-  if (!dst) return add_log("error missing dst");
-  add_log("connect dst ".concat(peer_id(dst)));
+  if (!dst) return add_to_log("error missing dst");
+  add_to_log("connect dst ".concat(peer_id(dst)));
   node.connect(_util["default"].buf_from_str(dst), data);
 }
 
 function peer_relay_init() {
   window.addEventListener('error', function (e) {
-    return add_log('error ' + e.toString());
+    return add_to_log('error ' + e.toString());
   });
   var id_name = qs_storage + '_node_id';
   var id = localStorage[id_name];
@@ -62759,7 +62759,7 @@ function peer_relay_init() {
 
   _debug["default"].set_trace({
     node: node,
-    cb: add_log
+    cb: add_to_log
   });
 
   node.on('peer', function (id) {

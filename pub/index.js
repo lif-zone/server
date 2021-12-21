@@ -113,27 +113,27 @@ class Page extends React.Component {
   }
 }
 
-function add_log(s){
+function add_to_log(s){
   g_log.push(date.to_time_ms()+': '+s);
   page.setState({log: g_log.join('\n')});
 }
 
 function send(dst, data){
   if (!dst)
-    return add_log(`error missing dst`);
-  add_log(`>msg dst ${peer_id(dst)} ${data}`);
+    return add_to_log(`error missing dst`);
+  add_to_log(`>msg dst ${peer_id(dst)} ${data}`);
   node.send(util.buf_from_str(dst), data);
 }
 
 function connect(dst, data){
   if (!dst)
-    return add_log(`error missing dst`);
-  add_log(`connect dst ${peer_id(dst)}`);
+    return add_to_log(`error missing dst`);
+  add_to_log(`connect dst ${peer_id(dst)}`);
   node.connect(util.buf_from_str(dst), data);
 }
 
 function peer_relay_init(){
-  window.addEventListener('error', e=>add_log('error '+e.toString()));
+  window.addEventListener('error', e=>add_to_log('error '+e.toString()));
   let id_name = qs_storage+'_node_id';
   let id = localStorage[id_name];
   if (!id)
@@ -143,7 +143,7 @@ function peer_relay_init(){
   ReactDOM.render(create_element(Page), react_root);
   node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+qs_port]});
   console.log('node id %s %o', bstr(node.id), node);
-  debug.set_trace({node, cb: add_log});
+  debug.set_trace({node, cb: add_to_log});
   node.on('peer', id=>{
     let peers = node.get_peers().toArray();
     page.setState({peers});

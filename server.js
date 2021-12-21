@@ -1,6 +1,8 @@
 'use strict'; /*jslint node:true*/
 import nconf from 'nconf';
 import util from './util/util.js';
+import date from './util/date.js';
+import debug from './lib/debug.js';
 import dns_server from './lib/dns_server.js';
 import https_server from './lib/https_server.js';
 import peer_relay from './peer-relay/client.js';
@@ -20,9 +22,23 @@ function init(){
   console.log('lif server start');
   // XXX: split into seperate process
   dns_server.start(); // XXX: need dns_server.stop()
-  https_server.start(); // XXX: need https_server.stop()
-  new peer_relay({id, bootstrap: [], port: 3032});
-  new peer_relay({id: id2, bootstrap: ['ws://poc.lif.zone:3032'], port: 3033});
+  https_server.start({debug_get_log}); // XXX: need https_server.stop()
+  let node = new peer_relay({id, bootstrap: [], port: 3032});
+  let node2 = new peer_relay({id: id2,
+    bootstrap: ['ws://poc.lif.zone:3032'], port: 3033});
+  debug.set_trace({node, cb: add_to_log});
+  debug.set_trace({node: node2, cb: add_to_log2});
+  add_to_log('listen port 3032 '+util.buf_to_str(node.id));
+  add_to_log2('listen port 3033 '+util.buf_to_str(node2.id));
+}
+
+const node_log=[], node_log2=[];
+function add_to_log(s){ node_log.push(date.to_time_ms()+': '+s); }
+function add_to_log2(s){ node_log2.push(date.to_time_ms()+': '+s); }
+function debug_get_log(port){
+  if (port==3033)
+    return node_log2;
+  return node_log;
 }
 
 init();
