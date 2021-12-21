@@ -6,11 +6,15 @@ import queryString from 'query-string';
 import util from '../util/util.js';
 import date from '../util/date.js';
 import Node from '../peer-relay/client.js';
+const bstr = util.buf_to_str;
 let qs_o = queryString.parse(location.search);
 let qs_port = qs_o.port||3032;
 let qs_storage = qs_o.storage||'lif';
 
 let node, page, g_data = 'hello', g_dst, g_log = [];
+
+function peer_id(id){
+  return typeof id=='string' ? id.substr(0, 3) : bstr(id).substr(0, 3); }
 
 function init(){
   if (location.pathname=='/' &&
@@ -30,15 +34,14 @@ function init(){
 
 class Peer extends React.Component {
   on_send = ()=>send(this.props.peer.id, g_data);
-  on_peer = ()=>page.setState({dst:
-    g_dst = util.buf_to_str(this.props.peer.id)});
+  on_peer = ()=>page.setState({dst: g_dst = bstr(this.props.peer.id)});
   render(){
     let {peer} = this.props;
     let s = {cursor: 'pointer'};
     return <div>
-      <span style={s} onClick={this.on_peer}>
-        id {util.buf_to_str(peer.id)} </span>
-      {peer.ws ? <span> ws {peer.ws.url} </span> : <span>wrtc </span>}
+      <span style={s} onClick={this.on_peer}>{peer_id(bstr(peer.id))}</span>
+      {peer.ws ? <span> ws {peer.ws.url} </span> : <span> wrtc </span>}
+      <span> id {bstr(peer.id)} </span>
       <button onClick={this.on_send}>send</button>
     </div>;
   }
@@ -49,7 +52,7 @@ function Peers(props){
   if (peers)
   {
     peers.forEach(peer=>a.push(<Peer peer={peer}
-      key={util.buf_to_str(peer.id)}/>));
+      key={bstr(peer.id)}/>));
   }
   return a;
 }
@@ -109,7 +112,7 @@ function add_log(s){
 }
 
 function send(dst, data){
-  add_log(`>msg ${data} dst ${util.buf_to_str(dst)}`);
+  add_log(`>msg ${data} dst ${peer_id(dst)}`);
   node.send(dst, data);
 }
 
@@ -117,19 +120,19 @@ function peer_relay_init(){
   let id_name = qs_storage+'_node_id';
   let id = localStorage[id_name];
   if (!id)
-    id = localStorage[id_name] = util.buf_to_str(crypto.randomBytes(20));
+    id = localStorage[id_name] = bstr(crypto.randomBytes(20));
   const react_root = document.querySelector('#react_root');
   const create_element = React.createElement;
   ReactDOM.render(create_element(Page), react_root);
   node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+qs_port]});
-  console.log('node id %s %o', util.buf_to_str(node.id), node);
+  console.log('node id %s %o', bstr(node.id), node);
   node.on('peer', o=>{
     let peers = node.get_peers().toArray();
     page.setState({peers});
   });
   node.on('message',
-    (data, src)=>add_log(`<msg ${data} src ${util.buf_to_str(src)}`));
-  page.setState({id: util.buf_to_str(node.id)});
+    (data, src)=>add_log(`<msg ${data} src ${peer_id(src)}`));
+  page.setState({id: bstr(node.id)});
 }
 
 init();
