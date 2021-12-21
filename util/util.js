@@ -1,6 +1,7 @@
 'use strict'; /*jslint node:true*/
 import {Buffer} from 'buffer';
-const E = module.exports = {};
+const E = {};
+export default E;
 
 // XXX: add test, optimize for node
 E.monotonic = function(){

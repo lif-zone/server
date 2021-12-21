@@ -61645,6 +61645,8 @@ var _ws = _interopRequireDefault(require("./ws.js"));
 
 var _wrtc = _interopRequireDefault(require("./wrtc.js"));
 
+var _util2 = _interopRequireDefault(require("../util/util.js"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
@@ -61662,7 +61664,7 @@ function Client(opts) {
   if (!(this instanceof Client)) return new Client(opts);
   if (!opts) opts = {};
   var self = this;
-  self.id = _crypto["default"].randomBytes(20);
+  self.id = opts.id ? _util2["default"].buf_from_str(opts.id) : _crypto["default"].randomBytes(20);
   self.pending = {};
   self.destroyed = false;
   self.peers = new _kBucket["default"]({
@@ -61878,7 +61880,7 @@ Client.prototype.get_peers = function () {
 };
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"./router.js":254,"./wrtc.js":255,"./ws.js":256,"buffer":64,"crypto":75,"debug":76,"events":110,"k-bucket":157,"util":250}],254:[function(require,module,exports){
+},{"../util/util.js":259,"./router.js":254,"./wrtc.js":255,"./ws.js":256,"buffer":64,"crypto":75,"debug":76,"events":110,"k-bucket":157,"util":250}],254:[function(require,module,exports){
 (function (Buffer){(function (){
 'use strict';
 /*jslint node:true, browser:true*/
@@ -62431,17 +62433,19 @@ function getWebSocket() {
 
 function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
-var _util = _interopRequireDefault(require("../util/util.js"));
-
-var _date = _interopRequireDefault(require("../util/date.js"));
-
-var _client = _interopRequireDefault(require("../peer-relay/client.js"));
+var _crypto = _interopRequireDefault(require("crypto"));
 
 var _react = _interopRequireDefault(require("react"));
 
 var _reactDom = _interopRequireDefault(require("react-dom"));
 
 var _queryString = _interopRequireDefault(require("query-string"));
+
+var _util = _interopRequireDefault(require("../util/util.js"));
+
+var _date = _interopRequireDefault(require("../util/date.js"));
+
+var _client = _interopRequireDefault(require("../peer-relay/client.js"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
@@ -62636,6 +62640,8 @@ function send(dst, data) {
 }
 
 function peer_relay_init() {
+  var id = localStorage.lif_node_id;
+  if (!id) id = localStorage.lif_node_id = _util["default"].buf_to_str(_crypto["default"].randomBytes(20));
   var react_root = document.querySelector('#react_root');
   var create_element = _react["default"].createElement;
   var port = qs_o.port || 3032;
@@ -62643,6 +62649,7 @@ function peer_relay_init() {
   _reactDom["default"].render(create_element(Page), react_root);
 
   node = new _client["default"]({
+    id: id,
     bootstrap: ['ws://poc.lif.zone:' + port]
   });
   console.log('node id %s %o', _util["default"].buf_to_str(node.id), node);
@@ -62662,7 +62669,7 @@ function peer_relay_init() {
 
 init();
 
-},{"../peer-relay/client.js":253,"../util/date.js":258,"../util/util.js":259,"query-string":184,"react":193,"react-dom":190}],258:[function(require,module,exports){
+},{"../peer-relay/client.js":253,"../util/date.js":258,"../util/util.js":259,"crypto":75,"query-string":184,"react":193,"react-dom":190}],258:[function(require,module,exports){
 'use strict';
 /*jslint node:true*/
 
@@ -62770,11 +62777,19 @@ E.monotonic = function () {
 'use strict';
 /*jslint node:true*/
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports["default"] = void 0;
+
 var _buffer = require("buffer");
 
 function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
-var E = module.exports = {}; // XXX: add test, optimize for node
+var E = {};
+var _default = E; // XXX: add test, optimize for node
+
+exports["default"] = _default;
 
 E.monotonic = function () {
   var now = Date.now(),

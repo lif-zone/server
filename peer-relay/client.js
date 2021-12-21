@@ -7,6 +7,7 @@ import _debug from 'debug';
 import Router from './router.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
+import util from '../util/util.js';
 export default Client;
 
 const debug = _debug('peer-relay:client');
@@ -18,7 +19,7 @@ function Client(opts){
   if (!opts)
     opts = {};
   var self = this;
-  self.id = crypto.randomBytes(20);
+  self.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
   self.pending = {};
   self.destroyed = false;
   self.peers = new KBucket({localNodeId: self.id,

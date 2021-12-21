@@ -1,10 +1,11 @@
 'use strict'; /*jslint node:true, browser:true*/
-import util from '../util/util.js';
-import date from '../util/date.js';
-import Node from '../peer-relay/client.js';
+import crypto from 'crypto';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import queryString from 'query-string';
+import util from '../util/util.js';
+import date from '../util/date.js';
+import Node from '../peer-relay/client.js';
 let qs_o = queryString.parse(location.search);
 
 let node, page, g_data = 'hello', g_dst, g_log = [];
@@ -103,11 +104,14 @@ function send(dst, data){
 }
 
 function peer_relay_init(){
+  let id = localStorage.lif_node_id;
+  if (!id)
+    id = localStorage.lif_node_id = util.buf_to_str(crypto.randomBytes(20));
   const react_root = document.querySelector('#react_root');
   const create_element = React.createElement;
   let port = qs_o.port||3032;
   ReactDOM.render(create_element(Page), react_root);
-  node = new Node({bootstrap: ['ws://poc.lif.zone:'+port]});
+  node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+port]});
   console.log('node id %s %o', util.buf_to_str(node.id), node);
   node.on('peer', o=>{
     let peers = node.get_peers().toArray();
