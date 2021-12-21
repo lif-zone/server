@@ -62700,7 +62700,13 @@ var Page = /*#__PURE__*/function (_React$Component2) {
       }, "Port 3033")), /*#__PURE__*/_react["default"].createElement("b", null, " localStorage prefix"), /*#__PURE__*/_react["default"].createElement("input", {
         defaultValue: qs_storage,
         onChange: this.on_storage
-      })), /*#__PURE__*/_react["default"].createElement("hr", null), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
+      }), /*#__PURE__*/_react["default"].createElement("span", null, " "), /*#__PURE__*/_react["default"].createElement("a", {
+        rel: "noreferrer",
+        href: '/__lif_debug_get_log?' + _queryString["default"].stringify({
+          port: qs_port
+        }),
+        target: "_blank"
+      }, "Server Log")), /*#__PURE__*/_react["default"].createElement("hr", null), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
         defaultValue: g_dst,
         value: dst,
         onChange: this.on_dst

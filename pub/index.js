@@ -93,6 +93,11 @@ class Page extends React.Component {
         </select>
         <b> localStorage prefix</b>
         <input defaultValue={qs_storage} onChange={this.on_storage}/>
+        <span> </span>
+        <a rel='noreferrer' href={'/__lif_debug_get_log?'+
+          queryString.stringify({port: qs_port})} target='_blank'>
+          Server Log
+        </a>
       </div>
       <hr/>
       <div>
