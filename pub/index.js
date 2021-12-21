@@ -112,6 +112,8 @@ function add_log(s){
 }
 
 function send(dst, data){
+  if (!dst)
+    return add_log(`error missing dst`);
   add_log(`>msg ${data} dst ${peer_id(dst)}`);
   node.send(dst, data);
 }
