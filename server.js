@@ -32,16 +32,18 @@ function init(){
   add_to_log2('listen port 3033 '+util.buf_to_str(node2.id));
 }
 
-const node_log=[], node_log2=[];
+let node_log=[], node_log2=[], max_length = 5000;
 function add_to_log(s){
   let s2 = date.to_time_ms()+': '+s;
-  console.log('XXX %s', s2);
   node_log.push(s2);
+  if (node_log.length > max_length)
+    node_log = node_log.splice(0, max_length/2);
 }
 function add_to_log2(s){
   let s2 = date.to_time_ms()+': '+s;
-  console.log('XXX %s', s2);
   node_log2.push(s2);
+  if (node_log2.length > max_length)
+    node_log2 = node_log2.splice(0, max_length/2);
 }
 function debug_get_log(port){
   if (port==3033)
