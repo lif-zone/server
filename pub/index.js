@@ -147,30 +147,33 @@ function peer_relay_init(){
   ReactDOM.render(create_element(Page), react_root);
   node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+qs_port]});
   console.log('node id %s %o', bstr(node.id), node);
+  debug_set_trace({node, cb: add_log});
+  page.setState({id: bstr(node.id)});
+}
+
+function debug_set_trace(opt){
+  let {node, cb} = opt;
   node.on('connection', conn=>{
-    add_log('<conn '+peer_id(conn.id)+' '+
+    cb('<conn '+peer_id(conn.id)+' '+
       (conn.ws ? 'ws '+conn.ws.url : 'wrtc'));
   });
   node.on('peer', id=>{
-    add_log(`peer connected ${peer_id(id)}`);
+    cb(`peer connected ${peer_id(id)}`);
     let peers = node.get_peers().toArray();
-    console.log('XXX peers %o', node.get_peers().toArray());
     page.setState({peers});
   });
-  node.on('message',
-    (data, src)=>add_log(`<msg src ${peer_id(src)} ${data}`));
+  node.on('message', (data, src)=>cb(`<msg src ${peer_id(src)} ${data}`));
   node.router.on('send', msg=>{
-    add_log('router: >'+msg.data.type+' src '+peer_id(msg.from)+
+    cb('router: >'+msg.data.type+' src '+peer_id(msg.from)+
       ' dst '+peer_id(msg.to)+
       (msg.path.length ? ' path '+msg.path.join('/') : ''));
   });
   node.router.on('message',
-    (data, from)=>add_log('router: <'+data.type+' src '+peer_id(from)));
+    (data, from)=>cb('router: <'+data.type+' src '+peer_id(from)));
   node.router.on('relay', msg=>{
-    add_log('router: >relay '+msg.data.type+' src '+peer_id(msg.from)+
+    cb('router: >relay '+msg.data.type+' src '+peer_id(msg.from)+
       ' dst '+peer_id(msg.to)+' path '+msg.path.join('/'));
   });
-  page.setState({id: bstr(node.id)});
 }
 
 init();

@@ -62704,31 +62704,39 @@ function peer_relay_init() {
     bootstrap: ['ws://poc.lif.zone:' + qs_port]
   });
   console.log('node id %s %o', bstr(node.id), node);
+  debug_set_trace({
+    node: node,
+    cb: add_log
+  });
+  page.setState({
+    id: bstr(node.id)
+  });
+}
+
+function debug_set_trace(opt) {
+  var node = opt.node,
+      cb = opt.cb;
   node.on('connection', function (conn) {
-    add_log('<conn ' + peer_id(conn.id) + ' ' + (conn.ws ? 'ws ' + conn.ws.url : 'wrtc'));
+    cb('<conn ' + peer_id(conn.id) + ' ' + (conn.ws ? 'ws ' + conn.ws.url : 'wrtc'));
   });
   node.on('peer', function (id) {
-    add_log("peer connected ".concat(peer_id(id)));
+    cb("peer connected ".concat(peer_id(id)));
     var peers = node.get_peers().toArray();
-    console.log('XXX peers %o', node.get_peers().toArray());
     page.setState({
       peers: peers
     });
   });
   node.on('message', function (data, src) {
-    return add_log("<msg src ".concat(peer_id(src), " ").concat(data));
+    return cb("<msg src ".concat(peer_id(src), " ").concat(data));
   });
   node.router.on('send', function (msg) {
-    add_log('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + msg.path.join('/') : ''));
+    cb('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + msg.path.join('/') : ''));
   });
   node.router.on('message', function (data, from) {
-    return add_log('router: <' + data.type + ' src ' + peer_id(from));
+    return cb('router: <' + data.type + ' src ' + peer_id(from));
   });
   node.router.on('relay', function (msg) {
-    add_log('router: >relay ' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + ' path ' + msg.path.join('/'));
-  });
-  page.setState({
-    id: bstr(node.id)
+    cb('router: >relay ' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + ' path ' + msg.path.join('/'));
   });
 }
 
