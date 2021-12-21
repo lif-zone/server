@@ -5,20 +5,16 @@ import ReactDOM from 'react-dom';
 import queryString from 'query-string';
 import util from '../util/util.js';
 import date from '../util/date.js';
+import debug from '../lib/debug.js';
 import Node from '../peer-relay/client.js';
 const bstr = util.buf_to_str;
 let qs_o = queryString.parse(location.search);
 let qs_port = qs_o.port||3032;
 let qs_storage = qs_o.storage||'lif';
 let qs_dst = qs_o.dst;
-
 let node, page, g_data = 'HELLO', g_dst=qs_dst, g_log = [];
 
-function _peer_id(id){ return id==bstr(node.id) ? 'self' :
-  id.substr(id.length-3); }
-
-function peer_id(id){
-  return typeof id=='string' ? _peer_id(id) : _peer_id(bstr(id)); }
+function peer_id(id){ return debug.peer_id(node, id); }
 
 function init(){
   if (location.pathname=='/' &&
@@ -147,33 +143,12 @@ function peer_relay_init(){
   ReactDOM.render(create_element(Page), react_root);
   node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+qs_port]});
   console.log('node id %s %o', bstr(node.id), node);
-  debug_set_trace({node, cb: add_log});
-  page.setState({id: bstr(node.id)});
-}
-
-function debug_set_trace(opt){
-  let {node, cb} = opt;
-  node.on('connection', conn=>{
-    cb('<conn '+peer_id(conn.id)+' '+
-      (conn.ws ? 'ws '+conn.ws.url : 'wrtc'));
-  });
+  debug.set_trace({node, cb: add_log});
   node.on('peer', id=>{
-    cb(`peer connected ${peer_id(id)}`);
     let peers = node.get_peers().toArray();
     page.setState({peers});
   });
-  node.on('message', (data, src)=>cb(`<msg src ${peer_id(src)} ${data}`));
-  node.router.on('send', msg=>{
-    cb('router: >'+msg.data.type+' src '+peer_id(msg.from)+
-      ' dst '+peer_id(msg.to)+
-      (msg.path.length ? ' path '+msg.path.join('/') : ''));
-  });
-  node.router.on('message',
-    (data, from)=>cb('router: <'+data.type+' src '+peer_id(from)));
-  node.router.on('relay', msg=>{
-    cb('router: >relay '+msg.data.type+' src '+peer_id(msg.from)+
-      ' dst '+peer_id(msg.to)+' path '+msg.path.join('/'));
-  });
+  page.setState({id: bstr(node.id)});
 }
 
 init();
