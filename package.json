@@ -24,7 +24,6 @@
     "iniparser": "1.0.5",
     "json-6": "1.1.4",
     "k-bucket": "5.1.0",
-    "node-turn": "0.0.6",
     "react": "17.0.2",
     "react-dom": "17.0.2",
     "sdp-transform": "2.14.1",
