@@ -62540,7 +62540,7 @@ var Peer = /*#__PURE__*/function (_React$Component) {
       return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("span", {
         style: s,
         onClick: this.on_peer
-      }, peer_id(bstr(peer.id))), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url, " ") : /*#__PURE__*/_react["default"].createElement("span", null, " wrtc "), /*#__PURE__*/_react["default"].createElement("span", null, " id ", bstr(peer.id), " "), /*#__PURE__*/_react["default"].createElement("button", {
+      }, /*#__PURE__*/_react["default"].createElement("span", null, peer_id(bstr(peer.id))), peer.ws ? /*#__PURE__*/_react["default"].createElement("span", null, " ws ", peer.ws.url, " ") : /*#__PURE__*/_react["default"].createElement("span", null, " wrtc "), /*#__PURE__*/_react["default"].createElement("span", null, " id ", bstr(peer.id), " ")), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_send
       }, "send"));
     }

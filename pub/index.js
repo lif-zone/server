@@ -39,9 +39,11 @@ class Peer extends React.Component {
     let {peer} = this.props;
     let s = {cursor: 'pointer'};
     return <div>
-      <span style={s} onClick={this.on_peer}>{peer_id(bstr(peer.id))}</span>
-      {peer.ws ? <span> ws {peer.ws.url} </span> : <span> wrtc </span>}
-      <span> id {bstr(peer.id)} </span>
+      <span style={s} onClick={this.on_peer}>
+        <span>{peer_id(bstr(peer.id))}</span>
+        {peer.ws ? <span> ws {peer.ws.url} </span> : <span> wrtc </span>}
+        <span> id {bstr(peer.id)} </span>
+      </span>
       <button onClick={this.on_send}>send</button>
     </div>;
   }
