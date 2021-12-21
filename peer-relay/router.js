@@ -39,6 +39,7 @@ Router.prototype.send = function(id, data){
 
 Router.prototype._send = function(msg){
   var self = this;
+  self.emit('send', msg);
   if (msg.path.length >= self.maxHops)
     return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
   if (self._channels.count()===0)
@@ -75,11 +76,12 @@ Router.prototype._onMessage = function(msg){
   if (msg.to.equals(self.id))
   {
     debugMsg('RECV', self.id, msg);
-    self.emit('message', msg.data, msg.from);
+    self.emit('message', msg.data, msg.from, msg);
   }
   else
   {
     debugMsg('RELAY', self.id, msg);
+    self.emit('relay', msg);
     self._send(msg);
   }
 };

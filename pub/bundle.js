@@ -61971,6 +61971,7 @@ Router.prototype.send = function (id, data) {
 
 Router.prototype._send = function (msg) {
   var self = this;
+  self.emit('send', msg);
   if (msg.path.length >= self.maxHops) return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
 
   if (self._channels.count() === 0) self._queue.push(msg);
@@ -62016,9 +62017,10 @@ Router.prototype._onMessage = function (msg) {
 
   if (msg.to.equals(self.id)) {
     debugMsg('RECV', self.id, msg);
-    self.emit('message', msg.data, msg.from);
+    self.emit('message', msg.data, msg.from, msg);
   } else {
     debugMsg('RELAY', self.id, msg);
+    self.emit('relay', msg);
 
     self._send(msg);
   }
@@ -62485,12 +62487,16 @@ var qs_port = qs_o.port || 3032;
 var qs_storage = qs_o.storage || 'lif';
 var node,
     page,
-    g_data = 'hello',
+    g_data = 'HELLO',
     g_dst,
     g_log = [];
 
+function _peer_id(id) {
+  return id == bstr(node.id) ? 'self' : id.substr(id.length - 3);
+}
+
 function peer_id(id) {
-  return typeof id == 'string' ? id.substr(0, 3) : bstr(id).substr(0, 3);
+  return typeof id == 'string' ? _peer_id(id) : _peer_id(bstr(id));
 }
 
 function init() {
@@ -62598,6 +62604,10 @@ var Page = /*#__PURE__*/function (_React$Component2) {
       return send(g_dst, g_data);
     });
 
+    _defineProperty(_assertThisInitialized(_this2), "on_connect", function () {
+      return connect(g_dst);
+    });
+
     _defineProperty(_assertThisInitialized(_this2), "on_server", function (e) {
       qs_o.port = e.target.value;
       location.search = _queryString["default"].stringify(qs_o);
@@ -62639,7 +62649,9 @@ var Page = /*#__PURE__*/function (_React$Component2) {
         onChange: this.on_data
       }), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_send
-      }, "send")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", id), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("pre", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
+      }, "send"), /*#__PURE__*/_react["default"].createElement("button", {
+        onClick: this.on_connect
+      }, "connect")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", id), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("pre", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
         peers: peers
       }));
     }
@@ -62658,10 +62670,19 @@ function add_log(s) {
 function send(dst, data) {
   if (!dst) return add_log("error missing dst");
   add_log(">msg dst ".concat(peer_id(dst), " ").concat(data));
-  node.send(dst, data);
+  node.send(_util["default"].buf_from_str(dst), data);
+}
+
+function connect(dst, data) {
+  if (!dst) return add_log("error missing dst");
+  add_log("connect dst ".concat(peer_id(dst)));
+  node.connect(_util["default"].buf_from_str(dst), data);
 }
 
 function peer_relay_init() {
+  window.addEventListener('error', function (e) {
+    return add_log('error ' + e.toString());
+  });
   var id_name = qs_storage + '_node_id';
   var id = localStorage[id_name];
   if (!id) id = localStorage[id_name] = bstr(_crypto["default"].randomBytes(20));
@@ -62681,12 +62702,22 @@ function peer_relay_init() {
   node.on('peer', function (id) {
     add_log("peer connected ".concat(peer_id(id)));
     var peers = node.get_peers().toArray();
+    console.log('XXX peers %o', node.get_peers().toArray());
     page.setState({
       peers: peers
     });
   });
   node.on('message', function (data, src) {
     return add_log("<msg src ".concat(peer_id(src), " ").concat(data));
+  });
+  node.router.on('send', function (msg) {
+    add_log('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + msg.path.join('/') : ''));
+  });
+  node.router.on('message', function (data, from) {
+    return add_log('router: <' + data.type + ' src ' + peer_id(from));
+  });
+  node.router.on('relay', function (msg) {
+    add_log('router: >relay ' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + ' path ' + msg.path.join('/'));
   });
   page.setState({
     id: bstr(node.id)
