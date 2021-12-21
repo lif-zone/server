@@ -126,14 +126,14 @@ function add_to_log(s){
 function send(dst, data){
   if (!dst)
     return add_to_log(`error missing dst`);
-  add_to_log(`>msg dst ${peer_id(dst)} ${data}`);
+  add_to_log(`node: >msg dst ${peer_id(dst)} ${data}`);
   node.send(util.buf_from_str(dst), data);
 }
 
 function connect(dst, data){
   if (!dst)
     return add_to_log(`error missing dst`);
-  add_to_log(`connect dst ${peer_id(dst)}`);
+  add_to_log(`node: connect dst ${peer_id(dst)}`);
   node.connect(util.buf_from_str(dst), data);
 }
 

@@ -33,13 +33,13 @@ E.set_trace = function (opt) {
   };
 
   node.on('connection', function (conn) {
-    cb('<conn ' + peer_id(conn.id) + ' ' + (conn.ws ? 'ws ' + conn.ws.url : 'wrtc'));
+    cb('node: <conn ' + peer_id(conn.id) + ' ' + (conn.ws ? 'ws ' + conn.ws.url : 'wrtc'));
   });
   node.on('peer', function (id) {
-    return cb("peer connected ".concat(peer_id(id)));
+    return cb("node: peer connected ".concat(peer_id(id)));
   });
   node.on('message', function (data, src) {
-    return cb("<msg src ".concat(peer_id(src), " ").concat(data));
+    return cb("node: <msg src ".concat(peer_id(src), " ").concat(data));
   });
   node.router.on('send', function (msg) {
     cb('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + msg.path.join('/') : ''));
@@ -62735,13 +62735,13 @@ function add_to_log(s) {
 
 function send(dst, data) {
   if (!dst) return add_to_log("error missing dst");
-  add_to_log(">msg dst ".concat(peer_id(dst), " ").concat(data));
+  add_to_log("node: >msg dst ".concat(peer_id(dst), " ").concat(data));
   node.send(_util["default"].buf_from_str(dst), data);
 }
 
 function connect(dst, data) {
   if (!dst) return add_to_log("error missing dst");
-  add_to_log("connect dst ".concat(peer_id(dst)));
+  add_to_log("node: connect dst ".concat(peer_id(dst)));
   node.connect(_util["default"].buf_from_str(dst), data);
 }
 
