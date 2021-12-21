@@ -33,8 +33,16 @@ function init(){
 }
 
 const node_log=[], node_log2=[];
-function add_to_log(s){ node_log.push(date.to_time_ms()+': '+s); }
-function add_to_log2(s){ node_log2.push(date.to_time_ms()+': '+s); }
+function add_to_log(s){
+  let s2 = date.to_time_ms()+': '+s;
+  console.log('XXX %s', s2);
+  node_log.push(s2);
+}
+function add_to_log2(s){
+  let s2 = date.to_time_ms()+': '+s;
+  console.log('XXX %s', s2);
+  node_log2.push(s2);
+}
 function debug_get_log(port){
   if (port==3033)
     return node_log2;
