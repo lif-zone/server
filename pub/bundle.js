@@ -62473,6 +62473,8 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 var qs_o = _queryString["default"].parse(location.search);
 
+var qs_port = qs_o.port || 3032;
+var qs_storage = qs_o.storage || 'lif';
 var node,
     page,
     g_data = 'hello',
@@ -62585,9 +62587,13 @@ var Page = /*#__PURE__*/function (_React$Component2) {
     });
 
     _defineProperty(_assertThisInitialized(_this2), "on_server", function (e) {
-      // XXX HACK: need proper API for querystring
-      var port = e.target.value;
-      location.href = location.pathname + '?port=' + encodeURIComponent(port);
+      qs_o.port = e.target.value;
+      location.search = _queryString["default"].stringify(qs_o);
+    });
+
+    _defineProperty(_assertThisInitialized(_this2), "on_storage", function (e) {
+      qs_o.storage = e.target.value;
+      location.search = _queryString["default"].stringify(qs_o);
     });
 
     page = _assertThisInitialized(_this2);
@@ -62605,12 +62611,15 @@ var Page = /*#__PURE__*/function (_React$Component2) {
           dst = _this$state.dst;
       return /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Connected to:"), /*#__PURE__*/_react["default"].createElement("select", {
         onChange: this.on_server,
-        value: qs_o.port
+        value: qs_port
       }, /*#__PURE__*/_react["default"].createElement("option", {
         value: "3032"
       }, "Port 3032"), /*#__PURE__*/_react["default"].createElement("option", {
         value: "3033"
-      }, "Port 3033")), /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
+      }, "Port 3033")), /*#__PURE__*/_react["default"].createElement("b", null, " localStorage prefix"), /*#__PURE__*/_react["default"].createElement("input", {
+        defaultValue: qs_storage,
+        onChange: this.on_storage
+      })), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
         value: dst,
         onChange: this.on_dst
       }), /*#__PURE__*/_react["default"].createElement("b", null, " Data"), " ", /*#__PURE__*/_react["default"].createElement("input", {
@@ -62640,17 +62649,17 @@ function send(dst, data) {
 }
 
 function peer_relay_init() {
-  var id = localStorage.lif_node_id;
-  if (!id) id = localStorage.lif_node_id = _util["default"].buf_to_str(_crypto["default"].randomBytes(20));
+  var id_name = qs_storage + '_node_id';
+  var id = localStorage[id_name];
+  if (!id) id = localStorage[id_name] = _util["default"].buf_to_str(_crypto["default"].randomBytes(20));
   var react_root = document.querySelector('#react_root');
   var create_element = _react["default"].createElement;
-  var port = qs_o.port || 3032;
 
   _reactDom["default"].render(create_element(Page), react_root);
 
   node = new _client["default"]({
     id: id,
-    bootstrap: ['ws://poc.lif.zone:' + port]
+    bootstrap: ['ws://poc.lif.zone:' + qs_port]
   });
   console.log('node id %s %o', _util["default"].buf_to_str(node.id), node);
   node.on('peer', function (o) {

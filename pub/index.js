@@ -7,6 +7,8 @@ import util from '../util/util.js';
 import date from '../util/date.js';
 import Node from '../peer-relay/client.js';
 let qs_o = queryString.parse(location.search);
+let qs_port = qs_o.port||3032;
+let qs_storage = qs_o.storage||'lif';
 
 let node, page, g_data = 'hello', g_dst, g_log = [];
 
@@ -65,19 +67,26 @@ class Page extends React.Component {
   };
   on_send = ()=>send(g_dst, g_data);
   on_server = e=>{
-    // XXX HACK: need proper API for querystring
-    let port = e.target.value;
-    location.href = location.pathname+'?port='+encodeURIComponent(port);
+    qs_o.port = e.target.value;
+    location.search = queryString.stringify(qs_o);
   }
+  on_storage = e=>{
+    qs_o.storage = e.target.value;
+    location.search = queryString.stringify(qs_o);
+  };
   render(){
     let {peers, log, id, dst} = this.state;
     return <div>
       <div>
         <b>Connected to:</b>
-        <select onChange={this.on_server} value={qs_o.port}>
+        <select onChange={this.on_server} value={qs_port}>
           <option value='3032'>Port 3032</option>
           <option value='3033'>Port 3033</option>
         </select>
+        <b> localStorage prefix</b>
+        <input defaultValue={qs_storage} onChange={this.on_storage}/>
+      </div>
+      <div>
         <b>Dst</b> <input value={dst} onChange={this.on_dst}/>
         <b> Data</b> <input defaultValue={g_data} onChange={this.on_data}/>
         <button onClick={this.on_send}>send</button>
@@ -104,14 +113,14 @@ function send(dst, data){
 }
 
 function peer_relay_init(){
-  let id = localStorage.lif_node_id;
+  let id_name = qs_storage+'_node_id';
+  let id = localStorage[id_name];
   if (!id)
-    id = localStorage.lif_node_id = util.buf_to_str(crypto.randomBytes(20));
+    id = localStorage[id_name] = util.buf_to_str(crypto.randomBytes(20));
   const react_root = document.querySelector('#react_root');
   const create_element = React.createElement;
-  let port = qs_o.port||3032;
   ReactDOM.render(create_element(Page), react_root);
-  node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+port]});
+  node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+qs_port]});
   console.log('node id %s %o', util.buf_to_str(node.id), node);
   node.on('peer', o=>{
     let peers = node.get_peers().toArray();
