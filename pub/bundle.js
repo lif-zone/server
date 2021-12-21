@@ -61734,6 +61734,7 @@ Client.prototype._onConnection = function (channel) {
   }
 
   self.peers.add(channel);
+  self.emit('connection', channel);
   self.router.send(channel.id, {
     type: 'findPeers',
     data: self.id.toString('hex')
@@ -62674,7 +62675,11 @@ function peer_relay_init() {
     bootstrap: ['ws://poc.lif.zone:' + qs_port]
   });
   console.log('node id %s %o', bstr(node.id), node);
-  node.on('peer', function (o) {
+  node.on('connection', function (conn) {
+    add_log('<conn ' + peer_id(conn.id) + ' ' + (conn.ws ? 'ws ' + conn.ws.url : 'wrtc'));
+  });
+  node.on('peer', function (id) {
+    add_log("peer connected ".concat(peer_id(id)));
     var peers = node.get_peers().toArray();
     page.setState({
       peers: peers

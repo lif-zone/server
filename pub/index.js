@@ -130,7 +130,12 @@ function peer_relay_init(){
   ReactDOM.render(create_element(Page), react_root);
   node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+qs_port]});
   console.log('node id %s %o', bstr(node.id), node);
-  node.on('peer', o=>{
+  node.on('connection', conn=>{
+    add_log('<conn '+peer_id(conn.id)+' '+
+      (conn.ws ? 'ws '+conn.ws.url : 'wrtc'));
+  });
+  node.on('peer', id=>{
+    add_log(`peer connected ${peer_id(id)}`);
     let peers = node.get_peers().toArray();
     page.setState({peers});
   });

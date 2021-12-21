@@ -64,6 +64,7 @@ Client.prototype._onConnection = function(channel){
     return;
   }
   self.peers.add(channel);
+  self.emit('connection', channel);
   self.router.send(channel.id, {type: 'findPeers',
     data: self.id.toString('hex')});
   self.emit('peer', channel.id);
