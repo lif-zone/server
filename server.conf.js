@@ -6,9 +6,6 @@ const E = {
   }, http_server: {http_port: 80, https_port: 443,
     ssl: {key: '/var/lif/ssl/STAR_lif_zone.key',
       cert: '/var/lif/ssl/STAR_lif_zone.crt'}
-  }, ws_server: {ws_port: 3030, wss_port: 3031,
-    ssl: {key: '/var/lif/ssl/STAR_lif_zone.key',
-      cert: '/var/lif/ssl/STAR_lif_zone.crt'}
   },
 };
 
