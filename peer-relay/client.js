@@ -29,6 +29,11 @@ function Client(opts){
     localNodeId: self.id, numberOfNodesPerKBucket: 20});
   self.router = new Router(self.peers, self.id);
   self.router.on('message', onMessage);
+  if (opts.port)
+  {
+    console.log('peer-relay: ws listen on %s id %s', opts.port,
+      util.buf_to_str(self.id));
+  }
   self.wsConnector = new WsConnector(self.id, opts.port);
   self.wsConnector.on('connection', onConnection);
   self.wrtcConnector = new WrtcConnector(self.id, self.router, opts.wrtc);

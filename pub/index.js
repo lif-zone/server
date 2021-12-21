@@ -86,6 +86,7 @@ class Page extends React.Component {
         <b> localStorage prefix</b>
         <input defaultValue={qs_storage} onChange={this.on_storage}/>
       </div>
+      <hr/>
       <div>
         <b>Dst</b> <input value={dst} onChange={this.on_dst}/>
         <b> Data</b> <input defaultValue={g_data} onChange={this.on_data}/>
