@@ -62648,7 +62648,7 @@ var Page = /*#__PURE__*/function (_React$Component2) {
 }(_react["default"].Component);
 
 function add_log(s) {
-  g_log.push(_date["default"].to_sql_ms() + ': ' + s);
+  g_log.push(_date["default"].to_time_ms() + ': ' + s);
   page.setState({
     log: g_log.join('\n')
   });
@@ -62779,7 +62779,7 @@ E.to_sql = function (d) {
   return E.to_sql_ms(d).replace(/( 00:00:00)?....$/, '');
 };
 
-E.to_sql_time_ms = function (d) {
+E.to_time_ms = function (d) {
   d = E.get(d);
   if (isNaN(d)) return '00:00:00.000';
   return pad(d.getUTCHours(), 2) + ':' + pad(d.getUTCMinutes(), 2) + ':' + pad(d.getUTCSeconds(), 2) + '.' + pad(d.getUTCMilliseconds(), 3);

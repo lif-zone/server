@@ -109,7 +109,7 @@ class Page extends React.Component {
 }
 
 function add_log(s){
-  g_log.push(date.to_sql_ms()+': '+s);
+  g_log.push(date.to_time_ms()+': '+s);
   page.setState({log: g_log.join('\n')});
 }
 
