@@ -116,7 +116,7 @@ function add_log(s){
 function send(dst, data){
   if (!dst)
     return add_log(`error missing dst`);
-  add_log(`>msg ${data} dst ${peer_id(dst)}`);
+  add_log(`>msg dst ${peer_id(dst)} ${data}`);
   node.send(dst, data);
 }
 
@@ -135,7 +135,7 @@ function peer_relay_init(){
     page.setState({peers});
   });
   node.on('message',
-    (data, src)=>add_log(`<msg ${data} src ${peer_id(src)}`));
+    (data, src)=>add_log(`<msg src ${peer_id(src)} ${data}`));
   page.setState({id: bstr(node.id)});
 }
 
