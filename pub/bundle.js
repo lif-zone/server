@@ -62501,10 +62501,11 @@ var qs_o = _queryString["default"].parse(location.search);
 
 var qs_port = qs_o.port || 3032;
 var qs_storage = qs_o.storage || 'lif';
+var qs_dst = qs_o.dst;
 var node,
     page,
     g_data = 'HELLO',
-    g_dst,
+    g_dst = qs_dst,
     g_log = [];
 
 function _peer_id(id) {
@@ -62674,6 +62675,7 @@ var Page = /*#__PURE__*/function (_React$Component2) {
         defaultValue: qs_storage,
         onChange: this.on_storage
       })), /*#__PURE__*/_react["default"].createElement("hr", null), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
+        defaultValue: g_dst,
         value: dst,
         onChange: this.on_dst
       }), /*#__PURE__*/_react["default"].createElement("b", null, " Data"), " ", /*#__PURE__*/_react["default"].createElement("input", {

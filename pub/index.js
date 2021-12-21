@@ -10,8 +10,9 @@ const bstr = util.buf_to_str;
 let qs_o = queryString.parse(location.search);
 let qs_port = qs_o.port||3032;
 let qs_storage = qs_o.storage||'lif';
+let qs_dst = qs_o.dst;
 
-let node, page, g_data = 'HELLO', g_dst, g_log = [];
+let node, page, g_data = 'HELLO', g_dst=qs_dst, g_log = [];
 
 function _peer_id(id){ return id==bstr(node.id) ? 'self' :
   id.substr(id.length-3); }
@@ -102,7 +103,8 @@ class Page extends React.Component {
       </div>
       <hr/>
       <div>
-        <b>Dst</b> <input value={dst} onChange={this.on_dst}/>
+        <b>Dst</b> <input defaultValue={g_dst} value={dst}
+          onChange={this.on_dst}/>
         <b> Data</b> <input defaultValue={g_data} onChange={this.on_data}/>
         <button onClick={this.on_send}>send</button>
         <button onClick={this.on_connect}>connect</button>
