@@ -61786,20 +61786,11 @@ Client.prototype.send = function (id, data) {
   });
 };
 
-Client.prototype.debug_get_log = function (id) {
-  var self = this;
-  if (self.destroyed) return;
-  self.router.send(id, {
-    type: 'debug-get-log',
-    data: ''
-  });
-};
-
 Client.prototype._onMessage = function (msg, from) {
   var self = this;
   if (self.destroyed) return; // self._debug('RECV', from.toString('hex', 0, 2), JSON.stringify(msg.data))
 
-  if (msg.type === 'user') self.emit('message', msg.data, from);else if (msg.type === 'findPeers') self._onFindPeers(msg, from);else if (msg.type === 'foundPeers') self._onFoundPeers(msg, from);else if (msg.type === 'handshake-offer') self._onHandshakeOffer(msg, from);else if (msg.type === 'handshake-answer') self._onHandshakeAnswer(msg, from);else if (msg.type === 'debug-get-log') self._on_debug_get_log(msg, from);
+  if (msg.type === 'user') self.emit('message', msg.data, from);else if (msg.type === 'findPeers') self._onFindPeers(msg, from);else if (msg.type === 'foundPeers') self._onFoundPeers(msg, from);else if (msg.type === 'handshake-offer') self._onHandshakeOffer(msg, from);else if (msg.type === 'handshake-answer') self._onHandshakeAnswer(msg, from);
 };
 
 Client.prototype._onFindPeers = function (msg, from) {
@@ -61857,13 +61848,6 @@ Client.prototype._onHandshakeAnswer = function (msg, from) {
   if (self.peers.get(from)) return;
   if (msg.data == null) return;
   if (msg.data.wrtc && self.wrtcConnector.supported) self.wrtcConnector.connect(from);else if (msg.data.ws) self.wsConnector.connect(msg.data.ws);
-};
-
-Client.prototype._on_debug_get_log = function (msg, from) {
-  this.router.send(from, {
-    type: 'debug-send-log',
-    data: 'XXX-data'
-  });
 };
 
 Client.prototype._populate = function () {
@@ -62549,10 +62533,6 @@ var Peer = /*#__PURE__*/function (_React$Component) {
       return connect(_this.props.peer.id);
     });
 
-    _defineProperty(_assertThisInitialized(_this), "on_debug_get_log", function () {
-      return debug_get_log(_this.props.peer.id);
-    });
-
     _defineProperty(_assertThisInitialized(_this), "on_peer", function () {
       return page.setState({
         dst: g_dst = bstr(_this.props.peer.id)
@@ -62576,9 +62556,7 @@ var Peer = /*#__PURE__*/function (_React$Component) {
         onClick: this.on_send
       }, "send"), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_connect
-      }, "connect"), /*#__PURE__*/_react["default"].createElement("button", {
-        onClick: this.on_debug_get_log
-      }, "get log"));
+      }, "connect"));
     }
   }]);
 
@@ -62637,10 +62615,6 @@ var Page = /*#__PURE__*/function (_React$Component2) {
       return connect(g_dst);
     });
 
-    _defineProperty(_assertThisInitialized(_this2), "on_debug_get_log", function () {
-      return debug_get_log(g_dst);
-    });
-
     _defineProperty(_assertThisInitialized(_this2), "on_server", function (e) {
       qs_o.port = e.target.value;
       location.search = _queryString["default"].stringify(qs_o);
@@ -62685,9 +62659,7 @@ var Page = /*#__PURE__*/function (_React$Component2) {
         onClick: this.on_send
       }, "send"), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_connect
-      }, "connect"), /*#__PURE__*/_react["default"].createElement("button", {
-        onClick: this.on_debug_get_log
-      }, "debug_get_log")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", id), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("pre", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
+      }, "connect")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", id), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("pre", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
         peers: peers
       }));
     }
@@ -62713,12 +62685,6 @@ function connect(dst, data) {
   if (!dst) return add_log("error missing dst");
   add_log("connect dst ".concat(peer_id(dst)));
   node.connect(_util["default"].buf_from_str(dst), data);
-}
-
-function debug_get_log(dst) {
-  if (!dst) return add_log("error missing dst");
-  add_log("debug_get_log dst ".concat(peer_id(dst)));
-  node.debug_get_log(_util["default"].buf_from_str(dst));
 }
 
 function peer_relay_init() {
