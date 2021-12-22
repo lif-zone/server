@@ -64427,7 +64427,7 @@ Router.prototype._onMessage = function (msg) {
   var self = this;
   if (msg.nonce in self._touched) return;
   self._touched[msg.nonce] = true;
-  if (typeof msg.from != 'string') throw 'invalid msg from';
+  if (typeof msg.from != 'string') console.error('invalid from %o', msg);
   self._paths[msg.from] = msg.path[msg.path.length - 1];
   var to = new Buffer(msg.to, 'hex');
 
