@@ -36,6 +36,8 @@ class Peer extends React.Component {
   on_send = ()=>send(this.props.peer.id, g_data);
   on_connect = ()=>connect(this.props.peer.id);
   on_find_peers = ()=>find_peers(this.props.peer.id);
+  on_ping = ()=>ping(this.props.peer.id);
+  on_disconnect = ()=>disconnect(this.props.peer.id);
   on_peer = ()=>page.setState({dst: g_dst = bstr(this.props.peer.id)});
   render(){
     let {peer} = this.props;
@@ -49,6 +51,8 @@ class Peer extends React.Component {
       <button onClick={this.on_send}>send</button>
       <button onClick={this.on_connect}>connect</button>
       <button onClick={this.on_find_peers}>find_peers</button>
+      <button onClick={this.on_ping}>ping</button>
+      <button onClick={this.on_disconnect}>disconnect</button>
     </div>;
   }
 }
@@ -77,6 +81,8 @@ class Page extends React.Component {
   on_send = ()=>send(g_dst, g_data);
   on_connect = ()=>connect(g_dst);
   on_find_peers = ()=>find_peers(g_dst);
+  on_ping = ()=>ping(g_dst);
+  on_disconnect = ()=>disconnect(g_dst);
   on_server = e=>{
     qs_o.port = e.target.value;
     location.search = queryString.stringify(qs_o);
@@ -110,14 +116,19 @@ class Page extends React.Component {
         <button onClick={this.on_send}>send</button>
         <button onClick={this.on_connect}>connect</button>
         <button onClick={this.on_find_peers}>find_peers</button>
+        <button onClick={this.on_ping}>ping</button>
+        <button onClick={this.on_disconnect}>disconnect</button>
       </div>
-      <div><b>Self ID</b> {id}</div>
+      <div>
+        <div><b>Peers</b></div>
+        <div><b>Self</b> {debug.peer_id(0, id)} {id}</div>
+        <Peers peers={peers}/>
+      </div>
+      <hr/>
       <div>
         <b>Log</b>
         <pre>{log}</pre>
       </div>
-      <b>Peers</b>
-      <Peers peers={peers}/>
     </div>;
   }
 }
@@ -146,6 +157,15 @@ function find_peers(dst, data){
     return add_to_log(`error missing dst`);
   add_to_log(`node: find_peers dst ${peer_id(dst)}`);
   node.findPeers(util.buf_from_str(dst));
+}
+
+function ping(dst){ send(dst, 'PING'); }
+
+function disconnect(dst){
+  if (!dst)
+    return add_to_log(`error missing dst`);
+  add_to_log(`node: disconnect dst ${peer_id(dst)}`);
+  node.disconnect(util.buf_from_str(dst));
 }
 
 function peer_relay_init(){

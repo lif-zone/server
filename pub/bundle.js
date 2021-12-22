@@ -62607,6 +62607,14 @@ var Peer = /*#__PURE__*/function (_React$Component) {
       return find_peers(_this.props.peer.id);
     });
 
+    _defineProperty(_assertThisInitialized(_this), "on_ping", function () {
+      return ping(_this.props.peer.id);
+    });
+
+    _defineProperty(_assertThisInitialized(_this), "on_disconnect", function () {
+      return disconnect(_this.props.peer.id);
+    });
+
     _defineProperty(_assertThisInitialized(_this), "on_peer", function () {
       return page.setState({
         dst: g_dst = bstr(_this.props.peer.id)
@@ -62632,7 +62640,11 @@ var Peer = /*#__PURE__*/function (_React$Component) {
         onClick: this.on_connect
       }, "connect"), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_find_peers
-      }, "find_peers"));
+      }, "find_peers"), /*#__PURE__*/_react["default"].createElement("button", {
+        onClick: this.on_ping
+      }, "ping"), /*#__PURE__*/_react["default"].createElement("button", {
+        onClick: this.on_disconnect
+      }, "disconnect"));
     }
   }]);
 
@@ -62695,6 +62707,14 @@ var Page = /*#__PURE__*/function (_React$Component2) {
       return find_peers(g_dst);
     });
 
+    _defineProperty(_assertThisInitialized(_this2), "on_ping", function () {
+      return ping(g_dst);
+    });
+
+    _defineProperty(_assertThisInitialized(_this2), "on_disconnect", function () {
+      return disconnect(g_dst);
+    });
+
     _defineProperty(_assertThisInitialized(_this2), "on_server", function (e) {
       qs_o.port = e.target.value;
       location.search = _queryString["default"].stringify(qs_o);
@@ -62747,9 +62767,13 @@ var Page = /*#__PURE__*/function (_React$Component2) {
         onClick: this.on_connect
       }, "connect"), /*#__PURE__*/_react["default"].createElement("button", {
         onClick: this.on_find_peers
-      }, "find_peers")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self ID"), " ", id), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("pre", null, log)), /*#__PURE__*/_react["default"].createElement("b", null, "Peers"), /*#__PURE__*/_react["default"].createElement(Peers, {
+      }, "find_peers"), /*#__PURE__*/_react["default"].createElement("button", {
+        onClick: this.on_ping
+      }, "ping"), /*#__PURE__*/_react["default"].createElement("button", {
+        onClick: this.on_disconnect
+      }, "disconnect")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Peers")), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Self"), " ", _debug["default"].peer_id(0, id), " ", id), /*#__PURE__*/_react["default"].createElement(Peers, {
         peers: peers
-      }));
+      })), /*#__PURE__*/_react["default"].createElement("hr", null), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Log"), /*#__PURE__*/_react["default"].createElement("pre", null, log)));
     }
   }]);
 
@@ -62779,6 +62803,16 @@ function find_peers(dst, data) {
   if (!dst) return add_to_log("error missing dst");
   add_to_log("node: find_peers dst ".concat(peer_id(dst)));
   node.findPeers(_util["default"].buf_from_str(dst));
+}
+
+function ping(dst) {
+  send(dst, 'PING');
+}
+
+function disconnect(dst) {
+  if (!dst) return add_to_log("error missing dst");
+  add_to_log("node: disconnect dst ".concat(peer_id(dst)));
+  node.disconnect(_util["default"].buf_from_str(dst));
 }
 
 function peer_relay_init() {
