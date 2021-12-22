@@ -72,7 +72,7 @@ class Page extends React.Component {
     super(props);
     page = this;
   } // XXX HACK: find proper way to do it
-  state = {dst: ''};
+  state = {dst: g_dst};
   on_data = e=>g_data = e.target.value;
   on_dst = e=>{
     g_dst = e.target.value;
@@ -110,7 +110,7 @@ class Page extends React.Component {
       </div>
       <hr/>
       <div>
-        <b>Dst</b> <input defaultValue={g_dst} value={dst}
+        <b>Dst</b> <input value={dst}
           onChange={this.on_dst}/>
         <b> Data</b> <input defaultValue={g_data} onChange={this.on_data}/>
         <button onClick={this.on_send}>send</button>

@@ -42,7 +42,6 @@ function WsConnector(id, port){
 
 WsConnector.prototype.connect = function(url){
   var self = this;
-  console.log('XXX url %s', url);
   self._onConnection(new WebSocket(url));
 };
 

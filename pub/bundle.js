@@ -17,7 +17,7 @@ var _default = E;
 exports["default"] = _default;
 
 function _peer_id(node, id) {
-  return id == bstr(node.id) ? 'self' : id.substr(id.length - 3);
+  return id.substr(id.length - 3);
 }
 
 E.peer_id = function (node, id) {
@@ -27,7 +27,7 @@ E.peer_id = function (node, id) {
 E.path = function (node, path) {
   var s = '';
   if (path) path.forEach(function (p) {
-    return s += s ? '/' + E.peer_id(p) : E.peer_id(p);
+    return s += s ? '>' + E.peer_id(node, p) : E.peer_id(node, p);
   });
   return s;
 };
@@ -51,10 +51,10 @@ E.set_trace = function (opt) {
     if (data == 'PING') node.send(src, 'PONG');
   });
   node.router.on('send', function (msg) {
-    cb('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + E.path(node.id, msg.path) : '') + ' ' + JSON.stringify(msg.data));
+    cb('router: >msg ' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + E.path(node.id, msg.path) : '') + ' ' + JSON.stringify(msg.data));
   });
-  node.router.on('debug-message', function (data, from) {
-    return cb('router: <' + data.type + ' src ' + peer_id(from));
+  node.router.on('debug-message', function (data, from, msg) {
+    cb('router: <msg ' + data.type + ' src ' + peer_id(from) + (msg.path.length ? ' path ' + E.path(node.id, msg.path) : '') + ' ' + JSON.stringify(msg.data));
   });
   node.router.on('relay', function (msg) {
     cb('router: >relay ' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + ' path ' + E.path(node.id, msg.path));
@@ -64717,7 +64717,6 @@ function WsConnector(id, port) {
 
 WsConnector.prototype.connect = function (url) {
   var self = this;
-  console.log('XXX url %s', url);
 
   self._onConnection(new WebSocket(url));
 };
@@ -65045,7 +65044,7 @@ var Page = /*#__PURE__*/function (_React$Component2) {
     _this2 = _super2.call(this, props);
 
     _defineProperty(_assertThisInitialized(_this2), "state", {
-      dst: ''
+      dst: g_dst
     });
 
     _defineProperty(_assertThisInitialized(_this2), "on_data", function (e) {
@@ -65120,7 +65119,6 @@ var Page = /*#__PURE__*/function (_React$Component2) {
         }),
         target: "_blank"
       }, "Server Log")), /*#__PURE__*/_react["default"].createElement("hr", null), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
-        defaultValue: g_dst,
         value: dst,
         onChange: this.on_dst
       }), /*#__PURE__*/_react["default"].createElement("b", null, " Data"), " ", /*#__PURE__*/_react["default"].createElement("input", {
