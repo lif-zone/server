@@ -112,6 +112,13 @@ Client.prototype.send = function(id, data){
   self.router.send(id, {type: 'user', data: data});
 };
 
+Client.prototype.findPeers = function(id){
+  var self = this;
+  if (self.destroyed)
+    return;
+  self.router.send(id, {type: 'findPeers', data: self.id.toString('hex')});
+};
+
 Client.prototype._onMessage = function(msg, from){
   var self = this;
   if (self.destroyed)

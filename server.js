@@ -24,12 +24,17 @@ function init(){
   dns_server.start(); // XXX: need dns_server.stop()
   https_server.start({debug_get_log}); // XXX: need https_server.stop()
   let node = new peer_relay({id, bootstrap: [], port: 3032});
-  let node2 = new peer_relay({id: id2,
-    bootstrap: ['ws://poc.lif.zone:3032'], port: 3033});
+  let node2;
+  // XXX HACK: we run peer_relay in setTimeout because otherwise it will
+  // fail coonnecting to node because it didn't inilitized yet
+  setTimeout(()=>{
+    node2 = new peer_relay({id: id2,
+      bootstrap: ['ws://poc.lif.zone:3032'], port: 3033});
+    debug.set_trace({node: node2, cb: add_to_log2});
+    add_to_log2('listen port 3033 '+util.buf_to_str(node2.id));
+  }, 1000);
   debug.set_trace({node, cb: add_to_log});
-  debug.set_trace({node: node2, cb: add_to_log2});
   add_to_log('listen port 3032 '+util.buf_to_str(node.id));
-  add_to_log2('listen port 3033 '+util.buf_to_str(node2.id));
 }
 
 let node_log=[], node_log2=[], max_length = 5000;

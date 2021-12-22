@@ -35,6 +35,7 @@ function init(){
 class Peer extends React.Component {
   on_send = ()=>send(this.props.peer.id, g_data);
   on_connect = ()=>connect(this.props.peer.id);
+  on_find_peers = ()=>find_peers(this.props.peer.id);
   on_peer = ()=>page.setState({dst: g_dst = bstr(this.props.peer.id)});
   render(){
     let {peer} = this.props;
@@ -47,6 +48,7 @@ class Peer extends React.Component {
       </span>
       <button onClick={this.on_send}>send</button>
       <button onClick={this.on_connect}>connect</button>
+      <button onClick={this.on_find_peers}>find_peers</button>
     </div>;
   }
 }
@@ -74,6 +76,7 @@ class Page extends React.Component {
   };
   on_send = ()=>send(g_dst, g_data);
   on_connect = ()=>connect(g_dst);
+  on_find_peers = ()=>find_peers(g_dst);
   on_server = e=>{
     qs_o.port = e.target.value;
     location.search = queryString.stringify(qs_o);
@@ -106,6 +109,7 @@ class Page extends React.Component {
         <b> Data</b> <input defaultValue={g_data} onChange={this.on_data}/>
         <button onClick={this.on_send}>send</button>
         <button onClick={this.on_connect}>connect</button>
+        <button onClick={this.on_find_peers}>find_peers</button>
       </div>
       <div><b>Self ID</b> {id}</div>
       <div>
@@ -137,8 +141,19 @@ function connect(dst, data){
   node.connect(util.buf_from_str(dst), data);
 }
 
+function find_peers(dst, data){
+  if (!dst)
+    return add_to_log(`error missing dst`);
+  add_to_log(`node: find_peers dst ${peer_id(dst)}`);
+  node.findPeers(util.buf_from_str(dst));
+}
+
 function peer_relay_init(){
-  window.addEventListener('error', e=>add_to_log('error '+e.toString()));
+  window.addEventListener('error', e=>{
+    add_to_log('error '+e.message);
+    // eslint-disable-next-line
+    debugger;
+  });
   let id_name = qs_storage+'_node_id';
   let id = localStorage[id_name];
   if (!id)
