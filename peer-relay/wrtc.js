@@ -136,4 +136,5 @@ WrtcChannel.prototype.destroy = function(){
   self.destroyed = true;
   self._sp.destroy();
   self._sp = null;
+  self.emit('close');
 };
