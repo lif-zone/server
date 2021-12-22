@@ -23,7 +23,7 @@ Sending data to a remot node:
 - node sends 'user' message with data to a remote node
 - if there is direct connection, it will use it
 - otherwise, it will select the closests peers to remote and relay the
-  message through those peers (it limits realy up to 2 peers)
+  message through those peers (max 2 peers)
 - the target peer will relay those messages again to the closet peers
   of remote in a recursive way (up to 20 hopes)
 
