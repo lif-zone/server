@@ -62083,11 +62083,15 @@ Router.prototype._onMessage = function (msg) {
   var self = this;
   if (msg.nonce in self._touched) return;
   self._touched[msg.nonce] = true;
+  if (typeof msg.from != 'string') throw 'invalid msg from';
   self._paths[msg.from] = msg.path[msg.path.length - 1];
-  msg.to = new Buffer(msg.to, 'hex');
-  msg.from = new Buffer(msg.from, 'hex');
+  var to = new Buffer(msg.to, 'hex');
 
-  if (msg.to.equals(self.id)) {
+  if (to.equals(self.id)) {
+    // XXX: it's pretty ugly that we change to/from fields and make code
+    // diffiuclt to debug
+    msg.to = to;
+    msg.from = new Buffer(msg.from, 'hex');
     debugMsg('RECV', self.id, msg);
     self.emit('debug-message', msg.data, msg.from, msg);
     self.emit('message', msg.data, msg.from, msg);
@@ -62291,6 +62295,7 @@ WrtcChannel.prototype.destroy = function () {
   self._sp.destroy();
 
   self._sp = null;
+  self.emit('close');
 };
 
 },{"debug":77,"events":111,"simple-peer":212,"util":251}],257:[function(require,module,exports){
