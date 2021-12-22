@@ -3,6 +3,8 @@ import {inherits} from 'util';
 import {EventEmitter} from 'events';
 import _debug from 'debug';
 import WS, {WebSocketServer} from 'ws';
+import fs from 'fs';
+import https from 'https';
 const debug = _debug('peer-relay:ws');
 const WebSocket = getWebSocket();
 
@@ -17,7 +19,12 @@ function WsConnector(id, port){
   self.url = null;
   if (port != null)
   {
-    self._wss = new WebSocketServer({port: port});
+    const https_opt = {
+      key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
+      cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
+    const https_server = https.createServer(https_opt);
+    https_server.listen(port, '0.0.0.0');
+    self._wss = new WebSocketServer({server: https_server});
     self._wss.on('connection', onConnection);
     self._wss.on('listening', onListen);
     if (port !== 0)
@@ -35,6 +42,7 @@ function WsConnector(id, port){
 
 WsConnector.prototype.connect = function(url){
   var self = this;
+  console.log('XXX url %s', url);
   self._onConnection(new WebSocket(url));
 };
 
@@ -68,7 +76,10 @@ WsConnector.prototype._onConnection = function(ws){
     channel.removeListener('error', onError);
   }
 
-  function onError(err){ self._debug(err, err.stack); }
+  function onError(err){
+    console.log('XXX ws.js err %s', err);
+    self._debug(err, err.stack);
+  }
 };
 
 WsConnector.prototype.destroy = function(cb){

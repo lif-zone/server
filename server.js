@@ -28,8 +28,10 @@ function init(){
   // XXX HACK: we run peer_relay in setTimeout because otherwise it will
   // fail coonnecting to node because it didn't inilitized yet
   setTimeout(()=>{
+    // XXX HACK: need to add root ca certificate
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     node2 = new peer_relay({id: id2,
-      bootstrap: ['ws://poc.lif.zone:3032'], port: 3033});
+      bootstrap: ['wss://poc.lif.zone:3032'], port: 3033});
     debug.set_trace({node: node2, cb: add_to_log2});
     add_to_log2('listen port 3033 '+util.buf_to_str(node2.id));
   }, 1000);

@@ -181,7 +181,7 @@ function peer_relay_init(){
   const react_root = document.querySelector('#react_root');
   const create_element = React.createElement;
   ReactDOM.render(create_element(Page), react_root);
-  node = new Node({id, bootstrap: ['ws://poc.lif.zone:'+qs_port]});
+  node = new Node({id, bootstrap: ['wss://poc.lif.zone:'+qs_port]});
   console.log('node id %s %o', bstr(node.id), node);
   debug.set_trace({node, cb: add_to_log});
   node.on('peer', id=>{
