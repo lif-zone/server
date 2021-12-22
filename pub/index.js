@@ -8,11 +8,14 @@ import date from '../util/date.js';
 import debug from '../lib/debug.js';
 import Node from '../peer-relay/client.js';
 const bstr = util.buf_to_str;
+import SimplePeer from 'simple-peer';
 let qs_o = queryString.parse(location.search);
 let qs_port = qs_o.port||3032;
 let qs_storage = qs_o.storage||'lif';
 let qs_dst = qs_o.dst;
+let qs_no_wrtc = qs_o.no_wrtc;
 let node, page, g_data = 'PING', g_dst=qs_dst, g_log = [];
+SimplePeer.WEBRTC_SUPPORT = !+qs_no_wrtc;
 
 function peer_id(id){ return debug.peer_id(node, id); }
 
@@ -91,6 +94,10 @@ class Page extends React.Component {
     qs_o.storage = e.target.value;
     location.search = queryString.stringify(qs_o);
   };
+  on_disable_wrtc = e=>{
+    qs_o.no_wrtc = e.target.checked ? 1 : 0;
+    location.search = queryString.stringify(qs_o);
+  }
   render(){
     let {peers, log, id, dst} = this.state;
     return <div>
@@ -107,6 +114,8 @@ class Page extends React.Component {
           queryString.stringify({port: qs_port})} target='_blank'>
           Server Log
         </a>
+        <input type='checkbox' checked={!SimplePeer.WEBRTC_SUPPORT}
+          onChange={this.on_disable_wrtc}/><span> disable wrtc</span>
       </div>
       <hr/>
       <div>

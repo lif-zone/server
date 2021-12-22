@@ -64893,6 +64893,8 @@ var _debug = _interopRequireDefault(require("../lib/debug.js"));
 
 var _client = _interopRequireDefault(require("../peer-relay/client.js"));
 
+var _simplePeer = _interopRequireDefault(require("simple-peer"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -64924,11 +64926,13 @@ var qs_o = _queryString["default"].parse(location.search);
 var qs_port = qs_o.port || 3032;
 var qs_storage = qs_o.storage || 'lif';
 var qs_dst = qs_o.dst;
+var qs_no_wrtc = qs_o.no_wrtc;
 var node,
     page,
     g_data = 'PING',
     g_dst = qs_dst,
     g_log = [];
+_simplePeer["default"].WEBRTC_SUPPORT = !+qs_no_wrtc;
 
 function peer_id(id) {
   return _debug["default"].peer_id(node, id);
@@ -65089,6 +65093,11 @@ var Page = /*#__PURE__*/function (_React$Component2) {
       location.search = _queryString["default"].stringify(qs_o);
     });
 
+    _defineProperty(_assertThisInitialized(_this2), "on_disable_wrtc", function (e) {
+      qs_o.no_wrtc = e.target.checked ? 1 : 0;
+      location.search = _queryString["default"].stringify(qs_o);
+    });
+
     page = _assertThisInitialized(_this2);
     return _this2;
   } // XXX HACK: find proper way to do it
@@ -65118,7 +65127,11 @@ var Page = /*#__PURE__*/function (_React$Component2) {
           port: qs_port
         }),
         target: "_blank"
-      }, "Server Log")), /*#__PURE__*/_react["default"].createElement("hr", null), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
+      }, "Server Log"), /*#__PURE__*/_react["default"].createElement("input", {
+        type: "checkbox",
+        checked: !_simplePeer["default"].WEBRTC_SUPPORT,
+        onChange: this.on_disable_wrtc
+      }), /*#__PURE__*/_react["default"].createElement("span", null, " disable wrtc")), /*#__PURE__*/_react["default"].createElement("hr", null), /*#__PURE__*/_react["default"].createElement("div", null, /*#__PURE__*/_react["default"].createElement("b", null, "Dst"), " ", /*#__PURE__*/_react["default"].createElement("input", {
         value: dst,
         onChange: this.on_dst
       }), /*#__PURE__*/_react["default"].createElement("b", null, " Data"), " ", /*#__PURE__*/_react["default"].createElement("input", {
@@ -65216,7 +65229,7 @@ function peer_relay_init() {
 
 init();
 
-},{"../lib/debug.js":1,"../peer-relay/client.js":284,"../util/date.js":289,"../util/util.js":290,"crypto":79,"query-string":189,"react":201,"react-dom":198}],289:[function(require,module,exports){
+},{"../lib/debug.js":1,"../peer-relay/client.js":284,"../util/date.js":289,"../util/util.js":290,"crypto":79,"query-string":189,"react":201,"react-dom":198,"simple-peer":219}],289:[function(require,module,exports){
 'use strict';
 /*jslint node:true*/
 
