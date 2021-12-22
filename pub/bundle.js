@@ -43,7 +43,7 @@ E.set_trace = function (opt) {
     if (data == 'PING') node.send(src, 'PONG');
   });
   node.router.on('send', function (msg) {
-    cb('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + msg.path.join('/') : ''));
+    cb('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + msg.path.join('/') : '') + ' ' + JSON.stringify(msg.data));
   });
   node.router.on('message', function (data, from) {
     return cb('router: <' + data.type + ' src ' + peer_id(from));
