@@ -27,7 +27,6 @@ Sending data to a remot node:
 - the target peer will relay those messages again to the closet peers
   of remote in a recursive way (up to 20 hopes)
 
-
 Legend:
 -------
 n = node
