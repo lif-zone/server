@@ -76,6 +76,7 @@ Router.prototype._onMessage = function(msg){
   if (msg.to.equals(self.id))
   {
     debugMsg('RECV', self.id, msg);
+    self.emit('debug-message', msg.data, msg.from, msg);
     self.emit('message', msg.data, msg.from, msg);
   }
   else

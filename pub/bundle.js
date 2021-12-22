@@ -53,7 +53,7 @@ E.set_trace = function (opt) {
   node.router.on('send', function (msg) {
     cb('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + E.path(node.id, msg.path) : '') + ' ' + JSON.stringify(msg.data));
   });
-  node.router.on('message', function (data, from) {
+  node.router.on('debug-message', function (data, from) {
     return cb('router: <' + data.type + ' src ' + peer_id(from));
   });
   node.router.on('relay', function (msg) {
@@ -62089,6 +62089,7 @@ Router.prototype._onMessage = function (msg) {
 
   if (msg.to.equals(self.id)) {
     debugMsg('RECV', self.id, msg);
+    self.emit('debug-message', msg.data, msg.from, msg);
     self.emit('message', msg.data, msg.from, msg);
   } else {
     debugMsg('RELAY', self.id, msg);
@@ -62783,7 +62784,7 @@ var Page = /*#__PURE__*/function (_React$Component2) {
 function add_to_log(s) {
   g_log.push(_date["default"].to_time_ms() + ': ' + s);
   page.setState({
-    log: g_log.join('\n')
+    log: Array.from(g_log).reverse().join('\n')
   });
 }
 

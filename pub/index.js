@@ -135,7 +135,7 @@ class Page extends React.Component {
 
 function add_to_log(s){
   g_log.push(date.to_time_ms()+': '+s);
-  page.setState({log: g_log.join('\n')});
+  page.setState({log: Array.from(g_log).reverse().join('\n')});
 }
 
 function send(dst, data){
