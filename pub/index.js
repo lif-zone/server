@@ -12,7 +12,7 @@ let qs_o = queryString.parse(location.search);
 let qs_port = qs_o.port||3032;
 let qs_storage = qs_o.storage||'lif';
 let qs_dst = qs_o.dst;
-let node, page, g_data = 'HELLO', g_dst=qs_dst, g_log = [];
+let node, page, g_data = 'PING', g_dst=qs_dst, g_log = [];
 
 function peer_id(id){ return debug.peer_id(node, id); }
 

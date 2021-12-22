@@ -39,7 +39,8 @@ E.set_trace = function (opt) {
     return cb("node: peer connected ".concat(peer_id(id)));
   });
   node.on('message', function (data, src) {
-    return cb("node: <msg src ".concat(peer_id(src), " ").concat(data));
+    cb("node: <msg src ".concat(peer_id(src), " ").concat(data));
+    if (data == 'PING') node.send(src, 'PONG');
   });
   node.router.on('send', function (msg) {
     cb('router: >' + msg.data.type + ' src ' + peer_id(msg.from) + ' dst ' + peer_id(msg.to) + (msg.path.length ? ' path ' + msg.path.join('/') : ''));
@@ -62544,7 +62545,7 @@ var qs_storage = qs_o.storage || 'lif';
 var qs_dst = qs_o.dst;
 var node,
     page,
-    g_data = 'HELLO',
+    g_data = 'PING',
     g_dst = qs_dst,
     g_log = [];
 
