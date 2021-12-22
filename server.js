@@ -23,14 +23,15 @@ function init(){
   // XXX: split into seperate process
   dns_server.start(); // XXX: need dns_server.stop()
   https_server.start({debug_get_log}); // XXX: need https_server.stop()
-  let node = new peer_relay({id, bootstrap: [], port: 3032});
+  let node = new peer_relay({id, bootstrap: [], host: 'poc.lif.zone',
+    port: 3032});
   let node2;
   // XXX HACK: we run peer_relay in setTimeout because otherwise it will
   // fail coonnecting to node because it didn't inilitized yet
   setTimeout(()=>{
     // XXX HACK: need to add root ca certificate
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-    node2 = new peer_relay({id: id2,
+    node2 = new peer_relay({id: id2, host: 'poc.lif.zone',
       bootstrap: ['wss://poc.lif.zone:3032'], port: 3033});
     debug.set_trace({node: node2, cb: add_to_log2});
     add_to_log2('listen port 3033 '+util.buf_to_str(node2.id));

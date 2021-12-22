@@ -41,6 +41,7 @@ E.set_trace = function (opt) {
   };
 
   node.on('connection', function (conn) {
+    // eslint-disable-next-line
     cb('node: <conn ' + peer_id(conn.id) + ' ' + (conn.ws ? 'ws ' + conn.ws.url : 'wrtc'));
   });
   node.on('peer', function (id) {
@@ -64091,7 +64092,7 @@ function Client(opts) {
     console.log('peer-relay: ws listen on %s id %s', opts.port, _util2["default"].buf_to_str(self.id));
   }
 
-  self.wsConnector = new _ws["default"](self.id, opts.port);
+  self.wsConnector = new _ws["default"](self.id, opts.port, opts.host);
   self.wsConnector.on('connection', onConnection);
   self.wrtcConnector = new _wrtc["default"](self.id, self.router, opts.wrtc);
   self.wrtcConnector.on('connection', onConnection);
@@ -64676,9 +64677,9 @@ var debug = (0, _debug2["default"])('peer-relay:ws');
 var WebSocket = getWebSocket();
 var _default = WsConnector;
 exports["default"] = _default;
-(0, _util.inherits)(WsConnector, _events.EventEmitter);
+(0, _util.inherits)(WsConnector, _events.EventEmitter); // XXX: use opts instead of id,port,host
 
-function WsConnector(id, port) {
+function WsConnector(id, port, host) {
   var self = this;
   self.id = id;
   self.destroyed = false;
@@ -64702,7 +64703,7 @@ function WsConnector(id, port) {
 
     self._wss.on('listening', onListen);
 
-    if (port !== 0) self.url = 'ws://localhost:' + port;
+    if (port !== 0) self.url = 'wss://' + host + ':' + port;
   }
 
   function onConnection(ws) {
@@ -64711,7 +64712,7 @@ function WsConnector(id, port) {
 
   function onListen() {
     if (self.destroyed) return;
-    self.url = 'ws://localhost:' + self._wss._server.address().port;
+    self.url = 'wss://' + host + ':' + self._wss._server.address().port;
   }
 }
 

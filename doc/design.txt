@@ -1,0 +1,33 @@
+Legend:
+n = node
+b = browser
+
+Example 1:
+----------
+b1 <-> n1 <-> n2
+
+node_n1 = Node({id: n1, port: 3032});
+node_n2 = Node({id: n2, port: 3033, bootstrap: [ws://n1.site:3032]});
+node_b1 = Node({id: b1, bootstrap: [ws://n1.site:3032]});
+
+b1: >findPeers(n1)
+n1: <foundPeers([n1,n2,b1])
+n1: >findPeers(b1)
+b1: <foundPeers([b1])
+
+Problems:
+- no order of messages
+- no way to know if message arrived
+- can a message be sent multiple times?
+- no reconnect
+- no detection of bad nodes (nodes that are offline)
+
+Test:
+n1 = Node({id: id1, port: 3032});
+T(`listen(n,3032)`);
+
+n2 = Node({id: id2, port: 3033, bootstrap: [ws://n1.site:3033]});
+T(`listen(n2,3033) >connect(n2,n1,ws:3033) >findPeers(n2,n1) <findPeers(n1,n2)
+  >foundPeers(n2,n1,[n1) <foundPeers(n1,n2,[n2])`);
+
+

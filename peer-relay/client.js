@@ -34,7 +34,7 @@ function Client(opts){
     console.log('peer-relay: ws listen on %s id %s', opts.port,
       util.buf_to_str(self.id));
   }
-  self.wsConnector = new WsConnector(self.id, opts.port);
+  self.wsConnector = new WsConnector(self.id, opts.port, opts.host);
   self.wsConnector.on('connection', onConnection);
   self.wrtcConnector = new WrtcConnector(self.id, self.router, opts.wrtc);
   self.wrtcConnector.on('connection', onConnection);

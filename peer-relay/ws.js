@@ -11,7 +11,8 @@ const WebSocket = getWebSocket();
 export default WsConnector;
 
 inherits(WsConnector, EventEmitter);
-function WsConnector(id, port){
+// XXX: use opts instead of id,port,host
+function WsConnector(id, port, host){
   var self = this;
   self.id = id;
   self.destroyed = false;
@@ -28,7 +29,7 @@ function WsConnector(id, port){
     self._wss.on('connection', onConnection);
     self._wss.on('listening', onListen);
     if (port !== 0)
-      self.url = 'ws://localhost:' + port;
+      self.url = 'wss://'+host+':' + port;
   }
 
   function onConnection(ws){ self._onConnection(ws); }
@@ -36,7 +37,7 @@ function WsConnector(id, port){
   function onListen(){
     if (self.destroyed)
       return;
-    self.url = 'ws://localhost:' + self._wss._server.address().port;
+    self.url = 'wss://'+host+':' + self._wss._server.address().port;
   }
 }
 
