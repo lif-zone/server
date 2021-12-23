@@ -12,12 +12,16 @@ function parse_expr(expr){
   return {players: a[1], dir: a[2], cmd: a[3]};
 }
 
+function parse_params(expr){
+  return {};
+}
+
 function parse_cmd(cmd){
   let m = cmd.match(/(^[^(^)]+)(\(.*\))?$/)
   if (!m || m.length>3)
     throw new Error('invalid cmd');
-  let op = m[1], rest = m[2];
-  return {op, params: {}};
+  let op = m[1], rest = m[2], params = parse_params(rest);
+  return {op, params};
 }
 
 describe('test_api', function(){
