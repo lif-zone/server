@@ -77,7 +77,7 @@ WsConnector.prototype._onConnection = function(ws){
   }
 
   function onError(err){
-    console.error('ws.js error %s %o', err.message), err;
+    console.error('ws.js error %s %o', err.message, err);
     self._debug(err, err.stack);
   }
 };
