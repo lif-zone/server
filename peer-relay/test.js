@@ -20,9 +20,8 @@ function normalize(o){
 
 // XXX: mv all test api to test_api.js and add test for it
 function parse_expr(expr){
-  // XXX: change to match
-  let a = expr.split(/(^[a-zA-Z]{0,2})([<>]+)(.+.*$)/);
-  if (a.length!=5)
+  let a = expr.match(/(^[a-zA-Z]{0,2})([<>]+)(.+.*$)/);
+  if (!a || a.length!=4)
     throw new Error('invalid expr');
   return normalize({p1: a[1][0]||'', p2: a[1][1]||'', dir: a[2], op: a[3]});
 }
