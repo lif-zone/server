@@ -4,13 +4,23 @@ import Client from './client.js';
 import _wrtc from 'electron-webrtc';
 import string from '../util/string.js';
 
+function normalize(o){
+  if (!o.p2 || o.dir!='>')
+    return o;
+  let p = o.p1;
+  o.dir = '<';
+  o.p1 = o.p2;
+  o.p2 = p;
+  return o;
+}
+
 // XXX: mv all test api to test_api.js and add test for it
 function parse_expr(expr){
   // XXX: change to match
   let a = expr.split(/(^[a-zA-Z]{0,2})([<>]+)(.+.*$)/);
   if (a.length!=5)
     throw new Error('invalid expr');
-  return {p1: a[1][0]||'', p2: a[1][1]||'', dir: a[2], cmd: a[3]};
+  return normalize({p1: a[1][0]||'', p2: a[1][1]||'', dir: a[2], cmd: a[3]});
 }
 
 function parse_param(s){
@@ -71,7 +81,7 @@ describe('test_api', function(){
     t('A<listen', 'A', '', '<', 'listen');
     t('a<listen(ws:3030)', 'a', '', '<', 'listen(ws:3030)');
     t('ab<connect', 'a', 'b', '<', 'connect');
-    t('ab>connect(ws:3030)', 'a','b',  '>', 'connect(ws:3030)');
+    t('ab>connect(ws:3030)', 'b','a',  '<', 'connect(ws:3030)');
     t = (s, exp)=>assert.throws(()=>{ parse_expr(s); }, {message: exp});
     t('', 'invalid expr');
     t('ab', 'invalid expr');
