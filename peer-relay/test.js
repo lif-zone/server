@@ -2,12 +2,15 @@
 import assert from 'assert';
 import Client from './client.js';
 import _wrtc from 'electron-webrtc';
+import string from '../util/string.js';
 
 describe('basic', function(){
   it('test', ()=>{
-    const t = ()=>{
+    const t = test=>{
+      let a = string.split_ws(test);
+      for (let i=0; i<a.length; i++);
     };
-    t(`s<listen; as>connect sa>send(handshake-offer)
+    t(`s<listen as>connect sa>send(handshake-offer)
       as>send(handshake-answer) as>send(findPeers) sa>send(findPeers)
       as>send(foundPeers) sa>send(foundPeers)`);
   });

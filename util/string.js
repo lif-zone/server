@@ -1,0 +1,8 @@
+'use strict'; /*jslint node:true,browser:true*/
+import array from './array.js';
+const E = {};
+export default E;
+
+E.split_trim = function(s, sep, limit){
+  return array.compact_self(s.split(sep, limit)); };
+E.split_ws = function(s){ return E.split_trim(s, /\s+/); };
