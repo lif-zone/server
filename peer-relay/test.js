@@ -12,6 +12,14 @@ function parse_expr(expr){
   return {players: a[1], dir: a[2], cmd: a[3]};
 }
 
+function parse_cmd(cmd){
+  let m = cmd.match(/(^[^(^)]+)(\(.*\))?$/)
+  if (!m || m.length>3)
+    throw new Error('invalid cmd');
+  let op = m[1], rest = m[2];
+  return {op, params: {}};
+}
+
 describe('test_api', function(){
   it('parse_expr', ()=>{
     let t = (s, players, dir, cmd)=>assert.deepEqual(parse_expr(s),
@@ -28,6 +36,17 @@ describe('test_api', function(){
     t('ab<', 'invalid expr');
     t('abc<listen', 'invalid expr');
   });
+  it('parse_cmd', ()=>{
+    let t = (s, op, params)=>assert.deepEqual(parse_cmd(s), {op, params});
+    t('connect', 'connect', {});
+    t('connect()', 'connect', {});
+    if (0) // XXX: fixme
+    t('connect(ws)', 'connect', {ws: ''});
+    if (0) // XXX: fixme
+    t('connect(ws:80)', 'connect', {ws: '80'});
+    if (0) // XXX: fixme
+    t('connect(ws:80,timeout:5)', 'connect', {ws: '80', timeout: '5'});
+  });
 });
 
 describe('basic', function(){
@@ -38,7 +57,7 @@ describe('basic', function(){
       {
         let expr = a[i];
         let {src, dst, cmd} = parse_expr(expr);
-        // let {op, params} = parse_cmd(cmd);
+        let {op, params} = parse_cmd(cmd);
         console.log('expr %s src %, dst %s, cmd %s', expr, src, dst, cmd);
       }
     };
