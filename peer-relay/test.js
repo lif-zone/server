@@ -8,7 +8,11 @@ describe('basic', function(){
   it('test', ()=>{
     const t = test=>{
       let a = string.split_ws(test);
-      for (let i=0; i<a.length; i++);
+      for (let i=0; i<a.length; i++)
+      {
+        let cmd = a[i];
+        console.log('cmd %s', cmd);
+      }
     };
     t(`s<listen as>connect sa>send(handshake-offer)
       as>send(handshake-answer) as>send(findPeers) sa>send(findPeers)
