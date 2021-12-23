@@ -1,15 +1,18 @@
 'use strict'; /*jslint node:true*/ /*global describe,it*/
 import assert from 'assert';
+import crypto from 'crypto';
+import _wrtc from 'electron-webrtc'; // XXX: rm
 import Client from './client.js';
-import _wrtc from 'electron-webrtc';
+import util from '../util/util.js';
 import string from '../util/string.js';
 import Node from '../peer-relay/client.js';
+import {EventEmitter} from 'events';
 
 function normalize(o){
-  if (!o.p2 || o.dir!='>')
+  if (!o.p2 || o.dir!='<')
     return o;
   let p = o.p1;
-  o.dir = '<';
+  o.dir = '>';
   o.p1 = o.p2;
   o.p2 = p;
   return o;
@@ -81,8 +84,8 @@ describe('test_api', function(){
     t('a<listen', 'a', '', '<', 'listen');
     t('A<listen', 'A', '', '<', 'listen');
     t('a<listen(ws:3030)', 'a', '', '<', 'listen(ws:3030)');
-    t('ab<connect', 'a', 'b', '<', 'connect');
-    t('ab>connect(ws:3030)', 'b', 'a', '<', 'connect(ws:3030)');
+    t('ab<connect', 'b', 'a', '>', 'connect');
+    t('ab>connect(ws:3030)', 'a', 'b', '>', 'connect(ws:3030)');
     t = (s, exp)=>assert.throws(()=>{ parse_expr(s); }, {message: exp});
     t('', 'invalid expr');
     t('ab', 'invalid expr');
@@ -90,6 +93,14 @@ describe('test_api', function(){
     t('abc<listen', 'invalid expr');
   });
 });
+
+class TestNode extends EventEmitter {
+  constructor(opts){
+    opts = opts||{};
+    super();
+    this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
+  }
+}
 
 function run_test(role, test){
   const nodes = {};
@@ -103,19 +114,24 @@ function run_test(role, test){
     switch (op)
     {
     case 'new_node':
-      if (role==p1);
+      // XXX: create hard-coded node_ids for the test
+      if (role==p1)
+        nodes[p1] = new TestNode();
       else
       {
         assert.ok(!nodes[p1]);
-        // XXX: create hard-coded node_ids for the test
         nodes[p1] = new Node();
       }
       console.log('XXX TODO: %s', op); // XXX: WIP
       break;
-    case 'listen':
-      console.log('XXX TODO: %s', op); // XXX: WIP
-      break;
     case 'connect':
+      if (role==p1); // XXX: TODO
+      else
+      {
+        nodes[p1].connect(nodes[p2].id)
+      }
+      break;
+    case 'listen':
       console.log('XXX TODO: %s', op); // XXX: WIP
       break;
     default: throw new Error('invalid op '+op);
@@ -127,7 +143,7 @@ function run_test(role, test){
 describe('basic', function(){
   it('test', ()=>{
     const t = test=>run_test('s', test);
-    t(`s<new_node a<new_node`);
+    t(`s<new_node a<new_node as>connect`);
     if (0) // XXX: WIP
     t(`s<listen as>connect`);
     if (0) // XXX: WIP
