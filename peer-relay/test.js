@@ -103,6 +103,9 @@ describe('basic', function(){
           expr, p1, p2, dir, op, params);
         switch (op)
         {
+        case 'new_node':
+          console.log('XXX TODO: %s', op); // XXX: WIP
+          break;
         case 'listen':
           console.log('XXX TODO: %s', op); // XXX: WIP
           break;
@@ -113,6 +116,8 @@ describe('basic', function(){
         }
       }
     };
+    t(`s<new_node a<new_node`);
+    if (0) // XXX: WIP
     t(`s<listen as>connect`);
     if (0) // XXX: WIP
     t(`s<listen as>connect sa>send(handshake-offer)
