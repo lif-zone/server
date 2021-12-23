@@ -3,6 +3,16 @@ import assert from 'assert';
 import Client from './client.js';
 import _wrtc from 'electron-webrtc';
 
+describe('basic', function(){
+  it('test', ()=>{
+    const t = ()=>{
+    };
+    t(`s<listen; as>connect sa>send(handshake-offer)
+      as>send(handshake-answer) as>send(findPeers) sa>send(findPeers)
+      as>send(foundPeers) sa>send(foundPeers)`);
+  });
+});
+
 if (0) // XXX: review old-style test and decide if needed
 describe('End to End', function(){
   const wrtc = _wrtc();
