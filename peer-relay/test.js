@@ -4,14 +4,36 @@ import Client from './client.js';
 import _wrtc from 'electron-webrtc';
 import string from '../util/string.js';
 
+// XXX: mv all test api to test_api.js and add test for it
+function parse_expr(expr){
+  let a = expr.split(/(^[a-z]{0,2})([<>]+)(.*$)/);
+  if (a.length!=5)
+    throw new Error('invalid expr');
+  return {players: a[1], dir: a[2], cmd: a[3]};
+}
+
+describe('test_api', function(){
+  it('parse_expr', ()=>{
+    const t = (s, players, dir, cmd)=>assert.deepEqual(parse_expr(s),
+      {players, dir, cmd});
+    t('<listen', '', '<', 'listen');
+    t('a<listen', 'a', '<', 'listen');
+    t('a<listen(ws:3030)', 'a', '<', 'listen(ws:3030)');
+    t('ab>connect', 'ab', '>', 'connect');
+    t('ab<connect', 'ab', '<', 'connect');
+    t('ab>connect(ws:3030)', 'ab', '>', 'connect(ws:3030)');
+  });
+});
+
 describe('basic', function(){
   it('test', ()=>{
     const t = test=>{
       let a = string.split_ws(test);
       for (let i=0; i<a.length; i++)
       {
-        let cmd = a[i];
-        console.log('cmd %s', cmd);
+        let expr = a[i];
+        let {src, dst, cmd} = parse_expr(expr);
+        console.log('expr %s src %, dst %s, cmd %s', expr, src, dst, cmd);
       }
     };
     t(`s<listen as>connect sa>send(handshake-offer)
