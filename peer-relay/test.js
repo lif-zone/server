@@ -20,7 +20,7 @@ function parse_expr(expr){
   let a = expr.split(/(^[a-zA-Z]{0,2})([<>]+)(.+.*$)/);
   if (a.length!=5)
     throw new Error('invalid expr');
-  return normalize({p1: a[1][0]||'', p2: a[1][1]||'', dir: a[2], cmd: a[3]});
+  return normalize({p1: a[1][0]||'', p2: a[1][1]||'', dir: a[2], op: a[3]});
 }
 
 function parse_param(s){
@@ -74,8 +74,8 @@ describe('test_api', function(){
     t('connect(ws:80,timeout:5)', 'connect', {ws: '80', timeout: '5'});
   });
   it('parse_expr', ()=>{
-    let t = (s, p1, p2, dir, cmd)=>assert.deepEqual(parse_expr(s),
-      {p1, p2, dir, cmd});
+    let t = (s, p1, p2, dir, op)=>assert.deepEqual(parse_expr(s),
+      {p1, p2, dir, op});
     t('<listen', '', '', '<', 'listen');
     t('a<listen', 'a', '', '<', 'listen');
     t('A<listen', 'A', '', '<', 'listen');
@@ -92,16 +92,29 @@ describe('test_api', function(){
 
 describe('basic', function(){
   it('test', ()=>{
+    const role = 's';
     const t = test=>{
       let a = string.split_ws(test);
       for (let i=0; i<a.length; i++)
       {
         let expr = a[i];
-        let {p1, p2, op, params} = parse_expr(expr);
-        console.log('%s: p1 %s p2 %s op %s params %o',
-          expr, p1, p2, op, params);
+        let {p1, p2, dir, op, params} = parse_expr(expr);
+        console.log('%s: p1 %s p2 %s dir %s op %s params %s',
+          expr, p1, p2, dir, op, params);
+        switch (op)
+        {
+        case 'listen':
+          console.log('XXX TODO: %s', op); // XXX: WIP
+          break;
+        case 'connect':
+          console.log('XXX TODO: %s', op); // XXX: WIP
+          break;
+        default: throw new Error('invalid op '+op);
+        }
       }
     };
+    t(`s<listen as>connect`);
+    if (0) // XXX: WIP
     t(`s<listen as>connect sa>send(handshake-offer)
       as>send(handshake-answer) as>send(findPeers) sa>send(findPeers)
       as>send(foundPeers) sa>send(foundPeers)`);
