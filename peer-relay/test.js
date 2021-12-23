@@ -6,50 +6,77 @@ import string from '../util/string.js';
 
 // XXX: mv all test api to test_api.js and add test for it
 function parse_expr(expr){
+  // XXX: change to match
   let a = expr.split(/(^[a-zA-Z]{0,2})([<>]+)(.+.*$)/);
   if (a.length!=5)
     throw new Error('invalid expr');
-  return {players: a[1], dir: a[2], cmd: a[3]};
+  return {p1: a[1][0]||'', p2: a[1][1]||'', dir: a[2], cmd: a[3]};
 }
 
-function parse_params(expr){
-  return {};
+function parse_param(s){
+  let a = s.split(':'), param = {};
+  if (a.length>2)
+    throw new Error('invalid param');
+  if (!a[0])
+  {
+    if (a.length!=1)
+      throw new Error('invalid param');
+  }
+  else
+    param[a[0]] = a[1]||'';
+  return param;
+}
+
+function parse_params(str){
+  let a = str.split(','), params = {};
+  a.forEach(s=>Object.assign(params, parse_param(s)));
+  return params;
 }
 
 function parse_cmd(cmd){
-  let m = cmd.match(/(^[^(^)]+)(\(.*\))?$/)
-  if (!m || m.length>3)
+  let m = cmd.match(/(^[^(^)]+)(\(([^(^)]*)\))?$/);
+  if (!m || m.length>4)
     throw new Error('invalid cmd');
-  let op = m[1], rest = m[2], params = parse_params(rest);
+  let op = m[1], rest = m[3]||'', params = parse_params(rest);
   return {op, params};
 }
 
 describe('test_api', function(){
-  it('parse_expr', ()=>{
-    let t = (s, players, dir, cmd)=>assert.deepEqual(parse_expr(s),
-      {players, dir, cmd});
-    t('<listen', '', '<', 'listen');
-    t('a<listen', 'a', '<', 'listen');
-    t('A<listen', 'A', '<', 'listen');
-    t('a<listen(ws:3030)', 'a', '<', 'listen(ws:3030)');
-    t('ab<connect', 'ab', '<', 'connect');
-    t('ab>connect(ws:3030)', 'ab', '>', 'connect(ws:3030)');
-    t = (s, exp)=>assert.throws(()=>{ parse_expr(s); }, {message: exp});
-    t('', 'invalid expr');
-    t('ab', 'invalid expr');
-    t('ab<', 'invalid expr');
-    t('abc<listen', 'invalid expr');
+  it('parse_param', ()=>{
+    let t = (s, exp)=>assert.deepEqual(parse_param(s), exp);
+    t('', {});
+    t('ws', {ws: ''});
+    t('ws:80', {ws: '80'});
+  });
+  it('parse_params', ()=>{
+    let t = (s, exp)=>assert.deepEqual(parse_params(s), exp);
+    t('', {});
+    t('ws', {ws: ''});
+    t('ws:80', {ws: '80'});
+    t('ws:80,host:lif.zone', {ws: '80', host: 'lif.zone'});
   });
   it('parse_cmd', ()=>{
     let t = (s, op, params)=>assert.deepEqual(parse_cmd(s), {op, params});
     t('connect', 'connect', {});
     t('connect()', 'connect', {});
-    if (0) // XXX: fixme
     t('connect(ws)', 'connect', {ws: ''});
-    if (0) // XXX: fixme
     t('connect(ws:80)', 'connect', {ws: '80'});
-    if (0) // XXX: fixme
     t('connect(ws:80,timeout:5)', 'connect', {ws: '80', timeout: '5'});
+  });
+  it('parse_expr', ()=>{
+    let t = (s, p1, p2, dir, cmd)=>assert.deepEqual(parse_expr(s),
+      {p1, p2, dir, cmd});
+    t('<listen', '', '', '<', 'listen');
+    t('a<listen', 'a', '', '<', 'listen');
+    t('A<listen', 'A', '', '<', 'listen');
+    t('a<listen(ws:3030)', 'a', '', '<', 'listen(ws:3030)');
+    t('ab<connect', 'a', 'b', '<', 'connect');
+    t('ab>connect(ws:3030)', 'a','b',  '>', 'connect(ws:3030)');
+    t = (s, exp)=>assert.throws(()=>{ parse_expr(s); }, {message: exp});
+    t('', 'invalid expr');
+    t('ab', 'invalid expr');
+    t('ab<', 'invalid expr');
+    t('abc<listen', 'invalid expr');
   });
 });
 
@@ -60,9 +87,9 @@ describe('basic', function(){
       for (let i=0; i<a.length; i++)
       {
         let expr = a[i];
-        let {src, dst, cmd} = parse_expr(expr);
-        let {op, params} = parse_cmd(cmd);
-        console.log('expr %s src %, dst %s, cmd %s', expr, src, dst, cmd);
+        let {p1, p2, op, params} = parse_expr(expr);
+        console.log('%s: p1 %s p2 %s op %s params %o',
+          expr, p1, p2, op, params);
       }
     };
     t(`s<listen as>connect sa>send(handshake-offer)
