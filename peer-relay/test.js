@@ -3,6 +3,7 @@ import assert from 'assert';
 import Client from './client.js';
 import _wrtc from 'electron-webrtc';
 import string from '../util/string.js';
+import Node from '../peer-relay/client.js';
 
 function normalize(o){
   if (!o.p2 || o.dir!='>')
@@ -81,7 +82,7 @@ describe('test_api', function(){
     t('A<listen', 'A', '', '<', 'listen');
     t('a<listen(ws:3030)', 'a', '', '<', 'listen(ws:3030)');
     t('ab<connect', 'a', 'b', '<', 'connect');
-    t('ab>connect(ws:3030)', 'b','a',  '<', 'connect(ws:3030)');
+    t('ab>connect(ws:3030)', 'b', 'a', '<', 'connect(ws:3030)');
     t = (s, exp)=>assert.throws(()=>{ parse_expr(s); }, {message: exp});
     t('', 'invalid expr');
     t('ab', 'invalid expr');
@@ -90,32 +91,42 @@ describe('test_api', function(){
   });
 });
 
+function run_test(role, test){
+  const nodes = {};
+  let a = string.split_ws(test);
+  for (let i=0; i<a.length; i++)
+  {
+    let expr = a[i];
+    let {p1, p2, dir, op, params} = parse_expr(expr);
+    console.log('%s: p1 %s p2 %s dir %s op %s params %s',
+      expr, p1, p2, dir, op, params);
+    switch (op)
+    {
+    case 'new_node':
+      if (role==p1);
+      else
+      {
+        assert.ok(!nodes[p1]);
+        // XXX: create hard-coded node_ids for the test
+        nodes[p1] = new Node();
+      }
+      console.log('XXX TODO: %s', op); // XXX: WIP
+      break;
+    case 'listen':
+      console.log('XXX TODO: %s', op); // XXX: WIP
+      break;
+    case 'connect':
+      console.log('XXX TODO: %s', op); // XXX: WIP
+      break;
+    default: throw new Error('invalid op '+op);
+    }
+  }
+  // XXX: cleanup
+}
+
 describe('basic', function(){
   it('test', ()=>{
-    const role = 's';
-    const t = test=>{
-      let a = string.split_ws(test);
-      for (let i=0; i<a.length; i++)
-      {
-        let expr = a[i];
-        let {p1, p2, dir, op, params} = parse_expr(expr);
-        console.log('%s: p1 %s p2 %s dir %s op %s params %s',
-          expr, p1, p2, dir, op, params);
-        switch (op)
-        {
-        case 'new_node':
-          console.log('XXX TODO: %s', op); // XXX: WIP
-          break;
-        case 'listen':
-          console.log('XXX TODO: %s', op); // XXX: WIP
-          break;
-        case 'connect':
-          console.log('XXX TODO: %s', op); // XXX: WIP
-          break;
-        default: throw new Error('invalid op '+op);
-        }
-      }
-    };
+    const t = test=>run_test('s', test);
     t(`s<new_node a<new_node`);
     if (0) // XXX: WIP
     t(`s<listen as>connect`);
