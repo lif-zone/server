@@ -8,6 +8,7 @@ import fs from 'fs';
 import https from 'https';
 import Client from './client.js';
 import util from '../util/util.js';
+import date from '../util/date.js';
 import string from '../util/string.js';
 import Node from '../peer-relay/client.js';
 import {EventEmitter} from 'events';
@@ -118,16 +119,31 @@ class TestNode extends EventEmitter {
     this._wss.on('connection', ws=>{
       console.log('XXX connection');
     });
-    this._wss.on('listening',
-      ()=>this.url = 'wss://lif.zone:'+this._wss._server.address().port);
+    this._wss.on('listening', ()=>{
+      this._wss.url = 'wss://lif.zone:'+this._wss._server.address().port;
+      this.emit('listen');
+    });
   }
   destroy(){ this._wss.close(()=>this.https_server.close()); }
 }
 
-function node_ws(a, port){ return 'wss://lif.zone:'+port; }
+const nodes = {}, exp_events = [];
+
+async function wait_until_no_events(){
+  const max = 1000;
+  await util.sleep(); // XXX HACK
+  const t = date.monotonic();
+  while (exp_events.length && date.monotonic()-t < max)
+    await util.sleep(); // XXX HACK
+  assert.ok(!exp_events.length, 'pending events:\n'+exp_events.join('\n'));
+}
+
+function on_event(e){
+  assert.equal(e, exp_events[0]);
+  exp_events.shift();
+}
 
 async function run_test(role, test){
-  const nodes = {};
   let a = string.split_ws(test);
   evil_dns.add('lif.zone', '127.0.0.1');
   for (let i=0; i<a.length; i++)
@@ -144,10 +160,15 @@ async function run_test(role, test){
         nodes[p1] = new TestNode({port: +params.port});
       else
       {
-        debugger;
         assert.ok(!nodes[p1]);
-        nodes[p1] = new Node({bootstrap: [node_ws(params.ws, params.port)]});
+        nodes[p1] = new Node({bootstrap: [nodes[params.ws]._wss.url]});
       }
+      if (params.port)
+      {
+        exp_events.push(p1+'<listen');
+      }
+      nodes[p1].on('listen', ()=>on_event(p1+'<listen'));
+      await wait_until_no_events();
       break;
     case 'connect':
       if (role==p1); // XXX: TODO
@@ -159,12 +180,13 @@ async function run_test(role, test){
       break;
     default: throw new Error('invalid op '+op);
     }
-    console.log('XXX');
-    await util.sleep(500); // XXX HACK
+    await util.sleep(); // XXX HACK
   }
-  test_end();
+  await test_end();
 
-  function test_end(){
+  async function test_end(){
+    await wait_until_no_events();
+    assert.ok(!exp_events.length);
     for (let i in nodes)
       nodes[i].destroy(()=>{});
     evil_dns.remove('lif.zone');
@@ -172,12 +194,12 @@ async function run_test(role, test){
 }
 
 describe('peer-relay', async function(){
-  this.timeout(10000); // XXX HACK
-  await it('test', async ()=>{
-    this.timeout(10000); // XXX HACK
+  this.timeout(5000); // XXX HACK
+  await it('test', async()=>{
+    this.timeout(5000); // XXX HACK
     const t = async test=>await run_test('s', test);
     // XXX: rm port for a>new_node
-    await t(`s>new_node(port:4000) a>new_node(ws:s,port:4000)`);
+    await t(`s>new_node(port:4000) a>new_node(ws:s)`);
     // await t(`s>new_node a>new_node(ws:s)`);
     // await t(`s>new_node a>new_node(ws:s) as>connect`);
     if (0) // XXX: WIP

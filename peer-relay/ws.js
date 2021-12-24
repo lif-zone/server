@@ -43,7 +43,9 @@ function WsConnector(id, port, host){
   function onListen(){
     if (self.destroyed)
       return;
-    self.url = 'wss://'+host+':' + self._wss._server.address().port;
+    let port = self._wss._server.address().port;
+    let url = 'wss://'+host+':'+port;
+    self.emit('listening', {port, url});
   }
 }
 
@@ -60,7 +62,7 @@ WsConnector.prototype._onConnection = function(ws){
     return;
   }
   var channel = new WsChannel(self.id, ws);
-  channel.tmp_id = ++self.tmp_id_n
+  channel.tmp_id = ++self.tmp_id_n;
   self.channels[channel.tmp_id] = channel;
   channel.on('open', onOpen);
   channel.on('close', onClose);
@@ -82,7 +84,7 @@ WsConnector.prototype._onConnection = function(ws){
     channel.removeListener('open', onOpen);
     channel.removeListener('close', onClose);
     channel.removeListener('error', onError);
-    delete self.channels[channel.tmp_id]
+    delete self.channels[channel.tmp_id];
   }
 
   function onError(err){
