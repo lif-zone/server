@@ -20,12 +20,12 @@ function WsConnector(id, port, host){
   self.url = null;
   if (port != null)
   {
+    // XXX create: move to nconf
     const https_opt = {
       key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
       cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
-    const https_server = https.createServer(https_opt);
-    https_server.listen(port, '0.0.0.0');
-    self._wss = new WebSocketServer({server: https_server});
+    self.https_server = https.createServer(https_opt).listen(port, '0.0.0.0');
+    self._wss = new WebSocketServer({server: self.https_server});
     self._wss.on('connection', onConnection);
     self._wss.on('listening', onListen);
     if (port !== 0)
@@ -88,8 +88,8 @@ WsConnector.prototype.destroy = function(cb){
     return;
   self.destroyed = true;
   if (self._wss)
-    self._wss.close(cb);
-  else
+    self._wss.close(()=>this.https_server.close(cb));
+  else if (cb)
     cb();
   self._wss = null;
 };

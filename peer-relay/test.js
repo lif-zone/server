@@ -2,6 +2,9 @@
 import assert from 'assert';
 import crypto from 'crypto';
 import _wrtc from 'electron-webrtc'; // XXX: rm
+import {WebSocketServer} from 'ws';
+import fs from 'fs';
+import https from 'https';
 import Client from './client.js';
 import util from '../util/util.js';
 import string from '../util/string.js';
@@ -98,6 +101,18 @@ class TestNode extends EventEmitter {
     opts = opts||{};
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
+    // XXX create: fake certificates fo tests
+    const https_opt = {
+      key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
+      cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
+    this.https_server = https.createServer(https_opt)
+    .listen(opts.port, '0.0.0.0');
+    this._wss = new WebSocketServer({server: this.https_server});
+    this._wss.on('connection', ws=>{});
+    this._wss.on('listening', ()=>{});
+  }
+  destroy(){
+    this._wss.close(()=>this.https_server.close());
   }
 }
 
@@ -115,7 +130,7 @@ function run_test(role, test){
     case 'new_node':
       // XXX: create hard-coded node_ids for the test
       if (role==p1)
-        nodes[p1] = new TestNode();
+        nodes[p1] = new TestNode({port: 4000});
       else
       {
         assert.ok(!nodes[p1]);
@@ -127,7 +142,7 @@ function run_test(role, test){
       if (role==p1); // XXX: TODO
       else
       {
-        nodes[p1].connect(nodes[p2].id)
+        //nodes[p1].connect(nodes[p2].id);
       }
       break;
     case 'listen':
@@ -136,13 +151,18 @@ function run_test(role, test){
     default: throw new Error('invalid op '+op);
     }
   }
-  // XXX: cleanup
+  test_end();
+
+  function test_end(){
+    for (let i in nodes)
+      nodes[i].destroy();
+  }
 }
 
 describe('basic', function(){
   it('test', ()=>{
     const t = test=>run_test('s', test);
-    t(`s<new_node a<new_node as>connect`);
+    t(`s>new_node a>new_node as>connect`);
     if (0) // XXX: WIP
     t(`s<listen as>connect`);
     if (0) // XXX: WIP
