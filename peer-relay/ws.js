@@ -21,10 +21,10 @@ function WsConnector(id, port, host){
   if (port != null)
   {
     // XXX create: move to nconf
-    const https_opt = {
+    const https_opts = {
       key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
       cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
-    self.https_server = https.createServer(https_opt).listen(port, '0.0.0.0');
+    self.https_server = https.createServer(https_opts).listen(port, '0.0.0.0');
     self._wss = new WebSocketServer({server: self.https_server});
     self._wss.on('connection', onConnection);
     self._wss.on('listening', onListen);

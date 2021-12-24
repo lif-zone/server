@@ -26,7 +26,8 @@ function parse_expr(expr){
   let a = expr.match(/(^[a-zA-Z]{0,2})([<>]+)(.+.*$)/);
   if (!a || a.length!=4)
     throw new Error('invalid expr');
-  return normalize({p1: a[1][0]||'', p2: a[1][1]||'', dir: a[2], op: a[3]});
+  let {op, params} = parse_cmd(a[3]);
+  return normalize({p1: a[1][0]||'', p2: a[1][1]||'', dir: a[2], op, params});
 }
 
 function parse_param(s){
@@ -80,14 +81,17 @@ describe('test_api', function(){
     t('connect(ws:80,timeout:5)', 'connect', {ws: '80', timeout: '5'});
   });
   it('parse_expr', ()=>{
-    let t = (s, p1, p2, dir, op)=>assert.deepEqual(parse_expr(s),
-      {p1, p2, dir, op});
-    t('<listen', '', '', '<', 'listen');
-    t('a<listen', 'a', '', '<', 'listen');
-    t('A<listen', 'A', '', '<', 'listen');
-    t('a<listen(ws:3030)', 'a', '', '<', 'listen(ws:3030)');
-    t('ab<connect', 'b', 'a', '>', 'connect');
-    t('ab>connect(ws:3030)', 'a', 'b', '>', 'connect(ws:3030)');
+    let t = (s, p1, p2, dir, op, params)=>assert.deepEqual(parse_expr(s),
+      {p1, p2, dir, op, params});
+    t('<listen', '', '', '<', 'listen', {});
+    t('a<listen', 'a', '', '<', 'listen', {});
+    t('A<listen', 'A', '', '<', 'listen', {});
+    t('a<listen(ws)', 'a', '', '<', 'listen', {ws: ''});
+    t('a<listen(ws:b)', 'a', '', '<', 'listen', {ws: 'b'});
+    t('a<listen(ws:3030)', 'a', '', '<', 'listen', {ws: '3030'});
+    t('a>new_node(ws:s)', 'a', '', '>', 'new_node', {ws: 's'});
+    t('ab<connect', 'b', 'a', '>', 'connect', {});
+    t('ab>connect(ws:3030)', 'a', 'b', '>', 'connect', {ws: '3030'});
     t = (s, exp)=>assert.throws(()=>{ parse_expr(s); }, {message: exp});
     t('', 'invalid expr');
     t('ab', 'invalid expr');
@@ -102,18 +106,19 @@ class TestNode extends EventEmitter {
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     // XXX create: fake certificates fo tests
-    const https_opt = {
+    const https_opts = {
       key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
       cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
-    this.https_server = https.createServer(https_opt)
-    .listen(opts.port, '0.0.0.0');
+    this.port = opts.port;
+    this.https_server = https.createServer(https_opts)
+    .listen(this.port, '0.0.0.0');
     this._wss = new WebSocketServer({server: this.https_server});
+    this.url = 'wss://lif.zone' + this.port;
     this._wss.on('connection', ws=>{});
-    this._wss.on('listening', ()=>{});
+    this._wss.on('listening',
+      ()=>this.url = 'wss://lif.zone:'+this._wss._server.address().port);
   }
-  destroy(){
-    this._wss.close(()=>this.https_server.close());
-  }
+  destroy(){ this._wss.close(()=>this.https_server.close()); }
 }
 
 function run_test(role, test){
@@ -130,20 +135,17 @@ function run_test(role, test){
     case 'new_node':
       // XXX: create hard-coded node_ids for the test
       if (role==p1)
-        nodes[p1] = new TestNode({port: 4000});
+        nodes[p1] = new TestNode({port: 4000+p1.charCodeAt(0)});
       else
       {
         assert.ok(!nodes[p1]);
-        nodes[p1] = new Node();
+        nodes[p1] = new Node({bootstrap: []});
       }
-      console.log('XXX TODO: %s', op); // XXX: WIP
       break;
     case 'connect':
       if (role==p1); // XXX: TODO
       else
-      {
-        //nodes[p1].connect(nodes[p2].id);
-      }
+        nodes[p1].connect(nodes[p2].id);
       break;
     case 'listen':
       console.log('XXX TODO: %s', op); // XXX: WIP
@@ -162,7 +164,7 @@ function run_test(role, test){
 describe('basic', function(){
   it('test', ()=>{
     const t = test=>run_test('s', test);
-    t(`s>new_node a>new_node as>connect`);
+    t(`s>new_node a>new_node(ws:s) as>connect`);
     if (0) // XXX: WIP
     t(`s<listen as>connect`);
     if (0) // XXX: WIP
