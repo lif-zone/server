@@ -7,6 +7,8 @@ import fs from 'fs';
 import https from 'https';
 const debug = _debug('peer-relay:ws');
 const WebSocket = getWebSocket();
+// XXX HACK: need to add root ca certificate
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export default WsConnector;
 

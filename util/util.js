@@ -13,6 +13,13 @@ E.monotonic = function(){
 };
 
 // XXX: use etask
+E.sleep = function(ms){
+  let wait = E.wait();
+  setTimeout(()=>wait.continue());
+  return wait;
+};
+
+// XXX: use etask
 E.wait = function(){
   let resolve, reject;
   let p = new Promise((_resolve, _reject)=>{
