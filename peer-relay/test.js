@@ -24,7 +24,26 @@ function normalize(o){
 }
 
 // XXX: mv all test api to test_api.js and add test for it
+/* XXX derry: example of test parsing
+ab>(test go(now 3 send:4))
+{orig: 'ab>....', cmd: 'ab>',
+  arg: [{cmd: 'test', orig:'test'}, {cmd: 'go', orig: 'go(now 3 send:4)',
+  arg: [{cmd: 'now'},{cmd: '3'},{cmd: 'send', arg[{cmd: '4'}]]
+{s: 'a', d: 'b', dir: '>'}
+*/
+
 function parse_expr(expr){
+  // XXX derry: fix parser
+  // parse_cmd_single:
+  // skip WS
+  // if EOS return "ok" but "empty"
+  // eat until: EOS, ws, '(', ':'
+  // if '(' scan until closing ')' while ++ on ( and --  on ).
+  //    stop on 0. Error on >0
+  // if 'cmd' has ':', so validate !args, set args to rest after ':'
+  // OK: if WS or EOS
+  // parse_cmd_multi:
+  // loop on parse_cmd_single()
   let a = expr.match(/(^[a-zA-Z]{0,2})([<>]+)(.+.*$)/);
   if (!a || a.length!=4)
     throw new Error('invalid expr');
