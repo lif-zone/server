@@ -115,20 +115,16 @@ class TestNode extends EventEmitter {
     .listen(this.port, '0.0.0.0');
     this._wss = new WebSocketServer({server: this.https_server});
     this.url = 'wss://lif.zone' + this.port;
-    console.log('XXX');
     this._wss.on('connection', ws=>{
       console.log('XXX connection');
     });
-    this._wss.on('listening', ()=>{
-      console.log('XXX listening %s', this._wss._server.address().port);
-      this.url = 'wss://lif.zone:'+this._wss._server.address().port;
-    });
+    this._wss.on('listening',
+      ()=>this.url = 'wss://lif.zone:'+this._wss._server.address().port);
   }
   destroy(){ this._wss.close(()=>this.https_server.close()); }
 }
 
-function node_port(a){ return 4000+a.charCodeAt(0); }
-function node_ws(a){ return 'wss://lif.zone:'+node_port(a); }
+function node_ws(a, port){ return 'wss://lif.zone:'+port; }
 
 async function run_test(role, test){
   const nodes = {};
@@ -145,11 +141,12 @@ async function run_test(role, test){
     case 'new_node':
       // XXX: create hard-coded node_ids for the test
       if (role==p1)
-        nodes[p1] = new TestNode({port: node_port(p1)});
+        nodes[p1] = new TestNode({port: +params.port});
       else
       {
+        debugger;
         assert.ok(!nodes[p1]);
-        nodes[p1] = new Node({bootstrap: [node_ws(params.ws)]});
+        nodes[p1] = new Node({bootstrap: [node_ws(params.ws, params.port)]});
       }
       break;
     case 'connect':
@@ -162,21 +159,27 @@ async function run_test(role, test){
       break;
     default: throw new Error('invalid op '+op);
     }
-    await util.sleep(1000); // XXX HACK
+    console.log('XXX');
+    await util.sleep(500); // XXX HACK
   }
   test_end();
 
   function test_end(){
     for (let i in nodes)
-      nodes[i].destroy();
+      nodes[i].destroy(()=>{});
     evil_dns.remove('lif.zone');
   }
 }
 
-describe('basic', async function(){
-  it('test', async()=>{
+describe('peer-relay', async function(){
+  this.timeout(10000); // XXX HACK
+  await it('test', async ()=>{
+    this.timeout(10000); // XXX HACK
     const t = async test=>await run_test('s', test);
-    await t(`s>new_node a>new_node(ws:s) as>connect`);
+    // XXX: rm port for a>new_node
+    await t(`s>new_node(port:4000) a>new_node(ws:s,port:4000)`);
+    // await t(`s>new_node a>new_node(ws:s)`);
+    // await t(`s>new_node a>new_node(ws:s) as>connect`);
     if (0) // XXX: WIP
     t(`s<listen as>connect`);
     if (0) // XXX: WIP

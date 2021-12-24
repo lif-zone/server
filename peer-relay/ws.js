@@ -17,6 +17,10 @@ inherits(WsConnector, EventEmitter);
 function WsConnector(id, port, host){
   var self = this;
   self.id = id;
+  // XXX HACK: review tmp_id_n+channels - it's a quick hack to cleanup
+  // open channels - need to properly rewrite everything
+  self.tmp_id_n = 0;
+  self.channels = {};
   self.destroyed = false;
   self._wss = null;
   self.url = null;
@@ -56,6 +60,8 @@ WsConnector.prototype._onConnection = function(ws){
     return;
   }
   var channel = new WsChannel(self.id, ws);
+  channel.tmp_id = ++self.tmp_id_n
+  self.channels[channel.tmp_id] = channel;
   channel.on('open', onOpen);
   channel.on('close', onClose);
   channel.on('error', onError);
@@ -76,6 +82,7 @@ WsConnector.prototype._onConnection = function(ws){
     channel.removeListener('open', onOpen);
     channel.removeListener('close', onClose);
     channel.removeListener('error', onError);
+    delete self.channels[channel.tmp_id]
   }
 
   function onError(err){
@@ -89,6 +96,8 @@ WsConnector.prototype.destroy = function(cb){
   if (self.destroyed)
     return;
   self.destroyed = true;
+  for (let i in self.channels)
+    self.channels[i].destroy();
   if (self._wss)
     self._wss.close(()=>this.https_server.close(cb));
   else if (cb)

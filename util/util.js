@@ -15,7 +15,7 @@ E.monotonic = function(){
 // XXX: use etask
 E.sleep = function(ms){
   let wait = E.wait();
-  setTimeout(()=>wait.continue());
+  setTimeout(()=>wait.continue(), ms);
   return wait;
 };
 
