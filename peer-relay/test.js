@@ -104,30 +104,42 @@ describe('test_api', function(){
 
 class TestNode extends EventEmitter {
   constructor(opts){
-    opts = opts||{};
+    let {host, port} = opts = opts||{};
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     // XXX create: fake certificates fo tests
     const https_opts = {
-      key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
-      cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
-    this.port = opts.port;
-    this.https_server = https.createServer(https_opts)
-    .listen(this.port, '0.0.0.0');
-    this._wss = new WebSocketServer({server: this.https_server});
-    this.url = 'wss://lif.zone' + this.port;
-    this._wss.on('connection', ws=>{
-      console.log('XXX connection');
-    });
-    this._wss.on('listening', ()=>{
-      this._wss.url = 'wss://lif.zone:'+this._wss._server.address().port;
-      this.emit('listen');
-    });
+      key: fs.readFileSync('/var/lif/ssl/STAR_'+host.replace('.', '_')+'.key'),
+      cert: fs.readFileSync(
+        '/var/lif/ssl/STAR_'+host.replace('.', '_')+'.crt')};
+    this.port = port;
+    this.wsConnector = new EventEmitter();
+    if (port)
+    {
+      this.https_server = https.createServer(https_opts)
+      .listen(this.port, '0.0.0.0');
+      this.wsConnector._wss = new WebSocketServer({server: this.https_server});
+      this.url = 'wss://'+host+':'+port;
+      this.wsConnector._wss.on('connection', ws=>{
+        console.log('XXX connection');
+      });
+      this.wsConnector._wss.on('listening', ()=>{
+        this.wsConnector.url =
+          'wss://'+host+':'+this.wsConnector._wss._server.address().port;
+        this.wsConnector.emit('listening');
+      });
+    }
   }
-  destroy(){ this._wss.close(()=>this.https_server.close()); }
+  destroy(){
+    if (this.wsConnector._wss)
+    {
+      this.wsConnector._wss.close();
+      this.https_server.close();
+    }
+  }
 }
 
-const nodes = {}, exp_events = [];
+let nodes = {}, exp_events = [];
 
 async function wait_until_no_events(){
   const max = 1000;
@@ -157,15 +169,17 @@ async function run_test(role, test){
     case 'new_node':
       // XXX: create hard-coded node_ids for the test
       if (role==p1)
-        nodes[p1] = new TestNode({port: +params.port});
+        nodes[p1] = new TestNode({host: 'lif.zone', port: +params.port});
       else
       {
         assert.ok(!nodes[p1]);
-        nodes[p1] = new Node({bootstrap: [nodes[params.ws]._wss.url]});
+        nodes[p1] = new Node({port: +params.port, bootstrap:
+          params.ws ? [nodes[params.ws].wsConnector.url] : []});
       }
       if (params.port)
       {
         exp_events.push(p1+'<listen');
+        nodes[p1].wsConnector.on('listening', ()=>nodes[p1].emit('listen'));
       }
       nodes[p1].on('listen', ()=>on_event(p1+'<listen'));
       await wait_until_no_events();
@@ -174,9 +188,6 @@ async function run_test(role, test){
       if (role==p1); // XXX: TODO
       else
         nodes[p1].connect(nodes[p2].id);
-      break;
-    case 'listen':
-      console.log('XXX TODO: %s', op); // XXX: WIP
       break;
     default: throw new Error('invalid op '+op);
     }
@@ -189,6 +200,7 @@ async function run_test(role, test){
     assert.ok(!exp_events.length);
     for (let i in nodes)
       nodes[i].destroy(()=>{});
+    nodes = {};
     evil_dns.remove('lif.zone');
   }
 }
@@ -197,9 +209,10 @@ describe('peer-relay', async function(){
   this.timeout(5000); // XXX HACK
   await it('test', async()=>{
     this.timeout(5000); // XXX HACK
-    const t = async test=>await run_test('s', test);
+    const t = async(role, test)=>await run_test(role, test);
     // XXX: rm port for a>new_node
-    await t(`s>new_node(port:4000) a>new_node(ws:s)`);
+    await t('s', `s>new_node(port:4000) a>new_node(ws:s)`);
+    await t('a', `s>new_node(port:4000) a>new_node(ws:s)`);
     // await t(`s>new_node a>new_node(ws:s)`);
     // await t(`s>new_node a>new_node(ws:s) as>connect`);
     if (0) // XXX: WIP

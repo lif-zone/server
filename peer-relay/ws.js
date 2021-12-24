@@ -24,7 +24,7 @@ function WsConnector(id, port, host){
   self.destroyed = false;
   self._wss = null;
   self.url = null;
-  if (port != null)
+  if (port>=0)
   {
     // XXX create: move to nconf
     const https_opts = {
