@@ -104,8 +104,9 @@ ab>(test go(now 3 send:4))
 // loop on parse_cmd_single()
 
 function test_parse_cmd_single(s){
-  let state = 'pre', ret = {}, cmd_s = 0, cmd_e = s.length;
-  for (let i=0; i<s.length; i++)
+  let state = 'pre', i=0, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
+  let parentesis = 0, done = false;
+  for (i=0; i<s.length && !done; i++)
   {
     let c = s.charAt(i);
     switch (state)
@@ -122,17 +123,36 @@ function test_parse_cmd_single(s){
       if (')'.includes(c))
         throw_invalid(s, i);
       if (string.is_ws(c))
+        cmd_e = i;
+      else if ('('.includes(c))
       {
         cmd_e = i;
-        break;
+        arg_s = i+1;
+        state = 'arg';
+        parentesis++;
       }
-      if ('('.includes(c))
-        cmd_e = i;
+      break;
+    case 'arg':
+      if (c=='(')
+        parentesis++;
+      if (c==')')
+        parentesis--;
+      if (parentesis<0)
+        throw_invalid(s, i);
+      if (!parentesis)
+      {
+        arg_e = i;
+        done = true;
+      }
       break;
     default:
     }
   }
+  if (parentesis)
+    throw_invalid(s, i);
   ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
+  if (arg_e>arg_s)
+    ret.arg = s.substr(arg_s, arg_e-arg_s);
   return ret;
 }
 
@@ -144,11 +164,20 @@ describe('test_api2', function(){
     t(')', 'invalid ^^^)');
     t('(', 'invalid ^^^(');
     t('a)', 'invalid a^^^)');
+    t('a(b()', 'invalid a(b()^^^');
+    t('a(b () ', 'invalid a(b () ^^^');
+    // t('open(a)) ', '');
+    // t('open(a b( c) ', 'xxxx');
+    // t('open(a() ', '');
+    // t('open(a ', {cmd: 'open', arg: 'a'});
   });
   it('test_parse_single_valid', ()=>{
     const t = (s, exp)=>{ assert.deepEqual(test_parse_cmd_single(s), exp); };
     t('open', {cmd: 'open'});
     t('open ', {cmd: 'open'});
+    t('open(a) ', {cmd: 'open', arg: 'a'});
+    t('open(a b) ', {cmd: 'open', arg: 'a b'});
+    t('open(a(b)) ', {cmd: 'open', arg: 'a(b)'});
     /*
     t('open(role c)');
     t(' open(role c) ');
