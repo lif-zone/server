@@ -184,7 +184,7 @@ describe('test_api', function(){
         arg: [{cmd: '4'}]}]}]}]);
   });
   // XXX: it('test_parse_cmd_multi_invalid', ()=>{
-  it('test_parse_cmd_dir', ()=>{
+  it('test_parse_cmd_dir_valid', ()=>{
     const t = (s, exp)=>{
       let ret = test_parse_cmd_dir(s);
       delete ret.meta;
@@ -199,6 +199,13 @@ describe('test_api', function(){
     t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
     t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
     t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
+  });
+  it('test_parse_cmd_dir_invalid', ()=>{
+    const t = (s, exp)=>{ assert.throws(()=>{ test_parse_cmd_dir(s); },
+      {message: exp}); };
+    t('a>>', 'invalid a^^^>>');
+    t('abc>', 'invalid abc^^^>');
+    t('>', 'invalid ^^^>');
   });
 });
 
