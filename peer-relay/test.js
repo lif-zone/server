@@ -153,6 +153,7 @@ function test_parse_cmd_single(s){
   ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
   if (arg_e>arg_s)
     ret.arg = s.substr(arg_s, arg_e-arg_s);
+  ret.meta = {cmd_s, cmd_e, arg_s, arg_e, orig: s};
   return ret;
 }
 
@@ -172,7 +173,11 @@ describe('test_api2', function(){
     // t('open(a ', {cmd: 'open', arg: 'a'});
   });
   it('test_parse_single_valid', ()=>{
-    const t = (s, exp)=>{ assert.deepEqual(test_parse_cmd_single(s), exp); };
+    const t = (s, exp)=>{
+      let ret = test_parse_cmd_single(s);
+      delete ret.meta;
+      assert.deepEqual(ret, exp);
+    };
     t('open', {cmd: 'open'});
     t('open ', {cmd: 'open'});
     t('open(a) ', {cmd: 'open', arg: 'a'});
