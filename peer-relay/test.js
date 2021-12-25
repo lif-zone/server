@@ -80,7 +80,7 @@ function test_parse_cmd_single(s){
         done = true;
       }
       break;
-    default:
+    default: throw new Error('unknown parser error '+s);
     }
   }
   if (parentesis)
