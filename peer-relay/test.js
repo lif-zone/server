@@ -180,6 +180,8 @@ describe('test_api2', function(){
     };
     t('open', {cmd: 'open'});
     t('open ', {cmd: 'open'});
+    t('open()', {cmd: 'open'});
+    t('open( )', {cmd: 'open', arg: ' '}); // XXX: decide if correct
     t('open(a) ', {cmd: 'open', arg: 'a'});
     t('open(a b) ', {cmd: 'open', arg: 'a b'});
     t('open(a(b)) ', {cmd: 'open', arg: 'a(b)'});
