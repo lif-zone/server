@@ -185,6 +185,9 @@ describe('test_api2', function(){
     t('open(a(b)) ', {cmd: 'open', arg: 'a(b)'});
     t('open(role c)', {cmd: 'open', arg: 'role c'});
     t('open(roles(ct>))', {cmd: 'open', arg: 'roles(ct>)'});
+    t('open(a) b', {cmd: 'open', arg: 'a'});
+    t('open(a) (', {cmd: 'open', arg: 'a'});
+    t('open(a) )', {cmd: 'open', arg: 'a'});
     t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'});
   });
   it('test_parse', ()=>{
