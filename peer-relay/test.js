@@ -102,7 +102,6 @@ ab>(test go(now 3 send:4))
 // OK: if WS or EOS
 // parse_cmd_multi:
 // loop on parse_cmd_single()
-
 function test_parse_cmd_single(s){
   let state = 'pre', i=0, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
   let parentesis = 0, done = false;
@@ -153,9 +152,21 @@ function test_parse_cmd_single(s){
   }
   if (parentesis)
     throw_invalid(s, i);
-  ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
+  let cmd = ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
   if (arg_e>arg_s)
+  {
+    if (cmd.includes(':'))
+      throw_invalid(cmd, cmd.indexOf(':'));
     ret.arg = s.substr(arg_s, arg_e-arg_s);
+  }
+  else if (cmd.includes(':'))
+  {
+    let m = cmd.match(/(^[^:]+):([^:]+$)/);
+    if (!m)
+      throw_invalid(cmd, cmd.lastIndexOf(':'));
+    cmd = ret.cmd = m[1];
+    ret.arg = m[2];
+  }
   ret.meta = {cmd_s, cmd_e, arg_s, arg_e, orig: s, last: i};
   return ret;
 }
@@ -181,6 +192,8 @@ describe('test_api2', function(){
     t('a)', 'invalid a^^^)');
     t('a(b()', 'invalid a(b()^^^');
     t('a(b () ', 'invalid a(b () ^^^');
+    t('a:(b)', 'invalid a^^^:');
+    t('a:b:c', 'invalid a:b^^^:c');
     // t('open(a)) ', '');
     // t('open(a b( c) ', 'xxxx');
     // t('open(a() ', '');
@@ -189,16 +202,17 @@ describe('test_api2', function(){
   it('test_parse_single_valid', ()=>{
     const t = (s, exp, exp_last)=>{
       let ret = test_parse_cmd_single(s);
-      let {cmd_s, cmd_e, arg_s, arg_e, last} = ret.meta;
+      let {last} = ret.meta;
       delete ret.meta;
       assert.deepEqual(ret, exp);
       assert.equal(last, exp_last);
-      assert.equal(ret.cmd, s.substr(cmd_s, cmd_e-cmd_s));
-      assert.equal(ret.arg||'', s.substr(arg_s, arg_e-arg_s));
     };
     t('open', {cmd: 'open'}, 4);
     t('open ', {cmd: 'open'}, 5);
     t('open b', {cmd: 'open'}, 5);
+    debugger;
+    t('open:a', {cmd: 'open', arg: 'a'}, 6);
+    t('open:ab', {cmd: 'open', arg: 'ab'}, 7);
     t('open()', {cmd: 'open'}, 6);
     t('open() ', {cmd: 'open'}, 6);
     t('open( )', {cmd: 'open', arg: ' '}, 7); // XXX: maybe arg:undefined?
@@ -229,18 +243,8 @@ describe('test_api2', function(){
       {cmd: 'd', arg: [{cmd: '5s'}, {cmd: '+'}, {cmd: '3'}]}
       ]}]);
     t('ab>(test go(now 3 send:4))', [{cmd: 'ab>', arg: [{cmd: 'test'},
-      {cmd: 'go', arg: [{cmd: 'now'},{cmd: '3'}, {cmd: 'send:4'}]}]}]);
-      // XXX: support ':' arg: [{cmd: '4'}]]
-
-/*
-ab>(test go(now 3 send:4))
-{orig: 'ab>....', cmd: 'ab>',
-  arg: [{cmd: 'test', orig:'test'}, {cmd: 'go', orig: 'go(now 3 send:4)',
-  arg: [{cmd: 'now'},{cmd: '3'},{cmd: 'send', arg[{cmd: '4'}]]
-{s: 'a', d: 'b', dir: '>'}
-*/
-    if (0)
-      t('new open(role c) roles(ct>) sh(c) url(cnn/ 10C) bc>(hc hget)');
+      {cmd: 'go', arg: [{cmd: 'now'}, {cmd: '3'}, {cmd: 'send',
+        arg: [{cmd: '4'}]}]}]}]);
   });
 });
 
