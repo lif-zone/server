@@ -83,6 +83,8 @@ function test_parse_cmd_single(s){
     default: throw new Error('unknown parser error '+s);
     }
   }
+  if (state=='pre')
+    throw new Error('invalid empty cmd');
   if (parentesis)
     throw_invalid(s, i);
   let cmd = ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
@@ -173,6 +175,8 @@ describe('test_api', function(){
     t('a(b () ', 'invalid a(b () ^^^');
     t('a:(b)', 'invalid a^^^:');
     t('a:b:c', 'invalid a:b^^^:c');
+    t('', 'invalid empty cmd');
+    t(' ', 'invalid empty cmd');
   });
   it('test_parse_cmd_multi_valid', ()=>{
     const t = (s, exp)=>{
@@ -200,6 +204,7 @@ describe('test_api', function(){
     t('a(', 'invalid a(^^^');
     t('a(b()', 'invalid a(b()^^^');
     t('a(b)(', 'invalid ^^^(');
+    t('a( )', 'invalid empty cmd');
   });
   it('test_parse_cmd_dir_valid', ()=>{
     const t = (s, exp)=>{
