@@ -79,6 +79,92 @@ function parse_cmd(cmd){
   return {op, params};
 }
 
+function throw_invalid(s, i){
+  throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i));
+}
+
+// XXX: mv all test api to test_api.js and add test for it
+/* XXX derry: example of test parsing
+ab>(test go(now 3 send:4))
+{orig: 'ab>....', cmd: 'ab>',
+  arg: [{cmd: 'test', orig:'test'}, {cmd: 'go', orig: 'go(now 3 send:4)',
+  arg: [{cmd: 'now'},{cmd: '3'},{cmd: 'send', arg[{cmd: '4'}]]
+{s: 'a', d: 'b', dir: '>'}
+*/
+// XXX derry: fix parser
+// parse_cmd_single:
+// skip WS
+// if EOS return "ok" but "empty"
+// eat until: EOS, ws, '(', ':'
+// if '(' scan until closing ')' while ++ on ( and --  on ).
+//    stop on 0. Error on >0
+// if 'cmd' has ':', so validate !args, set args to rest after ':'
+// OK: if WS or EOS
+// parse_cmd_multi:
+// loop on parse_cmd_single()
+
+function test_parse_cmd_single(s){
+  let state = 'pre', ret = {}, cmd_s = 0, cmd_e = s.length;
+  for (let i=0; i<s.length; i++)
+  {
+    let c = s.charAt(i);
+    switch (state)
+    {
+    case 'pre':
+      if (string.is_ws(c))
+        continue;
+      if ('()'.includes(c))
+        throw_invalid(s, i);
+      state = 'cmd';
+      cmd_s = i;
+      break;
+    case 'cmd':
+      if (')'.includes(c))
+        throw_invalid(s, i);
+      if (string.is_ws(c))
+      {
+        cmd_e = i;
+        break;
+      }
+      if ('('.includes(c))
+        cmd_e = i;
+      break;
+    default:
+    }
+  }
+  ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
+  return ret;
+}
+
+describe('test_api2', function(){
+  it('test_parse_single_invalid', ()=>{
+    const t = (s, exp)=>{ assert.throws(()=>{ test_parse_cmd_single(s); },
+      {message: exp}); };
+    t('abcdefg)12345678', 'invalid abcdefg^^^)12345678');
+    t(')', 'invalid ^^^)');
+    t('(', 'invalid ^^^(');
+    t('a)', 'invalid a^^^)');
+  });
+  it('test_parse_single_valid', ()=>{
+    const t = (s, exp)=>{ assert.deepEqual(test_parse_cmd_single(s), exp); };
+    t('open', {cmd: 'open'});
+    t('open ', {cmd: 'open'});
+    /*
+    t('open(role c)');
+    t(' open(role c) ');
+    t('roles(ct>)');
+    t('bc>(hc hget)');
+    */
+  });
+  it('test_parse', ()=>{
+    /*
+    const t = (s, exp)=>{};
+    t('new open(role c) roles(ct>) sh(c) url(cnn/ 10C) bc>(hc hget)');
+    */
+  });
+});
+
+// XXX: rm
 describe('test_api', function(){
   it('parse_param', ()=>{
     let t = (s, exp)=>assert.deepEqual(parse_param(s), exp);
