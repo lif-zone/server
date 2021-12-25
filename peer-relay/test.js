@@ -100,7 +100,7 @@ function test_parse_cmd_single(s){
     cmd = ret.cmd = m[1];
     ret.arg = m[2];
   }
-  ret.meta = {cmd_s, cmd_e, arg_s, arg_e, orig: s, last: i};
+  ret.meta = {cmd_s, cmd_e, arg_s, arg_e, last: i, orig: s};
   return ret;
 }
 
@@ -113,6 +113,17 @@ function test_parse_cmd_multi(s){
     arg = test_parse_cmd_multi(t.arg);
   ret.push(arg ? {cmd: t.cmd, arg} : {cmd: t.cmd});
   return ret.concat(test_parse_cmd_multi(s.substr(t.meta.last)));
+}
+
+function test_parse_cmd_dir(s){
+  if (!/[><]/.test(s))
+    return {cmd: s};
+  let m = s.match(/^([a-zA-Z])([a-zA-Z]?)([<>])([^<^>]*$)/);
+  if (!m)
+    throw_invalid(s, (s.indexOf('<')+1 || s.indexOf('>')+1)-1);
+  return m[3]=='>' ?
+    {s: m[1], d: m[2], dir: m[3], cmd: m[4], meta: {orig: s}} :
+    {s: m[2], d: m[1], dir: m[3], cmd: m[4], meta: {orig: s}};
 }
 
 describe('test_api', function(){
@@ -155,11 +166,9 @@ describe('test_api', function(){
     t('a:(b)', 'invalid a^^^:');
     t('a:b:c', 'invalid a:b^^^:c');
   });
-  it('test_parse_cmd_multi', ()=>{
-    const t = (s, exp)=>{
-      let ret = test_parse_cmd_multi(s);
-      assert.deepEqual(ret, exp);
-    };
+  it('test_parse_cmd_multi_valid', ()=>{
+    // XXX: missing meta
+    const t = (s, exp)=>assert.deepEqual(test_parse_cmd_multi(s), exp);
     t('a', [{cmd: 'a'}]);
     t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
     t('a(c) b', [{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}]);
@@ -173,6 +182,23 @@ describe('test_api', function(){
     t('ab>(test go(now 3 send:4))', [{cmd: 'ab>', arg: [{cmd: 'test'},
       {cmd: 'go', arg: [{cmd: 'now'}, {cmd: '3'}, {cmd: 'send',
         arg: [{cmd: '4'}]}]}]}]);
+  });
+  // XXX: it('test_parse_cmd_multi_invalid', ()=>{
+  it('test_parse_cmd_dir', ()=>{
+    const t = (s, exp)=>{
+      let ret = test_parse_cmd_dir(s);
+      delete ret.meta;
+      assert.deepEqual(ret, exp);
+    };
+    t('a', {cmd: 'a'});
+    t('a>', {s: 'a', d: '', dir: '>', cmd: ''});
+    t('a<', {s: '', d: 'a', dir: '<', cmd: ''});
+    t('aB>', {s: 'a', d: 'B', dir: '>', cmd: ''});
+    t('aB<', {s: 'B', d: 'a', dir: '<', cmd: ''});
+    t('a>b', {s: 'a', d: '', dir: '>', cmd: 'b'});
+    t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
+    t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
+    t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
   });
 });
 
