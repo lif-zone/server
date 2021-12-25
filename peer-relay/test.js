@@ -123,7 +123,10 @@ function test_parse_cmd_single(s){
       if (')'.includes(c))
         throw_invalid(s, i);
       if (string.is_ws(c))
+      {
         cmd_e = i;
+        done = true;
+      }
       else if ('('.includes(c))
       {
         cmd_e = i;
@@ -153,8 +156,19 @@ function test_parse_cmd_single(s){
   ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
   if (arg_e>arg_s)
     ret.arg = s.substr(arg_s, arg_e-arg_s);
-  ret.meta = {cmd_s, cmd_e, arg_s, arg_e, orig: s};
+  ret.meta = {cmd_s, cmd_e, arg_s, arg_e, orig: s, last: i};
   return ret;
+}
+
+function test_parse_cmd_multi(s){
+  if (!s)
+    return [];
+  let ret = [], arg;
+  let t = test_parse_cmd_single(s);
+  if (t.arg)
+    arg = test_parse_cmd_multi(t.arg);
+  ret.push(arg ? {cmd: t.cmd, arg} : {cmd: t.cmd});
+  return ret.concat(test_parse_cmd_multi(s.substr(t.meta.last)));
 }
 
 describe('test_api2', function(){
@@ -173,30 +187,41 @@ describe('test_api2', function(){
     // t('open(a ', {cmd: 'open', arg: 'a'});
   });
   it('test_parse_single_valid', ()=>{
-    const t = (s, exp)=>{
+    const t = (s, exp, exp_last)=>{
       let ret = test_parse_cmd_single(s);
+      let {cmd_s, cmd_e, arg_s, arg_e, last} = ret.meta;
       delete ret.meta;
       assert.deepEqual(ret, exp);
+      assert.equal(last, exp_last);
+      assert.equal(ret.cmd, s.substr(cmd_s, cmd_e-cmd_s));
+      assert.equal(ret.arg||'', s.substr(arg_s, arg_e-arg_s));
     };
-    t('open', {cmd: 'open'});
-    t('open ', {cmd: 'open'});
-    t('open()', {cmd: 'open'});
-    t('open( )', {cmd: 'open', arg: ' '}); // XXX: maybe arg:undefined?
-    t('open(a) ', {cmd: 'open', arg: 'a'});
-    t('open(a b) ', {cmd: 'open', arg: 'a b'});
-    t('open(a(b)) ', {cmd: 'open', arg: 'a(b)'});
-    t('open(role c)', {cmd: 'open', arg: 'role c'});
-    t('open(roles(ct>))', {cmd: 'open', arg: 'roles(ct>)'});
-    t('open(a) b', {cmd: 'open', arg: 'a'});
-    t('open(a) (', {cmd: 'open', arg: 'a'});
-    t('open(a) )', {cmd: 'open', arg: 'a'});
-    t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'});
+    t('open', {cmd: 'open'}, 4);
+    t('open ', {cmd: 'open'}, 5);
+    t('open b', {cmd: 'open'}, 5);
+    t('open()', {cmd: 'open'}, 6);
+    t('open() ', {cmd: 'open'}, 6);
+    t('open( )', {cmd: 'open', arg: ' '}, 7); // XXX: maybe arg:undefined?
+    t('open(a) ', {cmd: 'open', arg: 'a'}, 7);
+    t('open(a b) ', {cmd: 'open', arg: 'a b'}, 9);
+    t('open(a b)  ', {cmd: 'open', arg: 'a b'}, 9);
+    t('open(a(b)) ', {cmd: 'open', arg: 'a(b)'}, 10);
+    t('open(role c)', {cmd: 'open', arg: 'role c'}, 12);
+    t('open(roles(ct>))', {cmd: 'open', arg: 'roles(ct>)'}, 16);
+    t('open(a) b', {cmd: 'open', arg: 'a'}, 7);
+    t('open(a) (', {cmd: 'open', arg: 'a'}, 7);
+    t('open(a) )', {cmd: 'open', arg: 'a'}, 7);
+    t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'}, 12);
   });
   it('test_parse', ()=>{
-    /*
-    const t = (s, exp)=>{};
-    t('new open(role c) roles(ct>) sh(c) url(cnn/ 10C) bc>(hc hget)');
-    */
+    const t = (s, exp)=>{
+      let ret = test_parse_cmd_multi(s);
+      assert.deepEqual(ret, exp);
+    };
+    t('a', [{cmd: 'a'}]);
+    t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
+    if (0)
+      t('new open(role c) roles(ct>) sh(c) url(cnn/ 10C) bc>(hc hget)');
   });
 });
 
