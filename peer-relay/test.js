@@ -100,19 +100,27 @@ function test_parse_cmd_single(s){
     cmd = ret.cmd = m[1];
     ret.arg = m[2];
   }
-  ret.meta = {cmd_s, cmd_e, arg_s, arg_e, last: i, orig: s};
+  ret.meta = {last: i, orig: s};
   return ret;
 }
 
 function test_parse_cmd_multi(s){
   if (!s)
     return [];
-  let ret = [], arg;
-  let t = test_parse_cmd_single(s);
+  let ret = [], arg, t = test_parse_cmd_single(s), meta = t.meta;
   if (t.arg)
     arg = test_parse_cmd_multi(t.arg);
-  ret.push(arg ? {cmd: t.cmd, arg} : {cmd: t.cmd});
+  ret.push(arg ? {cmd: t.cmd, arg, meta} : {cmd: t.cmd, meta});
   return ret.concat(test_parse_cmd_multi(s.substr(t.meta.last)));
+}
+
+function test_parse_rm_meta(a){
+  a.forEach(o=>{
+    delete o.meta;
+    if (o.arg)
+      test_parse_rm_meta(o.arg);
+  });
+  return a;
 }
 
 function test_parse_cmd_dir(s){
@@ -167,8 +175,11 @@ describe('test_api', function(){
     t('a:b:c', 'invalid a:b^^^:c');
   });
   it('test_parse_cmd_multi_valid', ()=>{
-    // XXX: missing meta
-    const t = (s, exp)=>assert.deepEqual(test_parse_cmd_multi(s), exp);
+    const t = (s, exp)=>{
+      let ret = test_parse_cmd_multi(s);
+      ret = test_parse_rm_meta(ret);
+      assert.deepEqual(ret, exp);
+    };
     t('a', [{cmd: 'a'}]);
     t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
     t('a(c) b', [{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}]);
@@ -183,7 +194,13 @@ describe('test_api', function(){
       {cmd: 'go', arg: [{cmd: 'now'}, {cmd: '3'}, {cmd: 'send',
         arg: [{cmd: '4'}]}]}]}]);
   });
-  // XXX: it('test_parse_cmd_multi_invalid', ()=>{
+  it('test_parse_cmd_multi_invalid', ()=>{
+    const t = (s, exp)=>{ assert.throws(()=>{ test_parse_cmd_multi(s); },
+      {message: exp}); };
+    t('a(', 'invalid a(^^^');
+    t('a(b()', 'invalid a(b()^^^');
+    t('a(b)(', 'invalid ^^^(');
+  });
   it('test_parse_cmd_dir_valid', ()=>{
     const t = (s, exp)=>{
       let ret = test_parse_cmd_dir(s);
