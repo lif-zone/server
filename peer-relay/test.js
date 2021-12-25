@@ -223,8 +223,14 @@ describe('test_api2', function(){
     t('a(c) b', [{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}]);
     t('a(c) b(d)', [{cmd: 'a', arg: [{cmd: 'c'}]},
       {cmd: 'b', arg: [{cmd: 'd'}]}]);
-    t('a(c d(5))', [
-      {cmd: 'a', arg: [{cmd: 'c'}, {cmd: 'd', arg: [{cmd: '5'}]}]}]);
+    t('a(c d(5))',
+      [{cmd: 'a', arg: [{cmd: 'c'}, {cmd: 'd', arg: [{cmd: '5'}]}]}]);
+    t('a(c d(5s + 3))', [{cmd: 'a', arg: [{cmd: 'c'},
+      {cmd: 'd', arg: [{cmd: '5s'}, {cmd: '+'}, {cmd: '3'}]}
+      ]}]);
+    t('ab>(test go(now 3 send:4))', [{cmd: 'ab>', arg: [{cmd: 'test'},
+      {cmd: 'go', arg: [{cmd: 'now'},{cmd: '3'}, {cmd: 'send:4'}]}]}]);
+      // XXX: support ':' arg: [{cmd: '4'}]]
 
 /*
 ab>(test go(now 3 send:4))
