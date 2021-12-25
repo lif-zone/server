@@ -131,9 +131,8 @@ function test_parse_cmd_dir(s){
   let m = s.match(/^([a-zA-Z])([a-zA-Z]?)([<>])([^<^>]*$)/);
   if (!m)
     throw_invalid(s, (s.indexOf('<')+1 || s.indexOf('>')+1)-1);
-  return m[3]=='>' ?
-    {s: m[1], d: m[2], dir: m[3], cmd: m[4], meta: {orig: s}} :
-    {s: m[2], d: m[1], dir: m[3], cmd: m[4], meta: {orig: s}};
+  let sd = m[3]=='>' ? {s: m[1], d: m[2]} : {s: m[2], d: m[1]};
+  return {...sd, dir: m[3], cmd: m[4], meta: {orig: s}};
 }
 
 describe('test_api', function(){
