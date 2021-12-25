@@ -220,6 +220,19 @@ describe('test_api2', function(){
     };
     t('a', [{cmd: 'a'}]);
     t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
+    t('a(c) b', [{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}]);
+    t('a(c) b(d)', [{cmd: 'a', arg: [{cmd: 'c'}]},
+      {cmd: 'b', arg: [{cmd: 'd'}]}]);
+    t('a(c d(5))', [
+      {cmd: 'a', arg: [{cmd: 'c'}, {cmd: 'd', arg: [{cmd: '5'}]}]}]);
+
+/*
+ab>(test go(now 3 send:4))
+{orig: 'ab>....', cmd: 'ab>',
+  arg: [{cmd: 'test', orig:'test'}, {cmd: 'go', orig: 'go(now 3 send:4)',
+  arg: [{cmd: 'now'},{cmd: '3'},{cmd: 'send', arg[{cmd: '4'}]]
+{s: 'a', d: 'b', dir: '>'}
+*/
     if (0)
       t('new open(role c) roles(ct>) sh(c) url(cnn/ 10C) bc>(hc hget)');
   });
