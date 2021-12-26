@@ -101,12 +101,22 @@ function test_run_plugin(a, cb){
 }
 
 function parse_cmd_dir(s){
-  if (!/[><]/.test(s))
+  if (!/[><=]/.test(s))
     return {cmd: s};
-  let m = s.match(/^([a-zA-Z])([a-zA-Z]?)([<>])([^<^>]*$)/);
+  let m = s.match(/^([a-zA-Z])([a-zA-Z]?)([<>=])([^<^>]*$)/);
   if (!m)
-    throw_invalid(s, (s.indexOf('<')+1 || s.indexOf('>')+1)-1);
-  let sd = m[3]=='>' ? {s: m[1], d: m[2]} : {s: m[2], d: m[1]};
+  {
+    throw_invalid(s, (s.indexOf('<')+1 ||
+      s.indexOf('>')+1 || s.indexOf('=')+1)-1);
+  }
+  if (m[3]=='=')
+  {
+    if (m[2])
+      throw_invalid(s, 2);
+    if (!m[4])
+      throw_invalid(s, 2);
+  }
+  let sd = m[3]=='>' || m[3]=='=' ? {s: m[1], d: m[2]} : {s: m[2], d: m[1]};
   return {...sd, dir: m[3], cmd: m[4], meta: {cmd: s}};
 }
 
@@ -222,6 +232,7 @@ describe('test_api', function(){
     t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
     t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
     t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
+    t('a=b', {s: 'a', d: '', dir: '=', cmd: 'b'});
   });
   it('parse_cmd_dir_invalid', ()=>{
     const t = (s, exp)=>{ assert.throws(()=>{ parse_cmd_dir(s); },
@@ -229,6 +240,10 @@ describe('test_api', function(){
     t('a>>', 'invalid a^^^>>');
     t('abc>', 'invalid abc^^^>');
     t('>', 'invalid ^^^>');
+    t('a=', 'invalid a=^^^');
+    t('=a', 'invalid ^^^=a');
+    t('=', 'invalid ^^^=');
+    t('ab=c', 'invalid ab^^^=c');
   });
 });
 
@@ -240,7 +255,7 @@ function run_test(role, test){
     switch (c.cmd)
     {
     case 'new_node':
-      console.log('XXX %o %s%s>', c.cmd, c.s);
+      console.log('XXX %o %s%s', c.cmd, c.s, c.dir);
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
@@ -251,7 +266,7 @@ describe('peer-relay', async function(){
   this.timeout(5000); // XXX HACK
   await it('test', async()=>{
     const t = async(role, test)=>await run_test(role, test);
-    await t('s', `s>new_node(host:lif.zone port:4000) a>new_node(ws:s)`);
+    await t('s', `s=new_node(host:lif.zone port:4000) a=new_node(ws:s)`);
   });
 });
 
