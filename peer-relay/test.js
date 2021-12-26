@@ -91,6 +91,7 @@ function test_parse_cmd_multi(s){
 }
 
 function test_run_plugin(a, cb){
+  console.log('XXX a %s %o', typeof a, a);
   a.forEach(o=>{
     cb(o);
     if (o.arg)
@@ -99,17 +100,29 @@ function test_run_plugin(a, cb){
   return a;
 }
 
-function test_parse_rm_meta(a){ return test_run_plugin(a, o=>delete o.meta); }
-
-function test_parse_cmd_dir(s){
+function parse_cmd_dir(s){
   if (!/[><]/.test(s))
     return {cmd: s};
   let m = s.match(/^([a-zA-Z])([a-zA-Z]?)([<>])([^<^>]*$)/);
   if (!m)
     throw_invalid(s, (s.indexOf('<')+1 || s.indexOf('>')+1)-1);
   let sd = m[3]=='>' ? {s: m[1], d: m[2]} : {s: m[2], d: m[1]};
-  return {...sd, dir: m[3], cmd: m[4], meta: {orig: s}};
+  return {...sd, dir: m[3], cmd: m[4], meta: {cmd: s}};
 }
+
+function plugin_cmd_dir(o){
+  let t = parse_cmd_dir(o.cmd);
+  let o2 = Object.assign({}, o);
+  for (let i in o)
+    delete o[i];
+  Object.assign(o, t, {arg: o2.arg});
+  Object.assign(o.meta||{}, o2.meta);
+  return o;
+}
+
+function test_parse_rm_meta(a){ return test_run_plugin(a, o=>delete o.meta); }
+function test_parse(s){
+  return test_run_plugin(test_parse_cmd_multi(s), plugin_cmd_dir); }
 
 describe('test_api', function(){
    it('test_parse_cmd_single_valid', ()=>{
@@ -194,9 +207,9 @@ describe('test_api', function(){
     t('a(b)(', 'invalid ^^^(');
     t('a( )', 'invalid empty cmd');
   });
-  it('test_parse_cmd_dir_valid', ()=>{
+  it('parse_cmd_dir', ()=>{
     const t = (s, exp)=>{
-      let ret = test_parse_cmd_dir(s);
+      let ret = parse_cmd_dir(s);
       delete ret.meta;
       assert.deepEqual(ret, exp);
     };
@@ -210,8 +223,8 @@ describe('test_api', function(){
     t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
     t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
   });
-  it('test_parse_cmd_dir_invalid', ()=>{
-    const t = (s, exp)=>{ assert.throws(()=>{ test_parse_cmd_dir(s); },
+  it('parse_cmd_dir_invalid', ()=>{
+    const t = (s, exp)=>{ assert.throws(()=>{ parse_cmd_dir(s); },
       {message: exp}); };
     t('a>>', 'invalid a^^^>>');
     t('abc>', 'invalid abc^^^>');
@@ -220,11 +233,17 @@ describe('test_api', function(){
 });
 
 function run_test(role, test){
-  let a = test_parse_cmd_multi(test);
+  let a = test_parse(test);
   for (let i=0; i<a.length; i++)
   {
-    let curr = a[i];
-    console.log('XXX %o', curr.cmd);
+    let c = a[i];
+    switch (c.cmd)
+    {
+    case 'new_node':
+      console.log('XXX %o %s%s>', c.cmd, c.s);
+      break;
+    default: throw new Error('unknown cmd '+c.cmd);
+    }
   }
 }
 
