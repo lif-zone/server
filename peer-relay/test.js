@@ -88,7 +88,8 @@ function test_parse_cmd_single(s){
     cmd = ret.cmd = m[1];
     ret.arg = m[2];
   }
-  ret.meta = {last: i, orig: s};
+  ret.meta = {last: i};
+  ret.orig = s.substr(cmd_s, i-cmd_s);
   return ret;
 }
 
@@ -98,7 +99,7 @@ function test_parse_cmd_multi(s){
   let ret = [], arg, t = test_parse_cmd_single(s), meta = t.meta;
   if (t.arg)
     arg = test_parse_cmd_multi(t.arg);
-  ret.push(arg ? {cmd: t.cmd, arg, meta} : {cmd: t.cmd, meta});
+  ret.push(arg ? {cmd: t.cmd, arg, orig: t.orig, meta} : {cmd: t.cmd, meta});
   return ret.concat(test_parse_cmd_multi(s.substr(t.meta.last)));
 }
 
@@ -136,12 +137,18 @@ function plugin_cmd_dir(o){
   let o2 = Object.assign({}, o);
   for (let i in o)
     delete o[i];
-  Object.assign(o, t, {arg: o2.arg});
+  Object.assign(o, t, {arg: o2.arg, orig: o2.orig});
   Object.assign(o.meta||{}, o2.meta);
   return o;
 }
 
-function test_parse_rm_meta(a){ return test_run_plugin(a, o=>delete o.meta); }
+function test_parse_rm_meta(a){
+  return test_run_plugin(a, o=>{
+    delete o.meta;
+    delete o.orig;
+  });
+}
+
 function test_parse(s){
   return test_run_plugin(test_parse_cmd_multi(s), plugin_cmd_dir); }
 
@@ -213,6 +220,7 @@ describe('test_api', function(){
       let ret = test_parse_cmd_single(s);
       let {last} = ret.meta;
       delete ret.meta;
+      delete ret.orig;
       assert.deepEqual(ret, exp);
       assert.equal(last, exp_last);
     };
@@ -294,6 +302,7 @@ describe('test_api', function(){
     const t = (s, exp)=>{
       let ret = parse_cmd_dir(s);
       delete ret.meta;
+      delete ret.orig;
       assert.deepEqual(ret, exp);
     };
     t('a', {cmd: 'a'});
@@ -335,8 +344,7 @@ async function test_run(role, test){
       break;
     case 'listen':
       assert.equal(c.dir, '<');
-      // XXX HACK: fix parser so we have original event
-      test_expect(c.meta.cmd+'(ws:4000)');
+      test_expect(c.orig);
       await test_ensure_no_events();
       break;
     default: throw new Error('unknown cmd '+c.cmd);
