@@ -7,6 +7,16 @@ import Node from './client.js';
 import util from '../util/util.js';
 import date from '../util/date.js';
 
+// XXX: make it automatic for all node/browser
+process.on('uncaughtException', e=>{
+  console.log('uncaughtException %o', e);
+  process.exit(-1);
+});
+process.on('unhandledRejection', e=>{
+  console.error('unhandledRejection %o', e);
+  process.exit(-1);
+});
+
 function throw_invalid(s, i){
   throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
 
@@ -93,7 +103,6 @@ function test_parse_cmd_multi(s){
 }
 
 function test_run_plugin(a, cb){
-  console.log('XXX a %s %o', typeof a, a);
   a.forEach(o=>{
     cb(o);
     if (o.arg)
@@ -159,14 +168,17 @@ async function test_ensure_no_events(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
     await util.sleep(); // XXX HACK: fixme
-    if (t_events[t_events.length-1]==t_events[t_expect.length-1])
+    if (!t_events.length && !t_expect.length)
+      break;
+    if (t_events[t_events.length-1]==t_expect[t_expect.length-1])
     {
       t_events.pop();
       t_expect.pop();
     }
   }
-  assert.deepEqual(t_events, [], 'got extra event');
-  assert.deepEqual(t_expect, [], 'missing event');
+  assert.ok(!t_events.length && !t_expect.length,
+    'event mismatch '+t_events[t_events.length-1]+' != '+
+      t_expect[t_expect.length-1]);
 }
 
 class FakeNode extends EventEmitter {
@@ -174,11 +186,15 @@ class FakeNode extends EventEmitter {
     super();
     this.wsConnector = new EventEmitter();
     this.wsConnector._wss = new EventEmitter();
+    if (opts.port)
+      this.wsConnector._wss.port = opts.port;
     this.init();
   }
   async init(){
     await util.sleep(); // XXX HACK: fixme
-    this.wsConnector.emit('sleep');
+    let port = this.wsConnector._wss.port;
+    if (port)
+      this.wsConnector.emit('listen', {port});
   }
   destroy(){}
 }
@@ -188,7 +204,7 @@ function new_node(fake, name, o){
   let node = new (fake ? FakeNode : Node)(o);
   t_nodes[name] = node;
   if (o.port)
-    node.wsConnector.on('listen', e=>test_emit(name+'<listen:'+e.port));
+    node.wsConnector.on('listen', e=>test_emit(name+'<listen(ws:'+e.port+')'));
 }
 
 describe('test_api', function(){
@@ -314,14 +330,14 @@ async function test_run(role, test){
     case 'new_node':
       assert.equal(c.dir, '=');
       assert.ok(!c.d, 'unexpected dst '+c.d);
-      console.log('XXX %o %s%s', c.cmd, c.s, c.dir);
-      console.log('XXX obj %o', arg_to_obj(c.arg));
+      console.log('XXX %o %s%s obj %o', c.cmd, c.s, c.dir, arg_to_obj(c.arg));
       new_node(c.s!=role, c.s, arg_to_obj(c.arg));
       break;
     case 'listen':
       assert.equal(c.dir, '<');
-      test_expect(c.meta._cmd);
-      test_ensure_no_events();
+      // XXX HACK: fix parser so we have original event
+      test_expect(c.meta.cmd+'(ws:4000)');
+      await test_ensure_no_events();
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
@@ -331,14 +347,13 @@ async function test_run(role, test){
 }
 
 async function test_end(){
-  await util.sleep(100); // XXX HACK: fixme
+  test_ensure_no_events();
   for (let n in t_nodes)
   {
     await t_nodes[n].destroy();
     delete t_nodes[n];
   }
-  assert.deepEqual(t_events, []);
-  assert.deepEqual(t_expect, []);
+  test_ensure_no_events();
 }
 
 describe('peer-relay', async function(){
@@ -346,146 +361,12 @@ describe('peer-relay', async function(){
   await it('test', async()=>{
     const t = async(role, test)=>await test_run(role, test);
     // XXX: review if to use = or reuse ':'
-    await t('s', `s=new_node(host:lif.zone port:4000) s<listen:4000
+    await t('s', `s=new_node(host:lif.zone port:4000) s<listen(ws:4000)
       a=new_node(ws:s)`);
-    await t('a', `s=new_node(host:lif.zone port:4000) s<listen:4000
+    await t('a', `s=new_node(host:lif.zone port:4000) s<listen(ws:4000)
       a=new_node(ws:s)`);
   });
 });
-
-/* XXX: obsolete, rm
-import Node from '../peer-relay/client.js';
-import {WebSocketServer} from 'ws';
-import date from '../util/date.js';
-import crypto from 'crypto';
-import evil_dns from 'evil-dns';
-import fs from 'fs';
-import https from 'https';
-import util from '../util/util.js';
-
-class TestNode extends EventEmitter {
-  constructor(opts){
-    let {host, port} = opts = opts||{};
-    super();
-    this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
-    // XXX create: fake certificates fo tests
-    const https_opts = {
-      key: fs.readFileSync('/var/lif/ssl/STAR_'+host.replace('.', '_')+'.key'),
-      cert: fs.readFileSync(
-        '/var/lif/ssl/STAR_'+host.replace('.', '_')+'.crt')};
-    this.port = port;
-    this.wsConnector = new EventEmitter();
-    if (port)
-    {
-      this.https_server = https.createServer(https_opts)
-      .listen(this.port, '0.0.0.0');
-      this.wsConnector._wss = new WebSocketServer({server: this.https_server});
-      this.url = 'wss://'+host+':'+port;
-      this.wsConnector._wss.on('connection', ws=>{
-        console.log('XXX connection');
-      });
-      this.wsConnector._wss.on('listening', ()=>{
-        this.wsConnector.url =
-          'wss://'+host+':'+this.wsConnector._wss._server.address().port;
-        this.wsConnector.emit('listening');
-      });
-    }
-  }
-  destroy(){
-    if (this.wsConnector._wss)
-    {
-      this.wsConnector._wss.close();
-      this.https_server.close();
-    }
-  }
-}
-
-let nodes = {}, exp_events = [];
-
-async function wait_until_no_events(){
-  const max = 1000;
-  await util.sleep(); // XXX HACK
-  const t = date.monotonic();
-  while (exp_events.length && date.monotonic()-t < max)
-    await util.sleep(); // XXX HACK
-  assert.ok(!exp_events.length, 'pending events:\n'+exp_events.join('\n'));
-}
-
-function on_event(e){
-  assert.equal(e, exp_events[0]);
-  exp_events.shift();
-}
-
-async function run_test(role, test){
-  if (true) return; // XXX: rm obsolete run_test
-  let a = string.split_ws(test);
-  evil_dns.add('lif.zone', '127.0.0.1');
-  for (let i=0; i<a.length; i++)
-  {
-    let expr = a[i];
-//    let {p1, p2, dir, op, params} = parse_expr(expr);
-    let {p1, p2, dir, op, params} = {};
-    console.log('%s: p1 %s p2 %s dir %s op %s params %s',
-      expr, p1, p2, dir, op, params);
-    switch (op)
-    {
-    case 'new_node':
-      // XXX: create hard-coded node_ids for the test
-      if (role==p1)
-        nodes[p1] = new TestNode({host: 'lif.zone', port: +params.port});
-      else
-      {
-        assert.ok(!nodes[p1]);
-        nodes[p1] = new Node({port: +params.port, bootstrap:
-          params.ws ? [nodes[params.ws].wsConnector.url] : []});
-      }
-      if (params.port)
-      {
-        exp_events.push(p1+'<listen');
-        nodes[p1].wsConnector.on('listening', ()=>nodes[p1].emit('listen'));
-      }
-      nodes[p1].on('listen', ()=>on_event(p1+'<listen'));
-      await wait_until_no_events();
-      break;
-    case 'connect':
-      if (role==p1); // XXX: TODO
-      else
-        nodes[p1].connect(nodes[p2].id);
-      break;
-    default: throw new Error('invalid op '+op);
-    }
-    await util.sleep(); // XXX HACK
-  }
-  await test_end();
-
-  async function test_end(){
-    await wait_until_no_events();
-    assert.ok(!exp_events.length);
-    for (let i in nodes)
-      nodes[i].destroy(()=>{});
-    nodes = {};
-    evil_dns.remove('lif.zone');
-  }
-}
-
-describe('peer-relay', async function(){
-  this.timeout(5000); // XXX HACK
-  await it('test', async()=>{
-    const t = async(role, test)=>await run_test(role, test);
-    // XXX: rm port for a>new_node
-    await t('s', `s>new_node(port:4000) a>new_node(ws:s)`);
-    await t('a', `s>new_node(port:4000) a>new_node(ws:s)`);
-    // await t(`s>new_node a>new_node(ws:s)`);
-    // await t(`s>new_node a>new_node(ws:s) as>connect`);
-    if (0) // XXX: WIP
-    t(`s<listen as>connect`);
-    if (0) // XXX: WIP
-    t(`s<listen as>connect sa>send(handshake-offer)
-      as>send(handshake-answer) as>send(findPeers) sa>send(findPeers)
-      as>send(foundPeers) sa>send(foundPeers)`);
-  });
-});
-*/
 
 if (0) // XXX: review old-style test and decide if needed
 describe('End to End', function(){
