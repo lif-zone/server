@@ -1,40 +1,14 @@
 'use strict'; /*jslint node:true*/ /*global describe,it*/
 import assert from 'assert';
-import crypto from 'crypto';
 import _wrtc from 'electron-webrtc'; // XXX: rm
-import evil_dns from 'evil-dns';
-import {WebSocketServer} from 'ws';
-import fs from 'fs';
-import https from 'https';
-import Client from './client.js';
-import util from '../util/util.js';
-import date from '../util/date.js';
 import string from '../util/string.js';
-import Node from '../peer-relay/client.js';
 import {EventEmitter} from 'events';
+import Client from './client.js';
 
 function throw_invalid(s, i){
   throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
 
-// XXX: mv all test api to test_api.js and add test for it
-/* XXX derry: example of test parsing
-ab>(test go(now 3 send:4))
-{orig: 'ab>....', cmd: 'ab>',
-  arg: [{cmd: 'test', orig:'test'}, {cmd: 'go', orig: 'go(now 3 send:4)',
-  arg: [{cmd: 'now'},{cmd: '3'},{cmd: 'send', arg[{cmd: '4'}]]
-{s: 'a', d: 'b', dir: '>'}
-*/
-// XXX derry: fix parser
-// parse_cmd_single:
-// skip WS
-// if EOS return "ok" but "empty"
-// eat until: EOS, ws, '(', ':'
-// if '(' scan until closing ')' while ++ on ( and --  on ).
-//    stop on 0. Error on >0
-// if 'cmd' has ':', so validate !args, set args to rest after ':'
-// OK: if WS or EOS
-// parse_cmd_multi:
-// loop on parse_cmd_single()
+// XXX: mv all test api to util/test_api.js
 function test_parse_cmd_single(s){
   let state = 'pre', i=0, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
   let parentesis = 0, done = false;
@@ -116,14 +90,16 @@ function test_parse_cmd_multi(s){
   return ret.concat(test_parse_cmd_multi(s.substr(t.meta.last)));
 }
 
-function test_parse_rm_meta(a){
+function test_run_plugin(a, cb){
   a.forEach(o=>{
-    delete o.meta;
+    cb(o);
     if (o.arg)
-      test_parse_rm_meta(o.arg);
+      test_run_plugin(o.arg, cb);
   });
   return a;
 }
+
+function test_parse_rm_meta(a){ return test_run_plugin(a, o=>delete o.meta); }
 
 function test_parse_cmd_dir(s){
   if (!/[><]/.test(s))
@@ -177,6 +153,19 @@ describe('test_api', function(){
     t('', 'invalid empty cmd');
     t(' ', 'invalid empty cmd');
   });
+  it('test_run_plugin', ()=>{
+    const t = (a, exp)=>{
+      let a2 = test_run_plugin(a, o=>o.cmd = o.cmd+o.cmd);
+      assert.equal(a, a2);
+      assert.deepEqual(a, exp);
+    };
+    t([{cmd: 'a'}], [{cmd: 'aa'}]);
+    t([{cmd: 'a'}, {cmd: 'b'}], [{cmd: 'aa'}, {cmd: 'bb'}]);
+    t([{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}],
+      [{cmd: 'aa', arg: [{cmd: 'cc'}]}, {cmd: 'bb'}]);
+    t([{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b', arg: [{cmd: 'd'}]}],
+      [{cmd: 'aa', arg: [{cmd: 'cc'}]}, {cmd: 'bb', arg: [{cmd: 'dd'}]}]);
+  });
   it('test_parse_cmd_multi_valid', ()=>{
     const t = (s, exp)=>{
       let ret = test_parse_cmd_multi(s);
@@ -229,6 +218,33 @@ describe('test_api', function(){
     t('>', 'invalid ^^^>');
   });
 });
+
+function run_test(role, test){
+  let a = test_parse_cmd_multi(test);
+  for (let i=0; i<a.length; i++)
+  {
+    let curr = a[i];
+    console.log('XXX %o', curr.cmd);
+  }
+}
+
+describe('peer-relay', async function(){
+  this.timeout(5000); // XXX HACK
+  await it('test', async()=>{
+    const t = async(role, test)=>await run_test(role, test);
+    await t('s', `s>new_node(host:lif.zone port:4000) a>new_node(ws:s)`);
+  });
+});
+
+/* XXX: obsolete, rm
+import Node from '../peer-relay/client.js';
+import {WebSocketServer} from 'ws';
+import date from '../util/date.js';
+import crypto from 'crypto';
+import evil_dns from 'evil-dns';
+import fs from 'fs';
+import https from 'https';
+import util from '../util/util.js';
 
 class TestNode extends EventEmitter {
   constructor(opts){
@@ -338,7 +354,6 @@ async function run_test(role, test){
 describe('peer-relay', async function(){
   this.timeout(5000); // XXX HACK
   await it('test', async()=>{
-    this.timeout(5000); // XXX HACK
     const t = async(role, test)=>await run_test(role, test);
     // XXX: rm port for a>new_node
     await t('s', `s>new_node(port:4000) a>new_node(ws:s)`);
@@ -353,6 +368,7 @@ describe('peer-relay', async function(){
       as>send(foundPeers) sa>send(foundPeers)`);
   });
 });
+*/
 
 if (0) // XXX: review old-style test and decide if needed
 describe('End to End', function(){
