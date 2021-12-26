@@ -486,6 +486,7 @@ describe('peer-relay', async function(){
   });
   afterEach(function(){
     ws_util.WS = ws_util.orig_WS;
+    ws_util.WebSocketServer = ws_util.orig_WebSocketServer;
   });
   this.timeout(2*t_timeout);
   await it('test', async()=>{
