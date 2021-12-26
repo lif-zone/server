@@ -178,14 +178,12 @@ let t_timeout = 2000, t_running;
 function test_emit(e){
   assert.ok(t_running, 'test not running');
   assert.ok(e, 'invalid event');
-  console.log('XXX emit %s', e);
   t_events.push(e);
 }
 
 function test_expect(e){
   assert.ok(t_running, 'test not running');
   assert.ok(e, 'invalid event');
-  console.log('XXX expect %s', e);
   t_expect.push(e);
 }
 
@@ -211,19 +209,17 @@ class FakeNode extends EventEmitter {
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new EventEmitter();
-    this.wsConnector._wss = new EventEmitter();
     if (opts.port)
     {
-      this.wsConnector._wss.port = opts.port;
+      let port = opts.port;
+      this.wsConnector._wss = new EventEmitter();
+      this.wsConnector._wss.port = port;
       this.wsConnector.url = 'wss://'+opts.host+':'+opts.port;
+      // XXX HACK: replace setTimeout with tick
+      setTimeout(()=>this.wsConnector.emit('listen', {port}));
     }
-    this.init();
-  }
-  async init(){
-    await util.sleep(); // XXX HACK: fixme
-    let port = this.wsConnector._wss.port;
-    if (port)
-      this.wsConnector.emit('listen', {port});
+    if (opts.bootstrap) // XXX HACK: replace setTimeout with tick
+      setTimeout(()=>new FakeWS(opts.bootstrap[0], {client: this}));
   }
   destroy(){}
 }
@@ -232,20 +228,23 @@ function is_fake(role, p){ return role!=p; }
 
 function node_new(fake, name, o){
   assert.ok(!t_nodes[name], 'node already exist '+name);
-  console.log('XXX node_new pre %o', o);
   o = Object.assign({}, o);
   // XXX: wrap fixing arguments to plugin
   if (o.bootstrap) // XXX: support array
     o.bootstrap = [t_nodes[o.bootstrap].wsConnector.url];
-  console.log('XXX node_new post %o', o);
   let node = new (fake ? FakeNode : Node)(o);
   t_nodes[name] = node;
+  node.t_name = name;
   if (o.port)
   {
     // XXX: mv to listen on wsConnector._wss
     node.wsConnector.on('listen', e=>test_emit(name+'<listen(ws:'+e.port+')'));
     node.wsConnector._wss.on('connection',
-      e=>test_emit('?'+name+'>connect(ws:'+o.port+')'));
+      ws=>{
+      // XXX HACK: rm ws.client
+      let client = ws.client || node_from_ws(ws);
+      test_emit(client.t_name+name+'>connect(ws:'+o.port+')');
+      });
   }
 }
 
@@ -254,7 +253,19 @@ function node_from_wss_url(url){
   {
     let node = t_nodes[name];
     if (node.wsConnector.url==url)
-      return {name, node};
+      return node;
+  }
+}
+
+function node_from_ws(ws){
+  for (let name in t_nodes)
+  {
+    let node = t_nodes[name];
+    for (let i in node.wsConnector.channels)
+    {
+      if (node.wsConnector.channels[i].ws===ws.t_ws)
+        return node;
+    }
   }
 }
 
@@ -404,11 +415,8 @@ async function test_run(role, test){
       await test_ensure_no_events();
       break;
     case 'connect':
-      if (0) // XXX: WIP
-      {
-        test_expect(c.orig);
-        await test_ensure_no_events();
-      }
+      test_expect(c.orig);
+      await test_ensure_no_events();
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
@@ -430,14 +438,24 @@ async function test_end(){
 }
 
 class FakeWS extends EventEmitter {
-  constructor(url){
+  constructor(url, opts){
     super();
-    console.log('XXX FakeWS constructor stub %s', url);
-    let {name, node} = node_from_wss_url(url);
-    console.log('XXX FakeWS name %s node %s', name, node.id);
+    opts = opts||{};
+    this.client = opts.client;
+    this.server = opts.server;
+    if (url)
+    {
+      let node= node_from_wss_url(url);
+      // XXX HACK: rm client/server
+      let ws = new FakeWS(undefined, {client: opts.client, server: node});
+      ws.t_ws = this;
+      node.wsConnector.t_ws = node.wsConnector.t_ws||[];
+      node.wsConnector.t_ws.push(ws); // XXX: need cleanup
+      // XXX HACK: setTimeout is a hack
+      setTimeout(()=>node.wsConnector._wss.emit('connection', ws));
+    }
   }
   close(){
-    console.log('XXX FakeWS close stub');
   }
 }
 
@@ -445,7 +463,6 @@ class FakeWebSocketServer extends EventEmitter {
   constructor(opts){
     super();
     let port = opts.port;
-    console.log('XXX FakeWebSocketServer constructor stub');
     this.init();
     this._server = {address: ()=>({port})};
   }
@@ -454,7 +471,6 @@ class FakeWebSocketServer extends EventEmitter {
     this.emit('listening');
   }
   close(cb){
-    console.log('XXX FakeWebSocketServer close stub');
     if (cb)
       cb();
   }
@@ -467,10 +483,8 @@ describe('peer-relay', async function(){
     ws_util.WebSocketServer = FakeWebSocketServer;
     ws_util.orig_WS = ws_util.WS;
     ws_util.WS = FakeWS;
-    console.log('XXX beforeEach');
   });
   afterEach(function(){
-    console.log('XXX afterEach');
     ws_util.WS = ws_util.orig_WS;
   });
   this.timeout(2*t_timeout);
