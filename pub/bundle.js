@@ -41,7 +41,6 @@ E.set_trace = function (opt) {
   };
 
   node.on('connection', function (conn) {
-    // eslint-disable-next-line
     cb('node: <conn ' + peer_id(conn.id) + ' ' + (conn.ws ? 'ws ' + conn.ws.url : 'wrtc'));
   });
   node.on('peer', function (id) {
@@ -64644,11 +64643,9 @@ WrtcChannel.prototype.destroy = function () {
 };
 
 },{"debug":80,"events":114,"simple-peer":219,"util":280}],287:[function(require,module,exports){
-(function (Buffer){(function (){
+(function (process,Buffer){(function (){
 'use strict';
 /*jslint node:true, browser:true*/
-
-function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
 Object.defineProperty(exports, "__esModule", {
   value: true
@@ -64661,42 +64658,44 @@ var _events = require("events");
 
 var _debug2 = _interopRequireDefault(require("debug"));
 
-var _ws = _interopRequireWildcard(require("ws"));
+var _ws = _interopRequireDefault(require("../util/ws.js"));
 
 var _fs = _interopRequireDefault(require("fs"));
 
 var _https = _interopRequireDefault(require("https"));
 
-function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function _getRequireWildcardCache(nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
-
-function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || _typeof(obj) !== "object" && typeof obj !== "function") { return { "default": obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj["default"] = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
 var debug = (0, _debug2["default"])('peer-relay:ws');
-var WebSocket = getWebSocket();
+var WS = _ws["default"].WS;
+var WebSocketServer = _ws["default"].WebSocketServer;
+var WebSocket = getWebSocket(); // XXX HACK: need to add root ca certificate
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 var _default = WsConnector;
 exports["default"] = _default;
 (0, _util.inherits)(WsConnector, _events.EventEmitter); // XXX: use opts instead of id,port,host
 
 function WsConnector(id, port, host) {
   var self = this;
-  self.id = id;
+  self.id = id; // XXX HACK: review tmp_id_n+channels - it's a quick hack to cleanup
+  // open channels - need to properly rewrite everything
+
+  self.tmp_id_n = 0;
+  self.channels = {};
   self.destroyed = false;
   self._wss = null;
   self.url = null;
 
-  if (port != null) {
-    var https_opt = {
+  if (port >= 0) {
+    // XXX create: move to nconf
+    var https_opts = {
       key: _fs["default"].readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
       cert: _fs["default"].readFileSync('/var/lif/ssl/STAR_lif_zone.crt')
     };
-
-    var https_server = _https["default"].createServer(https_opt);
-
-    https_server.listen(port, '0.0.0.0');
-    self._wss = new _ws.WebSocketServer({
-      server: https_server
+    self.https_server = _https["default"].createServer(https_opts).listen(port, '0.0.0.0');
+    self._wss = new WebSocketServer({
+      server: self.https_server
     });
 
     self._wss.on('connection', onConnection);
@@ -64712,7 +64711,14 @@ function WsConnector(id, port, host) {
 
   function onListen() {
     if (self.destroyed) return;
-    self.url = 'wss://' + host + ':' + self._wss._server.address().port;
+
+    var port = self._wss._server.address().port;
+
+    var url = 'wss://' + host + ':' + port;
+    self.emit('listen', {
+      port: port,
+      url: url
+    });
   }
 }
 
@@ -64731,6 +64737,8 @@ WsConnector.prototype._onConnection = function (ws) {
   }
 
   var channel = new WsChannel(self.id, ws);
+  channel.tmp_id = ++self.tmp_id_n;
+  self.channels[channel.tmp_id] = channel;
   channel.on('open', onOpen);
   channel.on('close', onClose);
   channel.on('error', onError);
@@ -64752,20 +64760,30 @@ WsConnector.prototype._onConnection = function (ws) {
     channel.removeListener('open', onOpen);
     channel.removeListener('close', onClose);
     channel.removeListener('error', onError);
+    delete self.channels[channel.tmp_id];
   }
 
   function onError(err) {
-    console.log('XXX ws.js err %s', err);
+    console.error('ws.js error %s %o', err.message, err);
 
     self._debug(err, err.stack);
   }
 };
 
 WsConnector.prototype.destroy = function (cb) {
+  var _this = this;
+
   var self = this;
   if (self.destroyed) return;
   self.destroyed = true;
-  if (self._wss) self._wss.close(cb);else cb();
+
+  for (var i in self.channels) {
+    self.channels[i].destroy();
+  }
+
+  if (self._wss) self._wss.close(function () {
+    return _this.https_server.close(cb);
+  });else if (cb) cb();
   self._wss = null;
 };
 
@@ -64868,11 +64886,11 @@ WsChannel.prototype.destroy = function () {
 
 function getWebSocket() {
   if (typeof window !== 'undefined' && window.WebSocket) return window.WebSocket;
-  return _ws["default"];
+  return WS;
 }
 
-}).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":66,"debug":80,"events":114,"fs":65,"https":156,"util":280,"ws":282}],288:[function(require,module,exports){
+}).call(this)}).call(this,require('_process'),require("buffer").Buffer)
+},{"../util/ws.js":291,"_process":181,"buffer":66,"debug":80,"events":114,"fs":65,"https":156,"util":280}],288:[function(require,module,exports){
 'use strict';
 /*jslint node:true, browser:true*/
 
@@ -65361,6 +65379,15 @@ E.monotonic = function () {
 }; // XXX: use etask
 
 
+E.sleep = function (ms) {
+  var wait = E.wait();
+  setTimeout(function () {
+    return wait["continue"]();
+  }, ms);
+  return wait;
+}; // XXX: use etask
+
+
 E.wait = function () {
   var resolve, reject;
   var p = new Promise(function (_resolve, _reject) {
@@ -65430,4 +65457,27 @@ E.buf_from_str = function (s) {
   return _buffer.Buffer.from(s, 'hex');
 };
 
-},{"buffer":66}]},{},[288]);
+},{"buffer":66}],291:[function(require,module,exports){
+'use strict';
+/*jslint node:true*/
+
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports["default"] = void 0;
+
+var _ws = _interopRequireWildcard(require("ws"));
+
+function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function _getRequireWildcardCache(nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
+
+function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || _typeof(obj) !== "object" && typeof obj !== "function") { return { "default": obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj["default"] = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+
+var E = {};
+var _default = E;
+exports["default"] = _default;
+E.WS = _ws["default"];
+E.WebSocketServer = _ws.WebSocketServer;
+
+},{"ws":282}]},{},[288]);

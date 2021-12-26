@@ -2,10 +2,12 @@
 import {inherits} from 'util';
 import {EventEmitter} from 'events';
 import _debug from 'debug';
-import WS, {WebSocketServer} from 'ws';
+import ws_util from '../util/ws.js';
 import fs from 'fs';
 import https from 'https';
 const debug = _debug('peer-relay:ws');
+const WS = ws_util.WS;
+const WebSocketServer = ws_util.WebSocketServer;
 const WebSocket = getWebSocket();
 // XXX HACK: need to add root ca certificate
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
