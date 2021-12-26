@@ -3,7 +3,7 @@ import assert from 'assert';
 import _wrtc from 'electron-webrtc'; // XXX: rm
 import string from '../util/string.js';
 import {EventEmitter} from 'events';
-import Client from './client.js';
+import Node from './client.js';
 
 function throw_invalid(s, i){
   throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
@@ -134,6 +134,35 @@ function test_parse_rm_meta(a){ return test_run_plugin(a, o=>delete o.meta); }
 function test_parse(s){
   return test_run_plugin(test_parse_cmd_multi(s), plugin_cmd_dir); }
 
+function arg_to_obj(arg){
+  let ret = {};
+  if (!arg)
+    return ret;
+  arg.forEach(o=>{
+    if (!o.arg || !o.arg.length)
+      return ret[o.cmd] = true;
+    assert.ok(!o.arg.arg, 'invalid arg '+JSON.stringify(arg));
+    assert.ok(o.arg.length==1, 'invalid arg '+JSON.stringify(arg));
+    ret[o.cmd] = o.arg[0].cmd;
+  });
+  return ret;
+}
+
+let t_nodes = {};
+
+class FakeNode extends EventEmitter {
+  constructor(opts){
+    super();
+  }
+  destroy(){}
+}
+
+function new_node(fake, name, o){
+  assert.ok(!t_nodes[name], 'node already exist '+name);
+  let node = new (fake ? FakeNode : Node)(o);
+  t_nodes[name] = node;
+}
+
 describe('test_api', function(){
    it('test_parse_cmd_single_valid', ()=>{
     const t = (s, exp, exp_last)=>{
@@ -247,7 +276,7 @@ describe('test_api', function(){
   });
 });
 
-function run_test(role, test){
+async function test_run(role, test){
   let a = test_parse(test);
   for (let i=0; i<a.length; i++)
   {
@@ -255,17 +284,28 @@ function run_test(role, test){
     switch (c.cmd)
     {
     case 'new_node':
+      assert.equal(c.dir, '=');
       console.log('XXX %o %s%s', c.cmd, c.s, c.dir);
+      console.log('XXX obj %o', arg_to_obj(c.arg));
+      assert.ok(/[a-zA-Z]/.test(c.s), 'invalid node name '+c.s);
+      new_node(c.s!=role, c.s, arg_to_obj(c.arg));
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
   }
+  await test_end();
+}
+
+async function test_end(){
+  for (let n in t_nodes)
+    await t_nodes[n].destroy();
 }
 
 describe('peer-relay', async function(){
   this.timeout(5000); // XXX HACK
   await it('test', async()=>{
-    const t = async(role, test)=>await run_test(role, test);
+    const t = async(role, test)=>await test_run(role, test);
+    // XXX: review if to use = or reuse ':'
     await t('s', `s=new_node(host:lif.zone port:4000) a=new_node(ws:s)`);
   });
 });
@@ -411,7 +451,7 @@ describe('End to End', function(){
   var clients = [];
 
   function startClient(opts){
-    var c = new Client(opts);
+    var c = new Node(opts);
     clients.push(c);
     return c;
   }
