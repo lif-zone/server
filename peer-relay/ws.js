@@ -6,9 +6,6 @@ import ws_util from '../util/ws.js';
 import fs from 'fs';
 import https from 'https';
 const debug = _debug('peer-relay:ws');
-const WS = ws_util.WS;
-const WebSocketServer = ws_util.WebSocketServer;
-const WebSocket = getWebSocket();
 // XXX HACK: need to add root ca certificate
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
@@ -33,7 +30,7 @@ function WsConnector(id, port, host){
       key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
       cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
     self.https_server = https.createServer(https_opts).listen(port, '0.0.0.0');
-    self._wss = new WebSocketServer({server: self.https_server});
+    self._wss = new ws_util.WebSocketServer({server: self.https_server, port});
     self._wss.on('connection', onConnection);
     self._wss.on('listening', onListen);
     if (port !== 0)
@@ -53,7 +50,7 @@ function WsConnector(id, port, host){
 
 WsConnector.prototype.connect = function(url){
   var self = this;
-  self._onConnection(new WebSocket(url));
+  self._onConnection(getWebSocket(url));
 };
 
 WsConnector.prototype._onConnection = function(ws){
@@ -201,8 +198,9 @@ WsChannel.prototype.destroy = function(){
   self.emit('close');
 };
 
-function getWebSocket(){
+function getWebSocket(url){
+  // XXX: rm special handling for browser
   if (typeof window !== 'undefined' && window.WebSocket)
-    return window.WebSocket;
-  return WS;
+    return new window.WebSocket(url);
+  return new ws_util.WS(url);
 }

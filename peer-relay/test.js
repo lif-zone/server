@@ -3,10 +3,12 @@
 import assert from 'assert';
 import _wrtc from 'electron-webrtc'; // XXX: rm
 import string from '../util/string.js';
+import crypto from 'crypto';
 import {EventEmitter} from 'events';
 import Node from './client.js';
 import util from '../util/util.js';
 import date from '../util/date.js';
+import ws_util from '../util/ws.js';
 
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
@@ -207,6 +209,7 @@ async function test_ensure_no_events(){
 class FakeNode extends EventEmitter {
   constructor(opts){
     super();
+    this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new EventEmitter();
     this.wsConnector._wss = new EventEmitter();
     if (opts.port)
@@ -227,14 +230,14 @@ class FakeNode extends EventEmitter {
 
 function is_fake(role, p){ return role!=p; }
 
-function new_node(fake, name, o){
+function node_new(fake, name, o){
   assert.ok(!t_nodes[name], 'node already exist '+name);
-  console.log('XXX new_node pre %o', o);
+  console.log('XXX node_new pre %o', o);
   o = Object.assign({}, o);
   // XXX: wrap fixing arguments to plugin
   if (o.bootstrap) // XXX: support array
     o.bootstrap = [t_nodes[o.bootstrap].wsConnector.url];
-  console.log('XXX new_node post %o', o);
+  console.log('XXX node_new post %o', o);
   let node = new (fake ? FakeNode : Node)(o);
   t_nodes[name] = node;
   if (o.port)
@@ -243,6 +246,15 @@ function new_node(fake, name, o){
     node.wsConnector.on('listen', e=>test_emit(name+'<listen(ws:'+e.port+')'));
     node.wsConnector._wss.on('connection',
       e=>test_emit('?'+name+'>connect(ws:'+o.port+')'));
+  }
+}
+
+function node_from_wss_url(url){
+  for (let name in t_nodes)
+  {
+    let node = t_nodes[name];
+    if (node.wsConnector.url==url)
+      return {name, node};
   }
 }
 
@@ -382,10 +394,10 @@ async function test_run(role, test){
     // XXX: mv arg_to_obj to plugin
     switch (c.cmd)
     {
-    case 'new_node':
+    case 'node_new':
       assert.equal(c.dir, '=');
       assert.ok(!c.d, 'unexpected dst '+c.d);
-      new_node(is_fake(role, c.s), c.s, arg_to_obj(c.arg));
+      node_new(is_fake(role, c.s), c.s, arg_to_obj(c.arg));
       break;
     case 'listen':
       test_expect(c.orig);
@@ -417,22 +429,58 @@ async function test_end(){
   test_ensure_no_events();
 }
 
+class FakeWS extends EventEmitter {
+  constructor(url){
+    super();
+    console.log('XXX FakeWS constructor stub %s', url);
+    let {name, node} = node_from_wss_url(url);
+    console.log('XXX FakeWS name %s node %s', name, node.id);
+  }
+  close(){
+    console.log('XXX FakeWS close stub');
+  }
+}
+
+class FakeWebSocketServer extends EventEmitter {
+  constructor(opts){
+    super();
+    let port = opts.port;
+    console.log('XXX FakeWebSocketServer constructor stub');
+    this.init();
+    this._server = {address: ()=>({port})};
+  }
+  async init(){
+    await util.sleep(); // XXX HACK: fixme
+    this.emit('listening');
+  }
+  close(cb){
+    console.log('XXX FakeWebSocketServer close stub');
+    if (cb)
+      cb();
+  }
+}
+
 describe('peer-relay', async function(){
-  // XXX HACK: organize it nicely
+  // XXX HACK: organize it nicely and use sinon
   beforeEach(function(){
+    ws_util.orig_WebSocketServer = ws_util.WebSocketServer;
+    ws_util.WebSocketServer = FakeWebSocketServer;
+    ws_util.orig_WS = ws_util.WS;
+    ws_util.WS = FakeWS;
     console.log('XXX beforeEach');
   });
   afterEach(function(){
     console.log('XXX afterEach');
+    ws_util.WS = ws_util.orig_WS;
   });
   this.timeout(2*t_timeout);
   await it('test', async()=>{
     const t = async(role, test)=>await test_run(role, test);
     // XXX: review if to use = or reuse ':'
-    await t('s', `s=new_node(host:lif.zone port:4000) s<listen(ws:4000)
-      a=new_node(bootstrap:s) as>connect(ws:4000)`);
-    await t('a', `s=new_node(host:lif.zone port:4000) s<listen(ws:4000)
-      a=new_node(ws:s)`);
+    await t('s', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
+      a=node_new(bootstrap:s) as>connect(ws:4000)`);
+    await t('a', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
+      a=node_new(bootstrap:s) as>connect(ws:4000)`);
   });
 });
 
