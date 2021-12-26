@@ -4,6 +4,8 @@ import _wrtc from 'electron-webrtc'; // XXX: rm
 import string from '../util/string.js';
 import {EventEmitter} from 'events';
 import Node from './client.js';
+import util from '../util/util.js';
+import date from '../util/date.js';
 
 function throw_invalid(s, i){
   throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
@@ -148,11 +150,35 @@ function arg_to_obj(arg){
   return ret;
 }
 
-let t_nodes = {};
+let t_nodes = {}, t_events = [], t_expect = [];
+let t_timeout = 2000;
+function test_emit(e){ t_events.push(e); }
+function test_expect(e){ t_expect.push(e); }
+
+async function test_ensure_no_events(){
+  for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
+  {
+    await util.sleep(); // XXX HACK: fixme
+    if (t_events[t_events.length-1]==t_events[t_expect.length-1])
+    {
+      t_events.pop();
+      t_expect.pop();
+    }
+  }
+  assert.deepEqual(t_events, [], 'got extra event');
+  assert.deepEqual(t_expect, [], 'missing event');
+}
 
 class FakeNode extends EventEmitter {
   constructor(opts){
     super();
+    this.wsConnector = new EventEmitter();
+    this.wsConnector._wss = new EventEmitter();
+    this.init();
+  }
+  async init(){
+    await util.sleep(); // XXX HACK: fixme
+    this.wsConnector.emit('sleep');
   }
   destroy(){}
 }
@@ -161,6 +187,8 @@ function new_node(fake, name, o){
   assert.ok(!t_nodes[name], 'node already exist '+name);
   let node = new (fake ? FakeNode : Node)(o);
   t_nodes[name] = node;
+  if (o.port)
+    node.wsConnector.on('listen', e=>test_emit(name+'<listen:'+e.port));
 }
 
 describe('test_api', function(){
@@ -285,28 +313,43 @@ async function test_run(role, test){
     {
     case 'new_node':
       assert.equal(c.dir, '=');
+      assert.ok(!c.d, 'unexpected dst '+c.d);
       console.log('XXX %o %s%s', c.cmd, c.s, c.dir);
       console.log('XXX obj %o', arg_to_obj(c.arg));
-      assert.ok(/[a-zA-Z]/.test(c.s), 'invalid node name '+c.s);
       new_node(c.s!=role, c.s, arg_to_obj(c.arg));
+      break;
+    case 'listen':
+      assert.equal(c.dir, '<');
+      test_expect(c.meta._cmd);
+      test_ensure_no_events();
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
+    await util.sleep(); // XXX HACK: fixme
   }
   await test_end();
 }
 
 async function test_end(){
+  await util.sleep(100); // XXX HACK: fixme
   for (let n in t_nodes)
+  {
     await t_nodes[n].destroy();
+    delete t_nodes[n];
+  }
+  assert.deepEqual(t_events, []);
+  assert.deepEqual(t_expect, []);
 }
 
 describe('peer-relay', async function(){
-  this.timeout(5000); // XXX HACK
+  this.timeout(2*t_timeout); // XXX HACK
   await it('test', async()=>{
     const t = async(role, test)=>await test_run(role, test);
     // XXX: review if to use = or reuse ':'
-    await t('s', `s=new_node(host:lif.zone port:4000) a=new_node(ws:s)`);
+    await t('s', `s=new_node(host:lif.zone port:4000) s<listen:4000
+      a=new_node(ws:s)`);
+    await t('a', `s=new_node(host:lif.zone port:4000) s<listen:4000
+      a=new_node(ws:s)`);
   });
 });
 

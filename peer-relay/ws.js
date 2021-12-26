@@ -45,7 +45,7 @@ function WsConnector(id, port, host){
       return;
     let port = self._wss._server.address().port;
     let url = 'wss://'+host+':'+port;
-    self.emit('listening', {port, url});
+    self.emit('listen', {port, url});
   }
 }
 
