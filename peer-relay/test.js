@@ -1,4 +1,5 @@
-'use strict'; /*jslint node:true*/ /*global describe,it*/
+'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
+// XXX: need jslint mocha: true
 import assert from 'assert';
 import _wrtc from 'electron-webrtc'; // XXX: rm
 import string from '../util/string.js';
@@ -99,7 +100,8 @@ function test_parse_cmd_multi(s){
   let ret = [], arg, t = test_parse_cmd_single(s), meta = t.meta;
   if (t.arg)
     arg = test_parse_cmd_multi(t.arg);
-  ret.push(arg ? {cmd: t.cmd, arg, orig: t.orig, meta} : {cmd: t.cmd, meta});
+  ret.push(arg ? {cmd: t.cmd, arg, orig: t.orig, meta} :
+    {cmd: t.cmd, orig: t.orig, meta});
   return ret.concat(test_parse_cmd_multi(s.substr(t.meta.last)));
 }
 
@@ -142,7 +144,9 @@ function plugin_cmd_dir(o){
   return o;
 }
 
-function test_parse_rm_meta(a){
+function test_parse_rm_meta(a){ return test_run_plugin(a, o=>delete o.meta); }
+
+function test_parse_rm_meta_orig(a){
   return test_run_plugin(a, o=>{
     delete o.meta;
     delete o.orig;
@@ -167,9 +171,21 @@ function arg_to_obj(arg){
 }
 
 let t_nodes = {}, t_events = [], t_expect = [];
-let t_timeout = 2000;
-function test_emit(e){ t_events.push(e); }
-function test_expect(e){ t_expect.push(e); }
+let t_timeout = 2000, t_running;
+
+function test_emit(e){
+  assert.ok(t_running, 'test not running');
+  assert.ok(e, 'invalid event');
+  console.log('XXX emit %s', e);
+  t_events.push(e);
+}
+
+function test_expect(e){
+  assert.ok(t_running, 'test not running');
+  assert.ok(e, 'invalid event');
+  console.log('XXX expect %s', e);
+  t_expect.push(e);
+}
 
 async function test_ensure_no_events(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
@@ -194,7 +210,10 @@ class FakeNode extends EventEmitter {
     this.wsConnector = new EventEmitter();
     this.wsConnector._wss = new EventEmitter();
     if (opts.port)
+    {
       this.wsConnector._wss.port = opts.port;
+      this.wsConnector.url = 'wss://'+opts.host+':'+opts.port;
+    }
     this.init();
   }
   async init(){
@@ -206,12 +225,25 @@ class FakeNode extends EventEmitter {
   destroy(){}
 }
 
+function is_fake(role, p){ return role!=p; }
+
 function new_node(fake, name, o){
   assert.ok(!t_nodes[name], 'node already exist '+name);
+  console.log('XXX new_node pre %o', o);
+  o = Object.assign({}, o);
+  // XXX: wrap fixing arguments to plugin
+  if (o.bootstrap) // XXX: support array
+    o.bootstrap = [t_nodes[o.bootstrap].wsConnector.url];
+  console.log('XXX new_node post %o', o);
   let node = new (fake ? FakeNode : Node)(o);
   t_nodes[name] = node;
   if (o.port)
+  {
+    // XXX: mv to listen on wsConnector._wss
     node.wsConnector.on('listen', e=>test_emit(name+'<listen(ws:'+e.port+')'));
+    node.wsConnector._wss.on('connection',
+      e=>test_emit('?'+name+'>connect(ws:'+o.port+')'));
+  }
 }
 
 describe('test_api', function(){
@@ -273,7 +305,7 @@ describe('test_api', function(){
   it('test_parse_cmd_multi_valid', ()=>{
     const t = (s, exp)=>{
       let ret = test_parse_cmd_multi(s);
-      ret = test_parse_rm_meta(ret);
+      ret = test_parse_rm_meta_orig(ret);
       assert.deepEqual(ret, exp);
     };
     t('a', [{cmd: 'a'}]);
@@ -286,9 +318,20 @@ describe('test_api', function(){
     t('a(c d(5s + 3))', [{cmd: 'a', arg: [{cmd: 'c'},
       {cmd: 'd', arg: [{cmd: '5s'}, {cmd: '+'}, {cmd: '3'}]}
       ]}]);
+    t('ab>connect', [{cmd: 'ab>connect'}]);
     t('ab>(test go(now 3 send:4))', [{cmd: 'ab>', arg: [{cmd: 'test'},
       {cmd: 'go', arg: [{cmd: 'now'}, {cmd: '3'}, {cmd: 'send',
         arg: [{cmd: '4'}]}]}]}]);
+  });
+  it('test_parse_cmd_multi_valid_orig', ()=>{
+    const t = (s, exp)=>{
+      let ret = test_parse_cmd_multi(s);
+      ret = test_parse_rm_meta(ret);
+      assert.deepEqual(ret, exp);
+    };
+    t('ab>connect', [{cmd: 'ab>connect', orig: 'ab>connect'}]);
+    t('ab>connect(a)', [{cmd: 'ab>connect', orig: 'ab>connect(a)',
+      arg: [{cmd: 'a', orig: 'a'}]}]);
   });
   it('test_parse_cmd_multi_invalid', ()=>{
     const t = (s, exp)=>{ assert.throws(()=>{ test_parse_cmd_multi(s); },
@@ -330,31 +373,41 @@ describe('test_api', function(){
 });
 
 async function test_run(role, test){
+  assert.ok(!t_running, 'test already running');
+  t_running = true;
   let a = test_parse(test);
   for (let i=0; i<a.length; i++)
   {
     let c = a[i];
+    // XXX: mv arg_to_obj to plugin
     switch (c.cmd)
     {
     case 'new_node':
       assert.equal(c.dir, '=');
       assert.ok(!c.d, 'unexpected dst '+c.d);
-      console.log('XXX %o %s%s obj %o', c.cmd, c.s, c.dir, arg_to_obj(c.arg));
-      new_node(c.s!=role, c.s, arg_to_obj(c.arg));
+      new_node(is_fake(role, c.s), c.s, arg_to_obj(c.arg));
       break;
     case 'listen':
-      assert.equal(c.dir, '<');
       test_expect(c.orig);
       await test_ensure_no_events();
+      break;
+    case 'connect':
+      if (0) // XXX: WIP
+      {
+        test_expect(c.orig);
+        await test_ensure_no_events();
+      }
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
     await util.sleep(); // XXX HACK: fixme
   }
   await test_end();
+  t_running = false;
 }
 
 async function test_end(){
+  assert.ok(t_running, 'test not running');
   test_ensure_no_events();
   for (let n in t_nodes)
   {
@@ -365,12 +418,19 @@ async function test_end(){
 }
 
 describe('peer-relay', async function(){
-  this.timeout(2*t_timeout); // XXX HACK
+  // XXX HACK: organize it nicely
+  beforeEach(function(){
+    console.log('XXX beforeEach');
+  });
+  afterEach(function(){
+    console.log('XXX afterEach');
+  });
+  this.timeout(2*t_timeout);
   await it('test', async()=>{
     const t = async(role, test)=>await test_run(role, test);
     // XXX: review if to use = or reuse ':'
     await t('s', `s=new_node(host:lif.zone port:4000) s<listen(ws:4000)
-      a=new_node(ws:s)`);
+      a=new_node(bootstrap:s) as>connect(ws:4000)`);
     await t('a', `s=new_node(host:lif.zone port:4000) s<listen(ws:4000)
       a=new_node(ws:s)`);
   });
