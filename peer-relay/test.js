@@ -9,6 +9,8 @@ import Node from './client.js';
 import util from '../util/util.js';
 import date from '../util/date.js';
 import ws_util from '../util/ws.js';
+import ztest from '../util/ztest.js';
+const zetask = ztest.etask;
 
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
@@ -495,7 +497,7 @@ class FakeWebSocketServer extends EventEmitter {
   }
 }
 
-describe('peer-relay', async function(){
+describe('peer-relay', function(){
   // XXX HACK: organize it nicely and use ztest.js (sinon?)
   beforeEach(function(){
     ws_util.orig_WebSocketServer = ws_util.WebSocketServer;
@@ -509,13 +511,13 @@ describe('peer-relay', async function(){
     ws_util.WebSocketServer = ws_util.orig_WebSocketServer;
   });
   this.timeout(2*t_timeout);
-  await it('test', async()=>{
+  it('basic', ()=>zetask(function*(){
     const t = async(role, test)=>await test_run(role, test);
-    await t('s', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
+    yield t('s', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
       a=node_new(bootstrap:s) as>connect(ws:4000) as>findPeers(a)`);
-    await t('a', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
+    yield t('a', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
       a=node_new(bootstrap:s) as>connect(ws:4000) as>findPeers(a)`);
-  });
+  }));
 });
 
 if (0) // XXX: review old-style test and decide if needed
