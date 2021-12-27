@@ -1,0 +1,26 @@
+'use strict'; /*jslint node:true*/
+import zerr from './zerr.js';
+import zutil from './util.js';
+import assert from 'assert';
+const E = {}, env = process.env;
+export default E;
+
+E.zexit_init = ()=>{
+    function zexit_on_err(err){ zerr.zexit(err); }
+    zerr.on_exception = function(err){
+        if (!(err instanceof TypeError || err instanceof ReferenceError
+            || err instanceof assert.AssertionError))
+        {
+            return;
+        }
+        if (env.ZEXIT_ON_TYPEERROR===undefined || +env.ZEXIT_ON_TYPEERROR)
+            return zexit_on_err(err);
+        if (err.sent_perr)
+            return;
+        err.sent_perr = true;
+        console.error('etask_typeerror '+err);
+    };
+    if (!zutil.is_mocha())
+        process.on('uncaughtException', zexit_on_err);
+};
+

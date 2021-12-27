@@ -1,12 +1,361 @@
-'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
+'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach,before,after*/
 // XXX: need jslint mocha: true
-// import etask from './etask.js';
+import etask from './etask.js';
+import date from './date.js';
 import zutil from './util.js';
 import array from './array.js';
+import ztest from './ztest.js';
+import zerr from './zerr.js';
+import sprintf from './sprintf.js';
+import set from './set.js';
+import match from './match.js';
 import assert from 'assert';
+import zsinon from './sinon.js';
+import sinon from '@hola.org/sinon';
+import D from 'd.js';
 import _ from 'underscore';
+import when from 'when';
+const seq = ztest.seq, ms = date.ms, assign = Object.assign;
 
-const assign = Object.assign;
+describe('sinon', function(){
+    let seq_with_called = ()=>{
+        let i = 0;
+        return expected=>{
+            let f = ()=>{
+                assert(i++==expected);
+                f.called = true;
+            };
+            f.called = false;
+            return f;
+        };
+    };
+    describe('clock_set', ()=>{
+        it('accepts an initial time', ()=>{
+            let now = +date('2013-08-13 14:00:00');
+            zsinon.clock_set({now});
+            assert.strictEqual(Date.now(), now);
+            assert.strictEqual(+new Date(), now);
+            assert.strictEqual(+date(), now);
+            zsinon.uninit();
+        });
+        it('auto-increments', ()=>{
+            zsinon.clock_set({now: '2013-08-13 14:00:00',
+                auto_inc: true});
+            let t = exp=>assert.strictEqual(+date(exp), Date.now());
+            return etask(function*(){
+                t('2013-08-13 14:00:00');
+                yield etask.sleep(10*ms.MIN);
+                t('2013-08-13 14:10:00');
+                yield etask.sleep(ms.MIN);
+                t('2013-08-13 14:11:00');
+                zsinon.uninit();
+            });
+        });
+        it('affects date.monotonic', ()=>{
+            zsinon.clock_set({now: 100});
+            assert.strictEqual(date.monotonic(), 100);
+            zsinon.tick(100);
+            assert.strictEqual(date.monotonic(), 200);
+            zsinon.uninit();
+        });
+        it('affects monotonic in a specified module', ()=>{
+            let date2 = {};
+            zsinon.clock_set({now: 100, date: date2});
+            assert.strictEqual(date2.monotonic(), 100);
+            zsinon.tick(100);
+            assert.strictEqual(date2.monotonic(), 200);
+            zsinon.uninit();
+        });
+    });
+    it('uninit', done=>{
+        zsinon.clock_set({auto_inc: true});
+        let cb = sinon.spy();
+        setTimeout(cb, 10);
+        zsinon.uninit();
+        setTimeout(()=>{
+            assert(!cb.called);
+            done();
+        }, 100);
+    });
+    describe('tick', ()=>{
+        beforeEach(()=>zsinon.clock_set({now: 100,
+            auto_inc: true}));
+        afterEach(()=>zsinon.uninit());
+        it('does not call too early', ()=>{
+            let cb = sinon.spy();
+            setTimeout(cb, 10);
+            zsinon.tick(9, {force: true});
+            assert(!cb.called);
+        });
+        it('calls on exact times', ()=>{
+            let cb = sinon.spy();
+            setTimeout(cb, 10);
+            zsinon.tick(10, {force: true});
+            assert(cb.called);
+        });
+        it('calls on exact times', ()=>{
+            let cb = sinon.spy();
+            setTimeout(cb, 10);
+            zsinon.tick(2, {force: true});
+            zsinon.tick(8, {force: true});
+            assert(cb.called);
+        });
+        it('calls on later times', ()=>{
+            let cb = sinon.spy();
+            setTimeout(cb, 10);
+            zsinon.tick(11, {force: true});
+            assert(cb.called);
+        });
+        it('calls on later times', ()=>{
+            let cb = sinon.spy();
+            setTimeout(cb, 10);
+            zsinon.tick(0, {force: true});
+            zsinon.tick(2, {force: true});
+            assert(!cb.called);
+            zsinon.tick(9, {force: true});
+            assert(cb.called);
+        });
+        it('calls multiple timers in the correct order', ()=>{
+            let callbacks = [], seq = seq_with_called();
+            for (let i=0; i<10; i++)
+            {
+                let cb = seq(i);
+                callbacks.push(cb);
+                setTimeout(cb, (i+1)*10);
+            }
+            assert(!callbacks.some(cb=>cb.called));
+            zsinon.tick(1000, {force: true});
+            assert(callbacks.every(cb=>cb.called));
+        });
+        it('calls simultaneous timers in the correct order', ()=>{
+            let callbacks = [], seq = seq_with_called();
+            for (let i=0; i<10; i++)
+            {
+                let cb = seq(i);
+                callbacks.push(cb);
+                setTimeout(cb, 10);
+            }
+            assert(!callbacks.some(cb=>cb.called));
+            zsinon.tick(10, {force: true});
+            assert(callbacks.every(cb=>cb.called));
+        });
+        it('accepts Date objects', ()=>{
+            let cb = sinon.spy();
+            setTimeout(cb, 10);
+            zsinon.tick(new Date(109), {force: true});
+            assert(!cb.called);
+            zsinon.tick(new Date(110), {force: true});
+            assert(cb.called);
+        });
+    });
+    it('etask', etask.fn(function*(){
+        let now = +date('2013-08-13 14:00:00');
+        zsinon.clock_set({now, auto_inc: true});
+        assert.strictEqual(Date.now(), now);
+        yield etask.sleep(0);
+        assert.strictEqual(Date.now(), now);
+        yield etask.sleep(10);
+        assert.strictEqual(Date.now(), now+10);
+        yield etask.sleep(1000);
+        assert.strictEqual(Date.now(), now+1000+10);
+        zsinon.uninit();
+    }));
+    describe('sinon_patch', ()=>{
+        let clock;
+        beforeEach(()=>clock = zsinon.clock_set());
+        it('original_setTimeout', done=>clock._setTimeout(done, 2));
+    });
+    describe('idle', ()=>{
+        it('sinon', ()=>ztest.etask({seq: 6}, function*(){
+            this.finally(()=>zsinon.uninit());
+            zsinon.clock_set();
+            setTimeout(()=>seq(1), 11);
+            zsinon.tick(11);
+            yield zsinon.wait();
+            seq(2);
+            setTimeout(()=>seq(4), 11);
+            zsinon.tick(10);
+            yield zsinon.wait();
+            seq(3);
+            zsinon.tick(1);
+            yield zsinon.wait();
+            seq(5);
+        }));
+        it('sinon nested continue', ()=>ztest.etask({seq: 9}, function*(){
+            let now = +date('2013-08-13 14:00:00');
+            let parent_wait, t1_wait, t2_wait;
+            zsinon.clock_set({auto_inc: true, now});
+            this.finally(()=>zsinon.uninit());
+            etask(function*sne_t1(){
+                seq(1);
+                yield t1_wait = this.wait();
+                seq(4);
+                t2_wait.continue();
+                seq(5);
+            });
+            etask(function*sne_t2(){
+                seq(2);
+                yield t2_wait = this.wait();
+                seq(6);
+                parent_wait.continue();
+                seq(7);
+            });
+            t1_wait.continue();
+            seq(3);
+            yield parent_wait = this.wait();
+            seq(8);
+        }));
+        /* XXX: enable
+        it('io', ()=>ztest.etask({seq: 3}, function*(){
+            zsinon.clock_set();
+            this.finally(()=>zsinon.uninit());
+            let c_sock, s_sock, server = net.createServer(s=>s_sock = s);
+            let wait;
+            server.listen(0, '127.0.0.1', ()=>wait.continue());
+            yield wait = this.wait();
+            let addr = server.address();
+            c_sock = net.connect(addr.port, ()=>wait.continue());
+            yield wait = this.wait();
+            assert(!!s_sock);
+            s_sock.once('data', ()=>seq(1));
+            c_sock.setNoDelay();
+            c_sock.end('123');
+            yield zsinon.wait();
+            seq(2);
+        }));
+        */
+    });
+    /* XXX: enable
+    it('network.localhost', etask.fn(function*(){
+        let now = +date('2013-08-13 14:00:00');
+        zsinon.clock_set({now, auto_inc: true});
+        this.finally(()=>zsinon.uninit());
+        let app = express();
+        app.get('/', (req, res)=>res.sendStatus(200));
+        let wait;
+        let srv = app.listen(port, '127.0.0.1', ()=>wait.continue());
+        this.finally(()=>srv.close());
+        yield wait = this.wait();
+        setTimeout(()=>assert(0), 100);
+        let res = yield wget('http://localhost:'+port);
+        assert.strictEqual(res.resp.statusCode, 200);
+    }));
+    */
+});
+
+let p_api = {};
+let p_api_prepare = ()=>{
+    // D/when promises are used only for unit-testing
+    D.alwaysAsync = false;
+    p_api.D = function(){ D.defer(...arguments); };
+    assign(p_api.D, {
+        resolve: D.promisify,
+        reject: D.rejected,
+    });
+    p_api.when = function(){ return when.defer(...arguments); };
+    assign(p_api.when, {
+        resolve: when.resolve,
+        reject: reason=>when.defer().reject(reason),
+    });
+    p_api.p = p_api.when;
+};
+
+p_api_prepare();
+
+let promise_test = (name, p)=>{
+    describe('promise_'+name, ()=>{
+        let _seq, t_opt;
+        let f = promise=>promise.then(res=>{
+            _seq(['then', res]);
+            if (t_opt.then_return_res)
+                return res;
+            if (t_opt.then_throw)
+                throw 'err';
+        }).otherwise(err=>{
+            _seq(['otherwise', err]);
+            if (t_opt.otherwise_return_res)
+                return err;
+            if (t_opt.otherwise_throw)
+                throw err;
+        }).ensure(arg=>{
+            assert.strictEqual(arg, undefined);
+            _seq(['ensure']);
+            if (t_opt.ensure_return)
+                return 5;
+            if (t_opt.ensure_throw)
+                throw 5;
+        });
+        let g = promise=>promise.then(res=>_seq(['p.then', res]))
+        .otherwise(err=>{ _seq(['p.otherwise',
+            err instanceof Error ? err.message :
+            err instanceof Object ? typeof err : err]); });
+        let t = (opt, start_val, seq_exp)=>{
+            t_opt = opt;
+            _seq = ztest.seq_fn(seq_exp);
+            g(f(start_val));
+        };
+        it('promise_resolve', done=>{
+            t({then_return_res: true}, p.resolve(1),
+                [['then', 1], ['ensure'], ['p.then', 1], done]);
+        });
+        it('promise_resolve2', done=>{
+            t({}, p.resolve(1),
+                [['then', 1], ['ensure'], ['p.then', undefined], done]);
+        });
+        it('promise_resolve3', done=>{
+            t({then_throw: true}, p.resolve(1),
+                [['then', 1], ['otherwise', 'err'], ['ensure'],
+                ['p.then', undefined], done]);
+        });
+        it('promise_resolve4', done=>{
+            t({then_throw: true, otherwise_return_res: true}, p.resolve(1),
+                [['then', 1], ['otherwise', 'err'], ['ensure'],
+                ['p.then', 'err'], done]);
+        });
+        it('promise_resolve5', done=>{
+            t({then_throw: true, otherwise_throw: true}, p.resolve(1),
+                [['then', 1], ['otherwise', 'err'], ['ensure'],
+                ['p.otherwise', 'err'], done]);
+        });
+        it('promise_resolve6', done=>{
+            t({ensure_return: true}, p.resolve(1),
+                [['then', 1], ['ensure'], ['p.then', undefined], done]);
+        });
+        if (p!==p_api.D) // D does not support ensure
+        it('promise_resolve7', done=>{
+            t({then_return_res: true, ensure_throw: true}, p.resolve(1),
+                [['then', 1], ['ensure'], ['p.otherwise', 5], done]);
+        });
+        it('promise_reject', done=>{
+            t({}, p.reject(1), [['otherwise', 1], ['ensure'],
+                ['p.then', undefined], done]);
+        });
+        it('promise_reject2', done=>{
+            t({otherwise_return_res: true}, p.reject(1),
+                [['otherwise', 1], ['ensure'], ['p.then', 1], done]);
+        });
+        if (p===etask) // only etask supports catch
+        it('promise_catch', done=>{
+            let seq = [];
+            p.resolve(1).then(res=>{
+                seq.push(res);
+                throw 5;
+            }).then(res=>{
+                seq.push(res);
+                return res+1;
+            }).catch(err=>{
+                seq.push('error');
+            }).then(res=>{
+                assert.deepStrictEqual(seq, [1, 'error']);
+                done();
+            });
+        });
+    });
+};
+
+promise_test('when', p_api.when);
+promise_test('d', p_api.D);
+promise_test('etask', etask);
 
 describe('util', ()=>{
     it('if_set', ()=>{
@@ -516,6 +865,7 @@ describe('util', ()=>{
         zutil.inherit_init(obj, Inject);
         assert(obj instanceof A);
         assert(obj instanceof B);
+        // eslint-disable-next-line no-prototype-builtins
         assert(obj.hasOwnProperty('injected_inst_prop'));
         assert(obj.injected_proto_prop);
     });
@@ -850,6 +1200,2861 @@ describe('array', ()=>{
             t([3, '1'], [[1, 2], 'str', [null, 4]],
                 [1, 2, 'str', null, 4, 3, '1']);
         });
+    });
+});
+
+describe('date', ()=>{
+    it('get', ()=>{
+        let t = (arg, exp)=>{
+            let d = date(arg);
+            assert(d instanceof Date);
+            assert.deepStrictEqual(d, exp);
+            d = date.get(arg);
+            assert(d instanceof Date);
+            assert.deepStrictEqual(d, exp);
+        };
+        zsinon.clock_set({
+            now: +new Date('2013-08-13 14:00:00 UTC'), mock: ['Date']});
+        t(undefined, new Date());
+        t(null, new Date(null));
+        zsinon.uninit();
+        let d = new Date();
+        t(d, d);
+        d = Date.now();
+        t(d, new Date(d));
+        t(''+d, new Date(d));
+        t(0, new Date('1970-01-01'));
+        t('0', new Date('1970-01-01'));
+        t('  0   ', new Date('1970-01-01'));
+        t(+new Date('2014-01-01 UTC'), new Date('2014-01-01'));
+        // eslint-disable-next-line
+        t(''+(+new Date('2014-01-01 UTC')), new Date('2014-01-01'));
+        /* eslint-enable */
+        t('2014-11-11', new Date('2014-11-11'));
+        t('2014-11-11 01:02', new Date('2014-11-11 01:02:00 UTC'));
+        t('2014-11-11T01:02', new Date('2014-11-11 01:02:00 UTC'));
+        t('2014-11-11 01:02:03', new Date('2014-11-11 01:02:03 UTC'));
+        t('2014-11-11T01:02:03', new Date('2014-11-11 01:02:03 UTC'));
+        t('2014-11-11T01:02:03+00:00', new Date('2014-11-11 01:02:03 UTC'));
+        t('2014-11-11 01:02:03.456', new Date('2014-11-11 01:02:03.456 UTC'));
+        t('2014-11-11T01:02:03.456Z', new Date('2014-11-11 01:02:03.456 UTC'));
+        t('2014-11-11T01:02:03.456+00:00',
+            new Date('2014-11-11 01:02:03.456 UTC'));
+        t('11-Nov-2014', new Date('2014-11-11'));
+        t('11-Nov-14', new Date('2014-11-11'));
+        t('11-nov-14', new Date('2014-11-11'));
+        t('11-Nov-14 01:02:03', new Date('2014-11-11 01:02:03 UTC'));
+        t('11-nov-14 01:02:03', new Date('2014-11-11 01:02:03 UTC'));
+        t(' \t\n2014-11-11 \t\n01:02:03.456 \t\n',
+            new Date('2014-11-11 01:02:03.456 UTC'));
+        assert(isNaN(date(Number.NaN)));
+        assert(isNaN(date('0000-00-00')));
+        assert(isNaN(date('0000-00-00 00:00:00')));
+        let d2 = new Date();
+        assert(d2===date.get(d2));
+        assert(d2!==date.get(d2, 1));
+    });
+    it('to_sql', ()=>{
+        let t = (arg, expected, _sec, _ms)=>{
+            let d = date(arg);
+            assert.strictEqual(date.to_sql(d), expected);
+            assert.strictEqual(date.to_sql_sec(d), expected+_sec);
+            assert.strictEqual(date.to_sql_ms(d), expected+_sec+_ms);
+        };
+        t('1995-07-06', '1995-07-06', ' 00:00:00', '.000');
+        t('1995-07-06 00:00:00', '1995-07-06', ' 00:00:00', '.000');
+        t('1995-07-06 18:00', '1995-07-06 18:00:00', '', '.000');
+        t('1995-07-06 18:31', '1995-07-06 18:31:00', '', '.000');
+        t('1995-07-06 18:31:12', '1995-07-06 18:31:12', '', '.000');
+        t('1960-07-06 18:31:12', '1960-07-06 18:31:12', '', '.000');
+        t('1960-07-06', '1960-07-06', ' 00:00:00', '.000');
+        t('1960-07-06 18:31:12', '1960-07-06 18:31:12', '', '.000');
+        t('1960-07-06 18:31:12.123', '1960-07-06 18:31:12', '', '.123');
+        // this is a little different than date.c, which returns empty string
+        t('1900-01-01', '1900-01-01', ' 00:00:00', '.000');
+        t('1900-01-01', '1900-01-01', ' 00:00:00', '.000');
+        t('invalid', '0000-00-00', ' 00:00:00', '.000');
+    });
+    it('from_sql', ()=>{
+        let t = (s, exp)=>assert.deepStrictEqual(
+            date.from_sql(s), new Date(exp));
+        t('1960-07-06 18:31', '1960-07-06T18:31Z');
+        t('1960-07-06 18:31:12', '1960-07-06T18:31:12Z');
+        t('1960-07-06 18:31:12.123', '1960-07-06T18:31:12.123Z');
+        t('1986-04-26', '1986-04-26T00:00:00.000Z');
+        assert(isNaN(date.from_sql('0000-00-00')));
+    });
+    it('ms_to_dur', ()=>{
+        let t = (arg, exp)=>assert.deepStrictEqual(date.ms_to_dur(arg), exp);
+        t(0, '00:00:00');
+        t(5005, '00:00:05');
+        t(7273000, '02:01:13');
+        t(93673000, '1 Day 02:01:13');
+        t(-871273000, '-10 Days 02:01:13');
+    });
+    it('dur_to_str', ()=>{
+        let t = (arg, exp)=>{
+            assert.deepStrictEqual(date.dur_to_str(date(arg)), exp);
+            assert.deepStrictEqual(date.dur_to_str(arg), exp);
+            assert.strictEqual(date.str_to_dur(exp), arg);
+        };
+        t(0, '0s');
+        t(1, '1ms');
+        t(ms.SEC, '1s');
+        t(5*ms.SEC, '5s');
+        t(ms.MIN, '1min');
+        t(2*ms.MIN, '2min');
+        t(ms.HOUR, '1h');
+        t(23*ms.HOUR, '23h');
+        t(ms.DAY, '1d');
+        t(366*ms.DAY, '1y1d');
+        t(666*ms.DAY, '1y10mo1d');
+        t(90061001, '1d1h1min1s1ms');
+        t(86400001, '1d1ms');
+        t(86460001, '1d1min1ms');
+        t(3601000, '1h1s');
+    });
+    it('dur_to_str_with_week', ()=>{
+        let t = (arg, exp)=>{
+            assert.deepStrictEqual(date.dur_to_str(date(arg), {week: 1}), exp);
+            assert.deepStrictEqual(date.dur_to_str(arg, {week: 1}), exp);
+            assert.strictEqual(date.str_to_dur(exp), arg);
+        };
+        t(7*ms.DAY, '1w');
+        t(14*ms.DAY, '2w');
+        t(28*ms.DAY, '4w');
+        t(30*ms.DAY, '1mo');
+        t(37*ms.DAY, '1mo1w');
+    });
+    it('dur_to_str_with_sep', ()=>{
+        let t = (arg, exp)=>{
+            assert.deepStrictEqual(
+                date.dur_to_str(date(arg), {sep: ' '}), exp);
+            assert.deepStrictEqual(date.dur_to_str(arg, {sep: ' '}), exp);
+            assert.strictEqual(date.str_to_dur(exp), arg);
+        };
+        t(0, '0s');
+        t(1, '1ms');
+        t(ms.SEC, '1s');
+        t(5*ms.SEC, '5s');
+        t(ms.MIN, '1min');
+        t(2*ms.MIN, '2min');
+        t(ms.HOUR, '1h');
+        t(23*ms.HOUR, '23h');
+        t(ms.DAY, '1d');
+        t(366*ms.DAY, '1y 1d');
+        t(666*ms.DAY, '1y 10mo 1d');
+        t(90061001, '1d 1h 1min 1s 1ms');
+        t(86400001, '1d 1ms');
+        t(86460001, '1d 1min 1ms');
+        t(3601000, '1h 1s');
+    });
+    it('dur_to_str_with_units', ()=>{
+        let t = (arg, units, exp)=>{
+            assert.deepStrictEqual(date.dur_to_str(date(arg), {units}), exp);
+            assert.deepStrictEqual(date.dur_to_str(arg, {units}), exp);
+        };
+        t(0, 1, '0s');
+        t(23*ms.HOUR, 1, '23h');
+        t(666*ms.DAY, 3, '1y10mo1d');
+        t(666*ms.DAY, 2, '1y10mo');
+        t(666*ms.DAY, 1, '1y');
+        t(90061001, 5, '1d1h1min1s1ms');
+        t(90061001, 3, '1d1h1min');
+        t(90061001, 1, '1d');
+        t(86400001, 2, '1d1ms');
+        t(86400001, 1, '1d');
+        t(86460001, 3, '1d1min1ms');
+        t(86460001, 1, '1d');
+        t(3601000, 2, '1h1s');
+        t(3601000, 1, '1h');
+    });
+    it('str_to_dur', ()=>{
+        let t = (arg, exp)=>assert.deepStrictEqual(date.str_to_dur(arg), exp);
+        t('10ms', 10);
+        t('15s3ms', 15*ms.SEC+3);
+        t('30min', 30*ms.MIN);
+        t('1h', ms.HOUR);
+        t('3h', 3*ms.HOUR);
+        t('1d', ms.DAY);
+        t('1w', ms.WEEK);
+        t('1mo1d', ms.MONTH+ms.DAY);
+        t('1y', ms.YEAR);
+    });
+    it('str_to_dur with long format', ()=>{
+        let t = (arg, exp)=>assert.deepStrictEqual(date.str_to_dur(arg), exp);
+        t('1msec', 1);
+        t('1sec', ms.SEC);
+        t('2second', 2*ms.SEC);
+        t('3seconds', 3*ms.SEC);
+        t('1minute', ms.MIN);
+        t('2minutes', 2*ms.MIN);
+        t('1hour', ms.HOUR);
+        t('2hours', 2*ms.HOUR);
+        t('1day', ms.DAY);
+        t('2days', 2*ms.DAY);
+        t('1week', ms.WEEK);
+        t('2weeks', 2*ms.WEEK);
+        t('1mon', ms.MONTH);
+        t('2month', 2*ms.MONTH);
+        t('3months', 3*ms.MONTH);
+        t('1year', ms.YEAR);
+        t('2years', 2*ms.YEAR);
+    });
+    it('str_to_dur non-parsing "m"', ()=>{
+        assert.deepStrictEqual(date.str_to_dur('1m'), undefined);
+    });
+    it('str_to_dur parsing "m" with short_month', ()=>{
+        let t = (arg, exp)=>assert.deepStrictEqual(
+            date.str_to_dur(exp, {short_month: 1}), arg);
+        t(ms.MONTH, '1m');
+        t(ms.YEAR+ms.MONTH, '1y1m');
+        t(ms.YEAR+3*ms.MONTH+2*ms.HOUR+15*ms.MIN, '1y 3m 2h 15min');
+    });
+    it('ms_to_str', ()=>{
+        let t = (arg, exp)=>assert.deepStrictEqual(date.ms_to_str(arg), exp);
+        t(0, '0ms');
+        t(943, '943ms');
+        t(5000, '5.000s');
+        t(5005, '5.005s');
+        t(7273000, '7273.000s');
+    });
+    it('to_jdate', ()=>{
+        let t = (arg, exp)=>assert.strictEqual(date.to_jdate(date(arg)), exp);
+        t('2001-07-22', '22-Jul-01');
+        t('2013-05-02', '02-May-13');
+        t('2013-05-02 00:00', '02-May-13');
+        t('2013-05-02 00:00:00', '02-May-13');
+        t('2010-11-20 06:30:00', '20-Nov-10 06:30');
+        t('2010-11-20 06:30:15', '20-Nov-10 06:30:15');
+    });
+    it('to_month_short', ()=>
+        assert.strictEqual(date.to_month_short(date('2013-07-22')), 'Jul'));
+    it('align', ()=>{
+        let d = date.from_sql('2013-07-22 01:02:03.004');
+        let t = (align, exp)=>
+            assert.strictEqual(date.to_sql(date.align(d, align)), exp);
+        t('SEC', '2013-07-22 01:02:03');
+        t('MIN', '2013-07-22 01:02:00');
+        t('HOUR', '2013-07-22 01:00:00');
+        t('DAY', '2013-07-22');
+        t('WEEK', '2013-07-21');
+        t('MONTH', '2013-07-01');
+        t('YEAR', '2013-01-01');
+    });
+    it('add', ()=>{
+        let d = date.from_sql('2013-07-22 01:02:03');
+        let t = (dur, exp, msg)=>
+            assert.strictEqual(date.to_sql(date.add(d, dur)), exp, msg);
+        t({sec: 1}, '2013-07-22 01:02:04');
+        t({month: 1, sec: -1}, '2013-08-22 01:02:02');
+        t({year: 1, month: 8, hour: -2, min: 5}, '2015-03-21 23:07:03');
+        t({day: 9, month: 2}, '2013-10-01 01:02:03', '2013-07-31 + 2 months');
+        t({month: 7, day: 10}, date.to_sql(date.add(d, {day: 10, month: 7})),
+            'Order should not matter.');
+    });
+    it('to_log_file', ()=>{
+        let t = (arg, exp)=>{
+            let d = date(arg);
+            assert.strictEqual(date.to_log_file(d), exp);
+            assert.deepStrictEqual(d, date.from_log_file(exp));
+        };
+        t('1995-07-06', '19950706_000000');
+        t('6-Jul-95 18:00', '19950706_180000');
+        t('6-Jul-95 18:31', '19950706_183100');
+        t('6-Jul-95 18:31:12', '19950706_183112');
+        t('6-Jul-1960 18:31:12', '19600706_183112');
+        t('1960-07-06', '19600706_000000');
+    });
+    it('to_log', ()=>{
+        let t = (arg, exp)=>assert.strictEqual(date.to_log_ms(date(arg)), exp);
+        t('2010-11-20', '2010.11.20 00:00:00.000');
+        t('2010-11-20 06:30:15', '2010.11.20 06:30:15.000');
+        t('2010-11-20 06:30:15.123', '2010.11.20 06:30:15.123');
+    });
+    it('from_rcs', ()=>{
+        let t = (arg, exp)=>assert.deepStrictEqual(
+            date.from_rcs(arg), date(exp));
+        t('2016.04.17.13.19.56', '2016-04-17 13:19:56');
+        t('1970.01.01.00.00.00', '1970-01-01');
+        t('1910.05.11.22.45.15', '1910-05-11 22:45:15');
+    });
+    it('to_rcs', ()=>{
+        let t = (arg, exp)=>assert.strictEqual(date.to_rcs(date(arg)), exp);
+        t('2016-04-17 13:19:56', '2016.04.17.13.19.56');
+        t('1970-01-01', '1970.01.01.00.00.00');
+        t('1910-05-11 22:45:15', '1910.05.11.22.45.15');
+    });
+    it('describe_interval', ()=>{
+        let t = (_ms, exp)=>assert.deepStrictEqual(
+            date.describe_interval(_ms), exp);
+        t(0, '0 sec');
+        t(ms.SEC, '1 sec');
+        t(2*ms.MIN-ms.SEC, '119 sec');
+        t(2*ms.MIN, '2 min');
+        t(2*ms.HOUR-ms.SEC, '120 min');
+        t(2*ms.HOUR, '2 hours');
+        t(2*ms.DAY-ms.SEC, '48 hours');
+        t(2*ms.DAY, '2 days');
+        t(2*ms.WEEK-ms.SEC, '14 days');
+        t(2*ms.WEEK, '2 weeks');
+        t(8*ms.WEEK, '8 weeks');
+        t(2*ms.MONTH, '2 months');
+        t(2*ms.YEAR-ms.SEC, '24 months');
+        t(2*ms.YEAR, '2 years');
+        t(5*ms.YEAR, '5 years');
+    });
+    it('time_ago', ()=>{
+        let now = Date.now();
+        let t = (d, exp)=>assert.deepStrictEqual(date.time_ago(d), exp);
+        t(undefined, 'right now');
+        t(now, 'right now');
+        t(now-ms.SEC, '1 sec ago');
+        t(now-2*ms.MIN+ms.SEC, '119 sec ago');
+        t(now-2*ms.MIN, '2 min ago');
+        t(now-2*ms.HOUR+ms.SEC, '120 min ago');
+        t(now-2*ms.HOUR, '2 hours ago');
+        t(now-2*ms.DAY+ms.SEC, '48 hours ago');
+        t(now-2*ms.DAY, '2 days ago');
+        t(now-2*ms.WEEK+ms.SEC, '14 days ago');
+        t(now-2*ms.WEEK, '2 weeks ago');
+        t(now-8*ms.WEEK, '8 weeks ago');
+        t(now-2*ms.MONTH, '2 months ago');
+        t(now-2*ms.YEAR+ms.SEC, '24 months ago');
+        t(now-2*ms.YEAR, '2 years ago');
+        t(now-5*ms.YEAR, '5 years ago');
+    });
+    it('parse', ()=>{
+        let now = date.get('2010-11-05 06:30:15');
+        let t = (d, exp, opt)=>assert.strictEqual(
+            date.to_sql(date.parse(d, assign({now}, opt))), exp);
+        t('now', '2010-11-05 06:30:15');
+        t('today', '2010-11-05');
+        t('tomorrow', '2010-11-06');
+        t('yesterday', '2010-11-04');
+        t('hour', '2010-11-05 07:30:15');
+        t('2 hour', '2010-11-05 08:30:15');
+        t('-2 hour', '2010-11-05 04:30:15');
+        t('2 hours', '2010-11-05 04:30:15', {dir: -1});
+        t('2 hours ago', '2010-11-05 04:30:15');
+        t('2 hour ago', '2010-11-05 04:30:15');
+        t('7 hours 30 minutes ago', '2010-11-04 23:00:15');
+        t('3 days 12 hours 30 minutes 1 second ago', '2010-11-01 18:00:14');
+        t('5 days 6 hours', '2010-10-31 00:30:15', {dir: -1});
+        t('1 week ago', '2010-10-29 06:30:15');
+        t('2 years 3 months 5 days 2 hours 5 seconds', '2013-02-10 08:30:20');
+        t('2y 3mo5d2h 4s', '2013-02-10 08:30:19');
+        t('last 2 hours', '2010-11-05 04:30:15');
+        t('next 2 hours', '2010-11-05 08:30:15');
+        t('2 h', '2010-11-05 08:30:15');
+        t('Wed', '2010-11-03');
+        t('last wed', '2010-10-27');
+        t('next wed', '2010-11-10');
+        t('last wednesday', '2010-10-27');
+        t('next Wednesday', '2010-11-10');
+    });
+    it('str_to_dur non-parsing "m"', ()=>{
+        assert.deepStrictEqual(date.parse('1m'), undefined);
+        assert.deepStrictEqual(date.parse('2y 3m5d2h 4s'), undefined);
+    });
+    it('strptime', ()=>{
+        let t = (s, fmt, exp)=>{
+            exp = date(exp||'2012-05-05');
+            assert.deepStrictEqual(date.strptime(s, fmt), exp);
+            assert.deepStrictEqual(date.parse(s, {fmt: fmt}), exp);
+        };
+        t('2012-05-05T09:00:00.00+09:00', '%Y-%m-%dT%H:%M:%S.%L%Z');
+        t('20120505000000', '%Y%m%d%H%M%S');
+        t('2012-05-05T09:00:00+09:00', '%Y-%m-%dT%H:%M:%S%Z');
+        t('2012-05-05 09:00:00+09:00', '%Y-%m-%d %H:%M:%S%Z');
+        t('2012-05-05 00:00:00+00:00', '%Y-%m-%d %H:%M:%S%Z');
+        t('2012-05-05 00:00:00Z', '%Y-%m-%d %H:%M:%S%Z');
+        t('05/May/2012:09:00:00 +0900', '%d/%B/%Y:%H:%M:%S %Z');
+        t('05/5/2012:09:00:00 +0900', '%d/%m/%Y:%H:%M:%S %Z');
+        t('Sat, 05 May 2012 09:00:00 +0900', '%A, %d %B %Y %H:%M:%S %Z');
+        t('Sat, 05 May 2012 09:00:00 +0900', '%a, %d %b %Y %H:%M:%S %z');
+        t('Sat May 05 2012 09:00:00 GMT+0900', '%A %B %d %Y %H:%M:%S %Z');
+        t('Saturday May 05 2012 09:00:00 GMT+0900', '%A %B %d %Y %H:%M:%S %Z');
+        t('29-Feb-2016', '%d-%b-%Y', '2016-02-29');
+        let t2 = (s, exp)=>t(s, '%Y-%m-%d %I:%M:%S %p', exp);
+        t2('2012-05-05 12:00:00 AM', '2012-05-05');
+        t2('2012-05-05 12:01:00 AM', '2012-05-05 00:01:00');
+        t2('2012-05-05 01:00:00 AM', '2012-05-05 01:00:00');
+        t2('2012-05-05 12:00:00 PM', '2012-05-05 12:00:00');
+        t2('2012-05-05 12:01:00 PM', '2012-05-05 12:01:00');
+        t2('2012-05-05 01:00:00 PM', '2012-05-05 13:00:00');
+        let t3 = (s, exp)=>t(s, '%Y-%m-%d %p %I:%M:%S', exp);
+        t3('2012-05-05 AM 12:00:00', '2012-05-05 00:00:00');
+        t3('2012-05-05 AM 12:01:00', '2012-05-05 00:01:00');
+        t3('2012-05-05 AM 01:00:00', '2012-05-05 01:00:00');
+        t3('2012-05-05 PM 12:00:00', '2012-05-05 12:00:00');
+        t3('2012-05-05 PM 12:01:00', '2012-05-05 12:01:00');
+        t3('2012-05-05 PM 01:00:00', '2012-05-05 13:00:00');
+    });
+    it('strftime', ()=>{
+        let d = date.from_sql('2011-06-07 18:51:45.067');
+        let t = (fmt, exp)=>{
+            assert.strictEqual(date.strftime(fmt, d, {utc: true}), exp);
+            assert.strictEqual(date.strftime(fmt, d), exp);
+        };
+        t('%A', 'Tuesday');
+        t('%a', 'Tue');
+        t('%B', 'June');
+        t('%b', 'Jun');
+        t('%C', '20');
+        t('%D', '06/07/11');
+        t('%d', '07');
+        t('%-d', '7');
+        t('%_d', ' 7');
+        t('%0d', '07');
+        t('%e', '7');
+        t('%F', '2011-06-07');
+        t('%H', '18');
+        t('%h', 'Jun');
+        t('%I', '06');
+        t('%-I', '6');
+        t('%_I', ' 6');
+        t('%0I', '06');
+        t('%j', '158');
+        t('%k', '18');
+        t('%L', '067');
+        t('%l', ' 6');
+        t('%-l', '6');
+        t('%_l', ' 6');
+        t('%0l', '06');
+        t('%M', '51');
+        t('%m', '06');
+        t('%n', '\n');
+        t('%o', '7th');
+        t('%P', 'pm');
+        t('%p', 'PM');
+        t('%R', '18:51');
+        t('%r', '06:51:45 PM');
+        t('%S', '45');
+        t('%s', '1307472705');
+        t('%T', '18:51:45');
+        t('%t', '\t');
+        t('%U', '23');
+        if (0)
+        t('%U', '24', new Date(+d + 5*ms.DAY));
+        t('%u', '2');
+        t('%v', '7-Jun-2011');
+        t('%W', '23');
+        t('%W', '23', new Date(+d + 5*ms.DAY));
+        t('%w', '2');
+        t('%Y', '2011');
+        t('%y', '11');
+        t('%Z', 'GMT');
+        t('%z', '+0000');
+        t('%%', '%');
+        t("don't replace anything", "don't replace anything");
+        t('%H:%M:%S', '18:51:45');
+    });
+    it('strftime_with_timezone', ()=>{
+        let d = date.from_sql('2011-06-07 18:51:45.067');
+        let t = (tz, exp)=>assert.strictEqual(
+            date.strftime('%F %H:%M', d, {timezone: tz}), exp);
+        t('-1200', '2011-06-07 06:51');
+        t('-1130', '2011-06-07 07:21');
+        t('-0744', '2011-06-07 11:07');
+        t('-0000', '2011-06-07 18:51');
+        t('+0000', '2011-06-07 18:51');
+        t('+0744', '2011-06-08 02:35');
+        t('+1130', '2011-06-08 06:21');
+        t('+1200', '2011-06-08 06:51');
+        t('+1400', '2011-06-08 08:51');
+        t(-12*60, '2011-06-07 06:51');
+        t(-11*60-30, '2011-06-07 07:21');
+        t(-7*60-44, '2011-06-07 11:07');
+        t(-0, '2011-06-07 18:51');
+        t(0, '2011-06-07 18:51');
+        t(7*60+44, '2011-06-08 02:35');
+        t(11*60+30, '2011-06-08 06:21');
+        t(12*60, '2011-06-08 06:51');
+        t(14*60, '2011-06-08 08:51');
+    });
+    it('compile_schedule', ()=>{
+        let t = (expr, d, exp)=>assert.strictEqual(
+            date.compile_schedule(expr)(d), exp);
+        t('0-24', '2017-01-01 00:00', true);
+        t('0-24', '2017-01-01 12:00', true);
+        t('0-2 10-14 16-18', '2017-01-01 00:00', true);
+        t('0-2 10-14 16-18', '2017-01-01 01:00', true);
+        t('0-2 10-14 16-18', '2017-01-01 01:59', true);
+        t('0-2 10-14 16-18', '2017-01-01 02:00', false);
+        t('0-2 10-14 16-18', '2017-01-01 10:00', true);
+        t('0-2 10-14 16-18', '2017-01-01 14:00', false);
+        t('0-2 10-14 16-18', '2017-01-01 16:00', true);
+        t('0-2 10-14 16-18', '2017-01-01 18:00', false);
+        t('23:30-00:30', '2017-01-01 23:00', false);
+        t('23:30-00:30', '2017-01-01 23:30', true);
+        t('23:30-00:30', '2017-01-01 00:00', true);
+        t('23:30-00:30', '2017-01-01 00:29', true);
+        t('23:30-00:30', '2017-01-01 00:30', false);
+        t('23:30-00:30', '2017-01-01 01:00', false);
+    });
+});
+
+describe('sprintf', ()=>{
+    it('basic', ()=>{
+        let t = (fmt, args, exp)=>{
+            sprintf.cache = {};
+            assert.strictEqual(sprintf.vsprintf(fmt, args), exp);
+            sprintf.cache = {};
+            assert.strictEqual(sprintf.apply(null, [fmt].concat(args)), exp);
+            sprintf.cache = {};
+            assert.strictEqual(
+                sprintf.sprintf.apply(null, [fmt].concat(args)), exp);
+            assert.strictEqual(sprintf.vsprintf(fmt, args, {slow: 1}), exp);
+            assert.strictEqual(sprintf.vsprintf(fmt, args, {fast: 1}), exp);
+        };
+        function _t(o, replacer, exp){
+            // should be same as JSON.stringify() in non-throwing cases
+            assert.strictEqual(
+                sprintf.stringify(o, replacer),
+                arguments.length>2 ? exp : JSON.stringify(o, replacer));
+        }
+        t('test', [], 'test');
+        t('__proto__', [], '__proto__');
+        t('%s %s', ['a', 'b'], 'a b');
+        assert.strictEqual(sprintf.sprintf('%s %s', 'a', 'b'), 'a b');
+        t('%03d', [1], '001');
+        t('%+03d', [1], '+01');
+        t('%+03d', [-1], '-01');
+        t('%3d', [1], '  1');
+        t('%3d', [1234], '1234');
+        t('%3s', ['x'], '  x');
+        t('%3s', ['xxxx'], 'xxxx');
+        t('%5d', [123], '  123');
+        t('%+5d', [123], ' +123');
+        t('%+.4f', [123.456], '+123.4560');
+        t('%+5d', [-123], ' -123');
+        t('%+.4f', [-123.456], '-123.4560');
+        t("%'d", [123], '123');
+        t("%'d", [-1234], '-1,234');
+        t("%'d", [123123123], '123,123,123');
+        t("%+.4'f", [123456.789], '+123,456.7890');
+        t("%'f", [-1234], '-1,234');
+        t("%'f", [123123123.123], '123,123,123.123');
+        t('%b', [0xabcd1234], '10101011110011010001001000110100');
+        t('%o', [10], '12');
+        t('%o', [0xabcd1234], '25363211064');
+        t('%o', [-10], '-12');
+        t('%u', [123456789], '123456789');
+        t('%u', [-123456789], '4171510507');
+        t('%x', [0xabcd1234], 'abcd1234');
+        t('%X', [0xabcd1234], 'ABCD1234');
+        t('%x', [-0xabcd1234], '-abcd1234');
+        t('%O', [1], '1');
+        t('%O', ['1'], '"1"');
+        t('%O', [{a: 1, b: 2}], '{"a":1,"b":2}');
+        t('%O', [{a: 1, b: undefined}], '{"a":1}'); // JSON.stringify behavior
+        t('%(aa)s', [{aa: 'AA'}], 'AA');
+        t('%(aa[1])s', [{aa: [1, 2]}], '2');
+        t('%(aa[1].b.c[0][1])s', [{aa: [0, {b: {c: [[4, 5]]}}]}], '5');
+        t('%2$s %1$s', ['a', 'b'], 'b a');
+        let o;
+        _t(null);
+        _t(undefined);
+        _t(1);
+        _t('');
+        _t('x');
+        _t('"\n\t"');
+        _t(NaN);
+        _t(Infinity);
+        _t(new Date());
+        _t(new RegExp('^a.*$'));
+        _t(function(){});
+        _t({});
+        _t({a: null});
+        _t({a: undefined});
+        _t({a: 1});
+        _t({a: ''});
+        _t({a: 'x'});
+        _t({a: NaN});
+        _t({a: Infinity});
+        _t({a: []});
+        _t([]);
+        _t([1, undefined, function(){}]);
+        _t([1, null]);
+        _t([{o: 1}]);
+        _t([{o: Number(5)}]);
+        _t([{o: String('a')}]);
+        _t({toJSON: k=>{}});
+        _t(o = {toJSON: k=>k});
+        _t({x: o, a: [o, o, o]});
+        o = {b: 1, get a(){ throw new Error('"\n\t"'); }};
+        _t(o, null, '{"b":1,"a":"__ERROR__: Error: \\"\\n\\t\\""}');
+        _t(o, (k, v)=>k!='a'&&v, '{"b":1,"a":false}');
+        o = {a: {b: {c: {}}}};
+        o.a.b.c = o;
+        _t(o, null, '{"a":{"b":{"c":"__CIRCULAR__"}}}');
+        let replacer_calls = [];
+        _t({a: {b: 1}, c: [1, {o: 'a'}]},
+            (k, v)=>{ replacer_calls.push([k, v]); return v; });
+        let m = replacer_calls.length/2;
+        assert.deepStrictEqual(
+            replacer_calls.slice(0, m),
+            replacer_calls.slice(m));
+        _t(o, ['a', 'b']);
+        t('%O', [o], '{"a":{"b":{"c":"__CIRCULAR__"}}}');
+        o.a.b = o;
+        _t(o, null, '{"a":{"b":"__CIRCULAR__"}}');
+        o.a = o;
+        _t(o, null, '{"a":"__CIRCULAR__"}');
+    });
+});
+
+describe('set', ()=>{
+    it('escape', ()=>{
+        let t = (unesc, esc)=>assert.strictEqual(set.escape(unesc), esc);
+        t('a', 'a');
+        t('(\ta\r\n)', '\\(\\ta\\r\\n\\)');
+        t(')\na b)\t\r', '\\)\\na b\\)\\t\\r');
+    });
+    it('from_str to_str', ()=>{
+        let t = (set_str, json, s2j, j2s, opt)=>{
+            let opt2;
+            if (opt && opt.remove_top===false)
+                opt2 = {wrap: false};
+            if (s2j || s2j===undefined)
+            {
+                try {
+                    assert.deepStrictEqual(set.from_str(set_str, opt), json);
+                } catch(e){ assert.strictEqual(e, json); }
+            }
+            if (j2s || j2s===undefined)
+            {
+                try { assert.strictEqual(set.to_str(json, opt2), set_str); }
+                catch(e){ assert.strictEqual(e, set_str); }
+            }
+        };
+        t('(a)', null, true, false);
+        t('(a))', 'Extra -1 elements', true, false);
+        t('((a)', 'Extra 1 elements', true, false);
+        t('((a)b))', 'Unexpected element b', true, false);
+        t('((a))', {a: null});
+        t('()', null);
+        t('(())', {'': null});
+        t('((a()))', {a: {'': null}});
+        t('((a((()))))', {a: {'': {'': {'': null}}}});
+        t('(a(1)(2))', {1: null, 2: null}, true, false);
+        t('(a("1")(2))', {'"1"': null, 2: null}, true, false);
+        t('(a(b(1)))', {b: '1'}, true, false, {normalize: true});
+        t('(a(b()))', {a: {b: ''}}, true, true,
+            {normalize: true, remove_top: false});
+        t('(a(b(0)))', {a: {b: '0'}}, true, true,
+            {normalize: true, remove_top: false});
+        t('(a(b(1)))', {a: {b: '1'}}, true, true,
+            {normalize: true, remove_top: false});
+        t('(a(b(c(1))))', {a: {b: {c: '1'}}}, true,
+            false, {normalize: true, remove_top: false});
+        t('(a(b(c(1))(d(1))))', {a: {b: {c: '1', d: '1'}}}, true,
+            false, {normalize: true, remove_top: false});
+        t('((a(1)(2)))', {a: {'1': null, '2': null}});
+        t('((a(b(c(d(e(f(g(h(i(j(k))))))))))))',
+            {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {k: null}}}}}}}}}}});
+        t('((\\(\\ta b\\n(\\r1)))', {'(\ta b\n': {'\r1': null}});
+        t('((\\(\\ta(\\(1\\t\\n\\))))', {'(\ta': {'(1\t\n)': null}}, true,
+            false);
+        t('((\\a\\b(\\1\\\\)))', {ab: {'1\\': null}}, true, false);
+        t('\n\n( (a\t(a b( c (1\n\t))\t)\n) \t )\n',
+            {a: {'a b': {c: {1: null}}}}, true, false);
+        t('((a(1)(2)(-1)(\\-3)))', {a: {2: null, '-3': null}}, true, false);
+    });
+    it('cmp', ()=>{
+        let t = (a, b, exp)=>{
+            assert(match.cmp_norm(set.cmp(a, b)) === exp);
+            assert(match.cmp_norm(set.cmp(b, a)) === -exp);
+        };
+        t('0', 'a', -1);
+        t('a', 'aa', -1);
+        t('aa', 'aaa', -1);
+        t('aaa', 'ab', -1);
+        t('ab', 'b', -1);
+        t('aa', 'aa', 0);
+        t('1', '2', -1);
+        t('3', '20', -1);
+        t('20', '111', -1);
+        t('10', 'a', 1);
+    });
+    it('cd', ()=>{
+        let s;
+        let t = (arg, exp)=>{
+            arg.unshift(s);
+            assert.deepStrictEqual(set.cd(...arg), exp);
+        };
+        s = set.from_str('(parent(45)(46(46a)(46b(46b1))))');
+        t([], s);
+        t(['46'], s['46']);
+        t(['46', '46b'], s['46']['46b']);
+        t(['notfound'], undefined);
+        s = set.from_str('((a(nother(number(17))(string(new string)))))');
+        t(['a', 'nother', 'string'], s.a.nother.string);
+        t(['a', 'nother', 'number'], s.a.nother.number);
+    });
+    it('get', ()=>{
+        let s;
+        let t = (arg, exp, exp_null)=>{
+            arg.unshift(s);
+            if (exp_null===undefined)
+                exp_null = exp;
+            assert.strictEqual(set.get(...arg), exp);
+            assert.strictEqual(set.get_null(...arg), exp_null);
+        };
+        s = set.from_str('(parent(45)(46(46a)(46b(46b1))))');
+        t(['46', '46b'], '46b1');
+        t([], '45');
+        t(['notfound'], '', null);
+        s = set.from_str('((a(nother(number(17))(string(new string)))))');
+        t(['a', 'nother', 'string'], 'new string');
+        t(['a', 'nother', 'number'], '17');
+    });
+});
+
+describe('etask', function(){
+    ztest.r_push_pop_prop(etask, {use_bt: 1});
+    afterEach(()=>ztest.assert_no_etasks());
+    let zetask = ztest.etask;
+    it('func_analyze', ()=>{
+        let base = {name: undefined, label: undefined, try_catch: undefined,
+            catch: undefined, finally: undefined, cancel: undefined};
+        let t = (func, features, exception)=>{
+            let err;
+            let type = etask.prototype._get_func_type(func, _err=>err = _err);
+            if (!err)
+            {
+                features = zutil.union_with(
+                    (e1, e2)=>e1!==undefined ? e1 : e2, features, base);
+            }
+            assert.strictEqual(err, exception);
+            assert.deepStrictEqual(type, features);
+        };
+        t(function(res){}, {});
+        t(function(res){}, {});
+        t(function a(res){}, {name: 'a', label: 'a'});
+        /* eslint-disable */
+        t(function   aaa  (res){}, {name: 'aaa', label: 'aaa'});
+        /* eslint-enable */
+        t(function $aaa(res){}, undefined, 'unknown func name $aaa');
+        t(function $(res){}, undefined, 'unknown func name $');
+        t(function catch$(res){}, {name: 'catch$', catch: true});
+        t(function xxx_catch$(res){}, undefined,
+            'unknown func name xxx_catch$');
+        t(function try_catch$(res){}, {name: 'try_catch$', try_catch: true});
+        t(function ensure_catch$(res){}, {name: 'ensure_catch$', catch: true,
+            finally: true});
+        t(function ensure$label(res){}, {name: 'ensure$label', label: 'label',
+            finally: true});
+        t(function finally_catch$(res){}, {name: 'finally_catch$', catch: true,
+            finally: true});
+        t(function finally$label(res){}, {name: 'finally$label',
+            label: 'label', finally: true});
+        t(function catch$label(res){}, {name: 'catch$label', label: 'label',
+            catch: true});
+        t(function cancel$(){}, {name: 'cancel$', cancel: true});
+    });
+    it('basic', ()=>zetask({seq: 3, ret: 2}, [function(res){
+        assert.strictEqual(res, undefined);
+        seq(1);
+        return 1;
+    }, function(res){
+        assert.strictEqual(res, 1);
+        seq(2);
+        return 2;
+    }]));
+    let etask_basic_promise = val=>zetask({seq: 3, ret: 2}, [function(res){
+        assert.strictEqual(res, undefined);
+        seq(1);
+        return p_api.p.resolve(val);
+    }, function(res){
+        assert.strictEqual(res, val);
+        seq(2);
+        return 2;
+    }]);
+    it('basic_promise1', ()=>etask_basic_promise());
+    it('basic_promise2', ()=>etask_basic_promise(1));
+    it('init_retval', ()=>zetask(2, [function(res){
+        assert.deepStrictEqual(res, undefined);
+        seq(1);
+    }]));
+    it('is_err', ()=>{
+        let t = (val, exp)=>assert.strictEqual(etask.is_err(val), !!exp);
+        t(0, 0);
+        t(42, 0);
+        t(true, 0);
+        t(false, 0);
+        t(null, 0);
+        t(undefined, 0);
+        t([], 0);
+        t({}, 0);
+        t(function(){}, 0);
+        t(etask([function(){}]), 0);
+        t(p_api.D.reject(), 0); // we only detect etasks
+        t(p_api.when.reject(), 0); // we only detect etasks
+        t(etask.err(), 1);
+        t(etask.err('oops'), 1);
+    });
+    it('is_final', ()=>{
+        let t = (val, exp)=>assert.strictEqual(etask.is_final(val), !!exp);
+        t(0, 1);
+        t(42, 1);
+        t(true, 1);
+        t(false, 1);
+        t(null, 1);
+        t(undefined, 1);
+        t([], 1);
+        t({}, 1);
+        t(function(){}, 1);
+        t(etask([function(){}]), 1);
+        t(etask([function(){}, function(){}]), 1);
+        t(etask.err(), 1);
+        t(etask.err('oops'), 1);
+        let et = etask.wait();
+        t(et, 0);
+        et.return();
+        t(et, 1);
+    });
+    it('continue', ()=>zetask({seq: 5, ret: 5}, [function(res){
+        assert.strictEqual(res, undefined);
+        seq(1);
+        return this.continue(2);
+    }, function(res){
+        assert.strictEqual(res, 2);
+        seq(2);
+        return 3;
+    }, function(res){
+        assert.strictEqual(res, 3);
+        seq(3);
+        return 4;
+    }, function named_func(res){
+        assert.strictEqual(res, 4);
+        seq(4);
+        return 5;
+    }]));
+    let wait_t = (val, _val, use_timeout, fail)=>zetask(2, [function(){
+        if (use_timeout)
+            setTimeout(()=>this.continue(val), 10);
+        else
+            this.continue(val);
+        return this.wait();
+    }, function(res){
+        if (fail)
+            seq(false);
+        seq(1);
+        assert.strictEqual(res, _val);
+    }, function catch$(res){
+        seq(1);
+        if (_val=='Error instance')
+            assert(res instanceof Error);
+        else
+            assert.strictEqual(res, _val);
+    }]);
+    it('wait', ()=>wait_t(1, 1, 0));
+    it('wait_undef', ()=>wait_t(undefined, undefined, 0));
+    it('wait_timeout', ()=>wait_t(1, 1, 1));
+    it('wait_promise', ()=>wait_t(p_api.p.resolve(1), 1, 0));
+    it('wait_promise_undef', ()=>
+        wait_t(p_api.p.resolve(undefined), undefined, 0));
+    it('wait_timeout_promise', ()=>wait_t(p_api.p.resolve(1), 1, 1));
+    it('wait_promise_reject', ()=>wait_t(p_api.p.reject(1), 1, 0, 0));
+    // etask converts throw undefined/null/false/0 to new Error()
+    it('wait_promise_reject_undef', ()=>
+        wait_t(p_api.p.reject(undefined), 'Error instance', 0));
+    it('wait_timeout_promise_reject', ()=>
+        wait_t(p_api.p.reject(1), 1, 1, 1));
+    it('wait_return', ()=>zetask({ret: 1}, [function(){
+        this.return(1);
+        return this.wait();
+    }, function(res){ seq(false); }]));
+    it('wait_goto', ()=>zetask(2, [function(){
+        this.goto('test', 1);
+        return this.wait();
+    }, function test(res){
+        seq(1);
+        assert.strictEqual(res, 1);
+    }]));
+    it('wait_goto_fn', ()=>zetask(2, [function(){
+        setTimeout(this.goto_fn('test'), 10);
+        return this.wait();
+    }, function test(res){
+        seq(1);
+        assert.strictEqual(res, undefined);
+    }]));
+    it('wait_continue_fn', ()=>zetask(2, [function(){
+        setTimeout(this.continue_fn(), 10);
+        return this.wait();
+    }, function(res){
+        seq(1);
+        assert.strictEqual(res, undefined);
+    }]));
+    it('wait_obj_continue', ()=>zetask({ret: 2, seq: 3}, [function(){
+        let wait = this.wait();
+        etask({async: true}, function(){
+            seq(1);
+            wait.continue(2);
+            seq(2);
+        });
+        return wait = this.wait();
+    }]));
+    it('wait_obj_other', ()=>zetask({seq: 4, ret: 2}, [function(){
+        let not_me = this.wait(), wait;
+        etask({async: true}, function(){
+            seq(1);
+            not_me.continue(3);
+            seq(2);
+            wait.continue(2);
+            seq(3);
+        });
+        return wait = this.wait();
+    }]));
+    it('wait_obj_throw', ()=>zetask({seq: 3, err: 2}, [function(){
+        let wait = this.wait();
+        etask({async: true}, function(){
+            seq(1);
+            wait.throw(2);
+            seq(2);
+        });
+        return wait = this.wait();
+    }]));
+    it('wait_obj_continue_before_wait', ()=>zetask({ret: 2}, [function(){
+        let wait = this.wait();
+        wait.continue(2);
+        return wait;
+    }]));
+    it('wait_obj_continue_fn', ()=>zetask({ret: 2, seq: 3}, [function(){
+        let wait = this.wait();
+        etask({async: true}, function(){
+            seq(1);
+            wait.continue_fn()(2);
+            seq(2);
+        });
+        return wait = this.wait();
+    }]));
+    it('wait_obj_throw_fn', ()=>zetask({seq: 3, err: 2}, [function(){
+        let wait = this.wait();
+        etask({async: true}, function(){
+            seq(1);
+            wait.throw_fn()(2);
+            seq(2);
+        });
+        return wait = this.wait();
+    }]));
+    it('wait_as_retval_not_generator', ()=>zetask({seq: 3}, [function(){
+        const return_wait = ()=>etask(function*(){
+            let wait_et = this.wait();
+            setTimeout(()=>{
+                seq(1);
+                wait_et.continue();
+            });
+            return yield wait_et;
+            // eslint-disable-next-line no-unreachable
+            yield;
+        });
+        return etask(function*(){
+            yield return_wait();
+            seq(2);
+        });
+    }]));
+    if (0) // XXX arik: BUG
+    it('wait_in_generator', ()=>zetask({seq: 3}, [function(){
+        const return_wait = ()=>etask(function*(){
+            let wait_et = this.wait();
+            setTimeout(()=>{
+                seq(1);
+                wait_et.continue();
+            });
+            return wait_et;
+            // eslint-disable-next-line no-unreachable
+            yield;
+        });
+        return etask(function*(){
+            yield return_wait();
+            seq(2);
+        });
+    }]));
+    it('wait_as_yield', ()=>zetask({seq: 3}, [function(){
+        const return_wait = ()=>etask(function*(){
+            let wait_et = this.wait();
+            setTimeout(()=>{
+                seq(1);
+                wait_et.continue();
+            });
+            return yield wait_et;
+            // eslint-disable-next-line no-unreachable
+            yield;
+        });
+        return etask(function*(){
+            yield return_wait();
+            seq(2);
+        });
+    }]));
+    it('empty', ()=>zetask({ret: undefined}, []));
+    it('empty_ensure', ()=>zetask({seq: 2, ret: undefined},
+        [function ensure$(){ seq(1); }]));
+    it('empty_finally', ()=>zetask({seq: 2, ret: undefined},
+        [function finally$(){ seq(1); }]));
+    it('retval_immediate', ()=>zetask([function(){
+        this.continue(etask.err('err'));
+        assert.strictEqual(this.retval, undefined);
+        assert.strictEqual(this.error, 'err');
+        this.return(1);
+        assert.strictEqual(this.retval, 1);
+        assert.strictEqual(this.error, undefined);
+        this.continue(2);
+        assert.strictEqual(this.retval, 2);
+        assert.strictEqual(this.error, undefined);
+    }]));
+    it('ensure_return', ()=>zetask({seq: 2, ret: 2}, [function(){
+        throw 1;
+    }, function ensure$(){
+        assert.strictEqual(this.error, 1);
+        seq(1);
+        this.return(2);
+    }]));
+    it('finally_return', ()=>zetask({seq: 2, ret: 2}, [function(){
+        throw 1;
+    }, function finally$(){
+        assert.strictEqual(this.error, 1);
+        seq(1);
+        this.return(2);
+    }]));
+    it('finally_fn', ()=>zetask({seq: 4}, function*(){
+        this.finally(()=>seq(3));
+        seq(1);
+        yield etask.sleep(1);
+        seq(2);
+    }));
+    it('finally_err_fn', ()=>zetask({seq: 4, err: '17'}, function*(){
+        this.finally(()=>seq(3));
+        seq(1);
+        yield etask.sleep(1);
+        seq(2);
+        throw '17';
+    }));
+    it('continue_nfn', ()=>zetask({ret: 'arg1'}, [function(){
+        let callback = this.continue_nfn();
+        callback(undefined, 'arg1', 'arg2');
+        return this.wait();
+    }]));
+    it('continue_nfn_err', ()=>zetask({err: 1}, [function(){
+        let callback = this.continue_nfn();
+        callback(1, undefined);
+        return this.wait();
+    }]));
+    let nfn_apply_multi = (opt, exp)=>zetask({ret: exp}, [function(){
+        return etask.nfn_apply(opt, function(cb){
+            cb(undefined, 'arg1', 'arg2'); }, null, []);
+    }]);
+    it('nfn_apply_multi', ()=>nfn_apply_multi({}, 'arg1'));
+    it('nfn_apply_multi_0', ()=>nfn_apply_multi({ret_a: false}, 'arg1'));
+    it('nfn_apply_multi_1', ()=>
+        nfn_apply_multi({ret_a: true}, ['arg1', 'arg2']));
+    it('alarm_timeout', ()=>zetask(3, [function(){
+        let _this = this;
+        this.alarm(10, function(){
+            assert(this===_this);
+            seq(1);
+            this.return();
+        });
+        return this.wait();
+    }, function(){ seq(false);
+    }, function catch$(err){ seq(false);
+    }, function ensure$(){ seq(2); }]));
+    it('alarm_timeout_return', ()=>zetask(2, [function(){
+        this.alarm(10, {return: 'ok'});
+        return this.wait();
+    }, function(ret){ seq(false);
+    }, function catch$(){ seq(false);
+    }, function ensure$(){ seq(1); }]));
+    it('alarm_timeout_throw', ()=>zetask(2, [function(){
+        this.alarm(10, {throw: 'throw'});
+        return this.wait();
+    }, function(){ seq(false);
+    }, function catch$(err){
+        seq(1);
+        assert.strictEqual(err, 'throw');
+    }]));
+    it('alarm_timeout_goto', ()=>zetask(2, [function(){
+        this.alarm(10, {goto: 'end', ret: 'val'});
+        return this.wait();
+    }, function(){ seq(false);
+    }, function catch$(){ seq(false);
+    }, function end(ret){
+        seq(1);
+        assert.strictEqual(ret, 'val');
+    }]));
+    it('alarm_listeners', ()=>zetask(3, [function(){
+        seq(1);
+        this.alarm(1000, {throw: 'test'});
+        assert.strictEqual(this.listeners('sig_alarm').length, 1);
+        return etask.sleep(1);
+    }, function catch$(){ seq(false);
+    }, function(){
+        seq(2);
+        this.del_alarm();
+        assert.strictEqual(this.listeners('sig_alarm').length, 0);
+    }]));
+    it('alarm_listeners_multi', ()=>zetask(4, [function(){
+        seq(1);
+        this.alarm(1000, function(){ seq(false); });
+        this.del_alarm();
+        this.alarm(10, function(){ seq(2); });
+        assert.strictEqual(this.listeners('sig_alarm').length, 1);
+        return etask.sleep(20);
+    }, function(){
+        seq(3);
+        assert.strictEqual(this.listeners('sig_alarm').length, 0);
+    }]));
+    it('alarm_listeners_custom', ()=>{
+        let dummy = function(){};
+        return zetask(3, [function(){
+            seq(1);
+            this.alarm(1000, {throw: 'test'});
+            assert.strictEqual(this.listeners('sig_alarm').length, 1);
+            this.on('sig_alarm', dummy);
+            assert.strictEqual(this.listeners('sig_alarm').length, 2);
+            return etask.sleep(1);
+        }, function catch$(){ seq(false);
+        }, function(){
+            seq(2);
+            this.del_alarm();
+            assert.strictEqual(this.listeners('sig_alarm').length, 1);
+            assert.deepStrictEqual(this.listeners('sig_alarm')[0], dummy);
+        }]);
+    });
+    it('alarm_listeners_end', ()=>{
+        let et;
+        return zetask(4, [function(){
+            seq(1);
+            return et = etask([function(){
+                seq(2);
+                this.alarm(1000, {throw: 'test'});
+            }]);
+        }, function(){
+            seq(3);
+            assert.strictEqual(et.alarm_id, undefined);
+            assert.strictEqual(et.alarm_ms, undefined);
+            assert.strictEqual(et.alarm_cb, undefined);
+            assert.strictEqual(et.listeners('sig_alarm').length, 0);
+        }]);
+    });
+    it('wait_timeout', ()=>zetask(2, [function(){
+        return this.wait(10);
+    }, function(){ seq(false);
+    }, function catch$(err){
+        seq(1);
+        assert.strictEqual(err, 'timeout');
+    }]));
+    it('wait_timeout2', ()=>zetask(2, [function(){
+        setTimeout(()=>this.continue(), 10);
+        return this.wait(20);
+    }, function(res){
+        seq(1);
+        assert.strictEqual(res, undefined);
+    }, function catch$(err){ seq(false); }]));
+    it('loop', ()=>zetask(5, [function(res){
+        seq(1, 2);
+        if (ztest.seq_curr==1)
+        {
+            assert.strictEqual(res, undefined);
+            return this.loop(5);
+        }
+        assert.strictEqual(res, 5);
+    }, function try_catch$(err){
+        seq(3, 4);
+        if (ztest.seq_curr==3)
+            return this.loop(etask.err(1));
+    }]));
+    it('goto', ()=>zetask({seq: 5, ret: 4}, [function(){
+        seq(1);
+        return this.goto('aaa', 1);
+    }, function bbb(){
+        seq(3);
+        return this.goto('ccc', 3);
+    }, function(){ seq(false);
+    }, function aaa(res){
+        seq(2);
+        return this.goto('bbb', 2);
+    }, function ccc(res){
+        seq(4);
+        return this.return(4);
+    }]));
+    it('set_state', ()=>zetask(3, [function(){
+        this.set_state('state');
+        return this.continue(1234);
+    }, function(){ seq(false);
+    }, function state(res){
+        seq(1);
+        assert.strictEqual(res, 1234);
+        this.set_state('state2');
+        return etask.sleep();
+    }, function(){ seq(false);
+    }, function state2(){ seq(2); }]));
+    it('return', ()=>zetask({seq: 2, ret: 1}, [function(){
+        seq(1);
+        return this.return(1);
+    }, function(){ return 2; }]));
+    it('cancel', ()=>zetask(7, [function(){
+        this.p = etask([function(){
+            return etask([function(){
+                seq(1);
+                return etask.sleep(1000);
+            }, function(){ seq(5);
+            }, function cancel$(){
+                seq(3);
+                this.continue();
+            }, function ensure$(){ seq(6); }]);
+        }]);
+        return etask.sleep(1);
+    }, function(){
+        seq(2);
+        this.p.return();
+        seq(4);
+        return etask.sleep();
+    }]));
+    it('cancel_deep', ()=>{
+        let et, et3;
+        return zetask(7, [function(){
+            et = etask([function(){
+                return etask([function(){
+                    return et3 = etask([function(){
+                        seq(1);
+                        return this.wait();
+                    }, function(){ seq(5);
+                    }, function cancel$(){ seq(false);
+                    }, function ensure$(){ seq(6); }]);
+                }]);
+            }]);
+            return etask.sleep(1);
+        }, function(){
+            seq(2);
+            et.return();
+            seq(3);
+            et3.continue();
+            seq(4);
+            return etask.sleep();
+        }]);
+    });
+    it('cancel_opt', ()=>{
+        let et;
+        return zetask(6, [function(){
+            seq(1);
+            etask([function(){
+                et = this;
+                seq(2);
+                return etask({cancel: true}, [function(){
+                    seq(3);
+                    return this.wait();
+                }, function(){ seq(false);
+                }, function ensure$(){ seq(5); }]);
+            }]);
+            return etask.sleep(1);
+        }, function(){
+            seq(4);
+            et.return();
+        }]);
+    });
+    it('throw_continues', ()=>zetask(5, [function(){
+        return etask([function(){
+            seq(1);
+            return this.throw('throw');
+        }, function catch$(res){
+            assert.strictEqual(res, 'throw');
+            seq(2);
+            return 2;
+        }, function ensure$(){ seq(3); }]);
+    }, function(res){
+        assert.strictEqual(res, 2);
+        seq(4);
+    }, function catch$(err){ seq(false); }]));
+    it('throw_rejects', ()=>zetask(4, [function(){
+        return etask([function(){
+            seq(1);
+            return this.throw('throw');
+        }, function ensure$(){ seq(2); }]);
+    }, function catch$(err){
+        seq(3);
+        assert.strictEqual(err, 'throw');
+    }]));
+    it('throw_wait', ()=>{
+        let et, et2;
+        et = zetask(4, [function(){
+            et2 = this;
+            seq(1);
+            return this.wait();
+        }, function catch$(err){
+            assert.strictEqual(err, 'error1');
+            seq(3);
+        }]);
+        seq(2);
+        et2.throw('error1');
+        seq(5);
+        return et;
+    });
+    it('throw_noarg', ()=>zetask(3, [function(){
+        seq(1);
+        return this.throw();
+    }, function catch$(err){
+        seq(2);
+        assert(err instanceof Error);
+        assert.strictEqual(err.message, '');
+    }]));
+    it('throw_fn_arg', ()=>zetask(3, [function(){
+        seq(1);
+        setTimeout(this.throw_fn('test'), 0);
+        return this.wait(10);
+    }, function catch$(err){
+        seq(2);
+        assert.strictEqual(err, 'test');
+    }]));
+    it('throw_fn', ()=>zetask(3, [function(){
+        seq(1);
+        setTimeout(this.throw_fn().bind(null, 'test'), 0);
+        return this.wait(10);
+    }, function catch$(err){
+        seq(2);
+        assert.strictEqual(err, 'test');
+    }]));
+    it('exception', ()=>zetask(4, [function try_catch$(){
+        seq(1);
+        throw 'error1';
+    }, function try_catch$(res){
+        seq(2);
+        assert.deepStrictEqual([this.error, res], ['error1', undefined]);
+        return etask.err('error2');
+    }, function(res){
+        seq(3);
+        assert.deepStrictEqual([this.error, res], ['error2', undefined]);
+    }]));
+    it('exception2', ()=>zetask(4, [function(){
+        seq(1);
+        return 0;
+    }, function try_catch$(res){
+        seq(2);
+        throw 'error2';
+    }, function(res){
+        seq(3);
+        assert.deepStrictEqual([this.error, res], ['error2', undefined]);
+    }]));
+    it('exception all', ()=>zetask(3, [function(){
+        seq(1);
+        return etask.err('error all');
+    }, function(){ seq(false);
+    }, function catch$(res){
+        seq(2);
+        assert.deepStrictEqual([this.error, res], ['error all', 'error all']);
+    }]));
+    it('exception all2', ()=>zetask(4, [function(){
+        seq(1);
+        return 0;
+    }, function(){
+        seq(2);
+        throw 'error all2';
+    }, function(){ seq(false);
+    }, function catch$(res){
+        seq(3);
+        assert.deepStrictEqual(
+            [this.error, res], ['error all2', 'error all2']);
+    }]));
+    it('exception all3', ()=>zetask({seq: 3, ret: 1234}, [function(){
+        seq(1);
+        return 1234;
+    }, function catch$(res){ seq(false);
+    }, function(res){
+        seq(2);
+        return res;
+    }]));
+    it('catch', ()=>zetask(5, [function(){
+        seq(1);
+        throw 'catch';
+    }, function(){ seq(false);
+    }, function catch$(err){
+        seq(2);
+        assert.strictEqual(err, 'catch');
+        throw 'catch2';
+    }, function(){ seq(false);
+    }, function catch_try_catch$(err){
+        seq(3);
+        assert.strictEqual(err, 'catch2');
+        throw 'catch3';
+    }, function(){
+        seq(4);
+        assert.strictEqual(this.error, 'catch3');
+    }]));
+    it('catch_label', ()=>zetask(5, [function(){
+        seq(1);
+        return this.goto('next');
+    }, function catch$next(){
+        seq(false);
+    }, function(){
+        seq(2);
+        return this.goto('next2', etask.err('error'));
+    }, function catch$next2(){
+        seq(3);
+    }, function(){
+        seq(4);
+    }]));
+    it('exception uncaught', ()=>zetask(3, [function(){
+        return etask([function(){
+            seq(1);
+            throw 'error uncaught';
+        }, function(){ seq(false); }]);
+    }, function catch$(err){
+        seq(2);
+        assert.strictEqual(err, 'error uncaught');
+    }]));
+    it('exception_uncaught2', ()=>zetask(4, [function(){
+        return etask([function(){
+            seq(1);
+            return 0;
+        }, function(){
+            seq(2);
+            throw 'error uncaught2';
+        }, function(){ seq(false); }]);
+    }, function catch$(err){
+        seq(3);
+        assert.strictEqual(err, 'error uncaught2');
+    }]));
+    it('exception uncaught3', ()=>zetask(3, [function(){
+        return etask([function(){ return 0;
+        }, function(){
+            seq(1);
+            throw 'error uncaught3';
+        }, function(){ seq(false); }]);
+    }, function(){ seq(false);
+    }, function catch$(err){
+        seq(2);
+        assert.strictEqual(err, 'error uncaught3');
+    }]));
+    it('delayed resolve', ()=>zetask(4, [function(){
+        seq(1);
+        return etask.sleep(10);
+    }, function(){
+        seq(2);
+        return this.goto('aaa', etask.sleep(10));
+    }, function aaa(){
+        seq(3);
+        return etask.sleep(10);
+    }]));
+    it('init', ()=>{
+        let init_this;
+        return zetask({seq: 3, init: function(){
+            seq(1);
+            init_this = this;
+        }}, [function(res){
+            seq(2);
+            assert(this===init_this);
+        }]);
+    });
+    it('all array', ()=>zetask({
+        res: [true, 45, undefined, 'abc', null, undefined]},
+    [function(){
+        return etask.all([true, 45, etask.sleep(10), 'abc', null,
+            undefined]);
+    }]));
+    it('all array fail', ()=>zetask({err: 'oops'}, [function(){
+        return etask.all([1, etask([function(){ throw 'oops'; }]), 2]);
+    }]));
+    it('all array allow_fail', ()=>zetask(2, [function(){
+        return etask.all({allow_fail: true},
+            [1, etask([function(){ throw 'oops'; }]), 2]);
+    }, function(res){
+        seq(1);
+        assert.strictEqual(res.length, 3);
+        assert.strictEqual(res[0], 1);
+        assert(etask.is_err(res[1]));
+        assert.strictEqual(res[2], 2);
+    }]));
+    it('all array empty', ()=>zetask({res: []},
+    [function(){ return etask.all([]); }]));
+    it('all object', ()=>zetask({res: {bool: true, num: 45,
+        sleep: undefined, str: 'abc', nul: null, undef: undefined}},
+    [function(){
+        return etask.all({bool: true, num: 45,
+            sleep: etask.sleep(10),
+            str: 'abc', nul: null, undef: undefined});
+    }]));
+    it('all object fail', ()=>zetask({err: 'oops'}, [function(){
+        return etask.all({ok: true,
+            fail: etask([function(){ throw 'oops'; }])});
+    }]));
+    it('all object allow_fail', ()=>zetask(2, [function(){
+        return etask.all({allow_fail: true},
+            {ok: true, fail: etask([function(){ throw 'oops'; }])});
+    }, function(res){
+        seq(1);
+        assert.strictEqual(res.ok, true);
+        assert(etask.is_err(res.fail));
+    }]));
+    it('all object empty', ()=>zetask({res: {}},
+    [function(){ return etask.all({}); }]));
+    it('all_limit', ()=>{
+        let count = 100;
+        return zetask([function(){
+            return etask.all_limit(5, function(){
+                assert(this.child.length<6);
+                if (--count>=0)
+                    return etask.sleep(1);
+            });
+        }]);
+    });
+    it('all_limit_array', ()=>{
+        let count = 0;
+        let arr = [1, 1, 1, 1, 1];
+        return zetask([function(){
+            return etask.all_limit(2, arr, function(el){
+                assert(this.child.length<3);
+                assert(arr.length>=count++);
+                return etask.sleep(1);
+            });
+        }]);
+    });
+    it('multi feature', ()=>zetask(3, [function try_catch$(res){
+        seq(1);
+        assert.strictEqual(res, undefined);
+        throw 'init err';
+    }, function(res){
+        seq(2);
+        assert.deepStrictEqual([this.error, res], ['init err', undefined]);
+    }]));
+    it('named func features', ()=>zetask(5, [function try_catch$(){
+        seq(1);
+        throw 'try_catch';
+    }, function(){
+        seq(2);
+        assert.strictEqual(this.error, 'try_catch');
+        return this.goto('try_catch');
+    }, function(){ seq(false);
+    }, function try_catch(){
+        seq(3);
+        throw 'catch';
+    }, function(){ seq(false);
+    }, function catch$(err){
+        seq(4);
+        assert.strictEqual(err, 'catch');
+    }]));
+    it('ensure', ()=>zetask({seq: 5, ret: 'ensure'}, [function(){
+        seq(1);
+        this.on('uncaught', ()=>seq(false));
+        this.finally(()=>seq(3));
+        this.on('finally1', ()=>seq(4));
+        return this.return('ensure');
+    }, function(){ seq(false);
+    }, function ensure$(){
+        seq(2);
+        // ensure should not get args
+        assert.strictEqual(arguments[0], undefined);
+        return 1234;
+    }, function(){ seq(false); }]));
+    it('ensure_not_last', ()=>zetask(4, [function(){
+        seq(1);
+        return this.goto('last');
+    }, function ensure$(){ seq(3);
+    }, function last(){ seq(2);
+    }]));
+    it('ensure_err', ()=>zetask(7, [function(){
+        return etask([function(){
+            this.on('uncaught', ()=>seq(2));
+            this.finally(()=>seq(4));
+            this.on('finally1', ()=>seq(5));
+            seq(1);
+            throw 'ensure3';
+        }, function ensure$(){ seq(3); }]);
+    }, function(){ seq(false);
+    }, function catch$(err){
+        seq(6);
+        assert.strictEqual(err, 'ensure3');
+    }]));
+    it('ensure_return_changes_val', ()=>zetask({seq: 3, err: 'error'},
+    [function(){
+        return etask([function(){
+            seq(1);
+            return this.return('ensure');
+        }, function ensure$(){
+            seq(2);
+            return this.return(etask.err('error'));
+        }]);
+    }]));
+    it('finally', ()=>zetask({seq: 5, ret: 'finally'}, [function(){
+        seq(1);
+        this.on('uncaught', ()=>seq(false));
+        this.finally(()=>seq(3));
+        this.on('finally1', ()=>seq(4));
+        return this.return('finally');
+    }, function(){ seq(false);
+    }, function finally$(){
+        seq(2);
+        // finally should not get args
+        assert.strictEqual(arguments[0], undefined);
+        return 1234;
+    }, function(){ seq(false); }]));
+    it('finally_not_last', ()=>zetask(4, [function(){
+        seq(1);
+        return this.goto('last');
+    }, function finally$(){ seq(3);
+    }, function last(){ seq(2);
+    }]));
+    it('finally_err', ()=>zetask(7, [function(){
+        return etask([function(){
+            this.on('uncaught', ()=>seq(2));
+            this.finally(()=>seq(4));
+            this.on('finally1', ()=>seq(5));
+            seq(1);
+            throw 'finally3';
+        }, function finally$(){ seq(3); }]);
+    }, function(){ seq(false);
+    }, function catch$(err){
+        seq(6);
+        assert.strictEqual(err, 'finally3');
+    }]));
+    it('finally_return_changes_val', ()=>zetask({seq: 3, err: 'error'},
+    [function(){
+        return etask([function(){
+            seq(1);
+            return this.return('finally');
+        }, function finally$(){
+            seq(2);
+            return this.return(etask.err('error'));
+        }]);
+    }]));
+    it('nfn_apply_res', ()=>zetask({res: 'res'}, [function(){
+        return etask.nfn_apply(function(arg1, arg2, cb){
+            assert.strictEqual(this, null);
+            assert.deepStrictEqual([arg1, arg2], ['arg1', 'arg2']);
+            cb(null, 'res');
+        }, null, ['arg1', 'arg2']);
+    }]));
+    it('nfn_apply_err', ()=>zetask({err: 'err'}, [function(){
+        return etask.nfn_apply(function(cb){ cb('err'); }, null, []);
+    }]));
+    let nfn_call_o = {func: function(arg1, arg2, cb){
+        assert(this===nfn_call_o);
+        assert.deepStrictEqual([arg1, arg2], ['arg1', 'arg2']);
+        cb(null, 'res');
+    }};
+    let nfn_call_f = ()=>{};
+    nfn_call_f.func = function(arg1, arg2, cb){
+        assert(this===nfn_call_f);
+        assert.deepStrictEqual([arg1, arg2], ['arg1', 'arg2']);
+        cb(null, 'res');
+    };
+    let check_res = etask_res=>{
+        return etask_res
+        .then(function(res){ assert.strictEqual(res, 'res');
+        }).otherwise(function(err){ seq(false); });
+    };
+    it('nfn_apply_this_o', ()=>check_res(etask.nfn_apply(
+        nfn_call_o.func, nfn_call_o, ['arg1', 'arg2'])));
+    it('nfn_apply_this_f', ()=>check_res(etask.nfn_apply(
+        nfn_call_f.func, nfn_call_f, ['arg1', 'arg2'])));
+    it('nfn_apply_class_o', ()=>
+        check_res(etask.nfn_apply(nfn_call_o, '.func', ['arg1', 'arg2'])));
+    it('nfn_apply_class_f', ()=>
+        check_res(etask.nfn_apply(nfn_call_f, '.func', ['arg1', 'arg2'])));
+    function node_func(arg1, arg2, cb){
+        let f = ()=>{
+            if (arg1=='fail')
+                cb('fail');
+            else
+                cb(null, 'ret1', 'ret2');
+        };
+        if (arg2=='sync')
+            f();
+        else
+            process.nextTick(f);
+        return 'node_fun_retval';
+    }
+    it('nfn_apply_multi', ()=>etask([function(){
+        return etask._apply({ret_o: ['ret1', 'ret2']}, node_func,
+            null, ['proceed', 'ok']);
+    }, function(ret){
+        assert.deepStrictEqual(ret, {ret1: 'ret1', ret2: 'ret2'});
+    }]));
+    it('nfn_apply_multifail', ()=>{
+        let fn_failed = true;
+        return etask([function(){
+            return etask._apply({ret_o: ['ret1', 'ret2']}, node_func,
+                null, ['fail', 'now']);
+        }, function catch$(){
+            fn_failed = true;
+        }, function ensure$(){
+            assert(fn_failed);
+        }]);
+    });
+    it('nfn_apply_multi_ret', ()=>etask([function(){
+        return etask._apply({ret_o: ['ret1'], ret_sync: 'retval'},
+            node_func, null, ['proceed', 'ok']);
+    }, function(ret){
+        assert.deepStrictEqual(ret, {ret1: 'ret1', retval: 'node_fun_retval'});
+    }]));
+    it('nfn_apply_multi_ret_sync', ()=>etask([function(){
+        return etask._apply({ret_o: ['ret1'], ret_sync: 'retval'},
+            node_func, null, ['proceed', 'sync']);
+    }, function(ret){
+        assert.deepStrictEqual(ret, {ret1: 'ret1', retval: 'node_fun_retval'});
+    }]));
+    it('nfn_apply_multi_ret_sync_', ()=>etask([function(){
+        let o = {}, et;
+        et = etask._apply({ret_o: ['ret1'], ret_sync: [o, 'val']},
+            node_func, null, ['proceed', 'sync']);
+        assert.strictEqual(o.val, 'node_fun_retval');
+        return et;
+    }, function(ret){
+        assert.deepStrictEqual(ret, {ret1: 'ret1'});
+    }]));
+    it('to_nfn', ()=>{
+        let called;
+        return etask([function(){
+            let et = etask([function(){ return 'res'; }]);
+            let nfn_et = etask.to_nfn(et, function(err, res){
+                assert.deepStrictEqual([err, res], [undefined, 'res']);
+                called = true;
+            });
+            assert(!called);
+            return nfn_et;
+        }, function(){
+            assert(called);
+        }]);
+    });
+    it('to_nfn_arr', ()=>{
+        let called;
+        return etask([function(){
+            let et = etask([function(){ return ['a', 'b']; }]);
+            let nfn_et = etask.to_nfn(et, function(err, res, res2){
+                assert.deepStrictEqual(
+                    [err, res, res2], [undefined, 'a', 'b']);
+                called = true;
+            }, {ret_a: true});
+            assert(!called);
+            return nfn_et;
+        }, function(){
+            assert(called);
+        }]);
+    });
+    it('to_nfn_err', ()=>{
+        let called;
+        return etask([function(){
+            let e = new Error();
+            let nfn_et = etask.to_nfn(etask.err(e), function(err, res){
+                assert.deepStrictEqual([err, res], [e, undefined]);
+                called = true;
+            });
+            assert(!called);
+            return nfn_et;
+        }, function(){
+            assert(called);
+        }]);
+    });
+    it('cb_apply', ()=>etask([function(){
+        return etask.cb_apply(node_func, null, ['fail', 'now']);
+    }, function(ret){
+        assert.deepStrictEqual(ret, 'fail');
+    }]));
+    it('cb_apply_short', ()=>etask([function(){
+        return etask.cb_apply(node_func, ['fail', 'now']);
+    }, function(ret){
+        assert.deepStrictEqual(ret, 'fail');
+    }]));
+    let assert_ps_res = (res, exp)=>{
+        res = res
+        .replace(/\([/A-Za-z0-9/._-]*\/[a-z_]*.js:[0-9]*:[0-9]*\)/g, 'line');
+        assert.strictEqual(res, exp);
+    };
+    let assert_ps = (flags, exp)=>{
+        let opt = {TIME: 0, SHORT_NAME: 1, GUESS: flags.includes('g')};
+        let res = etask.ps(opt);
+        if (flags.includes('G'))
+            assert_ps(flags.replace('G', 'g'), exp);
+        if (flags.includes('r'))
+            exp = 'root\n'+exp;
+        assert_ps_res(res, exp);
+    };
+    it('call', ()=>{
+        let e1, e2, e3, e4;
+        e1 = etask([function(){
+            return e2 = etask([function(){
+                return e3 = etask([function(){
+                    return e4 = etask.sleep(10);
+                }]);
+            }]);
+        }, function(){
+            assert(etask.root.includes(e1));
+        }]);
+        assert.strictEqual(e1.up, undefined);
+        assert.strictEqual(e1.down, e2);
+        assert.strictEqual(e2.up, e1);
+        assert.strictEqual(e2.down, e3);
+        assert.strictEqual(e3.up, e2);
+        assert.strictEqual(e3.down, e4);
+        assert.strictEqual(e4.down, undefined);
+        return e1;
+    });
+    it('spawn', ()=>{
+        let et, e2, e3;
+        et = etask('et', [function(){
+            e2 = etask('e2', [function(){ return e3 = etask.sleep(10); }]);
+            return this.spawn(e2);
+        }, function(){
+            assert(etask.root.includes(this));
+            assert(!etask.root.includes(e2));
+            assert(!e2.up && e2.down==e3);
+            assert(e2.parent===this);
+            return etask.sleep(20);
+        }]);
+        assert_ps('r',
+            ' \\_ et.1\n'+
+            '    .\\_ e2.0\n'+
+            '    .   sleep.0 10ms\n'+
+            '    sleep.0 20ms\n');
+        return et;
+    });
+    function etask_spawn_val(val, exp){
+        exp = exp||(v=>v===val);
+        let et = etask('et', [function(){
+            this.on('child', child=>assert(exp(child)));
+            this.spawn(val);
+            return this.wait();
+        }]);
+        et.continue();
+        return et;
+    }
+    it('spawn_value', ()=>etask_spawn_val('abc'), v=>v=='abc');
+    it('spawn_err', ()=>etask_spawn_val(etask.err(), v=>etask.is_err(v)));
+    it('spawn_promise', ()=>etask_spawn_val(p_api.p.resolve('abc'),
+        v=>v.retval=='abc'));
+    it('spawn_completed', ()=>{
+        let et = etask.wait();
+        et.continue();
+        return etask_spawn_val(et);
+    });
+    it('spawn_completed_parent', ()=>{
+        let et = etask.wait(), e2;
+        et.continue();
+        e2 = etask.wait();
+        e2.spawn_parent(et);
+        assert_ps('r',
+            ' \\_ wait.0\n');
+        e2.continue();
+        return e2;
+    });
+    it('child_cancel', ()=>{
+        let et = etask('et', [function(){
+            this.spawn(etask.wait());
+            this.spawn(etask.wait());
+            return this.wait();
+        }]);
+        assert_ps('r',
+            ' \\_ et.0\n'+
+            '    |\\_ wait.0\n'+
+            '     \\_ wait.0\n');
+        et.continue();
+        return et;
+    });
+    function wait_no_cancel(){
+        return etask('wait_no_cancel', [function(){ return this.wait(); }]); }
+    it('child_no_cancel', ()=>{
+        let et = etask('et', [function(){
+            this.spawn(wait_no_cancel());
+            this.spawn(wait_no_cancel());
+            return this.wait();
+        }]);
+        assert_ps('r',
+            ' \\_ et.0\n'+
+            '    |\\_ wait_no_cancel.0\n'+
+            '     \\_ wait_no_cancel.0\n');
+        et.continue();
+        assert_ps('r',
+            ' \\_ et COMPLETED\n'+
+            '    |\\_ wait_no_cancel.0\n'+
+            '     \\_ wait_no_cancel.0\n');
+        et.return_child();
+        return et;
+    });
+    it('return_child', ()=>{
+        let et = etask('et', [function(){
+            this.spawn(etask.wait());
+            this.spawn(etask.wait());
+            return this.wait();
+        }]);
+        assert_ps('r',
+            ' \\_ et.0\n'+
+            '    |\\_ wait.0\n'+
+            '     \\_ wait.0\n');
+        et.return_child();
+        assert_ps('r',
+            ' \\_ et.0\n');
+        et.return();
+        return et;
+    });
+    it('wait_child', ()=>{
+        let e1, e2;
+        let et = etask('etask1', [function(){
+            this.spawn(e1 = wait_no_cancel());
+            this.spawn(e2 = wait_no_cancel());
+            return this.wait_child(e2);
+        }]);
+        assert_ps('r',
+            ' \\_ etask1.0\n'+
+            '    |\\_ wait_no_cancel.0\n'+
+            '     \\_ wait_no_cancel.0\n');
+        e1.return();
+        assert_ps('r',
+            ' \\_ etask1.0\n'+
+            '     \\_ wait_no_cancel.0\n');
+        e2.return();
+        return et;
+    });
+    it('wait_child_all', ()=>{
+        let e1, e2;
+        let et = etask('etask1', [function(){
+            this.spawn(e1 = wait_no_cancel());
+            this.spawn(e2 = wait_no_cancel());
+            return this.wait_child('all');
+        }]);
+        assert_ps('r',
+            ' \\_ etask1.0\n'+
+            '    |\\_ wait_no_cancel.0\n'+
+            '     \\_ wait_no_cancel.0\n');
+        e1.return();
+        assert_ps('r',
+            ' \\_ etask1.0\n'+
+            '     \\_ wait_no_cancel.0\n');
+        e2.return();
+        return et;
+    });
+    it('wait_child_any', ()=>{
+        let e1, e2, e3;
+        let et = etask('etask1', [function(){
+            this.spawn(e1 = wait_no_cancel());
+            this.spawn(e2 = wait_no_cancel());
+            this.spawn(e3 = wait_no_cancel());
+            return this.wait_child('any');
+        }, function(){
+            assert_ps('r',
+            ' \\_ RUNNING etask1.1\n'+
+            '    |\\_ wait_no_cancel.0\n'+
+            '    |\\_ wait_no_cancel COMPLETED\n'+
+            '     \\_ wait_no_cancel.0\n');
+            e1.return();
+        }]);
+        // this will call assert step
+        e2.return();
+        e3.return();
+        return et;
+    });
+    it('wait_child_any_retval', ()=>{
+        let e1;
+        let et = etask([function(){
+            this.spawn(e1 = wait_no_cancel());
+            return this.wait_child('any');
+        }, function(wait_child){
+            assert.strictEqual(wait_child.child.retval, 5);
+        }]);
+        e1.return(5);
+        return et;
+    });
+    it('wait_child_any_cond', ()=>{
+        let e1;
+        let et = etask([function(){
+            this.spawn(e1 = wait_no_cancel());
+            return this.wait_child('any', function(retval){
+                return retval==5;
+            });
+        }, function(wait_child){
+            assert.strictEqual(wait_child.child.retval, 5);
+        }]);
+        e1.return(5);
+        return et;
+    });
+    it('wait_child_any_cond_multi', ()=>{
+        let e1, e2, e3;
+        let et = etask([function(){
+            this.spawn(e1 = wait_no_cancel());
+            this.spawn(e2 = wait_no_cancel());
+            this.spawn(e3 = wait_no_cancel());
+            return this.wait_child('any', function(retval){
+                return retval==5;
+            });
+        }, function(wait_child){
+            assert.strictEqual(wait_child.child.retval, 5);
+        }]);
+        e1.return(-1);
+        e2.return(5);
+        e3.return();
+        return et;
+    });
+    it('wait_child_any_cond_multi2', ()=>{
+        let e1, e2, e3;
+        let et = etask([function(){
+            this.spawn(e1 = wait_no_cancel());
+            this.spawn(e2 = wait_no_cancel());
+            this.spawn(e3 = wait_no_cancel());
+            return this.wait_child('any', retval=>retval==5);
+        }, function(wait_child){
+            assert.strictEqual(wait_child.child.retval, 5);
+            e1.return(2);
+        }]);
+        e3.return(1);
+        e2.return(5);
+        return et;
+    });
+    it('wait_child_any_cond_none', ()=>{
+        let e1, e2, e3;
+        let et = etask([function(){
+            this.spawn(e1 = wait_no_cancel());
+            this.spawn(e2 = wait_no_cancel());
+            this.spawn(e3 = wait_no_cancel());
+            return this.wait_child('any', retval=>retval==5);
+        }, function(wait_child){
+            assert.strictEqual(wait_child, undefined);
+        }]);
+        e1.return(-1);
+        e2.return(3);
+        e3.return(2);
+        return et;
+    });
+    it('wait_child_any_cond_timeout', ()=>{
+        let e1, e2, e3;
+        zsinon.clock_set();
+        let et = etask([function(){
+            this.spawn(e1 = wait_no_cancel());
+            this.spawn(e2 = wait_no_cancel());
+            this.spawn(e3 = wait_no_cancel());
+            return this.wait_child('any', 1000, retval=>retval==5);
+        }, function(wait_child){
+            assert(0, 'should not get here');
+        }, function catch$(err){
+            assert(err=='timeout');
+            e3.return(5);
+        }]);
+        e1.return(-1);
+        e2.return(3);
+        zsinon.tick(1000);
+        zsinon.uninit();
+        return et;
+    });
+    it('wait_child_any_cond_context', ()=>{
+        let e1;
+        let et = etask([function(){
+            this.spawn(e1 = wait_no_cancel());
+            return this.wait_child('any', 1000, function(){
+                assert(this===e1);
+                return true;
+            });
+        }]);
+        e1.return(-1);
+        return et;
+    });
+    it('wait_child_any_retval_undefined', ()=>{
+        let et = etask([function(){
+            this.spawn(etask([function(){ return 5; }]));
+            return this.wait_child('any');
+        }, function(wait_child){
+            assert.strictEqual(wait_child, undefined);
+        }]);
+        return et;
+    });
+    it('wait_child_return', ()=>{
+        let e1;
+        let et = etask('etask1', [function(){
+            this.spawn(e1 = wait_no_cancel());
+            return this.wait_child('all');
+        }]);
+        et.return();
+        e1.return();
+        return et;
+    });
+    it('wait_child_none_any', ()=>etask('etask1', [function(){
+        return this.wait_child('any');
+    }, function(ret){
+        assert.strictEqual(ret, undefined);
+    }]));
+    it('wait_child_none_all', ()=>etask('etask1', [function(){
+        return this.wait_child('any');
+    }, function(ret){
+        assert.strictEqual(ret, undefined);
+    }]));
+    it('wait_child_completed', ()=>{
+        let e1, e2;
+        return etask('etask1', [function(){
+            this.spawn(e1 = etask([function(){
+                return e2 = wait_no_cancel(); }]));
+            e1.return();
+            return this.wait_child(e1);
+        }, function(ret){
+            assert.strictEqual(ret, undefined);
+            e2.return();
+        }]);
+    });
+    it('spawn_cancel', ()=>zetask(4, [function(){
+        return etask([function(){
+            let et = etask([function(){
+                return this.wait();
+            }, function cancel$(){
+                seq(2);
+                return this.return();
+            }]);
+            seq(1);
+            this.spawn(et); // dangling
+            return etask.sleep(1);
+        }]);
+    }, function(){
+        seq(3);
+    }]));
+    if (0) // XXX: ZZZ
+    it('spawn_call_linger', ()=>{
+        let et;
+        return zetask([function(){
+            return etask([function(){
+                this.spawn(et = wait_no_cancel()); // dangling
+                return etask.sleep(1);
+            }]);
+        }, function(){
+            assert_ps('r',
+                '|\\_ ztest.etask.0\n'+
+                '|   RUNNING et_call.1\n'+
+                '|    \\> Etask.<anonymous> line COMPLETED\n'+
+                '|        \\_ wait_no_cancel.0\n'+
+                ' \\_ then_wait.0\n');
+            return etask.sleep(1);
+        }, function(){
+            et.return(); // cleanup
+        }]);
+    });
+    if (0) // XXX: ZZZ
+    it('ps_call', function f(){
+        let et1, et2, et3;
+        et1 = etask('ET1', [function etask1(){
+            assert_ps('r,G',
+                ' \\_ RUNNING ET1.0\n');
+            et2 = etask('ET2', [function etask2(){
+                assert_ps('r',
+                    '|\\_ RUNNING ET1.0\n'+
+                    ' \\_ RUNNING ET2.0\n');
+                assert_ps('r,g',
+                    ' \\_ RUNNING ET1.0\n'+
+                    '     \\? RUNNING ET2.0\n');
+                et3 = etask([function(){ return etask.sleep(1); }]);
+                assert_ps('r',
+                    '|\\_ RUNNING ET1.0\n'+
+                    '|\\_ RUNNING ET2.0\n'+
+                    ' \\_ Etask.etask2 line.0\n'+
+                    '    sleep.0 1ms\n');
+                assert_ps('r,g',
+                    ' \\_ RUNNING ET1.0\n'+
+                    '     \\? RUNNING ET2.0\n'+
+                    '         \\? Etask.etask2 line.0\n'+
+                    '            sleep.0 1ms\n');
+                assert_ps_res(et3.stack({TIME: 0, GUESS: 0}),
+                    'Etask.etask2 line.0\n');
+                assert_ps_res(et3.stack({TIME: 0}),
+                    'SPAWN? Etask.etask2 line.0\n'+
+                    'SPAWN? RUNNING ET2 Etask.etask1 line.0\n'+
+                    'RUNNING ET1 Context.f line.0\n');
+                assert_ps_res(et3.down.stack({TIME: 0}),
+                    'sleep Function.E.sleep line.0 1ms\n'+
+                    'SPAWN? Etask.etask2 line.0\n'+
+                    'SPAWN? RUNNING ET2 Etask.etask1 line.0\n'+
+                    'RUNNING ET1 Context.f line.0\n');
+                return et3;
+            }]);
+            assert_ps('r',
+                '|\\_ RUNNING ET1.0\n'+
+                ' \\_ ET2.0\n'+
+                '    Etask.etask2 line.0\n'+
+                '    sleep.0 1ms\n');
+            assert_ps('r,g',
+                ' \\_ RUNNING ET1.0\n'+
+                '     \\? ET2.0\n'+
+                '        Etask.etask2 line.0\n'+
+                '        sleep.0 1ms\n');
+            assert_ps_res(et2.stack({TIME: 0}),
+                'SPAWN? ET2 Etask.etask1 line.0\n'+
+                'RUNNING ET1 Context.f line.0\n');
+            return et2;
+        }, function(){}]);
+        assert_ps_res(et1.longname({TIME: 0}),
+            'ET1 Context.f line.0');
+        assert_ps_res(et1.stack({TIME: 0}),
+            'ET1 Context.f line.0\n');
+        assert_ps_res(et2.longname({TIME: 0}),
+            'ET2 Etask.etask1 line.0');
+        assert_ps_res(et2.stack({TIME: 0}),
+            'ET2 Etask.etask1 line.0\n'+
+            'ET1 Context.f line.0\n');
+        assert_ps_res(et3.longname({TIME: 0}),
+            'Etask.etask2 line.0');
+        assert_ps_res(et3.stack({TIME: 0}),
+            'Etask.etask2 line.0\n'+
+            'ET2 Etask.etask1 line.0\n'+
+            'ET1 Context.f line.0\n');
+        assert_ps_res(et3.stack({TIME: 0, GUESS: 0}),
+            'Etask.etask2 line.0\n'+
+            'ET2 Etask.etask1 line.0\n'+
+            'ET1 Context.f line.0\n');
+        assert_ps('r,G',
+            ' \\_ ET1.0\n'+
+            '    ET2.0\n'+
+            '    Etask.etask2 line.0\n'+
+            '    sleep.0 1ms\n');
+        return et1;
+    });
+    if (0) // XXX: ZZZ
+    it('ps_spawn', ()=>{
+        let finished, et1, et3;
+        et1 = etask('et1', [function etask1(){
+            let et2 = etask('et2', [function(){
+                return et3 = etask('et3', [function(){
+                    return etask.sleep(1); }]);
+            }]);
+            assert_ps('r',
+                '|\\_ RUNNING et1.0\n'+
+                ' \\_ et2.0\n'+
+                '    et3.0\n'+
+                '    sleep.0 1ms\n');
+            assert_ps('r,g',
+                ' \\_ RUNNING et1.0\n'+
+                '     \\? et2.0\n'+
+                '        et3.0\n'+
+                '        sleep.0 1ms\n');
+            this.spawn(et2);
+            assert_ps('r,G',
+                ' \\_ RUNNING et1.0\n'+
+                '     \\_ et2.0\n'+
+                '        et3.0\n'+
+                '        sleep.0 1ms\n');
+            assert_ps_res(et3.stack({TIME: 0}),
+                'et3 Etask.<anonymous> line.0\n'+
+                'SPAWN et2 Etask.etask1 line.0\n'+
+                'RUNNING et1 Context.it line.0\n');
+            let sleep = etask.sleep(1);
+            assert_ps('r',
+                '|\\_ RUNNING et1.0\n'+
+                '|    \\_ et2.0\n'+
+                '|       et3.0\n'+
+                '|       sleep.0 1ms\n'+
+                ' \\_ sleep.0 1ms\n');
+            assert_ps('r,g',
+                ' \\_ RUNNING et1.0\n'+
+                '    |\\_ et2.0\n'+
+                '    |   et3.0\n'+
+                '    |   sleep.0 1ms\n'+
+                '     \\? sleep.0 1ms\n');
+            return sleep;
+        }, function(){ assert(finished); }]);
+        assert_ps('r,G',
+            ' \\_ et1.0\n'+
+            '    .\\_ et2.0\n'+
+            '    .   et3.0\n'+
+            '    .   sleep.0 1ms\n'+
+            '    sleep.0 1ms\n');
+        finished = true;
+        return et1;
+    });
+    it('ps_completed', ()=>{
+        let et, _et;
+        _et = etask('et1', [function(){ this.spawn(et = wait_no_cancel()); }]);
+        assert_ps('r,G',
+            ' \\_ et1 COMPLETED\n'+
+            '     \\_ wait_no_cancel.0\n');
+        et.continue();
+        assert_ps('r,G', '');
+        return _et;
+    });
+    if (0) // XXX: ZZZ
+    it('ps_info', function f(){
+        let et;
+        et = etask([function etask1(){
+            this.info.test = 'test_info';
+            return etask([function etask2(){
+                this.info.info = 'info';
+                return etask.sleep(1);
+            }, function(){}]);
+        }]);
+        assert_ps('r,G',
+            ' \\_ Context.f line.0 test_info\n'+
+            '    Etask.etask1 line.0 info\n'+
+            '    sleep.0 1ms\n');
+        return et;
+    });
+    describe('TypeError', ()=>{
+        ztest.r_push_pop_prop(zerr, {on_exception: undefined});
+        let t = (name, fn)=>it(name, done=>{
+            zerr.on_exception = ()=>done();
+            fn();
+        });
+        t('basic', ()=>void etask([function(){ null.x = 1; }]));
+        t('with_catch$', ()=>{
+            etask([function(){ null.x = 1;
+            }, function catch$(){}]);
+        });
+        t('throw', ()=>{
+            etask([function(){
+                setTimeout(()=>this.throw(new TypeError()));
+                return this.wait();
+            }, function catch$(){}]);
+        });
+        t('reject_promise', ()=>{
+            etask([function(){
+                let d = p_api.p();
+                setTimeout(function(){ d.reject(new TypeError()); });
+                return d.promise;
+            }]);
+        });
+        t('return_err', ()=>{
+            etask([function(){
+                setTimeout(()=>this.return(etask.err(new TypeError())));
+                return this.wait();
+            }]);
+        });
+    });
+    describe('for', function(){
+        it('basic', ()=>{
+            let seq = '', i = 0;
+            return etask([function(){
+                return etask.for(()=>i<4, ()=>i++, [function(){
+                    seq += ' cond'+i;
+                }]);
+            }, function(){
+                assert.deepStrictEqual(seq, ' cond0 cond1 cond2 cond3');
+            }]);
+        });
+        it('continue', ()=>{
+            let seq = '', i = 0;
+            return etask([function(){
+                return etask.for(()=>i<4, ()=>i++, [function(){
+                    if (i==2)
+                        return this.return();
+                    seq += ' cond'+i;
+                }]);
+            }, function(){
+                assert.deepStrictEqual(seq, ' cond0 cond1 cond3');
+            }]);
+        });
+        it('break', ()=>{
+            let seq = '', i = 0;
+            return etask([function try_catch$(){
+                return etask.for(null, ()=>i++, [function(){
+                    if (i==2)
+                        return this.break();
+                    seq += ' cond'+i;
+                }]);
+            }, function(val){
+                assert.strictEqual(val, undefined);
+                assert.deepStrictEqual(seq, ' cond0 cond1');
+                assert(!this.error, 'got exception');
+            }]);
+        });
+        it('break_ret', ()=>{
+            let seq = '', i = 0;
+            return etask([function try_catch$(){
+                return etask.for(null, ()=>i++, [function(){
+                    if (i==2)
+                        return this.break(42);
+                    seq += ' cond'+i;
+                }]);
+            }, function(val){
+                assert.strictEqual(val, 42);
+                assert.deepStrictEqual(seq, ' cond0 cond1');
+                assert(!this.error, 'got exception');
+            }]);
+        });
+        it('throw', ()=>{
+            let seq = '', i = 0;
+            return etask([function try_catch$(){
+                return etask.for(null, ()=>i++, [function(){
+                    if (i==2)
+                        return this.throw('throw_test');
+                    seq += ' cond'+i;
+                }]);
+            }, function(){
+                assert.deepStrictEqual(seq, ' cond0 cond1');
+                assert(this.error, 'throw_test');
+            }]);
+        });
+        it('sleep', ()=>{
+            let seq = '', i = 0;
+            return etask([function try_catch$(){
+                return etask.for(null, ()=>i++, [function(){
+                    if (i==2)
+                        return this.break();
+                    seq += ' cond'+i;
+                    return etask.sleep(1);
+                }]);
+            }, function(){
+                assert.deepStrictEqual(seq, ' cond0 cond1');
+                assert(!this.error, 'got exception');
+            }]);
+        });
+        it('no_inc', ()=>{
+            let i = 0;
+            return etask([function try_catch$(){
+                return etask.for(()=>i<4, null, [function(){
+                    i++; }]);
+            }, function(){
+                assert.strictEqual(i, 4);
+            }]);
+        });
+        it('no_states', ()=>{
+            let i = 0;
+            return etask([function try_catch$(){
+                return etask.for(()=>i<4, ()=>i++, []);
+            }, function(){
+                assert.strictEqual(i, 4);
+            }]);
+        });
+    });
+    describe('while', function(){
+        it('basic', ()=>{
+            let seq = '', i = 0;
+            return etask([function(){
+                return etask.while(null, [function(){
+                    if (i==3)
+                        return this.break();
+                    seq += ' cond'+i;
+                    i++;
+                }]);
+            }, function(){
+                assert.deepStrictEqual(seq, ' cond0 cond1 cond2');
+            }]);
+        });
+        it('cond', ()=>{
+            let seq = '', i = 0;
+            return etask([function(){
+                return etask.while(()=>i<3, [function(){
+                    seq += ' cond'+i;
+                    i++;
+                }]);
+            }, function(){
+                assert.deepStrictEqual(seq, ' cond0 cond1 cond2');
+            }]);
+        });
+    });
+    describe('for_each', function(){
+        let t = (name, val, exp)=>it(name, function(){
+            let seq = [];
+            return etask([function(){
+                return etask.for_each(val, [function(){
+                    let iter = this.iter;
+                    seq.push({i: iter.i, val: iter.val, key: iter.key});
+                }]);
+            }, function(){
+                assert.deepStrictEqual(seq, exp);
+            }]);
+        });
+        t('arr', ['a', 'b', 'c'], [{i: 0, val: 'a', key: '0'},
+            {i: 1, val: 'b', key: '1'}, {i: 2, val: 'c', key: '2'}]);
+        t('obj', {a: 'A', b: 'B', c: 'C'}, [{i: 0, val: 'A', key: 'a'},
+            {i: 1, val: 'B', key: 'b'}, {i: 2, val: 'C', key: 'c'}]);
+    });
+    describe('wait_ext', function(){
+        it('basic', ()=>{
+            let seq = 0;
+            let et = etask([function(){
+                return etask.sleep(1);
+            }]);
+            etask([function(){
+                return this.wait_ext(et);
+            }, function(){
+                seq++;
+            }]);
+            return etask([function(){
+                return this.wait_ext(et);
+            }, function(){
+                seq++;
+                return etask.sleep(100);
+            }, function(){
+                assert.strictEqual(seq, 2);
+            }]);
+        });
+    });
+    describe('async_opt', function(){
+        it('nextTick', ()=>{
+            let et;
+            return zetask(7, [function(){
+                seq(1);
+                et = etask([function(){
+                    seq(2);
+                    return this.wait();
+                }, function(){
+                    seq(5);
+                }]);
+                seq(3);
+                return etask.sleep(0);
+            }, function(){
+                etask.nextTick(function(){ et.continue(); });
+                seq(4);
+                return etask.sleep(0);
+            }, function(){
+                seq(6);
+            }]);
+        });
+        it('basic_false', ()=>zetask(5, [function(){
+            seq(1);
+            etask({async: false}, [function(){ seq(2); }]);
+            seq(3);
+            return etask.sleep(0);
+        }, function(){
+            seq(4);
+        }]));
+        it('basic_true', ()=>zetask(5, [function(){
+            seq(1);
+            etask({async: true}, [function(){ seq(3); }]);
+            seq(2);
+            return etask.sleep(0);
+        }, function(){
+            seq(4);
+        }]));
+        it('running', ()=>{
+            let et;
+            return zetask(5, [function(){
+                seq(1);
+                et = etask({async: true}, [function(){
+                    seq(false);
+                }, function run(){
+                    seq(3);
+                    return this.wait();
+                }]);
+                seq(2);
+                et.goto('run');
+                return etask.sleep(0);
+            }, function(){
+                seq(4);
+                et.return();
+            }]);
+        });
+        it('completed', ()=>{
+            let et;
+            return zetask(4, [function(){
+                seq(1);
+                et = etask({async: true}, [function(){ seq(false); }]);
+                seq(2);
+                et.return();
+                return etask.sleep(0);
+            }, function(){
+                seq(3);
+            }]);
+        });
+    });
+    it('throw_while_goto', ()=>{
+        let et, et_wait;
+        et = zetask(2, [function(){
+            return this.goto('goto_res', et_wait = etask.wait());
+        }, function(){
+            seq(false);
+        }, function catch$(){
+            seq(false);
+        }, function goto_res(){
+            seq(false);
+        }, function catch$(err){
+            seq(1);
+            assert.strictEqual(err, 'throw_val');
+        }]);
+        etask({async: true}, [function(){ et_wait.throw('throw_val'); }]);
+        return et;
+    });
+    it('throw_while_wait_retval', ()=>{
+        let et2;
+        let et = zetask(4, [function(){
+            et2 = this;
+            return etask([function(){
+                return this.wait();
+            }, function cancel$(){
+                seq(2);
+                this.return('should_ignore_this');
+            }]);
+        }, function catch$(err){
+            seq(3);
+            assert.strictEqual(err, 'from_throw');
+        }]);
+        seq(1);
+        et2.throw('from_throw');
+        return et;
+    });
+    it('fn', ()=>{
+        let et = etask.fn([function(a, b){
+            seq(2);
+            assert.strictEqual(a, 'a');
+            assert.strictEqual(b, 'b');
+            return 'c';
+        }, function(c){
+            seq(3);
+            assert.strictEqual(c, 'c');
+        }]);
+        return zetask(5, [function(){
+            seq(1);
+            return et('a', 'b');
+        }, function(){
+            seq(4);
+        }]);
+    });
+    it('fn_multi', ()=>etask(function*(){
+        let exp;
+        let _t = args=>{
+            assert.strictEqual(args[0], exp);
+            assert.strictEqual(args[1], undefined);
+        };
+        let t = fn=>etask(function*(){
+            let et = etask.fn(fn);
+            yield et(exp = 0);
+            yield et(exp = 1);
+        });
+        yield t([function(a){ _t(arguments); }]);
+        yield t(function(a){ _t(arguments); });
+        yield t(function*(a){ yield _t(arguments); });
+    }));
+    function*echo(val){ return yield val; }
+    function*echo_err(err){ throw yield err; }
+    it('generator_basic', ()=>zetask({ret: 2}, function*(){
+        return yield 2; }));
+    it('generator_basic2', ()=>zetask({ret: 5}, function*(){
+        let r = yield 2;
+        return r + (yield 3);
+    }));
+    it('generator_arr', ()=>zetask({ret: 2}, [function*(){
+        return yield 2; }]));
+    it('generator_arr2', ()=>zetask({ret: 4}, [function*(){
+        return yield 2;
+    }, function(res){
+        assert.strictEqual(res, 2);
+        return 3;
+    }, function*(res){
+        assert.strictEqual(res, 3);
+        return yield 4;
+    }]));
+    it('generator_call', ()=>zetask({ret: 5}, function*(){
+        let r = yield echo(2);
+        return r + (yield echo(3));
+    }));
+    it('generator_proxy', ()=>zetask({ret: 5}, function*(){
+        let r = yield *echo(2);
+        return r + (yield *echo(3));
+    }));
+    it('generator_etask', ()=>zetask({ret: 5}, function*(){
+        let r = yield etask({async: true}, [()=>2]);
+        return r + (yield etask({async: true}, [()=>3]));
+    }));
+    it('generator_throw', ()=>zetask({err: 2}, function*(){
+        throw yield 2; }));
+    it('generator_etask_err', ()=>zetask({err: 2}, function*(){
+        yield etask.err(2); }));
+    it('generator_throw_uncaught', ()=>zetask({err: 2, seq: 2}, function*(){
+        this.on('uncaught', e=>{
+            assert.strictEqual(e, 2);
+            seq(1);
+        });
+        throw yield 2;
+    }));
+    it('generator_try_catch', ()=>zetask({ret: 3}, function*(){
+        try { yield etask.err(2); }
+        catch(e){
+            assert(e==2);
+            return 3;
+        }
+    }));
+    it('generator_try_catch2', ()=>zetask({ret: 3}, function*(){
+        try { yield echo_err(2); }
+        catch(e){
+            assert(e==2);
+            return 3;
+        }
+    }));
+    it('generator_wait_continue', ()=>zetask({seq: 9}, function*(){
+        let parent_wait, t1_wait, t2_wait;
+        etask('t1', function*(){
+            seq(1);
+            yield t1_wait = this.wait();
+            seq(4);
+            t2_wait.continue();
+            seq(5);
+        });
+        etask('t2', function*(){
+            seq(2);
+            yield t2_wait = this.wait();
+            seq(6);
+            parent_wait.continue();
+            seq(7);
+        });
+        t1_wait.continue();
+        seq(3);
+        yield parent_wait = this.wait();
+        seq(8);
+    }));
+    it('generator_this_single', ()=>zetask({seq: 2}, function*(){
+        setImmediate(()=>this.continue());
+        yield this.wait();
+        seq(1);
+    }));
+    it('generator_this_arr', ()=>zetask({seq: 2}, [function*(){
+        setImmediate(()=>this.continue());
+        yield this.wait();
+        seq(false);
+    }, function(){ seq(1); }]));
+    it('generator_continue', ()=>zetask({seq: 9}, function*(){
+        let parent = this, t1, t2;
+        t1 = etask('t1', function*(){
+            seq(1);
+            yield this.wait();
+            seq(4);
+            t2.continue();
+            seq(5);
+        });
+        t2 = etask('t2', function*(){
+            seq(2);
+            yield this.wait();
+            seq(6);
+            parent.continue();
+            seq(7);
+        });
+        t1.continue();
+        seq(3);
+        yield this.wait();
+        seq(8);
+    }));
+    if (0) // generator .return() not yet supported by v8
+    it('generator_ecancel_finally', ()=>zetask({seq: 4, ret: 2}, [function(){
+        setTimeout(()=>{
+            seq(2);
+            this.continue(2);
+        }, 1);
+        return etask({cancel: true}, function*(){
+            try {
+                seq(1);
+                yield this.wait();
+                seq(false);
+            } finally { seq(3); }
+            seq(false);
+        });
+    }, function(){ return etask.sleep(2); }]));
+    it('generator_async_return', ()=>zetask({seq: 1}, [function(){
+        let et = etask({async: true}, function*(){ yield; });
+        et.return();
+    }]));
+    it('uncaught_with_parent', ()=>zetask(3, [function(){
+        let cb, wait = etask.wait();
+        etask.events.on('uncaught', cb = ()=>{
+            seq(2);
+            wait.continue();
+        });
+        etask({async: true}, [function(){
+            seq(1);
+            return etask([function(){ return this.throw('throw'); }]);
+        }]);
+        return etask(function*(){
+            yield wait;
+            etask.events.removeListener('uncaught', cb);
+        });
+    }]));
+    it('uncaught_without_parent', ()=>zetask(2, [function(){
+        let cb, wait = etask.wait();
+        etask.events.on('uncaught', cb = ()=>seq(false));
+        etask({async: true}, [function(){
+            seq(1);
+            return etask([function(){ return this.throw('throw'); }]);
+        }, function catch$(){ wait.continue(); }]);
+        return etask(function*(){
+            yield wait;
+            etask.events.removeListener('uncaught', cb);
+        });
+    }]));
+    it('then_order', ()=>zetask(3, function*(){
+        let e = etask.wait();
+        e.then(()=>seq(1));
+        e.then(()=>seq(2));
+        yield e.continue();
+        yield etask.sleep(0);
+    }));
+    describe('interval', function(){
+        beforeEach(()=>zsinon.clock_set({auto_inc: true, now: '1970-01-01'}));
+        let t = (opt, cfg)=>()=>{
+            let cycles = cfg.expect.length, tstamps = [];
+            return etask.interval(opt, [function(){
+                if (cycles--)
+                    return;
+                assert.deepStrictEqual(tstamps, cfg.expect);
+                return this.break();
+            }, function(){
+                tstamps.push(Date.now());
+                let wait = etask.sleep(cfg.dur);
+                zsinon.tick(cfg.dur, {force: true});
+                return wait;
+            }]);
+        };
+        it('number', t(100, {dur: 50, expect: [0, 100, 200, 300]}));
+        it('default', t({ms: 100}, {dur: 50, expect: [0, 100, 200, 300]}));
+        it('smart_short', t({ms: 100, mode: 'smart'},
+            {dur: 50, expect: [0, 100, 200, 300]}));
+        it('smart_long', t({ms: 100, mode: 'smart'},
+            {dur: 110, expect: [0, 110, 220, 330]}));
+        it('fixed_short', t({ms: 100, mode: 'fixed'},
+            {dur: 50, expect: [0, 150, 300, 450]}));
+        it('fixed_long', t({ms: 100, mode: 'fixed'},
+            {dur: 110, expect: [0, 210, 420, 630]}));
+        if (0) // XXX: failed with fake timers, need fix
+        it('spawn_short', t({ms: 100, mode: 'spawn'},
+            {dur: 50, expect: [0, 100, 200, 300]}));
+        if (0) // XXX: "etask root not empty", fake times fix
+        it('spawn_long', t({ms: 100, mode: 'spawn'},
+            {dur: 110, expect: [0, 100, 200, 300]}));
+    });
+    it('_class', ()=>zetask({seq: 3, ret: 10+20+30+40}, function*(){
+        let T1 = etask._class(class {
+            constructor(a){ this.a = a; }
+            regular_method(d){ return this.a+d; }
+            *method1(_this, c){
+                let w = etask.wait();
+                setTimeout(()=>w.continue(c));
+                return yield w;
+            }
+            *method2(_this, d){
+                this.finally(()=>seq(2));
+                let sum = yield _this.method1(10);
+                sum += _this.regular_method(20);
+                sum += d;
+                seq(1);
+                return sum;
+            }
+        });
+        let t1 = new T1(30);
+        return yield t1.method2(40);
+    }));
+    it('_class_etask_constructor', ()=>zetask({seq: 4, ret: 10+20},
+        function*(){
+        let T1 = etask._class(class {
+            constructor(a, b){
+                this.a = a;
+                seq(1);
+                return etask([()=>this.method1(b), ()=>this]);
+            }
+            *method1(_this, b){
+                let w = etask.wait();
+                setTimeout(()=>{
+                    _this.b = b;
+                    seq(2);
+                    w.continue();
+                }, 5);
+                yield w;
+                seq(3);
+            }
+            regular_method(){ return this.a+this.b; }
+        });
+        let t1 = yield new T1(10, 20);
+        return t1.regular_method();
+    }));
+    it('shutdown', ()=>{
+        let count = 5;
+        for (let i=0; i<count; i++)
+        {
+            etask(function*(){
+                this.finally(()=>seq(count+i+1));
+                seq(i);
+                yield this.wait();
+                assert.fail();
+            });
+        }
+        seq(count);
+        etask.shutdown();
     });
 });
 

@@ -1,11 +1,12 @@
 'use strict'; /*jslint node:true*/
 import {Buffer} from 'buffer';
 import node_util from 'util';
+const is_node = typeof window==='undefined';
 
 const E = {};
 export default E;
 
-// XXX: add test, optimize for node
+// XXX: rm, use date.monotonic
 E.monotonic = function(){
     let now = Date.now(), last = E.monotonic.last||0;
     if (now < last)
@@ -14,14 +15,14 @@ E.monotonic = function(){
     return now;
 };
 
-// XXX: use etask
+// XXX: rm, use etask
 E.sleep = function(ms){
   let wait = E.wait();
   setTimeout(()=>wait.continue(), ms);
   return wait;
 };
 
-// XXX: use etask
+// XXX: rm, use etask
 E.wait = function(){
   let resolve, reject;
   let p = new Promise((_resolve, _reject)=>{
@@ -40,9 +41,9 @@ E._is_mocha = undefined;
 E.is_mocha = function(){
     if (E._is_mocha!==undefined)
         return E._is_mocha;
-    if (typeof process!='undefined' && typeof process.env!='undefined')
-        return E._is_mocha = process.env.IS_MOCHA||false;
-    return E._is_mocha = false;
+    E._is_mocha = ['afterEach', 'after', 'beforeEach', 'before', 'describe',
+      'it'].every(function(name){ return global[name] instanceof Function; });
+    return E._is_mocha;
 };
 
 E.is_lxc = function(){ return is_node && +process.env.LXC; };
@@ -87,6 +88,7 @@ E.union_with = function(fn /* [o1, [o2, [...]]]*/){
         for (var key in args[i])
         {
             var arg = args[i];
+            // eslint-disable-next-line no-prototype-builtins
             res[key] = res.hasOwnProperty(key) ? fn(res[key], arg[key])
                 : arg[key];
         }
@@ -236,6 +238,7 @@ E.freeze_deep = function(obj){
     {
         for (var prop in obj)
         {
+            // eslint-disable-next-line no-prototype-builtins
             if (obj.hasOwnProperty(prop))
                 E.freeze_deep(obj[prop]);
         }
@@ -415,6 +418,7 @@ E.clone_inplace = function(dst, src){
             dst[k] = src[k];
         for (k in dst)
         {
+            // eslint-disable-next-line no-prototype-builtins
             if (!src.hasOwnProperty(k))
                 delete dst[k];
         }
