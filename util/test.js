@@ -2,6 +2,7 @@
 // XXX: need jslint mocha: true
 // import etask from './etask.js';
 import zutil from './util.js';
+import array from './array.js';
 import assert from 'assert';
 import _ from 'underscore';
 
@@ -571,4 +572,284 @@ describe('util', ()=>{
     });
 });
 
+describe('array', ()=>{
+    it('copy', ()=>{
+        let t = a=>assert.deepStrictEqual(a, array.copy(a));
+        t([]);
+        t([1]);
+        t([1, 2]);
+        t([1, 2, 3]);
+        t([1, 2, 3, 4]);
+        t([1, 2, 3, 4, 5]);
+        t([1, 2, 3, 4, 5, 6]);
+        t([3, 2, 1]);
+        t([6, 5, 4, 3, 2, 1]);
+        t([null]);
+        t([undefined]);
+        t([1, null, 1]);
+        t([1, undefined, 1]);
+        t([null, 1, 2]);
+        t([undefined, 1, 2]);
+        t([1, null]);
+        t([1, undefined]);
+    });
+    it('push', ()=>{
+        let t = (args, res)=>{
+            let n = array.push(...args);
+            assert.deepStrictEqual(args[0], res);
+            assert.strictEqual(n, args[0].length);
+        };
+        t([[]], []);
+        t([[], 3, 4], [3, 4]);
+        t([[1, 2]], [1, 2]);
+        t([[1, 2], 3, 4], [1, 2, 3, 4]);
+        t([[]], []);
+        t([[], []], []);
+        t([[], [3, 4]], [3, 4]);
+        t([[1, 2], []], [1, 2]);
+        t([[1, 2], [3, 4]], [1, 2, 3, 4]);
+        t([[1, 2], [3, 4], [5, 6]], [1, 2, 3, 4, 5, 6]);
+        t([[], null], [null]);
+        t([[], null, [2]], [null, 2]);
+        t([[], undefined], [undefined]);
+        t([[], false], [false]);
+        t([[], 0], [0]);
+        t([[], 'abc'], ['abc']);
+        t([[], {a: 'aa'}], [{a: 'aa'}]);
+    });
+    it('unshift', ()=>{
+        let t = (args, res)=>{
+            let n = array.unshift(...args);
+            assert.deepStrictEqual(args[0], res);
+            assert.strictEqual(n, args[0].length);
+        };
+        t([[]], []);
+        t([[], []], []);
+        t([[], [3, 4]], [3, 4]);
+        t([[1, 2], []], [1, 2]);
+        t([[1, 2], [3, 4]], [3, 4, 1, 2]);
+        t([[1, 2], [3, 4], [5, 6]], [3, 4, 5, 6, 1, 2]);
+        t([[], null], [null]);
+        t([[], null, [2]], [null, 2]);
+        t([[], undefined], [undefined]);
+        t([[], false], [false]);
+        t([[], 0], [0]);
+        t([[], 'abc'], ['abc']);
+        t([[], {a: 'aa'}], [{a: 'aa'}]);
+    });
+    it('rotate', ()=>{
+        let t = (a, n, exp)=>{
+            assert.deepStrictEqual(array.rotate(a, n), a); // mutate and return
+            assert.deepStrictEqual(a, exp);
+        };
+        t([], 11, []);
+        t([1], 16, [1]);
+        t([1, 2, 3, 4], 0, [1, 2, 3, 4]);
+        t([1, 2, 3, 4], 1, [2, 3, 4, 1]);
+        t([1, 2, 3, 4], 2, [3, 4, 1, 2]);
+        t([1, 2, 3, 4], 3, [4, 1, 2, 3]);
+        t([1, 2, 3, 4], -4, [1, 2, 3, 4]);
+        t([1, 2, 3, 4], -3, [2, 3, 4, 1]);
+        t([1, 2, 3, 4], -2, [3, 4, 1, 2]);
+        t([1, 2, 3, 4], -1, [4, 1, 2, 3]);
+        t([1, 2, 3, 4], 5, [2, 3, 4, 1]);
+    });
+    it('slice', ()=>{
+        let t = (exp, res)=>assert.deepStrictEqual(exp, res);
+        t((function(){ return array.slice(arguments); }()), []);
+        t((function(){ return array.slice(arguments); }(2)), [2]);
+        t((function(){ return array.slice(arguments); }(1, 2, 3)), [1, 2, 3]);
+        t((function(){ return array.slice(arguments, 1); }(1, 2, 3)), [2, 3]);
+        t((function(){ return array.slice(arguments, 1, 2); }(1, 2, 3)), [2]);
+        t((function(){ return array.slice(arguments, 0, -1); }(1, 2, 3)),
+            [1, 2]);
+    });
+    it('compact', ()=>{
+        let t = (val, res)=>{
+            let n = val.length;
+            assert.deepStrictEqual(array.compact(val), res);
+            assert.strictEqual(n, val.length);
+        };
+        t([], []);
+        t([1, 'a', 'b'], [1, 'a', 'b']);
+        t([0, 1, undefined, 'a', null, 'b', ''], [1, 'a', 'b']);
+    });
+    it('compact_self', ()=>{
+        let t = (val, res)=>{
+            assert.deepStrictEqual(array.compact_self(val), res);
+            assert.strictEqual(res.length, val.length);
+        };
+        t([], []);
+        t([1, 'a', 'b'], [1, 'a', 'b']);
+        t([0, 1, undefined, 'a', null, 'b', ''], [1, 'a', 'b']);
+    });
+    it('flatten_shallow', ()=>{
+        let t = (val, res)=>assert.deepStrictEqual(
+            array.flatten_shallow(val), res);
+        t([], []);
+        t([1, [2, 3], [4, [5, 6]]], [1, 2, 3, 4, [5, 6]]);
+    });
+    it('flatten', ()=>{
+        let t = (val, res)=>assert.deepStrictEqual(array.flatten(val), res);
+        t([], []);
+        t([1, [2, 3], [4, [5, 6]]], [1, 2, 3, 4, 5, 6]);
+    });
+    it('unique', ()=>{
+        let t = (val, res)=>assert.deepStrictEqual(array.unique(val), res);
+        t([], []);
+        t([1, 2, 3], [1, 2, 3]);
+        t([1, 1], [1]);
+        t([1, '1', 1], [1, '1']);
+        t([1, 2, 1], [1, 2]);
+        t(['svc_lib', 'zutil', 'svc_ipc', 'zutil'], ['svc_lib', 'zutil',
+            'svc_ipc']);
+    });
+    it('to_nl', ()=>{
+        let t = (val, sep, res)=>assert.deepStrictEqual(
+            array.to_nl(val, sep), res);
+        t([], undefined, '');
+        t(['a', 'b'], undefined, 'a\nb\n');
+        t(['a', 1], '\t', 'a\t1\t');
+    });
+    it('sed', ()=>{
+        let t = (val, regex, replace, res)=>
+            assert.deepStrictEqual(array.sed(val, regex, replace), res);
+        t(['a', 'bb', 'b'], /b/, 'B', ['a', 'Bb', 'B']);
+        t(['a', 'bb', 'b'], /b$/, 'B', ['a', 'bB', 'B']);
+        t(['a', 'bb', 'b'], /b/g, 'B', ['a', 'BB', 'B']);
+        t(['a', 'bb', 'b'], /^(..)/, 'X$1', ['a', 'Xbb', 'b']);
+        let input;
+        t(input = ['a'], /a/g, 'A', ['A']);
+        assert.strictEqual(input[0], 'a');
+    });
+    it('grep', ()=>{
+        let t = (val, regex, replace, res)=>
+            assert.deepStrictEqual(array.grep(val, regex, replace), res);
+        t(['a', 'bb', 'b'], /b/, undefined, ['bb', 'b']);
+        t(['a', 'bb', 'b'], /b$/, 'B', ['bB', 'B']);
+        t(['a', 'bb', 'b'], /b/g, 'B', ['BB', 'B']);
+        t(['a', 'bb', 'b'], /^(..)/, 'X$1', ['Xbb']);
+        let input;
+        t(input = ['a'], /a/g, 'A', ['A']);
+        assert.strictEqual(input[0], 'a');
+    });
+    it('rm_elm', ()=>{
+        let t = (a, elm, exp_a, exp_res)=>{
+            let res = array.rm_elm(a, elm);
+            assert.deepStrictEqual(a, exp_a);
+            assert.strictEqual(res, exp_res);
+        };
+        t([], 1, [], undefined);
+        t([1], 1, [], 1);
+        t([1], '1', [1], undefined);
+        t([1, 2, 1, 2], 1, [2, 1, 2], 1);
+        t([1, 2, 1, 2], 2, [1, 1, 2], 2);
+        t([1, 2], 2, [1], 2);
+    });
+    it('rm_elm_tail', ()=>{
+        let t = (a, elm, exp_a, exp_res)=>{
+            let res = array.rm_elm_tail(a, elm);
+            assert.deepStrictEqual(a, exp_a);
+            assert.strictEqual(res, exp_res);
+        };
+        t([], 1, [], undefined);
+        t([1], 1, [], 1);
+        t([1], '1', [1], undefined);
+        t([1, 2, 1, 2], 1, [1, 2, 2], 1);
+        t([1, 2, 1, 2], 2, [1, 2, 1], 2);
+        t([1, 2], 2, [1], 2);
+    });
+    it('add_elm', ()=>{
+        let t = (a, elm, exp_a, exp_res)=>{
+            let res = array.add_elm(a, elm);
+            assert.deepStrictEqual(a, exp_a);
+            assert.strictEqual(res, exp_res);
+        };
+        t([], 1, [1], 1);
+        t([1], 1, [1], undefined);
+        t([1], '1', [1, '1'], '1');
+        t([1, 2, 1, 2], 2, [1, 2, 1, 2], undefined);
+        t([1, 2], 3, [1, 2, 3], 3);
+    });
+    it('split_every', ()=>{
+        let t = (to, n, exp_res)=>{
+            let a = [];
+            for (let i=1; i<=to; ++i)
+                a.push(i);
+            let res = array.split_every(a, n);
+            assert.deepStrictEqual(res, exp_res);
+        };
+        t(0, 1, []);
+        t(0, 10, []);
+        t(1, 1, [[1]]);
+        t(1, 2, [[1]]);
+        t(5, 1, [[1], [2], [3], [4], [5]]);
+        t(5, 2, [[1, 2], [3, 4], [5]]);
+        t(5, 3, [[1, 2, 3], [4, 5]]);
+        t(6, 2, [[1, 2], [3, 4], [5, 6]]);
+        t(6, 3, [[1, 2, 3], [4, 5, 6]]);
+        t(6, 4, [[1, 2, 3, 4], [5, 6]]);
+        t(6, 5, [[1, 2, 3, 4, 5], [6]]);
+        t(6, 6, [[1, 2, 3, 4, 5, 6]]);
+    });
+    it('split_at', ()=>{
+        let t = (a, exp, delim)=>
+            assert.deepStrictEqual(array.split_at(a, delim), exp);
+        t(['', '', '', ''], []);
+        t(['a', 'b', 'c', 'b', 'd'], [['a'], ['c'], ['d']], 'b');
+        t(['a', 'b', 'c', '', 'a', 'b'], [['a', 'b', 'c'], ['a', 'b']]);
+        t(['a', '', '', 'c', ''], [['a'], ['c']]);
+    });
+    it('to_array', ()=>{
+        let t = (a, exp_a)=>assert.deepStrictEqual(array.to_array(a), exp_a);
+        t(null, []);
+        t(undefined, []);
+        t(false, [false]);
+        t(0, [0]);
+        t('', ['']);
+        t('hello', ['hello']);
+        t({a: 1}, [{a: 1}]);
+        t([1, 2, 3], [1, 2, 3]);
+    });
+    describe('Array.prototype', ()=>{
+        before(()=>array.prototype_install());
+        after(()=>array.prototype_uninstall());
+        it('sed', ()=>{
+            let t = (val, regex, replace, res)=>
+                assert.deepStrictEqual(val.sed(regex, replace), res);
+            t(['a', 'bb', 'b'], /b/, 'B', ['a', 'Bb', 'B']);
+            t(['a', 'bb', 'b'], /b$/, 'B', ['a', 'bB', 'B']);
+        });
+        it('grep', ()=>{
+            let t = (val, regex, replace, res)=>
+                assert.deepStrictEqual(val.grep(regex, replace), res);
+            t(['a', 'bb', 'b'], /b$/, 'B', ['bB', 'B']);
+            t(['a', 'bb', 'b'], /b/g, 'B', ['BB', 'B']);
+        });
+        it('to_nl', ()=>{
+            let t = (val, sep, res)=>assert.deepStrictEqual(
+                val.to_nl(sep), res);
+            t([], undefined, '');
+            t(['a', 1], '\t', 'a\t1\t');
+        });
+        it('push_a', ()=>{
+            let t = (val, args, res)=>{
+                assert.strictEqual(val.push_a(...args), res.length);
+                assert.deepStrictEqual(val, res);
+            };
+            t([], [null, undefined, '', 3], [null, undefined, '', 3]);
+            t([3], [[1, 2], 'string', [null, 4]],
+                [3, 1, 2, 'string', null, 4]);
+        });
+        it('unshift_a', ()=>{
+            let t = (val, args, res)=>{
+                assert.strictEqual(val.unshift_a(...args), res.length);
+                assert.deepStrictEqual(val, res);
+            };
+            t([], [null, undefined, '', 3], [null, undefined, '', 3]);
+            t([3, '1'], [[1, 2], 'str', [null, 4]],
+                [1, 2, 'str', null, 4, 3, '1']);
+        });
+    });
+});
 
