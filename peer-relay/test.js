@@ -190,10 +190,10 @@ function test_expect(e){
   t_expect.push(e);
 }
 
-async function test_ensure_no_events(){
+const test_ensure_no_events = ()=>etask(function*(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
-    await util.sleep(); // XXX HACK: fixme
+    yield util.sleep(); // XXX HACK: fixme
     if (!t_events.length && !t_expect.length)
       break;
     if (t_events[t_events.length-1]==t_expect[t_expect.length-1])
@@ -205,7 +205,7 @@ async function test_ensure_no_events(){
   assert.ok(!t_events.length && !t_expect.length,
     'event mismatch '+t_events[t_events.length-1]+' != '+
       t_expect[t_expect.length-1]);
-}
+});
 
 class FakeNode extends EventEmitter {
   constructor(opts){
@@ -444,16 +444,16 @@ const test_run = (role, test)=>etask(function*(){
   t_running = false;
 });
 
-async function test_end(){
+const test_end = ()=>etask(function*(){
   assert.ok(t_running, 'test not running');
-  test_ensure_no_events();
+  yield test_ensure_no_events();
   for (let n in t_nodes)
   {
-    await t_nodes[n].destroy();
+    yield t_nodes[n].destroy();
     delete t_nodes[n];
   }
-  test_ensure_no_events();
-}
+  yield test_ensure_no_events();
+});
 
 class FakeWS extends EventEmitter {
   constructor(url, opts){
@@ -488,9 +488,12 @@ class FakeWebSocketServer extends EventEmitter {
     this.init();
     this._server = {address: ()=>({port})};
   }
-  async init(){
-    await util.sleep(); // XXX HACK: fixme
-    this.emit('listening');
+  init = ()=>{
+    let _this = this;
+    return etask(function*(){
+      yield etask.sleep();
+      _this.emit('listening');
+    });
   }
   close(cb){
     if (cb)
