@@ -228,6 +228,7 @@ function is_fake(role, p){ return role!=p; }
 
 function node_new(fake, name, o){
   assert.ok(!t_nodes[name], 'node already exist '+name);
+  // XXX: validate arguments o in a loop
   o = Object.assign({}, o);
   // XXX: wrap fixing arguments to plugin
   if (o.bootstrap) // XXX: support array
@@ -239,13 +240,18 @@ function node_new(fake, name, o){
   {
     // XXX: mv to listen on wsConnector._wss
     node.wsConnector.on('listen', e=>test_emit(name+'<listen(ws:'+e.port+')'));
-    node.wsConnector._wss.on('connection',
-      ws=>{
+    node.wsConnector._wss.on('connection', ws=>{
       // XXX HACK: rm ws.client
       let client = ws.client || node_from_ws(ws);
       test_emit(client.t_name+name+'>connect(ws:'+o.port+')');
-      });
+    });
+    node.wsConnector._wss.on('message', data=>{
+      test_emit('?'+name+'>message:'+data);
+    });
   }
+}
+
+function node_find_peers(s, d, o){
 }
 
 function node_from_wss_url(url){
@@ -394,7 +400,7 @@ describe('test_api', function(){
     t('ab=c', 'invalid ab^^^=c');
   });
 });
-
+// XXX: change to yield
 async function test_run(role, test){
   assert.ok(!t_running, 'test already running');
   t_running = true;
@@ -417,6 +423,15 @@ async function test_run(role, test){
     case 'connect':
       test_expect(c.orig);
       await test_ensure_no_events();
+      break;
+    case 'findPeers':
+      if (0) // XXX: WIP
+      {
+        if (is_fake(role, c.s))
+          node_find_peers(c.s, c.d, arg_to_obj(c.arg));
+        test_expect(c.orig);
+        await test_ensure_no_events();
+      }
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
@@ -445,7 +460,8 @@ class FakeWS extends EventEmitter {
     this.server = opts.server;
     if (url)
     {
-      let node= node_from_wss_url(url);
+      let node = node_from_wss_url(url);
+      this.server = node;
       // XXX HACK: rm client/server
       let ws = new FakeWS(undefined, {client: opts.client, server: node});
       ws.t_ws = this;
@@ -456,6 +472,9 @@ class FakeWS extends EventEmitter {
     }
   }
   close(){
+  }
+  send(s){
+    this.server.wsConnector._wss.emit('message', s);
   }
 }
 
@@ -477,12 +496,13 @@ class FakeWebSocketServer extends EventEmitter {
 }
 
 describe('peer-relay', async function(){
-  // XXX HACK: organize it nicely and use sinon
+  // XXX HACK: organize it nicely and use ztest.js (sinon?)
   beforeEach(function(){
     ws_util.orig_WebSocketServer = ws_util.WebSocketServer;
     ws_util.WebSocketServer = FakeWebSocketServer;
     ws_util.orig_WS = ws_util.WS;
     ws_util.WS = FakeWS;
+    // XXX TODO: same for WRTC
   });
   afterEach(function(){
     ws_util.WS = ws_util.orig_WS;
@@ -491,11 +511,10 @@ describe('peer-relay', async function(){
   this.timeout(2*t_timeout);
   await it('test', async()=>{
     const t = async(role, test)=>await test_run(role, test);
-    // XXX: review if to use = or reuse ':'
     await t('s', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
-      a=node_new(bootstrap:s) as>connect(ws:4000)`);
+      a=node_new(bootstrap:s) as>connect(ws:4000) as>findPeers(a)`);
     await t('a', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
-      a=node_new(bootstrap:s) as>connect(ws:4000)`);
+      a=node_new(bootstrap:s) as>connect(ws:4000) as>findPeers(a)`);
   });
 });
 
