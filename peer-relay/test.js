@@ -502,17 +502,10 @@ class FakeWebSocketServer extends EventEmitter {
 }
 
 describe('peer-relay', function(){
-  // XXX HACK: organize it nicely and use ztest.js (sinon?)
   beforeEach(function(){
-    ws_util.orig_WebSocketServer = ws_util.WebSocketServer;
-    ws_util.WebSocketServer = FakeWebSocketServer;
-    ws_util.orig_WS = ws_util.WS;
-    ws_util.WS = FakeWS;
+    ztest.set(ws_util, 'WS', FakeWS);
+    ztest.set(ws_util, 'WebSocketServer', FakeWebSocketServer);
     // XXX TODO: same for WRTC
-  });
-  afterEach(function(){
-    ws_util.WS = ws_util.orig_WS;
-    ws_util.WebSocketServer = ws_util.orig_WebSocketServer;
   });
   this.timeout(2*t_timeout);
   it('basic', ()=>zetask(function*(){
