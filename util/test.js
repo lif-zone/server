@@ -1995,7 +1995,6 @@ describe('escape', ()=>{
         t('"\\"abcd4"', ['"abcd4']);
         t('"a b"', ['a b']);
         t('"abc" "def"', ['abc', 'def']);
-        /* XXX yoni: complete tests (see test.c) */
     });
     it('regex', ()=>{
         let t = (arg, exp)=>assert.strictEqual(zescape.regex(arg), exp);
@@ -2446,7 +2445,7 @@ describe('events', ()=>{
         b.emit('event');
         assert.equal(count, 3);
     });
-    // XXX pavlo: should we fix this case in events.js?
+    // XXX: should we fix this case in events.js?
     if (0)
     it('once_should_not_be_recursive', function(){
         var count_a = 0, count_b = 0, e = new events();
