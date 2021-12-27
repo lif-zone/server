@@ -236,12 +236,12 @@ function asskery_keys(o, keys){
   assert.ok(!Object.keys(o).length, 'unknown prop '+JSON.stringify(o));
 }
 
-function assert_node_not_exist(name){
+function assert_not_exist(name){
   assert.ok(!t_nodes[name], 'node already exist '+name); }
 
 function assert_port(port, opts){
   opts = opts||{};
-  if (opts.optinal && port===undefined)
+  if (opts.optional && port===undefined)
     return;
   assert.ok(/[0-9]+/.test(port), 'invalid port '+port);
   port = +port;
@@ -250,18 +250,17 @@ function assert_port(port, opts){
 
 function assert_host(host, opts){
   opts = opts||{};
-  if (opts.optinal && host===undefined)
+  if (opts.optional && host===undefined)
     return;
   assert.ok(zurl.is_valid_domain(host), 'invalid host '+host); }
 
 function node_new(fake, name, o){
-  assert_node_not_exist(name);
+  assert_not_exist(name);
   asskery_keys(o, ['host', 'port', 'bootstrap']);
-  assert_node_not_exist(name);
   assert.ok(util.xor(o.host&&o.port, o.bootstrap),
-    'must specify host/port or bootstrap '+JSON.stringify(o));
-  assert_port(o.port, {optinal: true});
-  assert_host(o.host, {optinal: true});
+    'host/port or bootstrap '+JSON.stringify(o));
+  assert_port(o.port, {optional: true});
+  assert_host(o.host, {optional: true});
   o = assign({}, o);
   // XXX: wrap fixing arguments to plugin
   if (o.bootstrap) // XXX: support array
