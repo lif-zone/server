@@ -6,6 +6,8 @@ import zutil from './util.js';
 import array from './array.js';
 import ztest from './ztest.js';
 import zerr from './zerr.js';
+import zurl from './url.js';
+import url from 'url';
 import sprintf from './sprintf.js';
 import zescape from './escape.js';
 import set from './set.js';
@@ -244,6 +246,774 @@ describe('sinon', function(){
         assert.strictEqual(res.resp.statusCode, 200);
     }));
     */
+});
+
+describe('url', ()=>{
+    it('add_proto', ()=>{
+        let t = (url, exp)=>assert.strictEqual(zurl.add_proto(url), exp);
+        t('//www', '//www');
+        t('http://www', 'http://www');
+        t('HTTP://WWW', 'HTTP://WWW');
+        t('http2://www', 'http2://www');
+        t('http://www.com', 'http://www.com');
+        t('http://www/a', 'http://www/a');
+        t('https://www', 'https://www');
+        t('chrome://www', 'chrome://www');
+        t('www', 'http://www');
+        t('www/a', 'http://www/a');
+    });
+    it('get_host', ()=>{
+        let t = (url, exp)=>assert.strictEqual(zurl.get_host(url), exp);
+        t('www', '');
+        t('http://www', '');
+        t('//www/', 'www');
+        t('http://www/', 'www');
+        t('https://www/', 'www');
+        t('http://www/a', 'www');
+        t('http://www.com/', 'www.com');
+        t('http://www\\.com/', 'www');
+    });
+    it('get_root_domain', ()=>{
+        let t = (url, exp)=>assert.strictEqual(zurl.get_root_domain(url), exp);
+        t('', '');
+        t('a', 'a');
+        t('a.com', 'a.com');
+        t('a.b.com', 'b.com');
+        t('1.1.1.1', '1.1.1.1');
+        t('a.com.tw', 'a.com.tw');
+        t('a.b.com.tw', 'b.com.tw');
+        t('a.b.com.us.hola', 'b.com');
+        t('a.b.com.us.111.hola', 'b.com');
+        t('a.com.tw.us.hola', 'a.com.tw');
+        t('a.com.tw.us.444.hola', 'a.com.tw');
+        t('a.b.com.tw.us.hola', 'b.com.tw');
+        t('a.b.com.tw.us.1234.hola', 'b.com.tw');
+    });
+    it('rel_proto_to_abs', ()=>{
+        let t = (url, exp)=>assert.strictEqual(
+            zurl.rel_proto_to_abs(url), exp);
+        t('http://www', 'http://www');
+        t('//www.com/', 'http://www.com/');
+    });
+    it('get_path', ()=>{
+        let t = (url, exp)=>assert.strictEqual(zurl.get_path(url), exp);
+        t('http://www', '');
+        t('http://www/', '/');
+        t('http://www/a', '/a');
+        t('http://www.com/a?b=1&c=2', '/a?b=1&c=2');
+    });
+    it('get_top_level_domain', ()=>{
+        let t = (domain, exp)=>
+            assert.strictEqual(zurl.get_top_level_domain(domain), exp);
+        t('www', '');
+        t('www.com', 'com');
+        t('www.co.il', 'il');
+    });
+    it('get_host_gently', ()=>{
+        let t = (domain, exp)=>assert.strictEqual(
+            zurl.get_host_gently(domain), exp);
+        t('www', 'www');
+        t('http://www', 'www');
+        t('https://www', 'www');
+        t('ssh://www.com/test/path', 'www.com');
+        t('example.ru/test/path', 'example.ru');
+        t('//www.com/test/path', 'www.com');
+        t('example.ru\\test\\path', 'example.ru');
+    });
+    it('get_proto', ()=>{
+        let t = (url, exp)=>assert.strictEqual(zurl.get_proto(url), exp);
+        t('www', '');
+        t('http://www', 'http');
+        t('xxx://www', 'xxx');
+        t('http://', 'http');
+        t('www?url=http://', '');
+        t('://www', '');
+    });
+    it('is_ip', ()=>{
+        let t = (ip, exp)=>assert.strictEqual(!!zurl.is_ip(ip), !!exp);
+        t('a', false);
+        t('1', false);
+        t('1.1.1', false);
+        t('1.1.1.1', true);
+        t('1.1.1.1.1', false);
+        t('1.1.1.1:1', false);
+        t('1.1.1.1:', false);
+        t('123.123.123.123', true);
+        t('123.123.123.1234', false);
+        t('123.123.123.255', true);
+        t('123.123.123.256', false);
+    });
+    it('is_ip_mask', ()=>{
+        let t = (ip, exp)=>assert.strictEqual(!!zurl.is_ip_mask(ip), !!exp);
+        t('255.255.255.255', false);
+        t('0.0.0.0', false);
+        t('255.255.255.240', true);
+        t('255.255.240.0', true);
+        t('255.255.255.218', false);
+        t('255.255.218.0', false);
+    });
+    it('is_ip_netmask', ()=>{
+        let t = (ip, exp)=>assert.strictEqual(!!zurl.is_ip_netmask(ip), !!exp);
+        t('123.123.123.123', false);
+        t('123.123.123.123/255.255.255.240', true);
+        t('123.123.123.123/255.255.240.0', true);
+        t('123.123.123.123/255.255.255.218', false);
+        t('123.123.123.123/255.255.218.0', false);
+    });
+    it('is_ip_range', ()=>{
+        let t = (ip, exp)=>assert.strictEqual(!!zurl.is_ip_range(ip), !!exp);
+        t('0.0.0.0-255.255.255.255', true);
+        t('255.255.255.255-0.0.0.0', false);
+        t('123.123.123.123', false);
+        t('123.123.123.123-123.123.123.123', false);
+        t('123.123.123.123-123.123.123.124', true);
+        t('123.123.123.123-124.123.123.123', true);
+    });
+    it('is_ip_in_range', ()=>{
+        let t = (range_ip, ip, exp)=>
+            assert.strictEqual(!!zurl.is_ip_in_range(range_ip, ip), !!exp);
+        t('0.0.0.0-255.255.255.255', '123.123.123.123', true);
+        t('255.255.255.255-0.0.0.0', '123.123.123.123', false);
+        t('123.123.123.123-123.123.123.124', '123.123.123.123', true);
+        t('123.123.123.123-123.123.123.124', '123.123.123.125', false);
+        t('123.123.123.0-124.123.218.0', '124.0.123.255', true);
+        t('123.123.123.0-124.123.218.0', '124.124.123.0', false);
+    });
+    it('is_ip_local', ()=>{
+        let t = (ip, exp)=>assert.strictEqual(!!zurl.is_ip_local(ip), !!exp);
+        t('1.1.1.200', false);
+        t('127.0.0.1', false);
+        t('8.8.8.8', false);
+        t('192.168.1.1', true);
+        t('10.0.0.0', true);
+        t('10.255.255.255', true);
+        t('172.17.10.2', true);
+        t('169.254.250.23', true);
+    });
+    it('is_ip_subnet', ()=>{
+        let t = (ip, exp)=>assert.strictEqual(!!zurl.is_ip_subnet(ip), !!exp);
+        t('a', false);
+        t('1', false);
+        t('1.1.1.1', false);
+        t('1.1.1.1.1/24', false);
+        t('001.1.1.1.1/24', false);
+        t('1.1.1.1:1', false);
+        t('123.123.123.123/1', true);
+        t('123.123.123.123/32', true);
+        t('123.123.123.123/33', false);
+        t('123.123.123.1234/1', false);
+        t('123.123.123.255/a', false);
+        t('123.123.123.256/1', false);
+    });
+    it('is_ip_port', ()=>{
+        let t = (ip, exp)=>assert.strictEqual(!!zurl.is_ip_port(ip), !!exp);
+        t('a', false);
+        t('1', false);
+        t('1.1.1.1', true);
+        t('1.1.1.1:1', true);
+        t('1.1.1.1:', false);
+        t('1.1.1.1:65535', true);
+        t('1.1.1.1:65536', false);
+        t('1.1.1', false);
+    });
+    it('is_valid_url', ()=>{
+        let t = (url, exp)=>assert.strictEqual(
+            !!zurl.is_valid_url(url), !!exp);
+        t('a', false);
+        t('javascript:abc', false);
+        t('http://web', false);
+        t('https://web/abc.gif', false);
+        t('a.com', true);
+        t('http://web.com', true);
+        t('web.com/abc.gif?a=1#b', true);
+        t('web.com/javascript:abc', true);
+        t('a-a.com', true);
+    });
+    it('is_valid_domain', ()=>{
+        let t = (domain, exp)=>assert.strictEqual(
+            zurl.is_valid_domain(domain), exp);
+        t('', false);
+        t('a', false);
+        t('a.com', true);
+        t('a.longname', true);
+        t('a.123', false);
+        t('a.b.com', true);
+        t('a.com.tw.us.444.hola', true);
+        t('a-b.com', true);
+        t('a--b.com', true);
+        t('-a.com', false);
+        t('r1---b.b.com', true);
+    });
+    it('is_hola_domain', ()=>{
+        let t = (arg, exp)=>assert.strictEqual(zurl.is_hola_domain(arg), exp);
+        t('google.org', false);
+        t('xhola.org', false);
+        t('hola.org', true);
+        t('x.hola.org', true);
+        t('x\\.hola.org', false);
+        t('holazorg', false);
+    });
+    it('is_valid_email', ()=>{
+        let t = (email, exp)=>assert.strictEqual(
+            zurl.is_valid_email(email), exp);
+        t('', false);
+        t('a', false);
+        t('a.com', false);
+        t('@a.com', false);
+        t('x@a.com', true);
+        t('Xy@A.com', true);
+        t('x.y@a.com', true);
+        t('x_y@a.com', true);
+        t('x*y@a.com', false);
+        t('x@a.123', false);
+        t('x@a.b.com', true);
+        t('x@a.com.tw.us.444.hola', true);
+        t('x@a-b.com', true);
+        t('x@a--b.com', true);
+        t('x@-a.com', false);
+        t('x@@a.com', false);
+        t('x@ a.com', false);
+        t('x @a.com', false);
+        t('x@a .com', false);
+        t('x+y@a.com', true);
+    });
+    it('get_domain_email', ()=>{
+        let t = (email, exp)=>
+            assert.strictEqual(zurl.get_domain_email(email), exp);
+        t('', null);
+        t('a', null);
+        t('user@example.com', 'example.com');
+        t('user@mail.example.com', 'mail.example.com');
+    });
+    it('get_root_domain_email', ()=>{
+        let t = (email, exp)=>
+            assert.strictEqual(zurl.get_root_domain_email(email), exp);
+        t('', null);
+        t('a', null);
+        t('user@example.com', 'example.com');
+        t('user@mail.example.com', 'example.com');
+    });
+    it('is_alias_email', ()=>{
+        let t = (email, exp)=>
+            assert.strictEqual(zurl.is_alias_email(email), exp);
+        t('', false);
+        t('a', false);
+        t('@a.com', false);
+        t('x@a.com', false);
+        t('+@a.com', false);
+        t('+alias@a.com', false);
+        t('x+@a.com', false);
+        t('x+alias@a.com', true);
+    });
+    it('get_main_email', ()=>{
+        let t = (email, exp)=>
+            assert.strictEqual(zurl.get_main_email(email), exp);
+        t('', undefined);
+        t('a', undefined);
+        t('@a.com', undefined);
+        t('x@a.com', 'x@a.com');
+        t('+@a.com', '+@a.com');
+        t('+alias@a.com', '+alias@a.com');
+        t('x+@a.com', 'x+@a.com');
+        t('x+alias@a.com', 'x@a.com');
+    });
+    it('host_lookup', ()=>{
+        let t = (hosts, host, exp)=>{
+            let lookup = zutil.bool_lookup(hosts);
+            assert.strictEqual(zurl.host_lookup(lookup, host), exp);
+        };
+        t([], 'google.com', undefined);
+        t(['com'], 'com', true);
+        t(['com'], 'om', undefined);
+        t(['com'], 'google.com', true);
+        t(['com'], 'www.google.com', true);
+        t(['om'], 'google.com', undefined);
+        t(['com'], 'google.com', true);
+        t(['.com'], 'google.com', undefined);
+        t(['google.com'], 'google.com', true);
+        t(['google.com'], '.google.com', true);
+        t(['www.google.com'], 'google.com', undefined);
+        t(['google.com'], 'www.google.com', true);
+        t(['google.com'], 'server.www.google.com', true);
+        t(['google.com', 'yahoo.com'], 'www.google.com', true);
+        t(['google.com', 'yahoo.com'], 'www.yahoo.com', true);
+        t(['google.com', 'yahoo.com'], 'other.com', undefined);
+    });
+    it('parse', ()=>{
+        let t = (_url, exp)=>{
+            let dont_node = exp.dont_node;
+            let dont_zurl = exp.dont_zurl;
+            delete exp.dont_node;
+            delete exp.dont_zurl;
+            let res = dont_zurl ? {} : zurl.parse(_url);
+            delete res.authority;
+            delete res.file;
+            delete res.directory;
+            delete res.orig;
+            if (exp.relative===undefined)
+                delete res.relative;
+            exp.slashes = exp.slashes!==undefined ? exp.slashes : true;
+            ['protocol', 'auth', 'user', 'password', 'port', 'ext', 'hash',
+                'search', 'query']
+            .forEach(i=>exp[i] = exp[i]!==undefined ? exp[i] : null);
+            if (!dont_zurl)
+                assert.deepStrictEqual(res, exp);
+            if (dont_node)
+                return;
+            // validate it matches nodejs
+            let node_url = assign({}, url.parse(_url));
+            if (dont_zurl)
+                res = exp;
+            delete res.relative;
+            delete res.user;
+            delete res.password;
+            delete res.ext;
+            assert.deepStrictEqual(res, node_url);
+        };
+        t('http://user:pass@host.com:8080/p/a/t/h.ex?query=str#hash', {
+            href: 'http://user:pass@host.com:8080/p/a/t/h.ex?query=str#hash',
+            protocol: 'http:',
+            auth: 'user:pass',
+            user: 'user',
+            password: 'pass',
+            hostname: 'host.com',
+            port: '8080',
+            host: 'host.com:8080',
+            relative: '/p/a/t/h.ex?query=str#hash',
+            pathname: '/p/a/t/h.ex',
+            path: '/p/a/t/h.ex?query=str',
+            ext: 'ex',
+            search: '?query=str',
+            query: 'query=str',
+            hash: '#hash',
+        });
+        t('http://host.com/p/a/t/h.ex?query=str#hash', {
+            href: 'http://host.com/p/a/t/h.ex?query=str#hash',
+            protocol: 'http:',
+            hostname: 'host.com',
+            host: 'host.com',
+            relative: '/p/a/t/h.ex?query=str#hash',
+            pathname: '/p/a/t/h.ex',
+            path: '/p/a/t/h.ex?query=str',
+            ext: 'ex',
+            search: '?query=str',
+            query: 'query=str',
+            hash: '#hash',
+        });
+        t('http://host.com/p/a/t/h.ex#hash', {
+            href: 'http://host.com/p/a/t/h.ex#hash',
+            protocol: 'http:',
+            slashes: true,
+            hostname: 'host.com',
+            host: 'host.com',
+            relative: '/p/a/t/h.ex#hash',
+            pathname: '/p/a/t/h.ex',
+            path: '/p/a/t/h.ex',
+            ext: 'ex',
+            hash: '#hash',
+        });
+        t('http://host.com/p/a/t/h.ex?query=str', {
+            href: 'http://host.com/p/a/t/h.ex?query=str',
+            protocol: 'http:',
+            slashes: true,
+            hostname: 'host.com',
+            host: 'host.com',
+            relative: '/p/a/t/h.ex?query=str',
+            pathname: '/p/a/t/h.ex',
+            path: '/p/a/t/h.ex?query=str',
+            ext: 'ex',
+            search: '?query=str',
+            query: 'query=str',
+        });
+        t('http://host.com', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/',
+            path: '/',
+            href: 'http://host.com/',
+        });
+        t('http://host.com/', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/',
+            path: '/',
+            href: 'http://host.com/',
+        });
+        t('HTTP://host.COM', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/',
+            path: '/',
+            href: 'http://host.com/',
+        });
+        t('http://host.com/test/my/path', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/test/my/path',
+            path: '/test/my/path',
+            href: 'http://host.com/test/my/path',
+        });
+        t('http://host.com/test/my/path/', {
+            protocol: 'http:',
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/test/my/path/',
+            path: '/test/my/path/',
+            href: 'http://host.com/test/my/path/',
+        });
+        t('http://host.com/test/my?query=first&second=param', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            search: '?query=first&second=param',
+            query: 'query=first&second=param',
+            pathname: '/test/my',
+            path: '/test/my?query=first&second=param',
+            href: 'http://host.com/test/my?query=first&second=param',
+        });
+        t('http://host.com/test/my?query=first&second=param/', {
+            protocol: 'http:',
+            host: 'host.com',
+            hostname: 'host.com',
+            search: '?query=first&second=param/',
+            query: 'query=first&second=param/',
+            pathname: '/test/my',
+            path: '/test/my?query=first&second=param/',
+            href: 'http://host.com/test/my?query=first&second=param/',
+        });
+        t('https://HOST.com:8080/test/my?query=first&second=param', {
+            protocol: 'https:',
+            slashes: true,
+            host: 'host.com:8080',
+            port: '8080',
+            hostname: 'host.com',
+            search: '?query=first&second=param',
+            query: 'query=first&second=param',
+            pathname: '/test/my',
+            path: '/test/my?query=first&second=param',
+            href: 'https://host.com:8080/test/my?query=first&second=param',
+        });
+        t('https://host.com/test/my?query=first&#hash', {
+            protocol: 'https:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            hash: '#hash',
+            search: '?query=first&',
+            query: 'query=first&',
+            pathname: '/test/my',
+            path: '/test/my?query=first&',
+            href: 'https://host.com/test/my?query=first&#hash',
+        });
+        t('//host.com/', {
+            dont_node: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/',
+            path: '/',
+            href: '//host.com/',
+        });
+        t('//host.com/path/example', {
+            dont_node: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/path/example',
+            path: '/path/example',
+            href: '//host.com/path/example',
+        });
+        t('http://host', {
+            protocol: 'http:',
+            host: 'host',
+            hostname: 'host',
+            pathname: '/',
+            path: '/',
+            href: 'http://host/',
+        });
+        t('http://host:8080', {
+            protocol: 'http:',
+            host: 'host:8080',
+            port: '8080',
+            hostname: 'host',
+            pathname: '/',
+            path: '/',
+            href: 'http://host:8080/',
+        });
+        t('http://host.com:8080#hash', {
+            protocol: 'http:',
+            host: 'host.com:8080',
+            port: '8080',
+            hostname: 'host.com',
+            hash: '#hash',
+            pathname: '/',
+            path: '/',
+            href: 'http://host.com:8080/#hash',
+        });
+        t('host.com', {
+            dont_node: true, // node doesnt handle missing protocol
+            protocol: 'http:',
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/',
+            path: '/',
+            href: 'http://host.com/',
+        });
+        t('www.host.com/:80/space%20test/', {
+            dont_node: true, // node doesnt handle missing protocol
+            protocol: 'http:',
+            host: 'www.host.com',
+            hostname: 'www.host.com',
+            pathname: '/:80/space%20test/',
+            path: '/:80/space%20test/',
+            href: 'http://www.host.com/:80/space%20test/',
+        });
+        t('http://user:pa%20ss@www.host.com/p/a%20t/h/', {
+            dont_node: true, // node decodes the password
+            protocol: 'http:',
+            auth: 'user:pa%20ss',
+            user: 'user',
+            password: 'pa%20ss',
+            host: 'www.host.com',
+            hostname: 'www.host.com',
+            pathname: '/p/a%20t/h/',
+            path: '/p/a%20t/h/',
+            href: 'http://user:pa%20ss@www.host.com/p/a%20t/h/',
+        });
+        t('http://host.com/p.ex1.ex2/file.ex3.ex4?q.ex5=s.ex6#h.ex7', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/p.ex1.ex2/file.ex3.ex4',
+            path: '/p.ex1.ex2/file.ex3.ex4?q.ex5=s.ex6',
+            href: 'http://host.com/p.ex1.ex2/file.ex3.ex4?q.ex5=s.ex6#h.ex7',
+            ext: 'ex4',
+            search: '?q.ex5=s.ex6',
+            query: 'q.ex5=s.ex6',
+            hash: '#h.ex7',
+        });
+        t('http://host.com/file..ex', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/file..ex',
+            path: '/file..ex',
+            href: 'http://host.com/file..ex',
+            ext: 'ex',
+        });
+        t('http://host.com/file.ex.', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/file.ex.',
+            path: '/file.ex.',
+            href: 'http://host.com/file.ex.',
+        });
+        t('http://host.com/.ex', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/.ex',
+            path: '/.ex',
+            href: 'http://host.com/.ex',
+        });
+        t('http://host.com/a/b@/c/d.ex', {
+            protocol: 'http:',
+            slashes: true,
+            host: 'host.com',
+            hostname: 'host.com',
+            pathname: '/a/b@/c/d.ex',
+            path: '/a/b@/c/d.ex',
+            ext: 'ex',
+            href: 'http://host.com/a/b@/c/d.ex',
+            auth: null,
+            port: null,
+            hash: null,
+            search: null,
+            query: null,
+        });
+        t('ws://127.0.0.1:123/a.y?b=c&d=e&foo=bar.mp4', {
+            protocol: 'ws:',
+            slashes: true,
+            host: '127.0.0.1:123',
+            hostname: '127.0.0.1',
+            port: '123',
+            path: '/a.y?b=c&d=e&foo=bar.mp4',
+            pathname: '/a.y',
+            ext: 'y',
+            href: 'ws://127.0.0.1:123/a.y?b=c&d=e&foo=bar.mp4',
+            auth: null,
+            hash: null,
+            search: '?b=c&d=e&foo=bar.mp4',
+            query: 'b=c&d=e&foo=bar.mp4',
+        });
+    });
+    it('qs_parse_bin', ()=>{
+        let tqs = 'te%78t=%2b_test8.-~+%80&buf=%80, %ff';
+        let obj2qs = {text: '+_test8.-~ \x80', buf: '\x80, \xff'};
+        let res = zurl.qs_parse(tqs, true);
+        assert.deepStrictEqual(res, obj2qs);
+    });
+    it('glob_host', ()=>{
+        let t = (host, regex, match)=>{
+            let res = zurl.http_glob_host(host);
+            assert.strictEqual(res, regex);
+            assert(new RegExp('^'+regex+'$').test(match));
+        };
+        t('www.aaa.com', 'www\\.aaa\\.com', 'www.aaa.com');
+        t('www.*.com', 'www\\.[^./]+\\.com', 'www.a.com');
+        t('www.**.com', 'www\\.(([^./]+\\.)+)?com', 'www.com');
+        t('www.**.com', 'www\\.(([^./]+\\.)+)?com', 'www.a.com');
+        t('www.**.com', 'www\\.(([^./]+\\.)+)?com', 'www.a.b.com');
+        t('*com', '[^./]+\\.com', 'a.com');
+        t('**com', '(([^./]+\\.)+)?com', 'b.com');
+        t('google.*', 'google\\.[^./]+', 'google.com');
+        t('google**', 'google[^/]*', 'google');
+        t('google**', 'google[^/]*', 'google.com');
+        t('google**', 'google[^/]*', 'google.co.il');
+        t('**', '[^/]+', 'a');
+        t('**.google.*', '(([^./]+\\.)+)?google\\.[^./]+', 'google.com');
+        t('**.google.*', '(([^./]+\\.)+)?google\\.[^./]+', 'a.b.google.com');
+        t('*.google.**', '[^./]+\\.google\\.[^/]*', 'www.google.co.il');
+    });
+    it('glob_path', ()=>{
+        let t = (path, regex, match)=>{
+            let res = zurl.http_glob_path(path);
+            assert.strictEqual(res, regex);
+            assert(new RegExp('^'+regex+'$').test(match));
+        };
+        t('/**/aaa.gif', '\\/(([^/]+\\/)+)?aaa\\.gif', '/aaa.gif');
+        t('/**/aaa.gif', '\\/(([^/]+\\/)+)?aaa\\.gif', '/ab/cd/aaa.gif');
+        t('/*/aaa.gif', '\\/[^/]+\\/aaa\\.gif', '/b/aaa.gif');
+        t('**', '\\/.*', '/');
+        t('*', '\\/[^/]+', '/b.png');
+        t('/aa/bb/**', '\\/aa\\/bb\\/.*', '/aa/bb/cc/d.gif');
+        t('/aa/bb/*', '\\/aa\\/bb\\/[^/]+', '/aa/bb/d.gif');
+        t('**/*', '\\/(([^/]+\\/)+)?[^/]+', '/d.gif');
+        t('**/*', '\\/(([^/]+\\/)+)?[^/]+', '/aa/bb/d.gif');
+        t('/**aaa.gif', '\\/.*aaa\\.gif', '/ab/cdaaa.gif');
+        t('/*aaa.gif', '\\/[^/]+aaa\\.gif', '/baaa.gif');
+    });
+    it('glob_url', ()=>{
+        let t = (url, regex, match)=>{
+            let res = zurl.http_glob_url(url);
+            assert.strictEqual(res, regex);
+            assert(new RegExp('^'+regex+'$').test(match));
+        };
+        t('**.aaa.com', 'https?:\\/\\/(([^./]+\\.)+)?aaa\\.com\\/.*',
+            'http://www.aaa.com/');
+        t('*://**.aaa.com', 'https?:\\/\\/(([^./]+\\.)+)?aaa\\.com\\/.*',
+            'http://www.aaa.com/');
+        t('https://**', 'https:\\/\\/[^/]+\\/.*',
+            'https://www.aaa.com/bb/cc.gif');
+        t('**/**/Seg[0-9]+-Frag[0-9]+',
+            'https?:\\/\\/[^/]+\\/(([^/]+\\/)+)?Seg[0-9]+-Frag[0-9]+',
+            'http://player.abc.co.uk/aaaa/bbb/Seg2-Frag59943');
+        t('**/**Seg[0-9]+-Frag[0-9]+',
+            'https?:\\/\\/[^/]+\\/.*Seg[0-9]+-Frag[0-9]+',
+            'http://player.abc.co.uk/aaaa/bbbSeg2-Frag59943');
+        t('https://**:8888', 'https:\\/\\/[^/]+:8888\\/.*',
+            'https://www.aaa.com:8888/bb/cc.gif');
+        t('https://**:*', 'https:\\/\\/[^/]+:[0-9]+\\/.*',
+            'https://www.aaa.com:8888/bb/cc.gif');
+    });
+    it('root_url_cmp', ()=>{
+        let t = (a, b, exp)=>{
+            assert.strictEqual(zurl.root_url_cmp(a, b), exp);
+            assert.strictEqual(zurl.root_url_cmp(b, a), exp);
+        };
+        t('a.b', 'a.b', true);
+        t('**.a.b', 'a.b', true);
+        t('**.a.b', '**.a.b', true);
+        t('*.a.b', '*.c.a.b', true);
+        t('c.*.b', 'c.a.b', true);
+        t('a.b', 'a.c', false);
+        t('a.b.c', '**.a.c.d', false);
+        t('a.*.c', 'a.b.*', false);
+    });
+    it('qs_add', ()=>{
+        let t = (url, qs, exp)=>{
+            let a = zurl.parse(zurl.qs_add(url, qs)), b = zurl.parse(exp);
+            // do not compare not-parsed qs
+            let n = {orig: '', relative: '', search: '', path: '', href: ''};
+            assert.deepStrictEqual(
+                assign(a, n, {query: zurl.qs_parse(a.query)}),
+                assign(b, n, {query: zurl.qs_parse(b.query)}));
+        };
+        t('http://site.com/', {hola_mode: 'cdn'},
+            'http://site.com/?hola_mode=cdn');
+        t('http://site.com/?h=3', {hola_mode: 'cdn'},
+            'http://site.com/?h=3&hola_mode=cdn');
+        t('http://site.com/path?h=3&hola_mode=stats&t=1#hash',
+            {hola_mode: 'cdn', hola_debug: true},
+            'http://site.com/path?h=3&t=1&hola_mode=cdn&hola_debug=true#hash');
+        t('http://site.com/path?h=3&t=1&hola_mode=stats#hash',
+            {hola_mode: 'cdn', hola_debug: true},
+            'http://site.com/path?h=3&t=1&hola_mode=cdn&hola_debug=true#hash');
+        t('http://site.com/path?h=3&t=1&hola_mode=stats&hola_debug=false&z=2',
+            {hola_mode: 'cdn', hola_debug: true},
+            'http://site.com/path?h=3&t=1&z=2&hola_mode=cdn&hola_debug=true');
+        t('http://site.com/path?h=3&t=1&hola_mode=stats&hola_debug&z=2',
+            {hola_mode: 'cdn', hola_debug: true, hola_graph: 'top'},
+            'http://site.com/path?h=3&t=1&z=2&hola_mode=cdn&hola_debug=true&'
+            +'hola_graph=top');
+        t('http://site.com/path?h=3&t=1&hola_mode=stats#hash',
+            {hola_mode: 'cdn', hola_debug: true, h: [3, 4, 5]},
+            'http://site.com/path?h=3&h=4&h=5&t=1&hola_mode=cdn&'
+            +'hola_debug=true#hash');
+    });
+    it('qs_parse', ()=>{
+        let t = (q, res)=>assert.deepStrictEqual(zurl.qs_parse(q), res);
+        t('', {});
+        t('t=v', {t: 'v'});
+        t('t=v&v=t', {t: 'v', v: 't'});
+    });
+    it('qs_parse_url', ()=>{
+        let t = (url, res)=>assert.deepStrictEqual(
+            zurl.qs_parse_url(url), res);
+        t('http://site.com', {});
+        t('http://site.com/', {});
+        t('http://site.com?t=v', {t: 'v'});
+        t('http://site.com/test?t=v', {t: 'v'});
+        t('http://site.com?t=v&v=t', {t: 'v', v: 't'});
+        t('https://site.com', {});
+        t('https://site.com/', {});
+        t('https://site.com?t=v', {t: 'v'});
+        t('https://site.com/test?t=v', {t: 'v'});
+        t('https://site.com?t=v&v=t', {t: 'v', v: 't'});
+    });
+    it('safe_redir', ()=>{
+        let t = (url, exp, host)=>
+            assert.strictEqual(zurl.safe_redir(url, host), exp||undefined);
+        t('http://hola.org/foo', 'https://hola.org/foo');
+        t('http://www.hola.org/foo', 'https://www.hola.org/foo');
+        t('http://wwwhola.org/foo', false);
+        t('https://hola.org/foo', 'https://hola.org/foo');
+        t('/foo', false);
+        t('foo', false);
+        t('/foo', 'https://hola.org/foo', 'hola.org');
+        t('foo', false, 'hola.org');
+        t('javascript:', false);
+        t('javascript:alert()', false);
+        t('http://hola.org/<script>alert()</script>',
+            'https://hola.org/%3Cscript%3Ealert()%3C/script%3E');
+        t('evil.com', false);
+        t('https://hola.org@evil.com', false);
+        t('//evil.com', false);
+        t('https://////////////hola.org@evil.com', false);
+        t('https://evil.com\\.hola.org', false);
+    });
 });
 
 let p_api = {};
