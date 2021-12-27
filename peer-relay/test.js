@@ -404,7 +404,7 @@ describe('test_api', function(){
   });
 });
 // XXX: change to yield
-async function test_run(role, test){
+const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
   t_running = true;
   let a = test_parse(test);
@@ -421,11 +421,11 @@ async function test_run(role, test){
       break;
     case 'listen':
       test_expect(c.orig);
-      await test_ensure_no_events();
+      yield test_ensure_no_events();
       break;
     case 'connect':
       test_expect(c.orig);
-      await test_ensure_no_events();
+      yield test_ensure_no_events();
       break;
     case 'findPeers':
       if (0) // XXX: WIP
@@ -433,16 +433,16 @@ async function test_run(role, test){
         if (is_fake(role, c.s))
           node_find_peers(c.s, c.d, arg_to_obj(c.arg));
         test_expect(c.orig);
-        await test_ensure_no_events();
+        yield test_ensure_no_events();
       }
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
-    await util.sleep(); // XXX HACK: fixme
+    yield util.sleep(); // XXX HACK: fixme
   }
-  await test_end();
+  yield test_end();
   t_running = false;
-}
+});
 
 async function test_end(){
   assert.ok(t_running, 'test not running');
@@ -513,7 +513,7 @@ describe('peer-relay', function(){
   });
   this.timeout(2*t_timeout);
   it('basic', ()=>zetask(function*(){
-    const t = (role, test)=>etask(function*(){ return test_run(role, test); });
+    const t = (role, test)=>etask(function(){ return test_run(role, test); });
     yield t('s', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
       a=node_new(bootstrap:s) as>connect(ws:4000) as>findPeers(a)`);
     yield t('a', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
