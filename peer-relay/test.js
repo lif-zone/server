@@ -11,7 +11,7 @@ import date from '../util/date.js';
 import ws_util from '../util/ws.js';
 import ztest from '../util/ztest.js';
 import etask from '../util/etask.js';
-const zetask = ztest.etask;
+const zetask = ztest.etask, assign = Object.assign;
 
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
@@ -141,11 +141,11 @@ function parse_cmd_dir(s){
 
 function plugin_cmd_dir(o){
   let t = parse_cmd_dir(o.cmd);
-  let o2 = Object.assign({}, o);
+  let o2 = assign({}, o);
   for (let i in o)
     delete o[i];
-  Object.assign(o, t, {arg: o2.arg, orig: o2.orig});
-  Object.assign(o.meta||{}, o2.meta);
+  assign(o, t, {arg: o2.arg, orig: o2.orig});
+  assign(o.meta||{}, o2.meta);
   return o;
 }
 
@@ -229,10 +229,23 @@ class FakeNode extends EventEmitter {
 
 function is_fake(role, p){ return role!=p; }
 
-function node_new(fake, name, o){
+function assert_only(o, keys){
+  o = assign({}, o);
+  keys.forEach(name=>delete o[name]);
+  assert.ok(!Object.keys(o).length, 'unknown prop '+JSON.stringify(o));
+}
+
+function assert_node_not_exist(name){
   assert.ok(!t_nodes[name], 'node already exist '+name);
+}
+
+function node_new(fake, name, o){
+  assert_only(o, ['host', 'port', 'bootstrap']);
+  assert_node_not_exist(name);
+  assert.ok(util.xor(o.host||o.port, o.bootstrap),
+    'must specify host/port or bootstrap '+JSON.stringify(o));
   // XXX: validate arguments o in a loop
-  o = Object.assign({}, o);
+  o = assign({}, o);
   // XXX: wrap fixing arguments to plugin
   if (o.bootstrap) // XXX: support array
     o.bootstrap = [t_nodes[o.bootstrap].wsConnector.url];
