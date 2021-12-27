@@ -3712,7 +3712,7 @@ describe('etask', function(){
     }]));
     let assert_ps_res = (res, exp)=>{
         res = res
-        .replace(/\([/A-Za-z0-9/._-]*\/[a-z_]*.js:[0-9]*:[0-9]*\)/g, 'line');
+        .replace(/\([:/A-Za-z0-9/._-]*\/[a-z_]*.js:[0-9]*:[0-9]*\)/g, 'line');
         assert.strictEqual(res, exp);
     };
     let assert_ps = (flags, exp)=>{
@@ -4056,7 +4056,6 @@ describe('etask', function(){
     }, function(){
         seq(3);
     }]));
-    if (0) // XXX: ZZZ
     it('spawn_call_linger', ()=>{
         let et;
         return zetask([function(){
@@ -4076,7 +4075,6 @@ describe('etask', function(){
             et.return(); // cleanup
         }]);
     });
-    if (0) // XXX: ZZZ
     it('ps_call', function f(){
         let et1, et2, et3;
         et1 = etask('ET1', [function etask1(){
@@ -4216,7 +4214,6 @@ describe('etask', function(){
         assert_ps('r,G', '');
         return _et;
     });
-    if (0) // XXX: ZZZ
     it('ps_info', function f(){
         let et;
         et = etask([function etask1(){
