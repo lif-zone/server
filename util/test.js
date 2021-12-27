@@ -9,6 +9,7 @@ import zerr from './zerr.js';
 import sprintf from './sprintf.js';
 import zescape from './escape.js';
 import set from './set.js';
+import rate_limit from './rate_limit.js';
 import match from './match.js';
 import events from './events.js';
 import assert from 'assert';
@@ -1202,6 +1203,48 @@ describe('array', ()=>{
             t([3, '1'], [[1, 2], 'str', [null, 4]],
                 [1, 2, 'str', null, 4, 3, '1']);
         });
+    });
+});
+
+describe('rate_limit', ()=>{
+    beforeEach(()=>zsinon.clock_set({now: '2013-08-13', mock: ['Date']}));
+    it('count', ()=>{
+        let rl = {};
+        let t = (_ms, n, exp, exp_count)=>{
+            assert.strictEqual(rate_limit(rl, _ms, n), !!exp);
+            assert.strictEqual(rl.count, exp_count);
+        };
+        t(1000, 2, true, 1);
+        t(1000, 2, true, 2);
+        t(1000, 2, false, 3);
+    });
+    it('ms', ()=>{
+        let rl = {};
+        assert(rate_limit(rl, 1000, 1));
+        assert.strictEqual(rl.count, 1);
+        assert(!rate_limit(rl, 1000, 1));
+        assert.strictEqual(rl.count, 2);
+        zsinon.tick(999);
+        assert(!rate_limit(rl, 1000, 1));
+        assert.strictEqual(rl.count, 3);
+        zsinon.tick(ms.MIN+1);
+        assert(rate_limit(rl, 1000, 1));
+        assert.strictEqual(rl.count, 1);
+    });
+    it('leaky_bucket', ()=>{
+        let b = new rate_limit.leaky_bucket(2, 2/ms.SEC);
+        let t = (tick, val, exp)=>{
+            zsinon.tick(tick);
+            assert.strictEqual(b.inc(val), !!exp);
+        };
+        t(0, 1, true);
+        t(0, 1, true);
+        t(0, 1, false);
+        t(499, 1, false);
+        t(1, 1, true);
+        t(0, 1, false);
+        t(500, 1, true);
+        t(0, 1, false);
     });
 });
 
