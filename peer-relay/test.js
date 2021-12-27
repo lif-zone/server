@@ -230,7 +230,7 @@ class FakeNode extends EventEmitter {
 
 function is_fake(role, p){ return role!=p; }
 
-function asskery_keys(o, keys){
+function assert_keys(o, keys){
   o = assign({}, o);
   keys.forEach(name=>delete o[name]);
   assert.ok(!Object.keys(o).length, 'unknown prop '+JSON.stringify(o));
@@ -256,7 +256,7 @@ function assert_host(host, opts){
 
 function node_new(fake, name, o){
   assert_not_exist(name);
-  asskery_keys(o, ['host', 'port', 'bootstrap']);
+  assert_keys(o, ['host', 'port', 'bootstrap']);
   assert.ok(util.xor(o.host&&o.port, o.bootstrap),
     'host/port or bootstrap '+JSON.stringify(o));
   assert_port(o.port, {optional: true});
