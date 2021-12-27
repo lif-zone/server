@@ -2592,6 +2592,81 @@ describe('events', ()=>{
     });
 });
 
+describe('ztest', ()=>{
+    describe('set', ()=>{
+        let state = {
+            field1: 'a',
+            field2: 'b',
+            field3: 1
+        };
+        describe('inside_describe', ()=>{
+            describe('before', ()=>{
+                ztest.set(state, 'field1', 'A');
+                it('one_field', ()=>assert.strictEqual(state.field1, 'A'));
+                ztest.set(state, 'field4', 'Z');
+                it('add_field', ()=>assert.strictEqual(state.field4, 'Z'));
+                ztest.set(state, {field2: 'C', field3: 'V'});
+                it('several_fields', ()=>{
+                    assert.strictEqual(state.field2, 'C');
+                    assert.strictEqual(state.field3, 'V');
+                });
+            });
+            describe('after', ()=>{
+                it('check', ()=>{
+                    assert(state.field1, 'a');
+                    assert(state.field2, 'b');
+                    assert(!('field4' in state));
+                });
+            });
+        });
+        describe('inside_test', ()=>{
+            it('before', ()=>{
+                ztest.set(state, 'field3', 3);
+                assert.strictEqual(state.field3, 3);
+                ztest.set(state, {field3: 'P', field4: 'O'});
+                assert.strictEqual(state.field3, 'P');
+                assert.strictEqual(state.field4, 'O');
+            });
+            it('after', ()=>{
+                assert.strictEqual(state.field3, 1);
+                assert(!('field4' in state));
+            });
+        });
+        describe('nested_describes', ()=>{
+            ztest.set(state, 'field1', 1);
+            it('check', ()=>assert.strictEqual(state.field1, 1));
+            describe('nested_describe_2', ()=>{
+                ztest.set(state, {field1: 2, field2: 'T'});
+                it('check', ()=>assert.strictEqual(state.field1, 2));
+                describe('nested_describe_3', ()=>{
+                    ztest.set(state, 'field1', 3);
+                    it('inside_test_during_nested_describes', ()=>{
+                        ztest.set(state, {field1: 4, field2: 'G'});
+                        assert.strictEqual(state.field1, 4);
+                        assert.strictEqual(state.field2, 'G');
+                    });
+                });
+            });
+            describe('nested_describes_after', ()=>it('check', ()=>{
+                assert.strictEqual(state.field1, 1);
+                assert.strictEqual(state.field2, 'b');
+            }));
+        });
+    });
+});
+
+describe('zerr', ()=>{
+    describe('catch_unhandled_exception', ()=>{
+        it('no_exception', ()=>{
+            let stub = sinon.stub().returns(3), obj = {};
+            assert.strictEqual(
+                zerr.catch_unhandled_exception(stub, obj)(1, 2), 3);
+            assert(stub.calledOn(obj));
+            assert(stub.calledWithExactly(1, 2));
+        });
+    });
+});
+
 describe('etask', function(){
     ztest.r_push_pop_prop(etask, {use_bt: 1});
     afterEach(()=>ztest.assert_no_etasks());
