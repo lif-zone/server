@@ -4152,7 +4152,6 @@ describe('etask', function(){
             '    sleep.0 1ms\n');
         return et1;
     });
-    if (0) // XXX: ZZZ
     it('ps_spawn', ()=>{
         let finished, et1, et3;
         et1 = etask('et1', [function etask1(){
@@ -4179,7 +4178,8 @@ describe('etask', function(){
             assert_ps_res(et3.stack({TIME: 0}),
                 'et3 Etask.<anonymous> line.0\n'+
                 'SPAWN et2 Etask.etask1 line.0\n'+
-                'RUNNING et1 Context.it line.0\n');
+                // XXX BUG: expected 'RUNNING et1 Context.it line.0\n');
+                'RUNNING et1 Context.<anonymous> line.0\n');
             let sleep = etask.sleep(1);
             assert_ps('r',
                 '|\\_ RUNNING et1.0\n'+
