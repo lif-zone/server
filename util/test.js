@@ -10,6 +10,7 @@ import sprintf from './sprintf.js';
 import zescape from './escape.js';
 import set from './set.js';
 import match from './match.js';
+import events from './events.js';
 import assert from 'assert';
 import zsinon from './sinon.js';
 import sinon from '@hola.org/sinon';
@@ -2288,6 +2289,263 @@ describe('match', function(){
         t([/^test1$/, 'test2'], '(^test1$)|(test2)',
             ['test1', 'test2', '122test2232'], ['test3']);
         t([/a/, /b/, 'c'], '(a)|(b)|(c)', ['a', 'b', 'c'], ['d']);
+    });
+});
+
+describe('events', ()=>{
+    // based on tests of Backbone.Events:
+    // https://github.com/jashkenas/backbone/blob/master/test/events.js
+    it('on_and_trigger', function(){
+        var count = 0, e = new events();
+        e.on('event', function(){ count++; });
+        e.emit('event');
+        assert.equal(count, 1, 'counter should be incremented');
+        e.emit('event');
+        e.emit('event');
+        e.emit('event');
+        e.emit('event');
+        assert.equal(count, 5,
+            'counter should be incremented five times');
+    });
+    it('on_then_unbind_all_functions', function(){
+        var count = 0, e = new events();
+        var cb = function(){ count++; };
+        e.on('event', cb);
+        e.emit('event');
+        e.off('event');
+        e.emit('event');
+        assert.equal(count, 1,
+            'counter should have only been incremented once');
+    });
+    it('bind_two_callbacks_unbind_only_one', function(){
+        var count_a = 0, count_b = 0, e = new events();
+        var cb = function(){ count_a++; };
+        e.on('event', cb);
+        e.on('event', function(){ count_b++; });
+        e.emit('event');
+        e.off('event', cb);
+        e.emit('event');
+        assert.equal(count_a, 1,
+            'count_a should have only been incremented once');
+        assert.equal(count_b, 2,
+            'count_b should have been incremented twice');
+    });
+    it('unbind_a_callback_in_the_midst_of_it_firing', function(){
+        var count = 0, e = new events();
+        var cb = function(){
+            count++;
+            e.off('event', cb);
+        };
+        e.on('event', cb);
+        e.emit('event');
+        e.emit('event');
+        e.emit('event');
+        assert.equal(count, 1, 'the callback should have been unbound');
+    });
+    it('two_binds_that_unbind_themselves', function(){
+        var count_a = 0, count_b = 0, e = new events();
+        var incr_a = function(){
+            count_a++;
+            e.off('event', incr_a);
+        };
+        var incr_b = function(){
+            count_b++;
+            e.off('event', incr_b);
+        };
+        e.on('event', incr_a);
+        e.on('event', incr_b);
+        e.emit('event');
+        e.emit('event');
+        e.emit('event');
+        assert.equal(count_a, 1,
+            'count_a should have only been incremented once');
+        assert.equal(count_b, 1,
+            'count_b should have only been incremented once');
+    });
+    it('bind_a_callback_with_a_default_context_when_none_supplied', function(){
+        var obj = {
+            assert_true: function(){
+                assert.equal(this, e, '"this" was bound to the callback'); }
+        };
+        var e = new events();
+        e.once('event', obj.assert_true);
+        e.emit('event');
+    });
+    it('bind_a_callback_with_a_supplied_context', function(){
+        var test_class = function(){ return this; };
+        test_class.prototype.assert_true = function(){
+            assert.ok(true, '"this" was bound to the callback'); };
+        var e = new events();
+        e.on('event', function(){ this.assert_true(); }, new test_class());
+        e.emit('event');
+    });
+    it('nested_trigger_with_unbind', function(){
+        var count = 0, e = new events();
+        var incr1 = function(){
+            count++;
+            e.off('event', incr1);
+            e.emit('event');
+        };
+        var incr2 = function(){ count++; };
+        e.on('event', incr1);
+        e.on('event', incr2);
+        e.emit('event');
+        assert.equal(count, 3,
+            'counter should have been incremented three times');
+    });
+    it('once', function(){
+        var count = 0;
+        var f = function(){ count++; };
+        var a = new events().once('event', f);
+        var b = new events().on('event', f);
+        a.emit('event');
+        b.emit('event');
+        b.emit('event');
+        assert.equal(count, 3);
+    });
+    // XXX pavlo: should we fix this case in events.js?
+    if (0)
+    it('once_should_not_be_recursive', function(){
+        var count_a = 0, count_b = 0, e = new events();
+        var incr_a = function(){
+            count_a++;
+            e.emit('event');
+        };
+        var incr_b = function(){ count_b++; };
+        e.once('event', incr_a);
+        e.once('event', incr_b);
+        e.emit('event');
+        assert.equal(count_a, 1,
+            'count_a should have only been incremented once');
+        assert.equal(count_b, 1,
+            'count_b should have only been incremented once');
+    });
+    it('once_with_off', function(){
+        var f = function(){ assert.ok(false); };
+        var e = new events();
+        e.once('event', f);
+        e.off('event', f);
+        e.emit('event');
+    });
+    it('off_during_iteration_with_once', function(){
+        var count = 0, e = new events();
+        var f = function(){ this.off('event', f); };
+        e.on('event', f);
+        e.once('event', function(){});
+        e.on('event', function(){ count++; });
+        e.emit('event');
+        e.emit('event');
+        assert.equal(count, 2);
+    });
+    // based on nodejs EventEmitter tests:
+    // https://github.com/nodejs/node/blob/master/test/parallel/test-event-emitter-listeners.js
+    it('listeners_1', ()=>{
+        function listener(){}
+        const e = new events();
+        e.on('foo', listener);
+        const foo_listeners = e.listeners('foo');
+        assert.deepStrictEqual(e.listeners('foo'), [listener]);
+        e.removeAllListeners('foo');
+        assert.deepStrictEqual(e.listeners('foo'), []);
+        assert.deepStrictEqual(foo_listeners, [listener]);
+    });
+    it('listeners_2', ()=>{
+        function listener(){}
+        function listener2(){}
+        const e = new events();
+        e.on('foo', listener);
+        const e_listeners_copy = e.listeners('foo');
+        assert.deepStrictEqual(e_listeners_copy, [listener]);
+        assert.deepStrictEqual(e.listeners('foo'), [listener]);
+        e_listeners_copy.push(listener2);
+        assert.deepStrictEqual(e.listeners('foo'), [listener]);
+        assert.deepStrictEqual(e_listeners_copy, [listener, listener2]);
+    });
+    it('listeners_3', ()=>{
+        function listener(){}
+        function listener2(){}
+        const e = new events();
+        e.on('foo', listener);
+        const e_listeners_copy = e.listeners('foo');
+        e.on('foo', listener2);
+        assert.deepStrictEqual(e.listeners('foo'), [listener, listener2]);
+        assert.deepStrictEqual(e_listeners_copy, [listener]);
+    });
+    it('listeners_4', ()=>{
+        function listener(){}
+        const e = new events();
+        e.once('foo', listener);
+        assert.deepStrictEqual(e.listeners('foo'), [listener]);
+    });
+    it('listeners_5', ()=>{
+        function listener(){}
+        function listener2(){}
+        const e = new events();
+        e.on('foo', listener);
+        e.once('foo', listener2);
+        assert.deepStrictEqual(e.listeners('foo'), [listener, listener2]);
+    });
+    it('listeners_6', ()=>{
+        const e = new events();
+        e._events = null;
+        assert.deepStrictEqual(e.listeners('foo'), []);
+    });
+    it('listeners_7', ()=>{
+        class test_stream extends events {}
+        const s = new test_stream();
+        assert.deepStrictEqual(s.listeners('foo'), []);
+    });
+    it('prepend', ()=>{
+        const e = new events();
+        let m = 0, called1, called2, called3;
+        // this one comes last
+        e.on('foo', ()=>{
+            called1 = true;
+            assert.strictEqual(m, 2);
+        });
+        // this one comes second
+        e.prependListener('foo', ()=>{
+            called2 = true;
+            assert.strictEqual(m++, 1);
+        });
+        // this one comes first
+        e.prependOnceListener('foo', ()=>{
+            called3 = true;
+            assert.strictEqual(m++, 0);
+        });
+        e.emit('foo');
+        assert(called1 && called2 && called3);
+    });
+    it('single_cb_on_and_once', ()=>{
+        let e = new events(), calls = 0;
+        function cb(){ calls++; }
+        e.once('a', cb);
+        e.on('a', cb);
+        e.emit('a');
+        e.emit('a');
+        assert.equal(calls, 3);
+    });
+    it('single_cb_multiple_ctx', ()=>{
+        let e = new events(), ctx1 = {ctx1: true}, ctx2 = {ctx2: true};
+        let queue = [ctx1, ctx2];
+        function cb(){ assert.strictEqual(this, queue.shift()); }
+        e.on('a', cb, ctx1);
+        e.on('a', cb, ctx2);
+        e.emit('a');
+    });
+    it('event_names', ()=>{
+        let e = new events();
+        assert.deepStrictEqual(e.eventNames(), []);
+        let onfoo = ()=>{};
+        e.on('foo', onfoo);
+        assert.deepStrictEqual(e.eventNames(), ['foo']);
+        let onbar = ()=>{};
+        e.on('bar', onbar);
+        assert.deepStrictEqual(e.eventNames().sort(), ['bar', 'foo']);
+        e.off('foo', onfoo);
+        assert.deepStrictEqual(e.eventNames(), ['bar']);
+        e.off('bar', onbar);
+        assert.deepStrictEqual(e.eventNames(), []);
     });
 });
 
