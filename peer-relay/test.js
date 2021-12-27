@@ -10,6 +10,7 @@ import util from '../util/util.js';
 import date from '../util/date.js';
 import ws_util from '../util/ws.js';
 import ztest from '../util/ztest.js';
+import etask from '../util/etask.js';
 const zetask = ztest.etask;
 
 // XXX: make it automatic for all node/browser
@@ -512,7 +513,7 @@ describe('peer-relay', function(){
   });
   this.timeout(2*t_timeout);
   it('basic', ()=>zetask(function*(){
-    const t = async(role, test)=>await test_run(role, test);
+    const t = (role, test)=>etask(function*(){ return test_run(role, test); });
     yield t('s', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
       a=node_new(bootstrap:s) as>connect(ws:4000) as>findPeers(a)`);
     yield t('a', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
