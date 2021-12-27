@@ -1,4 +1,4 @@
-'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
+'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach*/
 // XXX: need jslint mocha: true
 import assert from 'assert';
 import _wrtc from 'electron-webrtc'; // XXX: rm
@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import {EventEmitter} from 'events';
 import Node from './client.js';
 import util from '../util/util.js';
+import zurl from '../util/url.js';
 import date from '../util/date.js';
 import ws_util from '../util/ws.js';
 import ztest from '../util/ztest.js';
@@ -229,22 +230,38 @@ class FakeNode extends EventEmitter {
 
 function is_fake(role, p){ return role!=p; }
 
-function assert_only(o, keys){
+function asskery_keys(o, keys){
   o = assign({}, o);
   keys.forEach(name=>delete o[name]);
   assert.ok(!Object.keys(o).length, 'unknown prop '+JSON.stringify(o));
 }
 
 function assert_node_not_exist(name){
-  assert.ok(!t_nodes[name], 'node already exist '+name);
+  assert.ok(!t_nodes[name], 'node already exist '+name); }
+
+function assert_port(port, opts){
+  opts = opts||{};
+  if (opts.optinal && port===undefined)
+    return;
+  assert.ok(/[0-9]+/.test(port), 'invalid port '+port);
+  port = +port;
+  assert.ok(port>0 && port<65535, 'invalid port '+port);
 }
 
+function assert_host(host, opts){
+  opts = opts||{};
+  if (opts.optinal && host===undefined)
+    return;
+  assert.ok(zurl.is_valid_domain(host), 'invalid host '+host); }
+
 function node_new(fake, name, o){
-  assert_only(o, ['host', 'port', 'bootstrap']);
   assert_node_not_exist(name);
-  assert.ok(util.xor(o.host||o.port, o.bootstrap),
+  asskery_keys(o, ['host', 'port', 'bootstrap']);
+  assert_node_not_exist(name);
+  assert.ok(util.xor(o.host&&o.port, o.bootstrap),
     'must specify host/port or bootstrap '+JSON.stringify(o));
-  // XXX: validate arguments o in a loop
+  assert_port(o.port, {optinal: true});
+  assert_host(o.host, {optinal: true});
   o = assign({}, o);
   // XXX: wrap fixing arguments to plugin
   if (o.bootstrap) // XXX: support array

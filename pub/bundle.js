@@ -64666,10 +64666,7 @@ var _https = _interopRequireDefault(require("https"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
-var debug = (0, _debug2["default"])('peer-relay:ws');
-var WS = _ws["default"].WS;
-var WebSocketServer = _ws["default"].WebSocketServer;
-var WebSocket = getWebSocket(); // XXX HACK: need to add root ca certificate
+var debug = (0, _debug2["default"])('peer-relay:ws'); // XXX HACK: need to add root ca certificate
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 var _default = WsConnector;
@@ -64694,8 +64691,9 @@ function WsConnector(id, port, host) {
       cert: _fs["default"].readFileSync('/var/lif/ssl/STAR_lif_zone.crt')
     };
     self.https_server = _https["default"].createServer(https_opts).listen(port, '0.0.0.0');
-    self._wss = new WebSocketServer({
-      server: self.https_server
+    self._wss = new _ws["default"].WebSocketServer({
+      server: self.https_server,
+      port: port
     });
 
     self._wss.on('connection', onConnection);
@@ -64725,7 +64723,7 @@ function WsConnector(id, port, host) {
 WsConnector.prototype.connect = function (url) {
   var self = this;
 
-  self._onConnection(new WebSocket(url));
+  self._onConnection(getWebSocket(url));
 };
 
 WsConnector.prototype._onConnection = function (ws) {
@@ -64884,9 +64882,10 @@ WsChannel.prototype.destroy = function () {
   self.emit('close');
 };
 
-function getWebSocket() {
-  if (typeof window !== 'undefined' && window.WebSocket) return window.WebSocket;
-  return WS;
+function getWebSocket(url) {
+  // XXX: rm special handling for browser
+  if (typeof window !== 'undefined' && window.WebSocket) return new window.WebSocket(url);
+  return new _ws["default"].WS(url);
 }
 
 }).call(this)}).call(this,require('_process'),require("buffer").Buffer)
@@ -65249,6 +65248,7 @@ function peer_relay_init() {
 init();
 
 },{"../lib/debug.js":1,"../peer-relay/client.js":284,"../util/date.js":289,"../util/util.js":290,"crypto":79,"query-string":189,"react":201,"react-dom":198,"simple-peer":219}],289:[function(require,module,exports){
+(function (process,global){(function (){
 'use strict';
 /*jslint node:true*/
 
@@ -65256,19 +65256,148 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports["default"] = void 0;
-var E = {};
+
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
+
+var E = date_get;
 var _default = E;
 exports["default"] = _default;
-E.months_long = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-E.months_short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-var months_short_lc = E.months_short.map(function (m) {
-  return m.toLowerCase();
-});
+var is_node = typeof window === 'undefined';
+E.sec = {
+  NANO: 1 / 1e9,
+  MS: 0.001,
+  SEC: 1,
+  MIN: 60,
+  HOUR: 60 * 60,
+  DAY: 24 * 60 * 60,
+  WEEK: 7 * 24 * 60 * 60,
+  MONTH: 30 * 24 * 60 * 60,
+  YEAR: 365 * 24 * 60 * 60
+};
+E.ms = {};
+
+for (var key in E.sec) {
+  E.ms[key] = E.sec[key] * 1000;
+}
+
+var ms = E.ms;
 
 function pad(num, size) {
   return ('000' + num).slice(-size);
 }
 
+E.ms_to_dur = function (_ms) {
+  var s = '',
+      sec = Math.floor(_ms / 1000);
+
+  if (sec < 0) {
+    s += '-';
+    sec = -sec;
+  }
+
+  var days = Math.floor(sec / (60 * 60 * 24));
+  sec -= days * 60 * 60 * 24;
+  var hours = Math.floor(sec / (60 * 60));
+  sec -= hours * 60 * 60;
+  var mins = Math.floor(sec / 60);
+  sec -= mins * 60;
+  if (days) s += days + ' ' + (days > 1 ? 'Days' : 'Day') + ' ';
+  return s + pad(hours, 2) + ':' + pad(mins, 2) + ':' + pad(sec, 2);
+};
+
+E.dur_to_str = function (dur, opt) {
+  opt = opt || {};
+  var parts = [];
+  dur = +dur;
+
+  function chop(period, name) {
+    if (dur < period) return;
+    var number = Math.floor(dur / period);
+    parts.push(number + name);
+    dur -= number * period;
+  }
+
+  chop(ms.YEAR, 'y');
+  chop(ms.MONTH, 'mo');
+  if (opt.week) chop(ms.WEEK, 'w');
+  chop(ms.DAY, 'd');
+  chop(ms.HOUR, 'h');
+  chop(ms.MIN, 'min');
+  chop(ms.SEC, 's');
+  if (dur) parts.push(dur + 'ms');
+  if (!parts.length) return '0s';
+  return parts.slice(0, opt.units || parts.length).join(opt.sep || '');
+};
+
+E.monotonic = undefined;
+
+E.init = function () {
+  var adjust, last;
+
+  if ((typeof window === "undefined" ? "undefined" : _typeof(window)) == 'object' && window.performance && window.performance.now) {
+    // 10% slower than Date.now, but always monotonic
+    adjust = Date.now() - window.performance.now();
+
+    E.monotonic = function () {
+      return window.performance.now() + adjust;
+    };
+  } else if (is_node && !global.mocha_running) {
+    var now_fn = function now_fn() {
+      var data = process.hrtime();
+      var seconds = data[0],
+          nanos = data[1];
+      return Math.floor(seconds * E.ms.SEC + nanos * E.ms.NANO);
+    };
+
+    adjust = Date.now() - now_fn();
+
+    E.monotonic = function () {
+      return now_fn() + adjust;
+    };
+  } else {
+    last = adjust = 0;
+
+    E.monotonic = function () {
+      var now = Date.now() + adjust;
+      if (now >= last) return last = now;
+      adjust += last - now;
+      return last;
+    };
+  }
+};
+
+E.init();
+
+E.str_to_dur = function (str, opt) {
+  opt = opt || {};
+  var month = 'mo|mon|months?';
+  if (opt.short_month) month += '|m';
+  var m = str.replace(/ /g, '').match(new RegExp('^(([0-9]+)y(ears?)?)?' + '(([0-9]+)(' + month + '))?(([0-9]+)w(eeks?)?)?(([0-9]+)d(ays?)?)?' + '(([0-9]+)h(ours?)?)?(([0-9]+)(min|minutes?))?' + '(([0-9]+)s(ec|econds?)?)?(([0-9]+)ms(ec)?)?$', 'i'));
+  if (!m) return;
+  return ms.YEAR * (+m[2] || 0) + ms.MONTH * (+m[5] || 0) + ms.WEEK * (+m[8] || 0) + ms.DAY * (+m[11] || 0) + ms.HOUR * (+m[14] || 0) + ms.MIN * (+m[17] || 0) + ms.SEC * (+m[20] || 0) + (+m[23] || 0);
+};
+
+E.months_long = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+E.months_short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var months_short_lc = E.months_short.map(function (m) {
+  return m.toLowerCase();
+});
+E.days_long = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+E.days_short = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var days_short_lc = E.days_short.map(function (d) {
+  return d.toLowerCase();
+});
+var days_long_lc = E.days_long.map(function (d) {
+  return d.toLowerCase();
+});
+E.locale = {
+  months_long: E.months_long,
+  months_short: E.months_short,
+  days_long: E.days_long,
+  days_short: E.days_short,
+  AM: 'AM',
+  PM: 'PM'
+};
 E.get = date_get;
 
 function date_get(d, _new) {
@@ -65341,18 +65470,653 @@ E.to_time_ms = function (d) {
   d = E.get(d);
   if (isNaN(d)) return '00:00:00.000';
   return pad(d.getUTCHours(), 2) + ':' + pad(d.getUTCMinutes(), 2) + ':' + pad(d.getUTCSeconds(), 2) + '.' + pad(d.getUTCMilliseconds(), 3);
-}; // XXX: add test, optimize for node
-
-
-E.monotonic = function () {
-  var now = Date.now(),
-      last = E.monotonic.last || 0;
-  if (now < last) now = last;
-  last = now;
-  return now;
 };
 
-},{}],290:[function(require,module,exports){
+E.from_sql = E.get;
+
+E.to_month_short = function (d) {
+  d = E.get(d);
+  return E.months_short[d.getUTCMonth()];
+};
+
+E.to_month_long = function (d) {
+  d = E.get(d);
+  return E.months_long[d.getUTCMonth()];
+}; // timestamp format (used by tickets, etc). dates before 2000 not supported
+
+
+E.to_jdate = function (d) {
+  d = E.get(d);
+  return (pad(d.getUTCDate(), 2) + '-' + E.months_short[d.getUTCMonth()] + '-' + pad(d.getUTCFullYear() % 100, 2) + ' ' + pad(d.getUTCHours(), 2) + ':' + pad(d.getUTCMinutes(), 2) + ':' + pad(d.getUTCSeconds(), 2)).replace(/( 00:00)?:00$/, '');
+}; // used in log file names
+
+
+E.to_log_file = function (d) {
+  d = E.get(d);
+  return d.getUTCFullYear() + pad(d.getUTCMonth() + 1, 2) + pad(d.getUTCDate(), 2) + '_' + pad(d.getUTCHours(), 2) + pad(d.getUTCMinutes(), 2) + pad(d.getUTCSeconds(), 2);
+};
+
+E.from_log_file = function (d) {
+  var m = d.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/);
+  if (!m) return;
+  return new Date(Date.UTC(m[1], m[2] - 1, m[3], m[4], m[5], m[6]));
+}; // zerr compatible timestamp format
+
+
+E.to_log_ms = function (d) {
+  return E.to_sql_ms(d).replace(/-/g, '.');
+};
+
+E.from_rcs = function (d) {
+  var m = d.match(/^(\d{4})\.(\d{2})\.(\d{2})\.(\d{2})\.(\d{2})\.(\d{2})$/);
+  if (!m) return;
+  return new Date(Date.UTC(m[1], m[2] - 1, m[3], m[4], m[5], m[6]));
+};
+
+E.to_rcs = function (d) {
+  return E.to_sql_sec(d).replace(/[-: ]/g, '.');
+};
+
+E.align = function (d, align) {
+  d = E.get(d, 1);
+
+  switch (align.toUpperCase()) {
+    case 'MS':
+      break;
+
+    case 'SEC':
+      d.setUTCMilliseconds(0);
+      break;
+
+    case 'MIN':
+      d.setUTCSeconds(0, 0);
+      break;
+
+    case 'HOUR':
+      d.setUTCMinutes(0, 0, 0);
+      break;
+
+    case 'DAY':
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+
+    case 'WEEK':
+      d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+
+    case 'MONTH':
+      d.setUTCDate(1);
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+
+    case 'YEAR':
+      d.setUTCMonth(0, 1);
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+
+    default:
+      throw new Error('invalid align ' + align);
+  }
+
+  return d;
+};
+
+E.add = function (d, dur) {
+  d = E.get(d, 1);
+  dur = normalize_dur(dur);
+  if (dur.year) d.setUTCFullYear(d.getUTCFullYear() + dur.year);
+  if (dur.month) d.setUTCMonth(d.getUTCMonth() + dur.month);
+  ['day', 'hour', 'min', 'sec', 'ms'].forEach(function (key) {
+    if (dur[key]) d.setTime(+d + dur[key] * ms[key.toUpperCase()]);
+  });
+  return d;
+};
+
+function normalize_dur(dur) {
+  var aliases = {
+    years: 'year',
+    months: 'month',
+    days: 'day',
+    hours: 'hour',
+    minutes: 'min',
+    minute: 'min',
+    mins: 'min',
+    seconds: 'sec',
+    second: 'sec',
+    secs: 'sec',
+    y: 'year',
+    mo: 'month',
+    d: 'day',
+    h: 'hour',
+    m: 'min',
+    s: 'sec'
+  };
+  var norm = {};
+
+  for (var k in dur) {
+    norm[aliases[k] || k] = dur[k];
+  }
+
+  return norm;
+}
+
+E.describe_interval = function (_ms) {
+  return _ms < 2 * ms.MIN ? Math.round(_ms / ms.SEC) + ' sec' : _ms < 2 * ms.HOUR ? Math.round(_ms / ms.MIN) + ' min' : _ms < 2 * ms.DAY ? Math.round(_ms / ms.HOUR) + ' hours' : _ms < 2 * ms.WEEK ? Math.round(_ms / ms.DAY) + ' days' : _ms < 2 * ms.MONTH ? Math.round(_ms / ms.WEEK) + ' weeks' : _ms < 2 * ms.YEAR ? Math.round(_ms / ms.MONTH) + ' months' : Math.round(_ms / ms.YEAR) + ' years';
+};
+
+E.time_ago = function (d, until_date) {
+  var _ms = E.get(until_date) - E.get(d);
+
+  if (_ms < ms.SEC) return 'right now';
+  return E.describe_interval(_ms) + ' ago';
+};
+
+E.ms_to_str = function (_ms) {
+  var s = '' + _ms;
+  return s.length <= 3 ? s + 'ms' : s.slice(0, -3) + '.' + s.slice(-3) + 's';
+};
+
+E.parse = function (text, opt) {
+  opt = opt || {};
+  if (opt.fmt) return E.strptime(text, opt.fmt);
+
+  var d,
+      a,
+      i,
+      v,
+      _v,
+      dir,
+      _dir,
+      amount,
+      now = opt.now;
+
+  now = !now ? new Date() : new Date(now);
+  text = text.replace(/\s+/g, ' ').trim().toLowerCase();
+  if (!text) return;
+  if (text == 'now') return now;
+  if (!isNaN(d = E.get(text))) return d;
+  d = now;
+  a = text.split(' ');
+  dir = a.includes('ago') ? -1 : a.includes('last') ? -1 : a.includes('next') ? 1 : undefined;
+
+  for (i = 0; i < a.length; i++) {
+    v = a[i];
+    if (/^(ago|last|next)$/.test(v)) ;else if (v == 'today') d = E.align(d, 'DAY');else if (v == 'yesterday') d = E.align(+d - ms.DAY, 'DAY');else if (v == 'tomorrow') d = E.align(+d + ms.DAY, 'DAY');else if ((_v = days_short_lc.indexOf(v)) >= 0) d = new Date(+E.align(d, 'WEEK') + _v * ms.DAY + (dir || 0) * ms.WEEK);else if ((_v = days_long_lc.indexOf(v)) >= 0) d = new Date(+E.align(d, 'WEEK') + _v * ms.DAY + (dir || 0) * ms.WEEK);else if (_v = /^([+-]?\d+)(?:([ymoinwdhs]+)(\d.*)?)?$/.exec(v)) {
+      if (amount !== undefined) return;
+      amount = dir !== undefined ? Math.abs(+_v[1]) : +_v[1];
+
+      if (_v[2]) {
+        a.splice(i + 1, 0, _v[2]);
+        if (_v[3]) a.splice(i + 2, 0, _v[3]);
+      }
+
+      continue;
+    } else if (/^([ywdhs]|years?|months?|mon?|weeks?|days?|hours?|minutes?|min|seconds?|sec)$/.test(v)) {
+      _v = v[0] == 'm' && v[1] == 'i' ? ms.MIN : v[0] == 'y' ? ms.YEAR : v[0] == 'm' && v[1] == 'o' ? ms.MONTH : v[0] == 'w' ? ms.WEEK : v[0] == 'd' ? ms.DAY : v[0] == 'h' ? ms.HOUR : ms.SEC;
+      amount = amount === undefined ? 1 : amount;
+      _dir = dir === undefined ? opt.dir || 1 : dir;
+      if (_v == ms.MONTH) d.setUTCMonth(d.getUTCMonth() + _dir * amount);else if (_v == ms.YEAR) d.setUTCFullYear(d.getUTCFullYear() + _dir * amount);else d = new Date(+d + _v * amount * _dir);
+      amount = undefined;
+    } else return;
+    if (amount !== undefined) return;
+  }
+
+  if (amount !== undefined) return;
+  return d;
+};
+
+E.strptime = function (str, fmt) {
+  function month(m) {
+    return months_short_lc.indexOf(m.toLowerCase());
+  }
+
+  var parse = {
+    '%': ['%', function () {}, 0],
+    a: ['[a-z]+', function (m) {}, 0],
+    A: ['[a-z]+', function (m) {}, 0],
+    b: ['[a-z]+', function (m) {
+      d.setUTCMonth(month(m));
+    }, 2],
+    B: ['[a-z]+', function (m) {
+      d.setUTCMonth(month(m));
+    }, 2],
+    y: ['[0-9]{2}', function (m) {
+      d.setUTCFullYear(+m + (m < 70 ? 2000 : 1900));
+    }, 1],
+    Y: ['[0-9]{4}', function (m) {
+      d.setUTCFullYear(+m);
+    }, 1],
+    m: ['[0-9]{0,2}', function (m) {
+      d.setUTCMonth(+m - 1);
+    }, 2],
+    d: ['[0-9]{0,2}', function (m) {
+      d.setUTCDate(+m);
+    }, 3],
+    H: ['[0-9]{0,2}', function (m) {
+      d.setUTCHours(+m);
+    }, 4],
+    M: ['[0-9]{0,2}', function (m) {
+      d.setUTCMinutes(+m);
+    }, 5],
+    S: ['[0-9]{0,2}', function (m) {
+      d.setUTCSeconds(+m);
+    }, 6],
+    s: ['[0-9]+', function (m) {
+      d = new Date(+m);
+    }, 0],
+    L: ['[0-9]{0,3}', function (m) {
+      d.setUTCMilliseconds(+m);
+    }, 7],
+    z: ['[+-][0-9]{4}', function (m) {
+      var timezone = +m.slice(0, 3) * 3600 + m.slice(3, 5) * 60;
+      d = new Date(+d - timezone * 1000);
+    }, 8],
+    Z: ['[a-z]{0,3}[+-][0-9]{2}:?[0-9]{2}|[a-z]{1,3}', function (m) {
+      m = /^([a-z]{0,3})(?:([+-][0-9]{2}):?([0-9]{2}))?$/i.exec(m);
+      if (m[1] == 'Z' || m[1] == 'UTC') return;
+      var timezone = +m[2] * 3600 + m[3] * 60;
+      d = new Date(+d - timezone * 1000);
+    }, 8],
+    I: ['[0-9]{0,2}', function (m) {
+      d.setUTCHours(+m);
+    }, 4],
+    p: ['AM|PM', function (m) {
+      if (d.getUTCHours() == 12) d.setUTCHours(d.getUTCHours() - 12);
+      if (m.toUpperCase() == 'PM') d.setUTCHours(d.getUTCHours() + 12);
+    }, 9]
+  };
+  var ff = [];
+  var ff_idx = [];
+  var re = new RegExp('^\\s*' + fmt.replace(/%(?:([a-zA-Z%]))/g, function (_, fd) {
+    var d = parse[fd];
+    if (!d) throw Error('Unknown format descripter: ' + fd);
+    ff_idx[d[2]] = ff.length;
+    ff.push(d[1]);
+    return '(' + d[0] + ')';
+  }) + '\\s*$', 'i');
+  var matched = str.match(re);
+  if (!matched) return;
+  var d = new Date(0);
+
+  for (var i = 0; i < ff_idx.length; i++) {
+    var idx = ff_idx[i];
+    var fun = ff[idx];
+    if (fun) fun(matched[idx + 1]);
+  }
+
+  return d;
+}; // tz in format shh:mm (for exmpl +01:00, -03:45)
+
+
+E.apply_tz = function (date, tz) {
+  var timezone = +tz.slice(1, 3) * 3600000 + tz.slice(4, 6) * 60000;
+  var sign = tz.slice(0, 1) == '+' ? 1 : -1;
+  return new Date(date.getTime() + sign * timezone);
+};
+
+var utc_local = {
+  local: {
+    getSeconds: function getSeconds(d) {
+      return d.getSeconds();
+    },
+    getMinutes: function getMinutes(d) {
+      return d.getMinutes();
+    },
+    getHours: function getHours(d) {
+      return d.getHours();
+    },
+    getDay: function getDay(d) {
+      return d.getDay();
+    },
+    getDate: function getDate(d) {
+      return d.getDate();
+    },
+    getMonth: function getMonth(d) {
+      return d.getMonth();
+    },
+    getFullYear: function getFullYear(d) {
+      return d.getFullYear();
+    },
+    getYearBegin: function getYearBegin(d) {
+      return new Date(d.getFullYear(), 0, 1);
+    }
+  },
+  utc: {
+    getSeconds: function getSeconds(d) {
+      return d.getUTCSeconds();
+    },
+    getMinutes: function getMinutes(d) {
+      return d.getUTCMinutes();
+    },
+    getHours: function getHours(d) {
+      return d.getUTCHours();
+    },
+    getDay: function getDay(d) {
+      return d.getUTCDay();
+    },
+    getDate: function getDate(d) {
+      return d.getUTCDate();
+    },
+    getMonth: function getMonth(d) {
+      return d.getUTCMonth();
+    },
+    getFullYear: function getFullYear(d) {
+      return d.getUTCFullYear();
+    },
+    getYearBegin: function getYearBegin(d) {
+      return new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    }
+  }
+};
+
+E.strftime = function (fmt, d, opt) {
+  function hours12(hours) {
+    return hours == 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  }
+
+  function ord_str(n) {
+    var i = n % 10,
+        ii = n % 100;
+    if (ii >= 11 && ii <= 13 || i == 0 || i >= 4) return 'th';
+
+    switch (i) {
+      case 1:
+        return 'st';
+
+      case 2:
+        return 'nd';
+
+      case 3:
+        return 'rd';
+    }
+  }
+
+  function week_num(l, d, first_weekday) {
+    // This works by shifting the weekday back by one day if we
+    // are treating Monday as the first day of the week.
+    var wday = l.getDay(d);
+    if (first_weekday == 'monday') wday = wday == 0
+    /* Sunday */
+    ? wday = 6 : wday - 1;
+    var yday = (d - l.getYearBegin(d)) / ms.DAY;
+    return Math.floor((yday + 7 - wday) / 7);
+  } // Default padding is '0' and default length is 2, both are optional.
+
+
+  function padx(n, padding, length) {
+    // padx(n, <length>)
+    if (typeof padding == 'number') {
+      length = padding;
+      padding = '0';
+    } // Defaults handle padx(n) and padx(n, <padding>)
+
+
+    if (padding === undefined) padding = '0';
+    length = length || 2;
+    var s = '' + n; // padding may be an empty string, don't loop forever if it is
+
+    if (padding) for (; s.length < length; s = padding + s) {
+      ;
+    }
+    return s;
+  }
+
+  opt = opt || {};
+  d = E.get(d);
+  var locale = opt.locale || E.locale;
+  var formats = locale.formats || {};
+  var tz = opt.timezone;
+  var utc = opt.utc !== undefined ? opt.utc : opt.local !== undefined ? !opt.local : true;
+
+  if (tz != null) {
+    utc = true; // ISO 8601 format timezone string, [-+]HHMM
+    // Convert to the number of minutes and it'll be applied to the date
+    // below.
+
+    if (typeof tz == 'string') {
+      var sign = tz[0] == '-' ? -1 : 1;
+      var hours = parseInt(tz.slice(1, 3), 10);
+      var mins = parseInt(tz.slice(3, 5), 10);
+      tz = sign * (60 * hours + mins);
+    }
+
+    if (typeof tz == 'number') d = new Date(+d + tz * 60000);
+  }
+
+  var l = utc ? utc_local.utc : utc_local.local; // Most of the specifiers supported by C's strftime, and some from Ruby.
+  // Some other syntax extensions from Ruby are supported: %-, %_, and %0
+  // to pad with nothing, space, or zero (respectively).
+
+  function replace(fmt) {
+    return fmt.replace(/%([-_0]?.)/g, function (_, c) {
+      var mod, padding, day;
+
+      if (c.length == 2) {
+        mod = c[0];
+        if (mod == '-') // omit padding
+          padding = '';else if (mod == '_') // pad with space
+          padding = ' ';else if (mod == '0') // pad with zero
+          padding = '0';else // unrecognized, return the format
+          return _;
+        c = c[1];
+      }
+
+      switch (c) {
+        // Examples for new Date(0) in GMT
+        case 'A':
+          return locale.days_long[l.getDay(d)];
+        // 'Thursday'
+
+        case 'a':
+          return locale.days_short[l.getDay(d)];
+        // 'Thu'
+
+        case 'B':
+          return locale.months_long[l.getMonth(d)];
+        // 'January'
+
+        case 'b':
+          return locale.months_short[l.getMonth(d)];
+        // 'Jan'
+
+        case 'C':
+          // '19'
+          return padx(Math.floor(l.getFullYear(d) / 100), padding);
+
+        case 'D':
+          return replace(formats.D || '%m/%d/%y');
+        // '01/01/70'
+
+        case 'd':
+          return padx(l.getDate(d), padding);
+        // '01'
+
+        case 'e':
+          return l.getDate(d);
+        // '01'
+
+        case 'F':
+          return replace(formats.F || '%Y-%m-%d');
+        // '1970-01-01'
+
+        case 'H':
+          return padx(l.getHours(d), padding);
+        // '00'
+
+        case 'h':
+          return locale.months_short[l.getMonth(d)];
+        // 'Jan'
+
+        case 'I':
+          return padx(hours12(l.getHours(d)), padding);
+        // '12'
+
+        case 'j':
+          // '000'
+          day = Math.ceil((+d - l.getYearBegin(d)) / (1000 * 60 * 60 * 24));
+          return pad(day, 3);
+
+        case 'k':
+          // ' 0'
+          return padx(l.getHours(d), padding === undefined ? ' ' : padding);
+
+        case 'L':
+          return pad(Math.floor(d.getMilliseconds()), 3);
+        // '000'
+
+        case 'l':
+          // '12'
+          return padx(hours12(l.getHours(d)), padding === undefined ? ' ' : padding);
+
+        case 'M':
+          return padx(l.getMinutes(d), padding);
+        // '00'
+
+        case 'm':
+          return padx(l.getMonth(d) + 1, padding);
+        // '01'
+
+        case 'n':
+          return '\n';
+        // '\n'
+
+        case 'o':
+          return '' + l.getDate(d) + ord_str(l.getDate(d));
+        // '1st'
+
+        case 'P':
+          // 'am'
+          return (l.getHours(d) < 12 ? locale.AM : locale.PM).toLowerCase();
+
+        case 'p':
+          return l.getHours(d) < 12 ? locale.AM : locale.PM;
+        // 'AM'
+
+        case 'R':
+          return replace(formats.R || '%H:%M');
+        // '00:00'
+
+        case 'r':
+          return replace(formats.r || '%I:%M:%S %p');
+        // '12:00:00 AM'
+
+        case 'S':
+          return padx(l.getSeconds(d), padding);
+        // '00'
+
+        case 's':
+          return Math.floor(+d / 1000);
+        // '0'
+
+        case 'T':
+          return replace(formats.T || '%H:%M:%S');
+        // '00:00:00'
+
+        case 't':
+          return '\t';
+        // '\t'
+
+        case 'U':
+          return padx(week_num(l, d, 'sunday'), padding);
+        // '00'
+
+        case 'u':
+          // '4'
+          day = l.getDay(d); // 1 - 7, Monday is first day of the week
+
+          return day == 0 ? 7 : day;
+
+        case 'v':
+          return replace(formats.v || '%e-%b-%Y');
+        // '1-Jan-1970'
+
+        case 'W':
+          return padx(week_num(l, d, 'monday'), padding);
+        // '00'
+
+        case 'w':
+          return l.getDay(d);
+        // '4'. 0 Sunday - 6 Saturday
+
+        case 'Y':
+          return l.getFullYear(d);
+        // '1970'
+
+        case 'y':
+          return ('' + l.getFullYear(d)).slice(-2);
+        // '70'
+
+        case 'Z':
+          // 'GMT'
+          if (utc) return 'GMT';
+          var tz_string = d.toString().match(/\((\w+)\)/);
+          return tz_string && tz_string[1] || '';
+
+        case 'z':
+          // '+0000'
+          if (utc) return '+0000';
+          var off = typeof tz == 'number' ? tz : -d.getTimezoneOffset();
+          return (off < 0 ? '-' : '+') + pad(Math.abs(Math.trunc(off / 60)), 2) + pad(off % 60, 2);
+
+        default:
+          return c;
+      }
+    });
+  }
+
+  return replace(fmt);
+}; // For a string like '11:00-23:30', returns a function that checks whether a
+// given date (moment in time) belongs to the set.
+// Syntax notes:
+// * ':00' is optional: '11-23'
+// * several intervals: '12-14 16-18'
+// * '10-12' includes exact 10:00 but excludes exact 12:00
+// * 24:00 is the same as 0:00, 25:00 is the same as 1:00, etc
+// * intervals wrap around midnight: '23-7' is the same as '23-24 0-7'
+// * therefore, '0-0' and '0-24' include all times
+// * all times are assumed in UTC
+
+
+E.compile_schedule = function (expr) {
+  var re = /^(\d\d?)(?::(\d\d?))?-(\d\d?)(?::(\d\d?))?$/;
+  var parts = expr.split(/\s+/);
+  var intervals = [];
+
+  for (var i = 0; i < parts.length; i++) {
+    if (!parts[i]) continue;
+    var m = re.exec(parts[i]);
+    if (!m) throw new Error('Schedule syntax error: ' + expr);
+    var from = m[1] * ms.HOUR,
+        to = m[3] * ms.HOUR;
+    if (m[2]) from += m[2] * ms.MIN;
+    if (m[4]) to += m[4] * ms.MIN;
+    intervals.push({
+      from: from % ms.DAY,
+      to: to % ms.DAY
+    });
+  }
+
+  return function (d) {
+    var t = E.get(d) % ms.DAY;
+
+    for (var i = 0; i < intervals.length; i++) {
+      var interval = intervals[i];
+
+      if (interval.from < interval.to) {
+        if (t >= interval.from && t < interval.to) return true;
+      } else {
+        if (t < interval.to || t >= interval.from) return true;
+      }
+    }
+
+    return false;
+  };
+};
+
+}).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"_process":181}],290:[function(require,module,exports){
+(function (process,global){(function (){
 'use strict';
 /*jslint node:true*/
 
@@ -65363,10 +66127,15 @@ exports["default"] = void 0;
 
 var _buffer = require("buffer");
 
+var _util = _interopRequireDefault(require("util"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+
 function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 
+var is_node = typeof window === 'undefined';
 var E = {};
-var _default = E; // XXX: add test, optimize for node
+var _default = E; // XXX: rm, use date.monotonic
 
 exports["default"] = _default;
 
@@ -65376,7 +66145,7 @@ E.monotonic = function () {
   if (now < last) now = last;
   last = now;
   return now;
-}; // XXX: use etask
+}; // XXX: rm, use etask
 
 
 E.sleep = function (ms) {
@@ -65385,7 +66154,7 @@ E.sleep = function (ms) {
     return wait["continue"]();
   }, ms);
   return wait;
-}; // XXX: use etask
+}; // XXX: rm, use etask
 
 
 E.wait = function () {
@@ -65404,6 +66173,379 @@ E.wait = function () {
   };
 
   return p;
+};
+
+E.buf_to_str = function (b) {
+  return b ? b.toString('hex') : '';
+};
+
+E.buf_from_str = function (s) {
+  return _buffer.Buffer.from(s, 'hex');
+};
+
+E._is_mocha = undefined;
+
+E.is_mocha = function () {
+  if (E._is_mocha !== undefined) return E._is_mocha;
+  E._is_mocha = ['afterEach', 'after', 'beforeEach', 'before', 'describe', 'it'].every(function (name) {
+    return global[name] instanceof Function;
+  });
+  return E._is_mocha;
+};
+
+E.is_lxc = function () {
+  return is_node && +process.env.LXC;
+};
+
+E.f_mset = function (flags, mask, bits) {
+  return flags & ~mask | bits;
+};
+
+E.f_lset = function (flags, bits, logic) {
+  return E.f_mset(flags, bits, logic ? bits : 0);
+};
+
+E.f_meq = function (flags, mask, bits) {
+  return (flags & mask) == bits;
+};
+
+E.f_eq = function (flags, bits) {
+  return (flags & bits) == bits;
+};
+
+E.f_cmp = function (f1, f2, mask) {
+  return (f1 & mask) == (f2 & mask);
+};
+
+E.xor = function (a, b) {
+  return !a != !b;
+};
+
+E.div_ceil = function (a, b) {
+  return Math.floor((a + b - 1) / b);
+};
+
+E.ceil_mul = function (a, b) {
+  return E.div_ceil(a, b) * b;
+};
+
+E.floor_mul = function (a, b) {
+  return Math.floor(a / b) * b;
+};
+
+E.range = function (x, a, b) {
+  return x >= a && x <= b;
+};
+
+E.range.ii = function (x, a, b) {
+  return x >= a && x <= b;
+};
+
+E.range.ie = function (x, a, b) {
+  return x >= a && x < b;
+};
+
+E.range.ei = function (x, a, b) {
+  return x > a && x <= b;
+};
+
+E.range.ee = function (x, a, b) {
+  return x > a && x < b;
+};
+
+E.clamp = function (lower_bound, value, upper_bound) {
+  if (value < lower_bound) return lower_bound;
+  if (value < upper_bound) return value;
+  return upper_bound;
+};
+
+E.revcmp = function (a, b) {
+  return a > b ? -1 : a < b ? 1 : 0;
+};
+/* Union given objects, using fn to resolve conflicting keys */
+
+
+E.union_with = function (fn
+/* [o1, [o2, [...]]]*/
+) {
+  var res = {},
+      args;
+  if (arguments.length == 2 && _typeof(arguments[1]) == 'object') args = arguments[1];else args = Array.prototype.slice.call(arguments, 1);
+
+  for (var i = 0; i < args.length; ++i) {
+    for (var key in args[i]) {
+      var arg = args[i]; // eslint-disable-next-line no-prototype-builtins
+
+      res[key] = res.hasOwnProperty(key) ? fn(res[key], arg[key]) : arg[key];
+    }
+  }
+
+  return res;
+};
+
+function _clone_deep(obj) {
+  var i, n, ret;
+
+  if (obj instanceof Array) {
+    ret = new Array(obj.length);
+    n = obj.length;
+
+    for (i = 0; i < n; i++) {
+      ret[i] = obj[i] instanceof Object ? _clone_deep(obj[i]) : obj[i];
+    }
+
+    return ret;
+  } else if (obj instanceof Date) return new Date(obj);else if (obj instanceof RegExp) return new RegExp(obj);else if (obj instanceof Function) return obj;
+
+  ret = {};
+
+  for (i in obj) {
+    ret[i] = obj[i] instanceof Object ? _clone_deep(obj[i]) : obj[i];
+  }
+
+  return ret;
+}
+
+E.clone_deep = function (obj) {
+  if (!(obj instanceof Object)) return obj;
+  return _clone_deep(obj);
+}; // prefer to normally Object.assign() instead of extend()
+
+
+E.extend = function (obj) {
+  // like _.extend
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i];
+    if (!source) continue;
+
+    for (var prop in source) {
+      obj[prop] = source[prop];
+    }
+  }
+
+  return obj;
+};
+
+function is_object(obj) {
+  return obj && obj.constructor == Object;
+}
+
+E.extend_deep = function (obj) {
+  if (!is_object(obj)) return obj;
+
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i];
+    if (!source) continue;
+
+    for (var prop in source) {
+      if (is_object(source[prop]) && is_object(obj[prop])) E.extend_deep(obj[prop], source[prop]);else obj[prop] = source[prop];
+    }
+  }
+
+  return obj;
+};
+
+E.extend_deep_del_null = function (obj) {
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i];
+    if (!source) continue;
+
+    for (var prop in source) {
+      if (is_object(source[prop])) {
+        if (!is_object(obj[prop])) obj[prop] = {};
+        E.extend_deep_del_null(obj[prop], source[prop]);
+      } else if (source[prop] == null) delete obj[prop];else obj[prop] = source[prop];
+    }
+  }
+
+  return obj;
+};
+
+E.defaults = function (obj) {
+  // like _.defaults
+  if (!obj) obj = {};
+
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i];
+    if (obj === undefined) continue;
+
+    for (var prop in source) {
+      if (obj[prop] === undefined) obj[prop] = source[prop];
+    }
+  }
+
+  return obj;
+};
+
+E.defaults_deep = function (obj) {
+  if (obj !== undefined && !is_object(obj)) return obj;
+
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i];
+    if (obj === undefined) obj = E.clone_deep(source);else if (is_object(source)) {
+      for (var prop in source) {
+        var s = source[prop],
+            d = obj[prop];
+        if (d === undefined) obj[prop] = E.clone_deep(s);else E.defaults_deep(d, s);
+      }
+    }
+  }
+
+  return obj;
+};
+
+E.clone = function (obj) {
+  // like _.clone
+  if (!(obj instanceof Object)) return obj;
+
+  if (obj instanceof Array) {
+    var a = new Array(obj.length);
+
+    for (var i = 0; i < obj.length; i++) {
+      a[i] = obj[i];
+    }
+
+    return a;
+  }
+
+  return E.extend({}, obj);
+};
+
+E.freeze_deep = function (obj) {
+  if (_typeof(obj) == 'object') {
+    for (var prop in obj) {
+      // eslint-disable-next-line no-prototype-builtins
+      if (obj.hasOwnProperty(prop)) E.freeze_deep(obj[prop]);
+    }
+  }
+
+  return Object.freeze(obj);
+}; // Limitations:
+// We know that not every data type can be reliably compared for equivalence
+// (other than with ===). In equal_deep, we try to be conservative, returning
+// false when we cannot be sure. Functions, however, are compared by their
+// string serializations, which can lead to conflation of distinct closures.
+// Cyclic references are not supported (cause a stack overflow).
+
+
+E.equal_deep = function (a, b) {
+  var i;
+  if (a === b) return true;
+  if (!a || !b || a.constructor !== b.constructor) return false;
+  if (a instanceof Function || a instanceof RegExp) return a.toString() == b.toString();
+  if (a instanceof Date) return +a == +b;
+
+  if (Array.isArray(a)) {
+    if (a.length != b.length) return false;
+
+    for (i = 0; i < a.length; i++) {
+      if (!E.equal_deep(a[i], b[i])) return false;
+    }
+
+    return true;
+  }
+
+  if (is_object(a)) {
+    var a_keys = Object.keys(a),
+        b_keys = Object.keys(b);
+    if (a_keys.length != b_keys.length) return false;
+
+    for (i = 0; i < a_keys.length; i++) {
+      var key = a_keys[i];
+      if (!E.equal_deep(a[key], b[key])) return false;
+    }
+
+    return true;
+  }
+
+  return false;
+}; // like _.map() except returns object, not array
+
+
+E.map_obj = function (obj, fn) {
+  var ret = {};
+
+  for (var i in obj) {
+    ret[i] = fn(obj[i], i, obj);
+  }
+
+  return ret;
+}; // recursivelly recreate objects with keys added in order
+
+
+E.sort_obj = function (obj, fn) {
+  if (obj instanceof Array || !(obj instanceof Object)) return obj;
+  var ret = {},
+      keys = Object.keys(obj).sort(fn);
+
+  for (var i = 0; i < keys.length; i++) {
+    ret[keys[i]] = E.sort_obj(obj[keys[i]], fn);
+  }
+
+  return ret;
+}; // an Object equivalent of Array.prototype.forEach
+
+
+E.forEach = function (obj, fn, _this) {
+  for (var i in obj) {
+    fn.call(_this, obj[i], i, obj);
+  }
+}; // an Object equivalent of Array.prototype.find
+
+
+E.find = function (obj, fn, _this) {
+  for (var i in obj) {
+    if (fn.call(_this, obj[i], i, obj)) return obj[i];
+  }
+};
+
+E.find_prop = function (obj, prop, val) {
+  return E.find(obj, function (o) {
+    return o[prop] === val;
+  });
+};
+
+E.isspace = function (c) {
+  return /\s/.test(c);
+};
+
+E.isdigit = function (c) {
+  return c >= '0' && c <= '9';
+};
+
+E.isalpha = function (c) {
+  return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z';
+};
+
+E.isalnum = function (c) {
+  return E.isdigit(c) || E.isalpha(c);
+};
+
+E.obj_pluck = function (obj, prop) {
+  var val = obj[prop];
+  delete obj[prop];
+  return val;
+}; // Object.keys() does not work on prototype
+
+
+E.proto_keys = function (proto) {
+  var keys = [];
+
+  for (var i in proto) {
+    keys.push(i);
+  }
+
+  return keys;
+};
+
+E.values = function (obj) {
+  var values = [];
+
+  for (var i in obj) {
+    values.push(obj[i]);
+  }
+
+  return values;
 };
 
 E.path = function (path) {
@@ -65449,15 +66591,134 @@ E.unset = function (o, path) {
   delete o[path[path.length - 1]];
 };
 
-E.buf_to_str = function (b) {
-  return b ? b.toString('hex') : '';
+var has_unique = {};
+
+E.has = function (o, path) {
+  return E.get(o, path, has_unique) !== has_unique;
 };
 
-E.buf_from_str = function (s) {
-  return _buffer.Buffer.from(s, 'hex');
+E.own = function (o, prop) {
+  return Object.prototype.hasOwnProperty.call(o, prop);
 };
 
-},{"buffer":66}],291:[function(require,module,exports){
+E.bool_lookup = function (a, split) {
+  var ret = {},
+      i;
+  if (typeof a == 'string') a = a.split(split || /\s/);
+
+  for (i = 0; i < a.length; i++) {
+    ret[a[i]] = true;
+  }
+
+  return ret;
+};
+
+E.clone_inplace = function (dst, src) {
+  if (dst === src) return dst;
+
+  if (Array.isArray(dst)) {
+    for (var i = 0; i < src.length; i++) {
+      dst[i] = src[i];
+    }
+
+    dst.splice(src.length);
+  } else if (_typeof(dst) == 'object') {
+    var k;
+
+    for (k in src) {
+      dst[k] = src[k];
+    }
+
+    for (k in dst) {
+      // eslint-disable-next-line no-prototype-builtins
+      if (!src.hasOwnProperty(k)) delete dst[k];
+    }
+  }
+
+  return dst;
+};
+
+if (_util["default"] && _util["default"].inherits) E.inherits = _util["default"].inherits;else {
+  // implementation from node.js 'util' module
+  E.inherits = function inherits(ctor, superCtor) {
+    ctor.super_ = superCtor;
+    ctor.prototype = Object.create(superCtor.prototype, {
+      constructor: {
+        value: ctor,
+        enumerable: false,
+        writable: true,
+        configurable: true
+      }
+    });
+  };
+} // ctor must only have one prototype level
+
+E.inherit_init = function (obj, ctor, params) {
+  var orig_proto = Object.getPrototypeOf(obj);
+  var ctor_proto = Object.assign({}, ctor.prototype);
+  Object.setPrototypeOf(ctor_proto, orig_proto);
+  Object.setPrototypeOf(obj, ctor_proto);
+  return ctor.apply(obj, params);
+};
+
+E.pick = function (obj) {
+  var i,
+      o = {};
+
+  for (i = 1; i < arguments.length; i++) {
+    if (E.own(obj, arguments[i])) o[arguments[i]] = obj[arguments[i]];
+  }
+
+  return o;
+}; // subset of _.omit
+
+
+E.omit = function (obj, omit) {
+  var i,
+      o = {};
+  obj = Object(obj);
+
+  for (i in obj) {
+    if (!omit.includes(i)) o[i] = obj[i];
+  }
+
+  return o;
+};
+
+E.if_set = function (val, o, name) {
+  if (val !== undefined) o[name] = val;
+};
+
+E.escape_dotted_keys = function (obj, repl) {
+  if (!Array.isArray(obj) && !is_object(obj)) return obj;
+  repl = repl || '_';
+
+  for (var prop in obj) {
+    if (E.own(obj, prop)) {
+      var new_prop = prop.replace(/\./g, repl);
+
+      if (prop != new_prop) {
+        obj[new_prop] = obj[prop];
+        delete obj[prop];
+      }
+
+      if (Array.isArray(obj[new_prop])) {
+        obj[new_prop].forEach(function (e) {
+          E.escape_dotted_keys(e, repl);
+        });
+      } else if (is_object(obj[new_prop])) E.escape_dotted_keys(obj[new_prop], repl);
+    }
+  }
+};
+
+E.ensure_array = function (v, split) {
+  if (v == null || Array.isArray(v)) return v || [];
+  if (split && typeof v == 'string') return v.split(split == true ? /[ ,]+/ : split).filter(Boolean);
+  return [v];
+};
+
+}).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"_process":181,"buffer":66,"util":280}],291:[function(require,module,exports){
 'use strict';
 /*jslint node:true*/
 
