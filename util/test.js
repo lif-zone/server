@@ -7,6 +7,7 @@ import array from './array.js';
 import ztest from './ztest.js';
 import zerr from './zerr.js';
 import sprintf from './sprintf.js';
+import zescape from './escape.js';
 import set from './set.js';
 import match from './match.js';
 import assert from 'assert';
@@ -1909,6 +1910,384 @@ describe('set', ()=>{
         s = set.from_str('((a(nother(number(17))(string(new string)))))');
         t(['a', 'nother', 'string'], 'new string');
         t(['a', 'nother', 'number'], '17');
+    });
+});
+
+describe('escape', ()=>{
+    it('html', ()=>{
+        let t = (arg, exp)=>assert.strictEqual(zescape.html(arg), exp);
+        t('abcd', 'abcd');
+        t('&ab&cd', '&amp;ab&amp;cd');
+        t('<ab<cd', '&lt;ab&lt;cd');
+        t('>ab>cd', '&gt;ab&gt;cd');
+        t('"ab"cd', '&quot;ab&quot;cd');
+        t("'ab'cd", '&#39;ab&#39;cd');
+    });
+    it('sh', ()=>{
+        let t = (arg, exp)=>{
+            assert.strictEqual(zescape.sh(arg), exp);
+            if (Array.isArray(arg))
+                assert.strictEqual(zescape.sh(...arg), exp);
+        };
+        t('abc1', 'abc1');
+        t(1, '1');
+        t('\\abcd3', '"\\\\abcd3"');
+        t('"abcd4', '"\\"abcd4"');
+        t('a b', '"a b"');
+        t([], '');
+        t(['abcd '], '"abcd "');
+        t(['abcd', ' efg'], 'abcd " efg"');
+        t('', '""');
+        t('test \\ $/ \x89 esc\n', '"test \\\\ \\$/ \x89 esc\n"');
+        t('test almost simple', '"test almost simple"');
+        t('noquote', 'noquote');
+        t('sim ple', '"sim ple"');
+    });
+    it('un_sh', ()=>{
+        let t = (arg, exp)=>assert.deepStrictEqual(zescape.un_sh(arg), exp);
+        t('"abc1"', ['abc1']);
+        t('"1"', ['1']);
+        t('"\\\\abcd3"', ['\\abcd3']);
+        t('"\\"abcd4"', ['"abcd4']);
+        t('"a b"', ['a b']);
+        t('"abc" "def"', ['abc', 'def']);
+        /* XXX yoni: complete tests (see test.c) */
+    });
+    it('regex', ()=>{
+        let t = (arg, exp)=>assert.strictEqual(zescape.regex(arg), exp);
+        t('test \\ \' " { } [ ] ~ ! @ # $ % ^ & * ( ) _ + ` - / \r \n \t',
+            'test \\\\ \' " \\{ \\} \\[ \\] ~ ! @ # \\$ % \\^ & \\* '+
+            '\\( \\) _ \\+ ` - \\/ \r \n \t');
+    });
+    it('uri_comp', ()=>{
+        let t = (arg, exp)=>assert.strictEqual(zescape.uri_comp(arg), exp);
+        t(' _test8.-~', '+_test8.-~');
+        t('<$test>=&*', '%3C%24test%3E%3D%26*');
+    });
+    it('encodeURIComponent_bin', ()=>{
+        let t = (arg, exp)=>
+            assert.strictEqual(zescape.encodeURIComponent_bin(arg), exp);
+        t('\x80', '%80');
+        t(Buffer.from('80', 'hex'), '%80');
+        t('+_test8.-~ \x80', '%2b_test8.-~%20%80');
+        t(Buffer.from('802c64ff', 'hex'), '%80,d%ff');
+        t(123, '123');
+        t('המבחן', '%D7%94%D7%9E%D7%91%D7%97%D7%9F');
+        t('тест', '%D1%82%D0%B5%D1%81%D1%82');
+    });
+    it('qs', ()=>{
+        let t = (arg, exp)=>{
+            let opt = arg.opt;
+            delete arg.opt;
+            assert.strictEqual(zescape.qs(arg, opt), exp);
+        };
+        t({a: '1', b: '2'}, 'a=1&b=2');
+        t('', '');
+        t({a: undefined, b: undefined}, '');
+        t({a: null, b: undefined}, 'a');
+        t({a: '1', b: undefined}, 'a=1');
+        t({a: undefined, b: '2'}, 'b=2');
+        t({a: null, b: '2'}, 'a&b=2');
+        t({' a ': 'a *+ \x89-b'}, '+a+=a+*%2B+%C2%89-b');
+        t({' a ': 'a *+ \x89-b', opt: {space_plus: false}},
+            '%20a%20=a%20*%2B%20%C2%89-b');
+        t({' a ': 'a *+ \x89-b', opt: {space_plus: true}},
+            '+a+=a+*%2B+%C2%89-b');
+        t({a: '\x80'}, 'a=%C2%80');
+        t({a: '\x80', opt: {bin: 1}}, 'a=%80');
+        t({a: 1, opt: {bin: 1}}, 'a=1');
+        t({a: Buffer.from('80', 'hex'), opt: {bin: 1}}, 'a=%80');
+        t({a: ['1', '2', '3']}, 'a=1&a=2&a=3');
+        t({a: [], b: 'x'}, 'b=x');
+    });
+    it('uri', ()=>{
+        let t = function(uri, qs, hash, exp){
+            if (arguments.length==2)
+                exp = qs;
+            else if (arguments.length<4)
+            {
+                exp = hash;
+                hash = undefined;
+            }
+            assert.strictEqual(zescape.uri(uri, qs, hash), exp);
+            if (arguments.length!=2)
+            {
+                assert.strictEqual(zescape.uri({uri: uri, qs: qs, hash: hash}),
+                    exp);
+            }
+        };
+        t('', {a: '1', b: '2'}, '?a=1&b=2');
+        t('', {}, '');
+        t('/uri', {}, '/uri');
+        t('/uri?', {}, '/uri?');
+        t('/uri?x', {}, '/uri?x');
+        t('/uri', {a: '1', b: '2'}, '/uri?a=1&b=2');
+        t('/uri?', {a: '1', b: '2'}, '/uri?a=1&b=2');
+        t('/uri?x', {a: '1', b: '2'}, '/uri?x&a=1&b=2');
+        t('/uri?x&', {a: '1', b: '2'}, '/uri?x&a=1&b=2');
+        t('/uri', 'a=1&b=2', '/uri?a=1&b=2');
+        t('/uri?x', 'a=1&b=2', '/uri?x&a=1&b=2');
+        t('/uri', {a: '\x80'}, '/uri?a=%C2%80');
+        t('/uri', undefined, {a: '1', b: '2'}, '/uri#a=1&b=2');
+        t('/uri?', undefined, {a: '1', b: '2'}, '/uri?#a=1&b=2');
+        t('/uri?x', undefined, {a: '1', b: '2'}, '/uri?x#a=1&b=2');
+        t('/uri?x&', undefined, {a: '1', b: '2'}, '/uri?x&#a=1&b=2');
+        t('/uri', undefined, 'a=1&b=2', '/uri#a=1&b=2');
+        t('/uri?x', undefined, 'a=1&b=2', '/uri?x#a=1&b=2');
+        t('/uri', undefined, {a: '\x80'}, '/uri#a=%C2%80');
+        t({uri: '/uri', qs: 'a=1&b=2', hash: 'c=3&d=4'},
+            '/uri?a=1&b=2#c=3&d=4');
+        t({uri: '/uri', qs: {a: 1, b: 2}, hash: {c: 3, d: 4}},
+            '/uri?a=1&b=2#c=3&d=4');
+        t({uri: '/uri', qs: {a: '\x80'}, bin: 1}, '/uri?a=%80');
+        t({uri: '/uri', hash: {a: '\x80'}, bin: 1}, '/uri#a=%80');
+        t({uri: 'http://example.com/', qs: {a: 1}}, 'http://example.com/?a=1');
+        t({uri: 'http://example.com/test', qs: {a: 1}},
+            'http://example.com/test?a=1');
+    });
+    it('mailto_url', ()=>{
+        let t = (arg, exp)=>assert.strictEqual(zescape.mailto_url(arg), exp);
+        t({}, 'mailto:?');
+        t({to: '', cc: '', subject: '', body: ''},
+            'mailto:?cc=&subject=&body=');
+        t({to: 'serhan@holaspark.com', cc: 'derry@holaspark.com',
+            subject: 'subject !', body: 'body !\nline2\n'},
+            'mailto:serhan@holaspark.com?cc=derry%40holaspark.com'+
+            '&subject=subject%20!&body=body%20!%0Aline2%0A');
+    });
+});
+
+describe('escape.parse', ()=>{
+    it('parse.http_words', ()=>{
+        let t = (val, exp)=>
+            assert.deepStrictEqual(zescape.parse.http_words(val), exp);
+        t('a', [['a', null]]);
+        t('a;', [['a', null]]);
+        t('a=1', [['a', '1']]);
+        t('a = 1 ', [['a', '1']]);
+        t('a= 1 ;', [['a', '1']]);
+        t('a=1; b=2', [['a', '1'], ['b', '2']]);
+        t('a=1, b=2', [['a', '1'], ['b', '2']]);
+        t('a=1 b=2', [['a', '1'], ['b', '2']]);
+        t('a="1; b=2"; c=3', [['a', '1; b=2'], ['c', '3']]);
+        t('a; b=";"; c="\\"test"', [['a', null], ['b', ';'],
+            ['c', '"test']]);
+        t('a; a', [['a', null], ['a', null]]);
+        t('foo="bar"; port="80,81"; DISCARD, BAR=baz',
+            [['foo', 'bar'], ['port', '80,81'], ['DISCARD', null],
+            ['BAR', 'baz']]);
+        t('text/html; charset="iso-8859-1"',
+            [['text/html', null], ['charset', 'iso-8859-1']]);
+        /* does not match C version of the function! since its ported from
+         * perl's split_header_words */
+        t('Basic realm="\\"foo\\\\bar\\""',
+            [['Basic', null], ['realm', '"foo\\\\bar\\"']]);
+        t(' TEXT/xml ', [['TEXT/xml', null]]);
+        t('multipart/mixed; boundary="frontier"',
+            [['multipart/mixed', null], ['boundary', 'frontier']]);
+    });
+});
+
+describe('match', function(){
+    it('glob_to_regex_str', ()=>{
+        let t = (re, exp)=>assert.strictEqual(
+            match.glob_to_regex_str(re), exp);
+        t('a', '^(a)$');
+        t('aa', '^(aa)$');
+        t('*', '^([^/]*)$');
+        t('**', '^(.*)$');
+        t('?', '^([^/])$');
+        t('? * **', '^([^/] [^/]* .*)$');
+        t('a/', '^(a\\/)$');
+        t('[]', '^(\\[\\])$');
+        t('', '^()$');
+    });
+    it('glob', ()=>{
+        let t = (filter, val_in, val_out)=>{
+            val_in.forEach(val=>{
+                assert.deepStrictEqual(match.glob(filter, val), true);
+                assert.deepStrictEqual(match.glob_fn(filter)(val), true);
+            });
+            val_out.forEach(val=>{
+                assert.deepStrictEqual(match.glob(filter, val), false);
+                assert.deepStrictEqual(match.glob_fn(filter)(val), false);
+            });
+        };
+        t('a', ['a'], ['', ' ', 'A', ' a ', ' a', 'a ', 'abc', 'cba']);
+        t('ab', ['ab'], ['', 'a', 'b', 'abc', 'xab', 'xabc']);
+        t(' a ', [' a '], ['', ' ', 'A', 'a', ' a', 'a ']);
+        t('a*c', ['abc', 'ac', 'a c', 'aacc'], ['ab', 'bc', 'abcd', 'xabc']);
+        t('a?c', ['abc', 'a c'], ['ac', 'axxc', 'abcd', 'xabc']);
+        t('*', ['abc', 'a', ''], ['/']);
+        t('**', ['abc', 'a', '', '//'], []);
+        t('?', ['a', ' '], ['', 'ab', '/']);
+        t('??', ['ab'], ['', 'a', 'abc']);
+        t('?*', ['a', 'ab', 'abc'], ['']);
+        t('*?', ['a', 'ab', 'abc'], ['']);
+    });
+    it('match_parse', ()=>{
+        let t = (filter, exp, opt)=>
+            assert.deepStrictEqual(match.match_parse(filter, opt), exp);
+        t('', []);
+        t('a', [{eq: 'a'}]);
+        t('a a*c', [{eq: 'a'}, {eq: 'a*c', join: '||'}]);
+        t('a a*c', [{eq: 'a'}, {eq: 'a*c', join: '&&'}], {join: '&&'});
+        t('a a*c', [{eq: 'a'}, {glob: 'a*c', join: '||'}], {glob: true});
+        t('a*c', [{re: '^(a[^/]*c)$'}], {glob: 're'});
+        t('/ab/i', [{re: 'ab', re_opt: 'i'}]);
+        t('a* && ! ( *c *b )', [{eq: 'a*'}, {join: '&&'}, {fn: '!'},
+            {fn: '(', depth: 1}, {eq: '*c'}, {eq: '*b', join: '||'},
+            {fn: ')', depth: -1}]);
+        t('a b', {join: '||', elm: [{eq: 'a'}, {eq: 'b'}]}, {tree: true});
+        t('a ! b', {join: '||', elm: [{eq: 'a'}, {fn: '!', elm: {eq: 'b'}}]},
+            {tree: true});
+        t('a && b', {join: '&&', elm: [{eq: 'a'}, {eq: 'b'}]}, {tree: true});
+        t('( a && b ) || ! c',
+            {join: '||', elm: [
+                 {join: '&&', elm: [{eq: 'a'}, {eq: 'b'}]},
+                 {fn: '!', elm: {eq: 'c'}},
+            ]}, {tree: true});
+        t('a && ! ( c b && ( g h ) ) ( t ! y )',
+            {join: '||', elm: [
+                {join: '&&', elm: [
+                    {eq: 'a'},
+                    {fn: '!', elm: {join: '||', elm: [
+                        {eq: 'c'},
+                        {join: '&&', elm: [
+                            {eq: 'b'},
+                            {join: '||', elm: [{eq: 'g'}, {eq: 'h'}]},
+                        ]},
+                    ]}},
+                ]},
+                {join: '||', elm: [{eq: 't'}, {fn: '!', elm: {eq: 'y'}}]},
+            ]},
+            {tree: true});
+        t('a && ! ( c b && ( g h ) ) ( t ! y )',
+            {join: '&&', elm: [
+                {join: '&&', elm: [
+                    {eq: 'a'},
+                    {fn: '!', elm: {join: '&&', elm: [
+                        {join: '&&', elm: [{eq: 'c'}, {eq: 'b'}]},
+                        {join: '&&', elm: [{eq: 'g'}, {eq: 'h'}]},
+                    ]}},
+                ]},
+                {join: '&&', elm: [{eq: 't'}, {fn: '!', elm: {eq: 'y'}}]},
+            ]},
+            {tree: true, join: '&&'});
+    });
+    it('match', ()=>{
+        let t = (filter, val_in, val_out, opt)=>{
+            val_in.forEach(val=>{
+                assert.deepStrictEqual(match.match(filter, val, opt), true);
+                assert.deepStrictEqual(match.match_fn(filter, opt)(val), true);
+            });
+            val_out.forEach(val=>{
+                assert.deepStrictEqual(match.match(filter, val, opt), false);
+                assert.deepStrictEqual(
+                    match.match_fn(filter, opt)(val), false);
+            });
+        };
+        t('', [], ['', 'a']);
+        t('a', ['a'], ['', ' ', 'A', ' a ', ' a', 'a ', 'abc', 'cba']);
+        t('ab', ['ab'], ['', 'a', 'b', 'abc', 'xab', 'xabc']);
+        t(' a ', ['a'], ['', ' ', 'A', ' a ', ' a', 'a ']);
+        t(' a b ', ['a', 'b'], ['', ' ', ' a ', ' a', ' a', ' b']);
+        t('abc', ['abc'], ['a', 'c', 'ABC', ' abc ']);
+        t('a*c', ['a*c'], ['abc']);
+        t('a abc b', ['a', 'abc', 'b'], ['a abc', 'a ', ' b']);
+        t('/ab/', ['ab', 'abc', ' ab', 'ab '], ['', 'AB']);
+        t('/ab/i', ['ab', 'abc', ' ab', 'ab ', 'AB'], ['']);
+        t('/a/ b', ['a', 'b', 'ab', 'aa'], ['A', 'bb', 'B']);
+        t('/a\\/i/ b', ['a/i', 'xa/ix', 'b'], ['A/I', 'A/', 'bb', 'B']);
+        t('/^a $/ b', ['a ', 'b'], ['a b']);
+        t('a', ['a'], ['', ' ', 'A', ' a ', 'aa'], {glob: 1});
+        t('ab', ['ab'], ['', 'a', 'b', 'abc', 'xab', 'xabc'], {glob: 1});
+        t('a*b', ['ab', 'axxxb'], [' ab', 'ab ', 'AB'], {glob: 1});
+        t('a?b', ['axb'], ['ab', 'axxb ', 'AxB'], {glob: 1});
+        t('a b', ['aa', 'b'], ['a', 'aa b', 'a b'],
+            {plugin: [{re: /^(a)(\s|$)/, cmp: (m, s)=>{
+                assert.strictEqual(m[1], 'a');
+                return s=='aa';
+            }}]});
+        t('a b', ['aa', 'b'], ['a', 'aa b', 'a b'],
+            {plugin: [{re: /^(a)(\s|$)/, cmp_fn: m=>{
+                assert.strictEqual(m[1], 'a');
+                return s=>s=='aa';
+            }}]});
+        t('a* *b', ['ab'], ['a', 'aa', 'b', 'bb'], {glob: true, join: '&&'});
+        t('a* && *b', ['ab'], ['a', 'aa', 'b', 'bb'], {glob: true});
+        t('a* && ! *b', ['a', 'ac'], ['b', 'ab'], {glob: true});
+        t('a* && ! ( *c *b )', ['a', 'ad'], ['b', 'ab', 'ac'],
+            {glob: true});
+        t('a* + *c - *b*', ['a', 'ax', 'c', 'xc'], ['b', 'ab', 'bc'],
+            {glob: true});
+    });
+    it('cmp_norm', ()=>{
+        let t = (cmp, exp)=>assert.strictEqual(match.cmp_norm(cmp), exp);
+        t(0, 0);
+        t(1, 1);
+        t(-1, -1);
+        t(0.1, 1);
+        t(-0.1, -1);
+        t(10000, 1);
+        t(-10000, -1);
+    });
+    it('strcmp', ()=>{
+        let t = (a, b, exp)=>
+            assert.strictEqual(match.cmp_norm(match.strcmp(a, b)), exp);
+        t('', '', 0);
+        t('abc', 'abc', 0);
+        t('ABC', 'abc', -1);
+        t('abc', 'ABC', 1);
+        t('123', '1199', 1);
+    });
+    it('strverscmp', ()=>{
+        let t = (a, b, exp)=>
+            assert.strictEqual(match.cmp_norm(match.strverscmp(a, b)), exp);
+        t('', '', 0);
+        t('abc', 'abc', 0);
+        t('abc', 'ABC', 1);
+        t('ABC', 'abc', -1);
+        t('0', '0', 0);
+        t('1', '0', 1);
+        t('0', '1', -1);
+        t('aa00bb', 'aa0bb', -1);
+        t('aa123bb', 'aa12bb', 1);
+        // tests from compat/test.c
+        t('no digit', 'no digit', 0);
+        t('item#99', 'item#100', -1);
+        t('alpha1', 'alpha001', 1);
+        t('part1_f012', 'part1_f01', 1);
+        t('foo.009', 'foo.0', 1); // differs from C: -1
+        t('000', '00', 1); // differs from C: -1
+        t('00', '01', -1);
+        t('01', '010', -1);
+        t('010', '09', 1); // differs from C: -1
+        t('09', '0', 1); // differs from C: -1
+        t('0', '1', -1);
+        t('1', '9', -1);
+        t('9', '10', -1);
+        t('1.2.3', '1.2.2', 1);
+        t('1.2.3-1', '1.2.3', 1); // unlike semver
+        t('1.2.3-1', '1.2.3-2', -1);
+    });
+    it('regexp_merge', ()=>{
+        let t = (arr, res, inc, exc)=>{
+            let i, merged = match.regexp_merge(arr);
+            assert.strictEqual(merged.source, res);
+            for (i of inc)
+                assert.strictEqual(merged.test(i), true);
+            for (i of exc)
+                assert.strictEqual(merged.test(i), false);
+        };
+        t(['test_event'], '(test_event)', ['test_event', 'test_event2'],
+            ['test']);
+        t([/^test_event$/], '(^test_event$)', ['test_event'], ['test_event2']);
+        t([/^test1$/, /^test2$/], '(^test1$)|(^test2$)', ['test1', 'test2'],
+            ['test3', 'test']);
+        t([/^test1$/, 'test2'], '(^test1$)|(test2)',
+            ['test1', 'test2', '122test2232'], ['test3']);
+        t([/a/, /b/, 'c'], '(a)|(b)|(c)', ['a', 'b', 'c'], ['d']);
     });
 });
 
