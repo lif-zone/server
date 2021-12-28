@@ -260,10 +260,10 @@ function arg_to_val(arg){
   return ret;
 }
 
-function node_new(fake, name, arg){
+function node_new(fake, name, args){
   let o = {};
   assert_not_exist(name);
-  arg.forEach(a=>{
+  args.forEach(a=>{
     let val = arg_to_val(a.arg);
     switch (a.cmd)
     {
