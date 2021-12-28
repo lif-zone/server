@@ -7,12 +7,12 @@ import crypto from 'crypto';
 import {EventEmitter} from 'events';
 import Node from './client.js';
 import util from '../util/util.js';
-import zurl from '../util/url.js';
+import xurl from '../util/url.js';
 import date from '../util/date.js';
 import ws_util from '../util/ws.js';
-import ztest from '../util/ztest.js';
+import xtest from '../util/ztest.js';
 import etask from '../util/etask.js';
-const zetask = ztest.etask, assign = Object.assign;
+const zetask = xtest.etask, assign = Object.assign;
 
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
@@ -252,7 +252,7 @@ function assert_host(host, opts){
   opts = opts||{};
   if (opts.optional && host===undefined)
     return;
-  assert.ok(zurl.is_valid_domain(host), 'invalid host '+host); }
+  assert.ok(xurl.is_valid_domain(host), 'invalid host '+host); }
 
 function node_new(fake, name, o){
   assert_not_exist(name);
@@ -532,8 +532,8 @@ class FakeWebSocketServer extends EventEmitter {
 
 describe('peer-relay', function(){
   beforeEach(function(){
-    ztest.set(ws_util, 'WS', FakeWS);
-    ztest.set(ws_util, 'WebSocketServer', FakeWebSocketServer);
+    xtest.set(ws_util, 'WS', FakeWS);
+    xtest.set(ws_util, 'WebSocketServer', FakeWebSocketServer);
     // XXX TODO: same for WRTC
   });
   this.timeout(2*t_timeout);
