@@ -124,7 +124,8 @@ function cmd_node_new(role, c){
   });
   let node = new (is_fake(role, s) ? FakeNode : Node)(o);
   t_nodes[s] = node;
-  node.t_name = s;
+  node.t = node.t||{};
+  node.t.name = s;
   if (o.port)
   {
     // XXX: mv to listen on wsConnector._wss
@@ -132,7 +133,7 @@ function cmd_node_new(role, c){
     node.wsConnector._wss.on('connection', ws=>{
       // XXX HACK: rm ws.client
       let client = ws.client || node_from_ws(ws);
-      test_emit(client.t_name+s+'>connect(ws:'+o.port+')');
+      test_emit(client.t.name+s+'>connect(ws:'+o.port+')');
     });
     node.wsConnector._wss.on('message', data=>{
       test_emit('?'+s+'>message:'+data);
