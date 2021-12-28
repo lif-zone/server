@@ -134,7 +134,7 @@ function assert_wss(val){
     }
   });
   assert(host && port, 'must specify host & port');
-  return {host, port};
+  return {host, port, url: 'wss://'+host+':'+port};
 }
 
 function cmd_node(role, c){
@@ -152,8 +152,6 @@ function cmd_node(role, c){
     assign({WsConnector: FakeWsConnector}, wss));
   node.t = {name, wss};
   t_nodes[name] = node;
-  if (wss)
-    node.t.wss.url = 'wss://'+wss.host+':'+wss.port;
   node.on('connection', channel=>{
     let s = node_from_id(channel.localID), d = node_from_id(channel.id);
     test_emit(s.t.name+d.t.name+'>connected');
