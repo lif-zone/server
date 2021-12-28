@@ -232,23 +232,22 @@ function is_fake(role, p){ return role!=p; }
 function assert_not_exist(name){
   assert.ok(!t_nodes[name], 'node already exist '+name); }
 
-function assert_port(port, opts){
-  opts = opts||{};
-  if (opts.optional && port===undefined)
-    return;
+function assert_port(port){
   assert.ok(/[0-9]+/.test(port), 'invalid port '+port);
-  port = +port;
   assert.ok(port>0 && port<65535, 'invalid port '+port);
+  return +port;
 }
 
 function assert_host(host){
-  assert.ok(xurl.is_valid_domain(host), 'invalid host '+host); }
-
-function assert_ws(url){
-  // XXX: TODO
+  assert.ok(xurl.is_valid_domain(host), 'invalid host '+host);
+  return host;
 }
 
-function assert_ws_array(a){ a.forEach(url=>assert_ws(url)); }
+function assert_ws(node){
+  assert.ok(t_nodes[node], 'node not found '+node);
+  // XXX HACK: need to pass url in bootstrap
+  return t_nodes[node].wsConnector.url;
+}
 
 function arg_to_val(arg){
   if (arg.length==1)
@@ -261,8 +260,6 @@ function arg_to_val(arg){
   return ret;
 }
 
-function to_arr(val){ return Array.isArray(val) ? val : [val]; }
-
 function node_new(fake, name, arg){
   let o = {};
   assert_not_exist(name);
@@ -270,14 +267,12 @@ function node_new(fake, name, arg){
     let val = arg_to_val(a.arg);
     switch (a.cmd)
     {
-    case 'host': assert_host(o.host = val); break;
-    case 'port': assert_port(o.port = val); break;
-    case 'bootstrap': assert_ws_array(o.bootstrap = to_arr(val)); break;
+    case 'port': o.port = assert_port(val); break;
+    case 'host': o.host = assert_host(val); break;
+    case 'bootstrap': o.bootstrap = [assert_ws(val)]; break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  if (o.bootstrap) // XXX HACK: need to pass url in bootstrap
-    o.bootstrap = [t_nodes[o.bootstrap[0]].wsConnector.url];
   let node = new (fake ? FakeNode : Node)(o);
   t_nodes[name] = node;
   node.t_name = name;
