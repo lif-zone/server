@@ -64,7 +64,9 @@ class FakeNode extends EventEmitter {
     console.log('XXX FakeNode connect_ws TODO');
     let node = node_from_url(url);
     let channel = new FakeChannel({localID: this.id, id: node.id});
-    node.wsConnector.emit('connection', channel);
+    this.wsConnector.emit('connection', channel);
+    let channel2 = new FakeChannel({localID: node.id, id: this.id});
+    node.wsConnector.emit('connection', channel2);
   }
 }
 
@@ -73,6 +75,19 @@ class FakeChannel extends EventEmitter {
     super();
     this.id = opts.id;
     this.localID = opts.localID;
+  }
+  send(msg){
+    let s = node_from_id(this.localID), d = node_from_id(this.id);
+    console.log('XXX send %s%s> %o', s.t.name, d.t.name, msg);
+    let {type, data} = msg.data, p;
+    switch (type)
+    {
+    case 'findPeers':
+      p = node_from_id(util.buf_from_str(data));
+      test_emit(s.t.name+d.t.name+'>'+type+'('+p.t.name+')');
+      break;
+    default: assert(false, 'unepected msg '+type);
+    }
   }
   destroy(){}
 }
@@ -96,7 +111,8 @@ function node_from_id(id){
   for (let name in t_nodes)
   {
     let node = t_nodes[name];
-    if (node.id==id)
+    // XXX: make it nicer
+    if (node.t.id == (typeof id=='string' ? id : util.buf_to_str(id)))
       return node;
   }
 }
@@ -150,7 +166,8 @@ function cmd_node(role, c){
   });
   let node = new (is_fake(role, name) ? FakeNode : Node)(
     assign({WsConnector: FakeWsConnector}, wss));
-  node.t = {name, wss};
+  let id = util.buf_to_str(node.id);
+  node.t = {id, name, wss};
   t_nodes[name] = node;
   node.on('connection', channel=>{
     let s = node_from_id(channel.localID), d = node_from_id(channel.id);
@@ -184,16 +201,6 @@ function cmd_connect(c){
 function cmd_event(c){
   // XXX: check what to assert for events
   test_expect(c.orig);
-  return test_ensure_no_events();
-}
-
-function cmd_find_peers(s, d, o){
-/* XXX: WIP
-  if (is_fake(role, c.s))
-    node_find_peers(c.s, c.d, arg_to_obj(c.arg));
-  test_expect(c.orig);
-  yield test_ensure_no_events();
-*/
 }
 
 const test_run = (role, test)=>etask(function*(){
@@ -207,7 +214,7 @@ const test_run = (role, test)=>etask(function*(){
     case 'node': yield cmd_node(role, c); break;
     case 'connect': yield cmd_connect(c); break;
     case 'connected': yield cmd_event(c); break;
-    case 'findPeers': yield cmd_find_peers(c); break;
+    case 'findPeers': yield cmd_event(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
     yield util.sleep(); // XXX HACK: fixme
@@ -263,9 +270,12 @@ describe('peer-relay', function(){
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
       a>connect(wss(host:lif.zone port:4000))
-      as>connected`);
+      sa>connected
+      sa>findPeers(s)`);
+//      sx>connected`);
+//      sa>connected
+//      sx>connected`);
       /* XXX TODO
-      as<connected
       as>find_peers
       as<found_peers
       sa>find_peers
