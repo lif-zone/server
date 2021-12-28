@@ -1,5 +1,5 @@
 'use strict'; /*zlint node, br*/
-import zutil from './util.js';
+import xutil from './util.js';
 import date from './date.js';
 import sprintf from './sprintf.js';
 import zescape from './escape.js';
@@ -206,7 +206,7 @@ E.set_log_buffer = function(on){
     setInterval(E.flush, 1000).unref();
 };
 var node_init = function(){
-    if (zutil.is_mocha())
+    if (xutil.is_mocha())
         E.level = L.WARN;
     else
         E.prefix = !cluster.isMaster ? 'C'+cluster.worker.id+' ' : '';
@@ -341,7 +341,7 @@ var post = function(url, data){
     return req;
 };
 var perr_transport = function(id, info, opt){
-    opt = zutil.clone(opt||{});
+    opt = xutil.clone(opt||{});
     var qs = opt.qs||{}, data = opt.data||{};
     data.is_json = 1;
     if (info && typeof info!='string')

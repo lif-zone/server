@@ -1,6 +1,6 @@
 'use strict'; /*jslint node:true, browser:true*/
 import assert from 'assert';
-import zutil from './util.js';
+import xutil from './util.js';
 import events from './events.js';
 import array from './array.js';
 import __zerr from './zerr.js';
@@ -182,7 +182,7 @@ function Etask(opt, states){
         this._next_run();
     return this;
 }
-zutil.inherits(Etask, events.EventEmitter);
+xutil.inherits(Etask, events.EventEmitter);
 
 E.prototype._root_remove = function(){
     assert(!this.parent, 'cannot remove from root when has parent');
@@ -1461,7 +1461,7 @@ E.interval = function(opt, states){
         var now;
         return E.for(function(){ now = Date.now(); return true; },
             function(){
-                var delay = zutil.clamp(0, now+opt.ms-Date.now(), Infinity);
+                var delay = xutil.clamp(0, now+opt.ms-Date.now(), Infinity);
                 return etask.sleep(delay);
             }, states);
     }

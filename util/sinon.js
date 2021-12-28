@@ -1,7 +1,7 @@
 'use strict'; /*jslint node:true*/ /*global afterEach*/
 import sinon from '@hola.org/sinon';
 import etask from './etask.js';
-import zutil from './util.js';
+import xutil from './util.js';
 import date from './date.js';
 import events from './events.js';
 
@@ -146,5 +146,5 @@ E.create_sandbox = function(opt){
     return sandbox;
 };
 E.is_fake_clock = function(){ return clock!==undefined; };
-if (zutil.is_mocha())
+if (xutil.is_mocha())
     afterEach(function(){ return E.uninit(); });

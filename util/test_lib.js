@@ -3,7 +3,7 @@
 // XXX: need jslint mocha: true
 import proc from './proc.js';
 import etask from './etask.js';
-import zutil from './util.js';
+import xutil from './util.js';
 import zerr from './zerr.js';
 import date from './date.js';
 import sprintf from './sprintf.js';
@@ -18,7 +18,7 @@ const E = {};
 export default E;
 
 E.currentTest = undefined;
-if (zutil.is_mocha())
+if (xutil.is_mocha())
 {
     beforeEach(function(){ E.currentTest = this.currentTest; });
     afterEach(()=>E.currentTest = null);
@@ -48,7 +48,7 @@ E.hook_assert = ()=>{
     const print = err=>{
         const stack = new Error().stack;
         let msg = '\n', diff = '';
-        if (zutil.is_mocha())
+        if (xutil.is_mocha())
             msg += '*** test '+E.currentTest_title()+' FAILED:\n';
         if (err.message)
             msg += err.message+'\n';
@@ -74,7 +74,7 @@ E.hook_assert = ()=>{
 };
 E.hook_assert();
 
-if (zutil.is_mocha())
+if (xutil.is_mocha())
     zerr.on_unhandled_exception = err=>assert(false, err);
 
 E.db_conn_str = 'host=127.0.0.1; db=zserver_test';
@@ -132,7 +132,7 @@ E.seq_fn = expected=>{
 let env_stack = [];
 E.env_push = set=>{
     assert(env_stack.length<10, 'already pushed env more than 10');
-    env_stack.push(zutil.clone(process.env));
+    env_stack.push(xutil.clone(process.env));
     if (set)
         E.set_clone(process.env, set);
 };
@@ -191,7 +191,7 @@ let on_test_prop_changed = ()=>{
             delete old_val.obj[old_val.prop];
     }
 };
-if (zutil.is_mocha())
+if (xutil.is_mocha())
 {
     afterEach(()=>{
         if (test_prop_changes.length)
@@ -254,7 +254,7 @@ E.seq_uninit = ()=>{
     }
     E.seq_curr = undefined;
 };
-if (zutil.is_mocha())
+if (xutil.is_mocha())
 {
     beforeEach(()=>{
         E.seq_init();
@@ -710,5 +710,5 @@ E.stub_res = sb=>{
     return res;
 };
 
-if (zutil.is_mocha())
+if (xutil.is_mocha())
     proc.zexit_init();

@@ -1,5 +1,5 @@
 'use strict'; /*zlint node, br*/
-import zutil from './util.js';
+import xutil from './util.js';
 import qs from 'querystring';
 var assign = Object.assign;
 const E = {};
@@ -464,7 +464,7 @@ E.safe_redir = function(url, default_hostname){
     if (!/^https?:$/.test(u.protocol) || !hostname)
         return;
     if (E.is_hola_domain(hostname) || E.is_spark_domain(hostname) ||
-        zutil.is_mocha()&&hostname=='localhost')
+        xutil.is_mocha()&&hostname=='localhost')
     {
         return 'https://'+hostname+encodeURI(u.path);
     }

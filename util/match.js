@@ -1,6 +1,6 @@
 'use strict'; /*zlint node, br*/
 import zescape from './escape.js';
-import zutil from './util.js';
+import xutil from './util.js';
 const E = {};
 export default E;
 
@@ -203,11 +203,11 @@ E.strverscmp = function(a, b){
     var _a, _b, diff, skip_digit = 0;
     for (_a=0, _b=0; _a<a.length && _b<b.length; _a++, _b++)
     {
-        if (a[_a]==b[_b] && !zutil.isdigit(a[_b])) // fast-path
+        if (a[_a]==b[_b] && !xutil.isdigit(a[_b])) // fast-path
             continue;
         if (skip_digit)
             skip_digit--;
-        if (zutil.isdigit(a[_a]) && zutil.isdigit(b[_b]))
+        if (xutil.isdigit(a[_a]) && xutil.isdigit(b[_b]))
         {
             var ma = a.substr(_a).match(/\d+/)[0];
             var mb = b.substr(_b).match(/\d+/)[0];

@@ -1,6 +1,6 @@
 'use strict'; /*jslint node:true*/
 import zerr from './zerr.js';
-import zutil from './util.js';
+import xutil from './util.js';
 import assert from 'assert';
 const E = {}, env = process.env;
 export default E;
@@ -20,7 +20,7 @@ E.zexit_init = ()=>{
         err.sent_perr = true;
         console.error('etask_typeerror '+err);
     };
-    if (!zutil.is_mocha())
+    if (!xutil.is_mocha())
         process.on('uncaughtException', zexit_on_err);
 };
 
