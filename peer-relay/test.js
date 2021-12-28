@@ -160,7 +160,7 @@ function cmd_find_peers(s, d, o){
 */
 }
 
-function node_from_wss_url(url){
+function server_from_url(url){
   for (let name in t_nodes)
   {
     let node = t_nodes[name];
@@ -217,24 +217,25 @@ class FakeWS extends EventEmitter {
     super();
     opts = opts||{};
     this.client = opts.client;
-    this.server = opts.server;
+    this.t = this.t||{};
+    this.t.url;
     if (url)
     {
-      let node = node_from_wss_url(url);
-      this.server = node;
+      let server = server_from_url(url);
       // XXX HACK: rm client/server
-      let ws = new FakeWS(undefined, {client: opts.client, server: node});
+      let ws = new FakeWS(undefined, {client: opts.client});
       ws.t_ws = this;
-      node.wsConnector.t_ws = node.wsConnector.t_ws||[];
-      node.wsConnector.t_ws.push(ws); // XXX: need cleanup
+      server.wsConnector.t_ws = server.wsConnector.t_ws||[];
+      server.wsConnector.t_ws.push(ws); // XXX: need cleanup
       // XXX HACK: setTimeout is a hack
-      setTimeout(()=>node.wsConnector._wss.emit('connection', ws));
+      setTimeout(()=>server.wsConnector._wss.emit('connection', ws));
     }
   }
   close(){
   }
   send(s){
-    this.server.wsConnector._wss.emit('message', s);
+    let server = server_from_url(this.t.url);
+    server.wsConnector._wss.emit('message', s);
   }
 }
 
