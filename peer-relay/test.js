@@ -263,6 +263,7 @@ function arg_to_val(arg){
 function node_new(fake, name, args){
   let o = {};
   assert_not_exist(name);
+  // XXX derry: review args parsing
   args.forEach(a=>{
     let val = arg_to_val(a.arg);
     switch (a.cmd)
