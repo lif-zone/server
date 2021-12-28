@@ -132,7 +132,7 @@ function cmd_node_new(role, c){
     node.wsConnector.on('listen', e=>test_emit(s+'<listen(ws:'+e.port+')'));
     node.wsConnector._wss.on('connection', ws=>{
       // XXX HACK: rm ws.client
-      let client = ws.client || node_from_ws(ws);
+      let client = ws.t.client || node_from_ws(ws);
       test_emit(client.t.name+s+'>connect(ws:'+o.port+')');
     });
     node.wsConnector._wss.on('message', data=>{
@@ -216,8 +216,8 @@ class FakeWS extends EventEmitter {
   constructor(url, opts){
     super();
     opts = opts||{};
-    this.client = opts.client;
     this.t = this.t||{};
+    this.t.client = opts.client;
     this.t.url;
     if (url)
     {
