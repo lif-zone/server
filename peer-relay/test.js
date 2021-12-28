@@ -260,11 +260,13 @@ function arg_to_val(arg){
   return ret;
 }
 
-function node_new(fake, name, args){
-  let o = {};
-  assert_not_exist(name);
+function node_new(role, c){
+  let o = {}, {s, d, dir, arg} = c;
+  assert_not_exist(s);
+  assert.ok(!d, 'dst not needed '+d);
+  assert.equal(dir, '=', 'must use = '+d);
   // XXX derry: review args parsing
-  args.forEach(a=>{
+  arg.forEach(a=>{
     let val = arg_to_val(a.arg);
     switch (a.cmd)
     {
@@ -274,20 +276,20 @@ function node_new(fake, name, args){
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  let node = new (fake ? FakeNode : Node)(o);
-  t_nodes[name] = node;
-  node.t_name = name;
+  let node = new (is_fake(role, s) ? FakeNode : Node)(o);
+  t_nodes[s] = node;
+  node.t_name = s;
   if (o.port)
   {
     // XXX: mv to listen on wsConnector._wss
-    node.wsConnector.on('listen', e=>test_emit(name+'<listen(ws:'+e.port+')'));
+    node.wsConnector.on('listen', e=>test_emit(s+'<listen(ws:'+e.port+')'));
     node.wsConnector._wss.on('connection', ws=>{
       // XXX HACK: rm ws.client
       let client = ws.client || node_from_ws(ws);
-      test_emit(client.t_name+name+'>connect(ws:'+o.port+')');
+      test_emit(client.t_name+s+'>connect(ws:'+o.port+')');
     });
     node.wsConnector._wss.on('message', data=>{
-      test_emit('?'+name+'>message:'+data);
+      test_emit('?'+s+'>message:'+data);
     });
   }
 }
@@ -452,11 +454,7 @@ const test_run = (role, test)=>etask(function*(){
     // XXX: mv arg_to_obj to plugin
     switch (c.cmd)
     {
-    case 'node_new':
-      assert.equal(c.dir, '=');
-      assert.ok(!c.d, 'unexpected dst '+c.d);
-      node_new(is_fake(role, c.s), c.s, c.arg);
-      break;
+    case 'node_new': node_new(role, c); break;
     case 'listen':
       test_expect(c.orig);
       yield test_ensure_no_events();
