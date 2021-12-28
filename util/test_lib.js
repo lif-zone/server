@@ -5,6 +5,7 @@ import proc from './proc.js';
 import etask from './etask.js';
 import xutil from './util.js';
 import zerr from './zerr.js';
+import string from '../util/string.js';
 import date from './date.js';
 import sprintf from './sprintf.js';
 import assert from 'assert';
@@ -13,6 +14,7 @@ import net from 'net';
 import _ from 'lodash';
 import big_object_diff from 'big-object-diff';
 const errors = undefined; // XXX failed to import internal/errors
+const assign = Object.assign;
 
 const E = {};
 export default E;
@@ -709,6 +711,144 @@ E.stub_res = sb=>{
     };
     return res;
 };
+
+function throw_invalid(s, i){
+  throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
+
+E.test_parse_cmd_single = function(s){
+  let state = 'pre', i=0, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
+  let parentesis = 0, done = false;
+  for (i=0; i<s.length && !done; i++)
+  {
+    let c = s.charAt(i);
+    switch (state)
+    {
+    case 'pre':
+      if (string.is_ws(c))
+        continue;
+      if ('()'.includes(c))
+        throw_invalid(s, i);
+      state = 'cmd';
+      cmd_s = i;
+      break;
+    case 'cmd':
+      if (')'.includes(c))
+        throw_invalid(s, i);
+      if (string.is_ws(c))
+      {
+        cmd_e = i;
+        done = true;
+      }
+      else if ('('.includes(c))
+      {
+        cmd_e = i;
+        arg_s = i+1;
+        state = 'arg';
+        parentesis++;
+      }
+      break;
+    case 'arg':
+      if (c=='(')
+        parentesis++;
+      if (c==')')
+        parentesis--;
+      if (parentesis<0)
+        throw_invalid(s, i);
+      if (!parentesis)
+      {
+        arg_e = i;
+        done = true;
+      }
+      break;
+    default: throw new Error('unknown parser error '+s);
+    }
+  }
+  if (state=='pre')
+    throw new Error('invalid empty cmd');
+  if (parentesis)
+    throw_invalid(s, i);
+  let cmd = ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
+  if (arg_e>arg_s)
+  {
+    if (cmd.includes(':'))
+      throw_invalid(cmd, cmd.indexOf(':'));
+    ret.arg = s.substr(arg_s, arg_e-arg_s);
+  }
+  else if (cmd.includes(':'))
+  {
+    let m = cmd.match(/(^[^:]+):([^:]+$)/);
+    if (!m)
+      throw_invalid(cmd, cmd.lastIndexOf(':'));
+    cmd = ret.cmd = m[1];
+    ret.arg = m[2];
+  }
+  ret.meta = {last: i};
+  ret.orig = s.substr(cmd_s, i-cmd_s);
+  return ret;
+};
+
+E.test_parse_cmd_multi = function(s){
+  if (!s)
+    return [];
+  let ret = [], arg, t = E.test_parse_cmd_single(s), meta = t.meta;
+  if (t.arg)
+    arg = E.test_parse_cmd_multi(t.arg);
+  ret.push(arg ? {cmd: t.cmd, arg, orig: t.orig, meta} :
+    {cmd: t.cmd, orig: t.orig, meta});
+  return ret.concat(E.test_parse_cmd_multi(s.substr(t.meta.last)));
+};
+
+E.test_run_plugin = function(a, cb){
+  a.forEach(o=>{
+    cb(o);
+    if (o.arg)
+      E.test_run_plugin(o.arg, cb);
+  });
+  return a;
+};
+
+E.parse_cmd_dir = function(s){
+  if (!/[><=]/.test(s))
+    return {cmd: s};
+  let m = s.match(/^([a-zA-Z])([a-zA-Z]?)([<>=])([^<^>]*$)/);
+  if (!m)
+  {
+    throw_invalid(s, (s.indexOf('<')+1 ||
+      s.indexOf('>')+1 || s.indexOf('=')+1)-1);
+  }
+  if (m[3]=='=')
+  {
+    if (m[2])
+      throw_invalid(s, 2);
+    if (!m[4])
+      throw_invalid(s, 2);
+  }
+  let sd = m[3]=='>' || m[3]=='=' ? {s: m[1], d: m[2]} : {s: m[2], d: m[1]};
+  return {...sd, dir: m[3], cmd: m[4], meta: {cmd: s}};
+};
+
+E.plugin_cmd_dir = function(o){
+  let t = E.parse_cmd_dir(o.cmd);
+  let o2 = assign({}, o);
+  for (let i in o)
+    delete o[i];
+  assign(o, t, {arg: o2.arg, orig: o2.orig});
+  assign(o.meta||{}, o2.meta);
+  return o;
+};
+
+E.test_parse_rm_meta = function(a){
+  return E.test_run_plugin(a, o=>delete o.meta); };
+
+E.test_parse_rm_meta_orig = function(a){
+  return E.test_run_plugin(a, o=>{
+    delete o.meta;
+    delete o.orig;
+  });
+};
+
+E.test_parse = function(s){
+  return E.test_run_plugin(E.test_parse_cmd_multi(s), E.plugin_cmd_dir); };
 
 if (xutil.is_mocha())
     proc.zexit_init();

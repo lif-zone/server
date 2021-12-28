@@ -2,7 +2,6 @@
 // XXX: need jslint mocha: true
 import assert from 'assert';
 import _wrtc from 'electron-webrtc'; // XXX: rm
-import string from '../util/string.js';
 import crypto from 'crypto';
 import {EventEmitter} from 'events';
 import Node from './client.js';
@@ -12,7 +11,7 @@ import date from '../util/date.js';
 import ws_util from '../util/ws.js';
 import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
-const zetask = xtest.etask, assign = Object.assign, stringify = JSON.stringify;
+const zetask = xtest.etask, stringify = JSON.stringify;
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
   console.log('uncaughtException %o', e);
@@ -22,144 +21,6 @@ process.on('unhandledRejection', e=>{
   console.error('unhandledRejection %o', e);
   process.exit(-1);
 });
-
-function throw_invalid(s, i){
-  throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
-
-// XXX: mv all test api to util/test_api.js
-function test_parse_cmd_single(s){
-  let state = 'pre', i=0, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
-  let parentesis = 0, done = false;
-  for (i=0; i<s.length && !done; i++)
-  {
-    let c = s.charAt(i);
-    switch (state)
-    {
-    case 'pre':
-      if (string.is_ws(c))
-        continue;
-      if ('()'.includes(c))
-        throw_invalid(s, i);
-      state = 'cmd';
-      cmd_s = i;
-      break;
-    case 'cmd':
-      if (')'.includes(c))
-        throw_invalid(s, i);
-      if (string.is_ws(c))
-      {
-        cmd_e = i;
-        done = true;
-      }
-      else if ('('.includes(c))
-      {
-        cmd_e = i;
-        arg_s = i+1;
-        state = 'arg';
-        parentesis++;
-      }
-      break;
-    case 'arg':
-      if (c=='(')
-        parentesis++;
-      if (c==')')
-        parentesis--;
-      if (parentesis<0)
-        throw_invalid(s, i);
-      if (!parentesis)
-      {
-        arg_e = i;
-        done = true;
-      }
-      break;
-    default: throw new Error('unknown parser error '+s);
-    }
-  }
-  if (state=='pre')
-    throw new Error('invalid empty cmd');
-  if (parentesis)
-    throw_invalid(s, i);
-  let cmd = ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
-  if (arg_e>arg_s)
-  {
-    if (cmd.includes(':'))
-      throw_invalid(cmd, cmd.indexOf(':'));
-    ret.arg = s.substr(arg_s, arg_e-arg_s);
-  }
-  else if (cmd.includes(':'))
-  {
-    let m = cmd.match(/(^[^:]+):([^:]+$)/);
-    if (!m)
-      throw_invalid(cmd, cmd.lastIndexOf(':'));
-    cmd = ret.cmd = m[1];
-    ret.arg = m[2];
-  }
-  ret.meta = {last: i};
-  ret.orig = s.substr(cmd_s, i-cmd_s);
-  return ret;
-}
-
-function test_parse_cmd_multi(s){
-  if (!s)
-    return [];
-  let ret = [], arg, t = test_parse_cmd_single(s), meta = t.meta;
-  if (t.arg)
-    arg = test_parse_cmd_multi(t.arg);
-  ret.push(arg ? {cmd: t.cmd, arg, orig: t.orig, meta} :
-    {cmd: t.cmd, orig: t.orig, meta});
-  return ret.concat(test_parse_cmd_multi(s.substr(t.meta.last)));
-}
-
-function test_run_plugin(a, cb){
-  a.forEach(o=>{
-    cb(o);
-    if (o.arg)
-      test_run_plugin(o.arg, cb);
-  });
-  return a;
-}
-
-function parse_cmd_dir(s){
-  if (!/[><=]/.test(s))
-    return {cmd: s};
-  let m = s.match(/^([a-zA-Z])([a-zA-Z]?)([<>=])([^<^>]*$)/);
-  if (!m)
-  {
-    throw_invalid(s, (s.indexOf('<')+1 ||
-      s.indexOf('>')+1 || s.indexOf('=')+1)-1);
-  }
-  if (m[3]=='=')
-  {
-    if (m[2])
-      throw_invalid(s, 2);
-    if (!m[4])
-      throw_invalid(s, 2);
-  }
-  let sd = m[3]=='>' || m[3]=='=' ? {s: m[1], d: m[2]} : {s: m[2], d: m[1]};
-  return {...sd, dir: m[3], cmd: m[4], meta: {cmd: s}};
-}
-
-function plugin_cmd_dir(o){
-  let t = parse_cmd_dir(o.cmd);
-  let o2 = assign({}, o);
-  for (let i in o)
-    delete o[i];
-  assign(o, t, {arg: o2.arg, orig: o2.orig});
-  assign(o.meta||{}, o2.meta);
-  return o;
-}
-
-function test_parse_rm_meta(a){ return test_run_plugin(a, o=>delete o.meta); }
-
-function test_parse_rm_meta_orig(a){
-  return test_run_plugin(a, o=>{
-    delete o.meta;
-    delete o.orig;
-  });
-}
-
-function test_parse(s){
-  return test_run_plugin(test_parse_cmd_multi(s), plugin_cmd_dir); }
 
 function arg_to_obj(arg){
   let ret = {};
@@ -317,136 +178,10 @@ function node_from_ws(ws){
   }
 }
 
-describe('test_api', function(){
-   it('test_parse_cmd_single_valid', ()=>{
-    const t = (s, exp, exp_last)=>{
-      let ret = test_parse_cmd_single(s);
-      let {last} = ret.meta;
-      delete ret.meta;
-      delete ret.orig;
-      assert.deepEqual(ret, exp);
-      assert.equal(last, exp_last);
-    };
-    t('open', {cmd: 'open'}, 4);
-    t('open ', {cmd: 'open'}, 5);
-    t('open b', {cmd: 'open'}, 5);
-    t('open:a', {cmd: 'open', arg: 'a'}, 6);
-    t('open:ab', {cmd: 'open', arg: 'ab'}, 7);
-    t('open()', {cmd: 'open'}, 6);
-    t('open() ', {cmd: 'open'}, 6);
-    t('open( )', {cmd: 'open', arg: ' '}, 7); // XXX: maybe arg:undefined?
-    t('open(a) ', {cmd: 'open', arg: 'a'}, 7);
-    t('open(a b) ', {cmd: 'open', arg: 'a b'}, 9);
-    t('open(a b)  ', {cmd: 'open', arg: 'a b'}, 9);
-    t('open(a(b)) ', {cmd: 'open', arg: 'a(b)'}, 10);
-    t('open(role c)', {cmd: 'open', arg: 'role c'}, 12);
-    t('open(roles(ct>))', {cmd: 'open', arg: 'roles(ct>)'}, 16);
-    t('open(a) b', {cmd: 'open', arg: 'a'}, 7);
-    t('open(a) (', {cmd: 'open', arg: 'a'}, 7);
-    t('open(a) )', {cmd: 'open', arg: 'a'}, 7);
-    t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'}, 12);
-  });
-  it('test_parse_cmd_single_invalid', ()=>{
-    const t = (s, exp)=>{ assert.throws(()=>{ test_parse_cmd_single(s); },
-      {message: exp}); };
-    t('abcdefg)12345678', 'invalid abcdefg^^^)12345678');
-    t(')', 'invalid ^^^)');
-    t('(', 'invalid ^^^(');
-    t('a)', 'invalid a^^^)');
-    t('a(b()', 'invalid a(b()^^^');
-    t('a(b () ', 'invalid a(b () ^^^');
-    t('a:(b)', 'invalid a^^^:');
-    t('a:b:c', 'invalid a:b^^^:c');
-    t('', 'invalid empty cmd');
-    t(' ', 'invalid empty cmd');
-  });
-  it('test_run_plugin', ()=>{
-    const t = (a, exp)=>{
-      let a2 = test_run_plugin(a, o=>o.cmd = o.cmd+o.cmd);
-      assert.equal(a, a2);
-      assert.deepEqual(a, exp);
-    };
-    t([{cmd: 'a'}], [{cmd: 'aa'}]);
-    t([{cmd: 'a'}, {cmd: 'b'}], [{cmd: 'aa'}, {cmd: 'bb'}]);
-    t([{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}],
-      [{cmd: 'aa', arg: [{cmd: 'cc'}]}, {cmd: 'bb'}]);
-    t([{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b', arg: [{cmd: 'd'}]}],
-      [{cmd: 'aa', arg: [{cmd: 'cc'}]}, {cmd: 'bb', arg: [{cmd: 'dd'}]}]);
-  });
-  it('test_parse_cmd_multi_valid', ()=>{
-    const t = (s, exp)=>{
-      let ret = test_parse_cmd_multi(s);
-      ret = test_parse_rm_meta_orig(ret);
-      assert.deepEqual(ret, exp);
-    };
-    t('a', [{cmd: 'a'}]);
-    t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
-    t('a(c) b', [{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}]);
-    t('a(c) b(d)', [{cmd: 'a', arg: [{cmd: 'c'}]},
-      {cmd: 'b', arg: [{cmd: 'd'}]}]);
-    t('a(c d(5))',
-      [{cmd: 'a', arg: [{cmd: 'c'}, {cmd: 'd', arg: [{cmd: '5'}]}]}]);
-    t('a(c d(5s + 3))', [{cmd: 'a', arg: [{cmd: 'c'},
-      {cmd: 'd', arg: [{cmd: '5s'}, {cmd: '+'}, {cmd: '3'}]}
-      ]}]);
-    t('ab>connect', [{cmd: 'ab>connect'}]);
-    t('ab>(test go(now 3 send:4))', [{cmd: 'ab>', arg: [{cmd: 'test'},
-      {cmd: 'go', arg: [{cmd: 'now'}, {cmd: '3'}, {cmd: 'send',
-        arg: [{cmd: '4'}]}]}]}]);
-  });
-  it('test_parse_cmd_multi_valid_orig', ()=>{
-    const t = (s, exp)=>{
-      let ret = test_parse_cmd_multi(s);
-      ret = test_parse_rm_meta(ret);
-      assert.deepEqual(ret, exp);
-    };
-    t('ab>connect', [{cmd: 'ab>connect', orig: 'ab>connect'}]);
-    t('ab>connect(a)', [{cmd: 'ab>connect', orig: 'ab>connect(a)',
-      arg: [{cmd: 'a', orig: 'a'}]}]);
-  });
-  it('test_parse_cmd_multi_invalid', ()=>{
-    const t = (s, exp)=>{ assert.throws(()=>{ test_parse_cmd_multi(s); },
-      {message: exp}); };
-    t('a(', 'invalid a(^^^');
-    t('a(b()', 'invalid a(b()^^^');
-    t('a(b)(', 'invalid ^^^(');
-    t('a( )', 'invalid empty cmd');
-  });
-  it('parse_cmd_dir', ()=>{
-    const t = (s, exp)=>{
-      let ret = parse_cmd_dir(s);
-      delete ret.meta;
-      delete ret.orig;
-      assert.deepEqual(ret, exp);
-    };
-    t('a', {cmd: 'a'});
-    t('a>', {s: 'a', d: '', dir: '>', cmd: ''});
-    t('a<', {s: '', d: 'a', dir: '<', cmd: ''});
-    t('aB>', {s: 'a', d: 'B', dir: '>', cmd: ''});
-    t('aB<', {s: 'B', d: 'a', dir: '<', cmd: ''});
-    t('a>b', {s: 'a', d: '', dir: '>', cmd: 'b'});
-    t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
-    t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
-    t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
-    t('a=b', {s: 'a', d: '', dir: '=', cmd: 'b'});
-  });
-  it('parse_cmd_dir_invalid', ()=>{
-    const t = (s, exp)=>{ assert.throws(()=>{ parse_cmd_dir(s); },
-      {message: exp}); };
-    t('a>>', 'invalid a^^^>>');
-    t('abc>', 'invalid abc^^^>');
-    t('>', 'invalid ^^^>');
-    t('a=', 'invalid a=^^^');
-    t('=a', 'invalid ^^^=a');
-    t('=', 'invalid ^^^=');
-    t('ab=c', 'invalid ab^^^=c');
-  });
-});
-
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
   t_running = true;
-  let a = test_parse(test);
+  let a = xtest.test_parse(test);
   for (let i=0, c; i<a.length, c=a[i]; i++)
   {
     switch (c.cmd)

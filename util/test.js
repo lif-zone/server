@@ -3362,66 +3362,191 @@ describe('events', ()=>{
 });
 
 describe('test_lib', ()=>{
-    describe('set', ()=>{
-        let state = {
-            field1: 'a',
-            field2: 'b',
-            field3: 1
-        };
-        describe('inside_describe', ()=>{
-            describe('before', ()=>{
-                xtest.set(state, 'field1', 'A');
-                it('one_field', ()=>assert.strictEqual(state.field1, 'A'));
-                xtest.set(state, 'field4', 'Z');
-                it('add_field', ()=>assert.strictEqual(state.field4, 'Z'));
-                xtest.set(state, {field2: 'C', field3: 'V'});
-                it('several_fields', ()=>{
-                    assert.strictEqual(state.field2, 'C');
-                    assert.strictEqual(state.field3, 'V');
-                });
-            });
-            describe('after', ()=>{
-                it('check', ()=>{
-                    assert(state.field1, 'a');
-                    assert(state.field2, 'b');
-                    assert(!('field4' in state));
-                });
-            });
+  describe('set', ()=>{
+    let state = {
+      field1: 'a',
+      field2: 'b',
+      field3: 1
+    };
+    describe('inside_describe', ()=>{
+      describe('before', ()=>{
+        xtest.set(state, 'field1', 'A');
+        it('one_field', ()=>assert.strictEqual(state.field1, 'A'));
+        xtest.set(state, 'field4', 'Z');
+        it('add_field', ()=>assert.strictEqual(state.field4, 'Z'));
+        xtest.set(state, {field2: 'C', field3: 'V'});
+        it('several_fields', ()=>{
+          assert.strictEqual(state.field2, 'C');
+          assert.strictEqual(state.field3, 'V');
         });
-        describe('inside_test', ()=>{
-            it('before', ()=>{
-                xtest.set(state, 'field3', 3);
-                assert.strictEqual(state.field3, 3);
-                xtest.set(state, {field3: 'P', field4: 'O'});
-                assert.strictEqual(state.field3, 'P');
-                assert.strictEqual(state.field4, 'O');
-            });
-            it('after', ()=>{
-                assert.strictEqual(state.field3, 1);
-                assert(!('field4' in state));
-            });
+      });
+      describe('after', ()=>{
+        it('check', ()=>{
+          assert(state.field1, 'a');
+          assert(state.field2, 'b');
+          assert(!('field4' in state));
         });
-        describe('nested_describes', ()=>{
-            xtest.set(state, 'field1', 1);
-            it('check', ()=>assert.strictEqual(state.field1, 1));
-            describe('nested_describe_2', ()=>{
-                xtest.set(state, {field1: 2, field2: 'T'});
-                it('check', ()=>assert.strictEqual(state.field1, 2));
-                describe('nested_describe_3', ()=>{
-                    xtest.set(state, 'field1', 3);
-                    it('inside_test_during_nested_describes', ()=>{
-                        xtest.set(state, {field1: 4, field2: 'G'});
-                        assert.strictEqual(state.field1, 4);
-                        assert.strictEqual(state.field2, 'G');
-                    });
-                });
-            });
-            describe('nested_describes_after', ()=>it('check', ()=>{
-                assert.strictEqual(state.field1, 1);
-                assert.strictEqual(state.field2, 'b');
-            }));
-        });
+      });
     });
+    describe('inside_test', ()=>{
+      it('before', ()=>{
+        xtest.set(state, 'field3', 3);
+        assert.strictEqual(state.field3, 3);
+        xtest.set(state, {field3: 'P', field4: 'O'});
+        assert.strictEqual(state.field3, 'P');
+        assert.strictEqual(state.field4, 'O');
+      });
+      it('after', ()=>{
+        assert.strictEqual(state.field3, 1);
+        assert(!('field4' in state));
+      });
+    });
+    describe('nested_describes', ()=>{
+      xtest.set(state, 'field1', 1);
+      it('check', ()=>assert.strictEqual(state.field1, 1));
+      describe('nested_describe_2', ()=>{
+        xtest.set(state, {field1: 2, field2: 'T'});
+        it('check', ()=>assert.strictEqual(state.field1, 2));
+        describe('nested_describe_3', ()=>{
+          xtest.set(state, 'field1', 3);
+          it('inside_test_during_nested_describes', ()=>{
+            xtest.set(state, {field1: 4, field2: 'G'});
+            assert.strictEqual(state.field1, 4);
+            assert.strictEqual(state.field2, 'G');
+          });
+        });
+      });
+      describe('nested_describes_after', ()=>it('check', ()=>{
+        assert.strictEqual(state.field1, 1);
+        assert.strictEqual(state.field2, 'b');
+      }));
+    });
+  });
+  describe('test_parse', function(){
+     it('test_parse_cmd_single_valid', ()=>{
+      const t = (s, exp, exp_last)=>{
+        let ret = xtest.test_parse_cmd_single(s);
+        let {last} = ret.meta;
+        delete ret.meta;
+        delete ret.orig;
+        assert.deepEqual(ret, exp);
+        assert.equal(last, exp_last);
+      };
+      t('open', {cmd: 'open'}, 4);
+      t('open ', {cmd: 'open'}, 5);
+      t('open b', {cmd: 'open'}, 5);
+      t('open:a', {cmd: 'open', arg: 'a'}, 6);
+      t('open:ab', {cmd: 'open', arg: 'ab'}, 7);
+      t('open()', {cmd: 'open'}, 6);
+      t('open() ', {cmd: 'open'}, 6);
+      t('open( )', {cmd: 'open', arg: ' '}, 7); // XXX: maybe arg:undefined?
+      t('open(a) ', {cmd: 'open', arg: 'a'}, 7);
+      t('open(a b) ', {cmd: 'open', arg: 'a b'}, 9);
+      t('open(a b)  ', {cmd: 'open', arg: 'a b'}, 9);
+      t('open(a(b)) ', {cmd: 'open', arg: 'a(b)'}, 10);
+      t('open(role c)', {cmd: 'open', arg: 'role c'}, 12);
+      t('open(roles(ct>))', {cmd: 'open', arg: 'roles(ct>)'}, 16);
+      t('open(a) b', {cmd: 'open', arg: 'a'}, 7);
+      t('open(a) (', {cmd: 'open', arg: 'a'}, 7);
+      t('open(a) )', {cmd: 'open', arg: 'a'}, 7);
+      t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'}, 12);
+    });
+    it('test_parse_cmd_single_invalid', ()=>{
+      const t = (s, exp)=>assert.throws(
+        ()=>xtest.test_parse_cmd_single(s), {message: exp});
+      t('abcdefg)12345678', 'invalid abcdefg^^^)12345678');
+      t(')', 'invalid ^^^)');
+      t('(', 'invalid ^^^(');
+      t('a)', 'invalid a^^^)');
+      t('a(b()', 'invalid a(b()^^^');
+      t('a(b () ', 'invalid a(b () ^^^');
+      t('a:(b)', 'invalid a^^^:');
+      t('a:b:c', 'invalid a:b^^^:c');
+      t('', 'invalid empty cmd');
+      t(' ', 'invalid empty cmd');
+    });
+    it('test_run_plugin', ()=>{
+      const t = (a, exp)=>{
+        let a2 = xtest.test_run_plugin(a, o=>o.cmd = o.cmd+o.cmd);
+        assert.equal(a, a2);
+        assert.deepEqual(a, exp);
+      };
+      t([{cmd: 'a'}], [{cmd: 'aa'}]);
+      t([{cmd: 'a'}, {cmd: 'b'}], [{cmd: 'aa'}, {cmd: 'bb'}]);
+      t([{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}],
+        [{cmd: 'aa', arg: [{cmd: 'cc'}]}, {cmd: 'bb'}]);
+      t([{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b', arg: [{cmd: 'd'}]}],
+        [{cmd: 'aa', arg: [{cmd: 'cc'}]}, {cmd: 'bb', arg: [{cmd: 'dd'}]}]);
+    });
+    it('test_parse_cmd_multi_valid', ()=>{
+      const t = (s, exp)=>{
+        let ret = xtest.test_parse_cmd_multi(s);
+        ret = xtest.test_parse_rm_meta_orig(ret);
+        assert.deepEqual(ret, exp);
+      };
+      t('a', [{cmd: 'a'}]);
+      t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
+      t('a(c) b', [{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}]);
+      t('a(c) b(d)', [{cmd: 'a', arg: [{cmd: 'c'}]},
+        {cmd: 'b', arg: [{cmd: 'd'}]}]);
+      t('a(c d(5))',
+        [{cmd: 'a', arg: [{cmd: 'c'}, {cmd: 'd', arg: [{cmd: '5'}]}]}]);
+      t('a(c d(5s + 3))', [{cmd: 'a', arg: [{cmd: 'c'},
+        {cmd: 'd', arg: [{cmd: '5s'}, {cmd: '+'}, {cmd: '3'}]}
+        ]}]);
+      t('ab>connect', [{cmd: 'ab>connect'}]);
+      t('ab>(test go(now 3 send:4))', [{cmd: 'ab>', arg: [{cmd: 'test'},
+        {cmd: 'go', arg: [{cmd: 'now'}, {cmd: '3'}, {cmd: 'send',
+          arg: [{cmd: '4'}]}]}]}]);
+    });
+    it('test_parse_cmd_multi_valid_orig', ()=>{
+      const t = (s, exp)=>{
+        let ret = xtest.test_parse_cmd_multi(s);
+        ret = xtest.test_parse_rm_meta(ret);
+        assert.deepEqual(ret, exp);
+      };
+      t('ab>connect', [{cmd: 'ab>connect', orig: 'ab>connect'}]);
+      t('ab>connect(a)', [{cmd: 'ab>connect', orig: 'ab>connect(a)',
+        arg: [{cmd: 'a', orig: 'a'}]}]);
+    });
+    it('test_parse_cmd_multi_invalid', ()=>{
+      const t = (s, exp)=>assert.throws(
+        ()=>xtest.test_parse_cmd_multi(s), {message: exp});
+      t('a(', 'invalid a(^^^');
+      t('a(b()', 'invalid a(b()^^^');
+      t('a(b)(', 'invalid ^^^(');
+      t('a( )', 'invalid empty cmd');
+    });
+    it('parse_cmd_dir', ()=>{
+      const t = (s, exp)=>{
+        let ret = xtest.parse_cmd_dir(s);
+        delete ret.meta;
+        delete ret.orig;
+        assert.deepEqual(ret, exp);
+      };
+      t('a', {cmd: 'a'});
+      t('a>', {s: 'a', d: '', dir: '>', cmd: ''});
+      t('a<', {s: '', d: 'a', dir: '<', cmd: ''});
+      t('aB>', {s: 'a', d: 'B', dir: '>', cmd: ''});
+      t('aB<', {s: 'B', d: 'a', dir: '<', cmd: ''});
+      t('a>b', {s: 'a', d: '', dir: '>', cmd: 'b'});
+      t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
+      t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
+      t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
+      t('a=b', {s: 'a', d: '', dir: '=', cmd: 'b'});
+    });
+    it('parse_cmd_dir_invalid', ()=>{
+      const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },
+        {message: exp}); };
+      t('a>>', 'invalid a^^^>>');
+      t('abc>', 'invalid abc^^^>');
+      t('>', 'invalid ^^^>');
+      t('a=', 'invalid a=^^^');
+      t('=a', 'invalid ^^^=a');
+      t('=', 'invalid ^^^=');
+      t('ab=c', 'invalid ab^^^=c');
+    });
+  });
 });
 
 describe('zerr', ()=>{
