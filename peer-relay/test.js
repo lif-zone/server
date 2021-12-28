@@ -12,8 +12,7 @@ import date from '../util/date.js';
 import ws_util from '../util/ws.js';
 import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
-const zetask = xtest.etask, assign = Object.assign;
-
+const zetask = xtest.etask, assign = Object.assign, stringify = JSON.stringify;
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
   console.log('uncaughtException %o', e);
@@ -169,8 +168,8 @@ function arg_to_obj(arg){
   arg.forEach(o=>{
     if (!o.arg || !o.arg.length)
       return ret[o.cmd] = true;
-    assert.ok(!o.arg.arg, 'invalid arg '+JSON.stringify(arg));
-    assert.ok(o.arg.length==1, 'invalid arg '+JSON.stringify(arg));
+    assert.ok(!o.arg.arg, 'invalid arg '+stringify(arg));
+    assert.ok(o.arg.length==1, 'invalid arg '+stringify(arg));
     ret[o.cmd] = o.arg[0].cmd;
   });
   return ret;
@@ -230,12 +229,6 @@ class FakeNode extends EventEmitter {
 
 function is_fake(role, p){ return role!=p; }
 
-function assert_keys(o, keys){
-  o = assign({}, o);
-  keys.forEach(name=>delete o[name]);
-  assert.ok(!Object.keys(o).length, 'unknown prop '+JSON.stringify(o));
-}
-
 function assert_not_exist(name){
   assert.ok(!t_nodes[name], 'node already exist '+name); }
 
@@ -248,23 +241,43 @@ function assert_port(port, opts){
   assert.ok(port>0 && port<65535, 'invalid port '+port);
 }
 
-function assert_host(host, opts){
-  opts = opts||{};
-  if (opts.optional && host===undefined)
-    return;
+function assert_host(host){
   assert.ok(xurl.is_valid_domain(host), 'invalid host '+host); }
 
-function node_new(fake, name, o){
+function assert_ws(url){
+  // XXX: TODO
+}
+
+function assert_ws_array(a){ a.forEach(url=>assert_ws(url)); }
+
+function arg_to_val(arg){
+  if (arg.length==1)
+    return arg[0].cmd;
+  let ret = [];
+  arg.forEach(a=>{
+    assert.ok(!a.arg, 'invalid value '+stringify(a));
+    ret.push(a.cmd);
+  });
+  return ret;
+}
+
+function to_arr(val){ return Array.isArray(val) ? val : [val]; }
+
+function node_new(fake, name, arg){
+  let o = {};
   assert_not_exist(name);
-  assert_keys(o, ['host', 'port', 'bootstrap']);
-  assert.ok(util.xor(o.host&&o.port, o.bootstrap),
-    'host/port or bootstrap '+JSON.stringify(o));
-  assert_port(o.port, {optional: true});
-  assert_host(o.host, {optional: true});
-  o = assign({}, o);
-  // XXX: wrap fixing arguments to plugin
-  if (o.bootstrap) // XXX: support array
-    o.bootstrap = [t_nodes[o.bootstrap].wsConnector.url];
+  arg.forEach(a=>{
+    let val = arg_to_val(a.arg);
+    switch (a.cmd)
+    {
+    case 'host': assert_host(o.host = val); break;
+    case 'port': assert_port(o.port = val); break;
+    case 'bootstrap': assert_ws_array(o.bootstrap = to_arr(val)); break;
+    default: throw new Error('unknown arg '+a.cmd);
+    }
+  });
+  if (o.bootstrap) // XXX HACK: need to pass url in bootstrap
+    o.bootstrap = [t_nodes[o.bootstrap[0]].wsConnector.url];
   let node = new (fake ? FakeNode : Node)(o);
   t_nodes[name] = node;
   node.t_name = name;
@@ -446,7 +459,7 @@ const test_run = (role, test)=>etask(function*(){
     case 'node_new':
       assert.equal(c.dir, '=');
       assert.ok(!c.d, 'unexpected dst '+c.d);
-      node_new(is_fake(role, c.s), c.s, arg_to_obj(c.arg));
+      node_new(is_fake(role, c.s), c.s, c.arg);
       break;
     case 'listen':
       test_expect(c.orig);
@@ -540,9 +553,11 @@ describe('peer-relay', function(){
   it('basic', ()=>zetask(function*(){
     const t = (role, test)=>etask(function(){ return test_run(role, test); });
     yield t('s', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
-      a=node_new(bootstrap:s) as>connect(ws:4000) as>findPeers(a)`);
+      a=node_new(bootstrap:s) as>connect(ws:4000)
+      as>findPeers(a)`);
     yield t('a', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
-      a=node_new(bootstrap:s) as>connect(ws:4000) as>findPeers(a)`);
+      a=node_new(bootstrap:s) as>connect(ws:4000)
+      as>findPeers(a)`);
   }));
 });
 
