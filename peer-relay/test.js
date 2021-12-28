@@ -442,7 +442,7 @@ describe('test_api', function(){
     t('ab=c', 'invalid ab^^^=c');
   });
 });
-// XXX: change to yield
+
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
   t_running = true;
