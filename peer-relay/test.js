@@ -22,20 +22,6 @@ process.on('unhandledRejection', e=>{
   process.exit(-1);
 });
 
-function arg_to_obj(arg){
-  let ret = {};
-  if (!arg)
-    return ret;
-  arg.forEach(o=>{
-    if (!o.arg || !o.arg.length)
-      return ret[o.cmd] = true;
-    assert.ok(!o.arg.arg, 'invalid arg '+stringify(arg));
-    assert.ok(o.arg.length==1, 'invalid arg '+stringify(arg));
-    ret[o.cmd] = o.arg[0].cmd;
-  });
-  return ret;
-}
-
 let t_nodes = {}, t_events = [], t_expect = [];
 let t_timeout = 2000, t_running;
 
@@ -121,7 +107,7 @@ function arg_to_val(arg){
   return ret;
 }
 
-function node_new(role, c){
+function cmd_node_new(role, c){
   let o = {}, {s, d, dir, arg} = c;
   assert_not_exist(s);
   assert.ok(!d, 'dst not needed '+d);
@@ -154,7 +140,23 @@ function node_new(role, c){
   }
 }
 
-function node_find_peers(s, d, o){
+function cmd_listen(c){
+  test_expect(c.orig);
+  return test_ensure_no_events();
+}
+
+function cmd_connect(c){
+  test_expect(c.orig);
+  return test_ensure_no_events();
+}
+
+function cmd_find_peers(s, d, o){
+/* XXX: WIP
+  if (is_fake(role, c.s))
+    node_find_peers(c.s, c.d, arg_to_obj(c.arg));
+  test_expect(c.orig);
+  yield test_ensure_no_events();
+*/
 }
 
 function node_from_wss_url(url){
@@ -186,24 +188,10 @@ const test_run = (role, test)=>etask(function*(){
   {
     switch (c.cmd)
     {
-    case 'node_new': node_new(role, c); break;
-    case 'listen':
-      test_expect(c.orig);
-      yield test_ensure_no_events();
-      break;
-    case 'connect':
-      test_expect(c.orig);
-      yield test_ensure_no_events();
-      break;
-    case 'findPeers':
-      if (0) // XXX: WIP
-      {
-        if (is_fake(role, c.s))
-          node_find_peers(c.s, c.d, arg_to_obj(c.arg));
-        test_expect(c.orig);
-        yield test_ensure_no_events();
-      }
-      break;
+    case 'node_new': yield cmd_node_new(role, c); break;
+    case 'listen': yield cmd_listen(c); break;
+    case 'connect': yield cmd_connect(c); break;
+    case 'findPeers': yield cmd_find_peers(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
     yield util.sleep(); // XXX HACK: fixme
