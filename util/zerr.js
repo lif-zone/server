@@ -2,7 +2,7 @@
 import xutil from './util.js';
 import date from './date.js';
 import sprintf from './sprintf.js';
-import zescape from './escape.js';
+import xescape from './escape.js';
 import rate_limit from './rate_limit.js';
 import cluster from 'cluster';
 const is_node = typeof window==='undefined';
@@ -337,7 +337,7 @@ var post = function(url, data){
         req.setRequestHeader('Content-Type',
             'application/x-www-form-urlencoded; charset=UTF-8');
     }
-    req.send(zescape.qs(data));
+    req.send(xescape.qs(data));
     return req;
 };
 var perr_transport = function(id, info, opt){
@@ -355,7 +355,7 @@ var perr_transport = function(id, info, opt){
         zerr._zerr(opt.level, ['perr '+id+(info ? ' info: '+info : '')+
             (opt.bt ? '\n'+opt.bt : '')]);
     }
-    return post(zescape.uri(E.conf.url_perr+'/perr', qs), data);
+    return post(xescape.uri(E.conf.url_perr+'/perr', qs), data);
 };
 
 var perr = function(perr_orig, pending){

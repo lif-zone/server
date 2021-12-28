@@ -1,5 +1,5 @@
 'use strict'; /*zlint node, br*/
-import zescape from './escape.js';
+import xescape from './escape.js';
 import xutil from './util.js';
 const E = {};
 export default E;
@@ -8,8 +8,7 @@ E.glob_to_regex_str = function(glob){
     return '^('
     +glob.replace(/(\?|\*\*|\*)|([^?*]+)/g, function(m){
         return m=='?' ? '[^/]' : m=='**' ? '.*' : m=='*' ? '[^/]*' :
-            zescape.regex(m); })
-    +')$';
+            xescape.regex(m); })+')$';
 };
 E.glob_to_regex = function(glob){
     return new RegExp(E.glob_to_regex_str(glob)); };
@@ -73,7 +72,7 @@ function parse_arr_to_tree(arr, join){
 
 E.match_parse = function(filter, opt){
     var o = {s: filter}, cmp = [], match, i, _plugin;
-    var eat_token = zescape.parse.eat_token;
+    var eat_token = xescape.parse.eat_token;
     opt = opt||{};
     var plugin = opt.plugin||[];
     var join = opt.join||'||'; // default join operator
@@ -224,6 +223,6 @@ E.strverscmp = function(a, b){
 E.regexp_merge = function(a){
     var re = [], i;
     for (i=0; i<a.length; i++)
-        re.push(a[i] instanceof RegExp ? a[i].source : zescape.regex(''+a[i]));
+        re.push(a[i] instanceof RegExp ? a[i].source : xescape.regex(''+a[i]));
     return new RegExp('('+re.join(')|(')+')');
 };

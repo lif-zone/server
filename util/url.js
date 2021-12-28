@@ -434,7 +434,7 @@ E.root_url_cmp = function(a, b){
 
 E.qs_strip = function(url){ return /^[^?#]*/.exec(url)[0]; };
 
-// mini-implementation of zescape.qs to avoid dependency of escape.js
+// mini-implementation of xescape.qs to avoid dependency of escape.js
 E.qs_str = function(qs){
     var q = [];
     for (var k in qs)

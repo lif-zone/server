@@ -777,8 +777,6 @@ E.prototype.throw = function(err){
     return this.continue(E.err(err)); };
 
 E.prototype.get_name = function(flags){
-    /* anon: Context.<anonymous> (/home/yoni/zon1/pkg/util/test.js:1740:7)
-     * with name: Etask.etask1_1 (/home/yoni/zon1/pkg/util/test.js:1741:11) */
     var stack = this._stack instanceof Error ? this._stack.stack.split('\n') :
         undefined;
     var caller;
