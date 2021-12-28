@@ -447,10 +447,8 @@ const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
   t_running = true;
   let a = test_parse(test);
-  for (let i=0; i<a.length; i++)
+  for (let i=0, c; i<a.length, c=a[i]; i++)
   {
-    let c = a[i];
-    // XXX: mv arg_to_obj to plugin
     switch (c.cmd)
     {
     case 'node_new': node_new(role, c); break;
