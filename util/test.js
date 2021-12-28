@@ -3532,6 +3532,16 @@ describe('test_lib', ()=>{
       t([{cmd: 'a', arg: [{cmd: 'A'}]}, {cmd: 'b'}], {a: 'A', b: true});
       t([{cmd: 'a', arg: [{cmd: 'A'}]}, {cmd: 'b', arg: [{cmd: 'B'}]}],
         {a: 'A', b: 'B'});
+      t([{cmd: 'a', arg: [{cmd: 'b', arg: [{cmd: 'c'}]}]}],
+        {a: [{cmd: 'b', arg: [{cmd: 'c'}]}]});
+     });
+     it('test_arg_to_obj_multi', ()=>{
+      const t = (s, exp)=>assert.deepEqual(xtest.arg_to_obj_multi(s), exp);
+      t([{cmd: 'a'}], {a: true});
+      t([{cmd: 'a', arg: [{cmd: 'A'}]}], {a: 'A'});
+      t([{cmd: 'a', arg: [{cmd: 'A'}]}, {cmd: 'b'}], {a: 'A', b: true});
+      t([{cmd: 'a', arg: [{cmd: 'A'}]}, {cmd: 'b', arg: [{cmd: 'B'}]}],
+        {a: 'A', b: 'B'});
       t([{cmd: 'a', arg: [{cmd: 'b', arg: [{cmd: 'c'}]}]}], {a: {b: 'c'}});
     });
     it('parse_cmd_dir', ()=>{

@@ -866,7 +866,21 @@ E.arg_to_obj = function(arg){
     else if (o.arg.length==1 && !o.arg[0].arg)
       ret[o.cmd] = o.arg[0].cmd;
     else
-      ret[o.cmd] = E.arg_to_obj(o.arg);
+      ret[o.cmd] = o.arg;
+  });
+  return ret;
+};
+
+E.arg_to_obj_multi = function(arg){
+  let ret = {};
+  arg.forEach(o=>{
+    assert(ret[o.cmd]===undefined, 'duplicated arg '+o.cmd);
+    if (!o.arg)
+      ret[o.cmd] = true;
+    else if (o.arg.length==1 && !o.arg[0].arg)
+      ret[o.cmd] = o.arg[0].cmd;
+    else
+      ret[o.cmd] = E.arg_to_obj_multi(o.arg);
   });
   return ret;
 };

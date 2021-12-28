@@ -144,20 +144,14 @@ function assert_wss(arg){
 }
 
 function cmd_node(role, c){
-  let name, wss;
-  c.arg.forEach(a=>{ // XXX derry: review args parsing
-    let val = xtest.arg_to_val(a.arg);
-    switch (a.cmd)
+  // XXX: review parsing with derry (explain dup)
+  let name, wss, arg = xtest.arg_to_obj(c.arg);
+  util.forEach(arg, (val, cmd)=>{
+    switch (cmd)
     {
-    case 'name':
-      assert(name===undefined, 'multiple '+a.cmd);
-      name = assert_name_new(val);
-      break;
-    case 'wss':
-      assert(wss===undefined, 'multiple '+a.cmd);
-      wss = assert_wss(val);
-      break;
-    default: throw new Error('unknown arg '+a.cmd);
+    case 'name': name = assert_name_new(val); break;
+    case 'wss': wss = assert_wss(val); break;
+    default: throw new Error('unknown arg '+cmd);
     }
   });
   let node = new (is_fake(role, name) ? FakeNode : Node)(
