@@ -58,6 +58,7 @@ class FakeNode extends EventEmitter {
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new EventEmitter();
+    this.wsConnector.on('connection', c=>this.emit('connection', c));
   }
   destroy(){}
   connect_ws(url){
@@ -270,6 +271,7 @@ describe('peer-relay', function(){
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
       a>connect(wss(host:lif.zone port:4000))
+      as>connected
       sa>connected
       sa>findPeers(s)`);
 //      sx>connected`);
