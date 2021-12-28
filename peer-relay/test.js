@@ -50,8 +50,7 @@ const test_ensure_no_events = ()=>etask(function*(){
     }
   }
   assert.ok(!t_events.length && !t_expect.length,
-    'event mismatch '+t_events[t_events.length-1]+' != '+
-      t_expect[t_expect.length-1]);
+    'event mismatch '+stringify(t_events)+' != '+stringify(t_expect));
 });
 
 class FakeNode extends EventEmitter {
@@ -59,23 +58,51 @@ class FakeNode extends EventEmitter {
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new EventEmitter();
-    if (opts.port)
-    {
-      let port = opts.port;
-      this.wsConnector._wss = new EventEmitter();
-      this.wsConnector._wss.port = port;
-      this.wsConnector.url = 'wss://'+opts.host+':'+opts.port;
-      // XXX HACK: replace setTimeout with tick
-      setTimeout(()=>this.wsConnector.emit('listen', {port}));
-    }
-    if (opts.bootstrap) // XXX HACK: replace setTimeout with tick
-      setTimeout(()=>new FakeWS(opts.bootstrap[0], {client: this}));
   }
+  destroy(){}
+  connect_ws(url){
+    console.log('XXX FakeNode connect_ws TODO');
+    let node = node_from_url(url);
+    let channel = new FakeChannel({localID: this.id, id: node.id});
+    node.wsConnector.emit('connection', channel);
+  }
+}
+
+class FakeChannel extends EventEmitter {
+  constructor(opts){
+    super();
+    this.id = opts.id;
+    this.localID = opts.localID;
+  }
+  destroy(){}
+}
+
+class FakeWsConnector extends EventEmitter {
   destroy(){}
 }
 
 function is_fake(role, p){ return role!=p; }
 
+function node_from_url(url){
+  for (let name in t_nodes)
+  {
+    let node = t_nodes[name];
+    if (node.t.wss && node.t.wss.url==url)
+      return node;
+  }
+}
+
+function node_from_id(id){
+  for (let name in t_nodes)
+  {
+    let node = t_nodes[name];
+    if (node.id==id)
+      return node;
+  }
+}
+
+function assert_exist(name){
+  assert.ok(t_nodes[name], 'node not found '+name); }
 function assert_not_exist(name){
   assert.ok(!t_nodes[name], 'node already exist '+name); }
 
@@ -88,12 +115,6 @@ function assert_port(port){
 function assert_host(host){
   assert.ok(xurl.is_valid_domain(host), 'invalid host '+host);
   return host;
-}
-
-function assert_ws(node){
-  assert.ok(t_nodes[node], 'node not found '+node);
-  // XXX HACK: need to pass url in bootstrap
-  return t_nodes[node].wsConnector.url;
 }
 
 function assert_name_new(val){
@@ -123,7 +144,7 @@ function assert_wss(arg){
 }
 
 function cmd_node(role, c){
-  let name, wss, ws;
+  let name, wss;
   c.arg.forEach(a=>{ // XXX derry: review args parsing
     let val = xtest.arg_to_val(a.arg);
     switch (a.cmd)
@@ -136,44 +157,46 @@ function cmd_node(role, c){
       assert(wss===undefined, 'multiple '+a.cmd);
       wss = assert_wss(val);
       break;
-    case 'ws':
-      assert(ws===undefined, 'multiple '+a.cmd);
-      assert(val===true, 'ws must be boolean');
-      ws = val;
+    default: throw new Error('unknown arg '+a.cmd);
+    }
+  });
+  let node = new (is_fake(role, name) ? FakeNode : Node)(
+    assign({WsConnector: FakeWsConnector}, wss));
+  node.t = {name, wss};
+  t_nodes[name] = node;
+  if (wss)
+    node.t.wss.url = 'wss://'+wss.host+':'+wss.port;
+  node.on('connection', channel=>{
+    let s = node_from_id(channel.localID), d = node_from_id(channel.id);
+    test_emit(s.t.name+d.t.name+'>connected');
+  });
+}
+
+function cmd_connect(c){
+  let wss;
+  c.arg.forEach(a=>{
+    let val = xtest.arg_to_val(a.arg);
+    switch (a.cmd)
+    {
+    case 'wss':
+      assert(wss===undefined, 'multiple '+a.cmd);
+      wss = assert_wss(val);
       break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  let node = new (is_fake(role, name) ? FakeNode : Node)(assign({}, wss));
-  node.t = {name};
-  t_nodes[name] = node;
-  /*
-  let node = new (is_fake(role, s) ? FakeNode : Node)(o);
-  t_nodes[s] = node;
-  node.t = node.t||{};
-  node.t.name = s;
-  if (o.port)
-  {
-    // XXX: mv to listen on wsConnector._wss
-    node.wsConnector.on('listen', e=>test_emit(s+'<listen(ws:'+e.port+')'));
-    node.wsConnector._wss.on('connection', ws=>{
-      // XXX HACK: rm ws.client
-      let client = ws.t.client || node_from_ws(ws);
-      test_emit(client.t.name+s+'>connect(ws:'+o.port+')');
-    });
-    node.wsConnector._wss.on('message', data=>{
-      test_emit('?'+s+'>message:'+data);
-    });
-  }
-  */
+  // XXX derry: review args parsing
+  assert_exist(c.s);
+  assert(!c.d);
+  assert.equal(c.dir, '>');
+  if (wss)
+    t_nodes[c.s].connect_ws('wss://'+wss.host+':'+wss.port);
+  else
+    throw new Error('not implemented yet');
 }
 
-function cmd_listen(c){
-  test_expect(c.orig);
-  return test_ensure_no_events();
-}
-
-function cmd_connect(c){
+function cmd_event(c){
+  // XXX: check what to assert for events
   test_expect(c.orig);
   return test_ensure_no_events();
 }
@@ -187,18 +210,6 @@ function cmd_find_peers(s, d, o){
 */
 }
 
-function node_from_ws(ws){
-  for (let name in t_nodes)
-  {
-    let node = t_nodes[name];
-    for (let i in node.wsConnector.channels)
-    {
-      if (node.wsConnector.channels[i].ws===ws.t_ws)
-        return node;
-    }
-  }
-}
-
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
   t_running = true;
@@ -208,12 +219,10 @@ const test_run = (role, test)=>etask(function*(){
     switch (c.cmd)
     {
     case 'node': yield cmd_node(role, c); break;
-    /*
-    case 'listen': yield cmd_listen(c); break;
     case 'connect': yield cmd_connect(c); break;
+    case 'connected': yield cmd_event(c); break;
     case 'findPeers': yield cmd_find_peers(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
-    */
     }
     yield util.sleep(); // XXX HACK: fixme
   }
@@ -266,14 +275,16 @@ describe('peer-relay', function(){
     const t = (role, test)=>etask(function(){ return test_run(role, test); });
     yield t('s', `
       node(name:s wss(host:lif.zone port:4000))
-      node(name:a ws);
+      node(name:a)
       a>connect(wss(host:lif.zone port:4000))
-      as>connected
+      as>connected`);
+      /* XXX TODO
       as<connected
       as>find_peers
       as<found_peers
       sa>find_peers
       sa<found_peers`);
+      */
   }));
 });
 

@@ -380,8 +380,7 @@ E.etask = (opt, states)=>{
         }
         this.via_res = true;
     }, function catch$(err){
-        assert('err' in opt, 'got etask err '+(err.message||err)+
-          ', expected OK');
+        assert('err' in opt, 'got etask err '+(err.stack||err));
         if (typeof opt.err=='function')
             assert(opt.err(err), 'err value mismatch');
         else if (opt.err!='any')
@@ -783,7 +782,7 @@ E.test_parse_cmd_single = function(s){
     ret.arg = m[2];
   }
   ret.meta = {last: i};
-  ret.orig = s.substr(cmd_s, i-cmd_s);
+  ret.orig = s.substr(cmd_s, i-cmd_s).trim();
   return ret;
 };
 
@@ -870,7 +869,7 @@ E.arg_to_obj = function(arg){
       ret[o.cmd] = E.arg_to_obj(o.arg);
   });
   return ret;
-}
+};
 
 if (xutil.is_mocha())
     proc.zexit_init();

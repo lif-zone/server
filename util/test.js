@@ -3506,6 +3506,7 @@ describe('test_lib', ()=>{
         assert.deepEqual(ret, exp);
       };
       t('ab>connect', [{cmd: 'ab>connect', orig: 'ab>connect'}]);
+      t('ab>connect\n', [{cmd: 'ab>connect', orig: 'ab>connect'}]);
       t('ab>connect(a)', [{cmd: 'ab>connect', orig: 'ab>connect(a)',
         arg: [{cmd: 'a', orig: 'a'}]}]);
     });
