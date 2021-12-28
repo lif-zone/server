@@ -123,24 +123,18 @@ function assert_name_new(val){
   return val;
 }
 
-function assert_wss(arg){
-  let ret = {};
-  assert(arg.length>0, 'invalid wss '+stringify(arg));
-  arg.forEach(a=>{
-    let val = xtest.arg_to_val(a.arg);
-    switch (a.cmd)
+function assert_wss(val){
+  let host, port, arg = xtest.arg_to_obj(val);
+  util.forEach(arg, (val, cmd)=>{
+    switch (cmd)
     {
-    case 'port':
-      assert(ret.port===undefined, 'multiple '+a.cmd);
-      ret.port = assert_port(val);
-      break;
-    case 'host':
-      assert(ret.host===undefined, 'multiple '+a.cmd);
-      ret.host = assert_host(val);
-    default: 'invalid wss '+a.cmd;
+    case 'host': host = assert_host(val); break;
+    case 'port': port = assert_port(val); break;
+    default: 'invalid cmd '+cmd;
     }
   });
-  return ret;
+  assert(host && port, 'must specify host & port');
+  return {host, port};
 }
 
 function cmd_node(role, c){
