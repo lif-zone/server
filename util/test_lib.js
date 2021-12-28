@@ -327,7 +327,7 @@ const check_string = (haystack, checks)=>{
 
 
 E.dir = ()=>{
-  throw new Error('ztest.js dir stub');
+  throw new Error('test_lib.js dir stub');
 /*
     import jtools from './jtools.js';
     let jdir = jtools.local_jdir();
@@ -363,7 +363,7 @@ E.etask = (opt, states)=>{
         opt = {seq: opt};
     opt = opt||{};
     // don't convert to ES6 generators, since this tests etask itself!
-    return etask('ztest.etask', [function(){
+    return etask('xtest.etask', [function(){
         seq(0);
         return etask(Object.assign({name: 'et_call'}, opt), states);
     }, function(res){

@@ -10,7 +10,7 @@ import util from '../util/util.js';
 import xurl from '../util/url.js';
 import date from '../util/date.js';
 import ws_util from '../util/ws.js';
-import xtest from '../util/ztest.js';
+import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
 const zetask = xtest.etask, assign = Object.assign;
 

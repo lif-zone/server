@@ -4,7 +4,7 @@ import etask from './etask.js';
 import date from './date.js';
 import zutil from './util.js';
 import array from './array.js';
-import ztest from './ztest.js';
+import xtest from './test_lib.js';
 import zerr from './zerr.js';
 import zurl from './url.js';
 import url from 'url';
@@ -20,7 +20,7 @@ import sinon from '@hola.org/sinon';
 import D from 'd.js';
 import _ from 'underscore';
 import when from 'when';
-const seq = ztest.seq, ms = date.ms, assign = Object.assign;
+const seq = xtest.seq, ms = date.ms, assign = Object.assign;
 
 describe('sinon', function(){
     let seq_with_called = ()=>{
@@ -171,7 +171,7 @@ describe('sinon', function(){
         it('original_setTimeout', done=>clock._setTimeout(done, 2));
     });
     describe('idle', ()=>{
-        it('sinon', ()=>ztest.etask({seq: 6}, function*(){
+        it('sinon', ()=>xtest.etask({seq: 6}, function*(){
             this.finally(()=>zsinon.uninit());
             zsinon.clock_set();
             setTimeout(()=>seq(1), 11);
@@ -186,7 +186,7 @@ describe('sinon', function(){
             yield zsinon.wait();
             seq(5);
         }));
-        it('sinon nested continue', ()=>ztest.etask({seq: 9}, function*(){
+        it('sinon nested continue', ()=>xtest.etask({seq: 9}, function*(){
             let now = +date('2013-08-13 14:00:00');
             let parent_wait, t1_wait, t2_wait;
             zsinon.clock_set({auto_inc: true, now});
@@ -211,7 +211,7 @@ describe('sinon', function(){
             seq(8);
         }));
         /* XXX: enable
-        it('io', ()=>ztest.etask({seq: 3}, function*(){
+        it('io', ()=>xtest.etask({seq: 3}, function*(){
             zsinon.clock_set();
             this.finally(()=>zsinon.uninit());
             let c_sock, s_sock, server = net.createServer(s=>s_sock = s);
@@ -1064,7 +1064,7 @@ let promise_test = (name, p)=>{
             err instanceof Object ? typeof err : err]); });
         let t = (opt, start_val, seq_exp)=>{
             t_opt = opt;
-            _seq = ztest.seq_fn(seq_exp);
+            _seq = xtest.seq_fn(seq_exp);
             g(f(start_val));
         };
         it('promise_resolve', done=>{
@@ -3361,7 +3361,7 @@ describe('events', ()=>{
     });
 });
 
-describe('ztest', ()=>{
+describe('test_lib', ()=>{
     describe('set', ()=>{
         let state = {
             field1: 'a',
@@ -3370,11 +3370,11 @@ describe('ztest', ()=>{
         };
         describe('inside_describe', ()=>{
             describe('before', ()=>{
-                ztest.set(state, 'field1', 'A');
+                xtest.set(state, 'field1', 'A');
                 it('one_field', ()=>assert.strictEqual(state.field1, 'A'));
-                ztest.set(state, 'field4', 'Z');
+                xtest.set(state, 'field4', 'Z');
                 it('add_field', ()=>assert.strictEqual(state.field4, 'Z'));
-                ztest.set(state, {field2: 'C', field3: 'V'});
+                xtest.set(state, {field2: 'C', field3: 'V'});
                 it('several_fields', ()=>{
                     assert.strictEqual(state.field2, 'C');
                     assert.strictEqual(state.field3, 'V');
@@ -3390,9 +3390,9 @@ describe('ztest', ()=>{
         });
         describe('inside_test', ()=>{
             it('before', ()=>{
-                ztest.set(state, 'field3', 3);
+                xtest.set(state, 'field3', 3);
                 assert.strictEqual(state.field3, 3);
-                ztest.set(state, {field3: 'P', field4: 'O'});
+                xtest.set(state, {field3: 'P', field4: 'O'});
                 assert.strictEqual(state.field3, 'P');
                 assert.strictEqual(state.field4, 'O');
             });
@@ -3402,15 +3402,15 @@ describe('ztest', ()=>{
             });
         });
         describe('nested_describes', ()=>{
-            ztest.set(state, 'field1', 1);
+            xtest.set(state, 'field1', 1);
             it('check', ()=>assert.strictEqual(state.field1, 1));
             describe('nested_describe_2', ()=>{
-                ztest.set(state, {field1: 2, field2: 'T'});
+                xtest.set(state, {field1: 2, field2: 'T'});
                 it('check', ()=>assert.strictEqual(state.field1, 2));
                 describe('nested_describe_3', ()=>{
-                    ztest.set(state, 'field1', 3);
+                    xtest.set(state, 'field1', 3);
                     it('inside_test_during_nested_describes', ()=>{
-                        ztest.set(state, {field1: 4, field2: 'G'});
+                        xtest.set(state, {field1: 4, field2: 'G'});
                         assert.strictEqual(state.field1, 4);
                         assert.strictEqual(state.field2, 'G');
                     });
@@ -3437,9 +3437,9 @@ describe('zerr', ()=>{
 });
 
 describe('etask', function(){
-    ztest.r_push_pop_prop(etask, {use_bt: 1});
-    afterEach(()=>ztest.assert_no_etasks());
-    let zetask = ztest.etask;
+    xtest.r_push_pop_prop(etask, {use_bt: 1});
+    afterEach(()=>xtest.assert_no_etasks());
+    let zetask = xtest.etask;
     it('func_analyze', ()=>{
         let base = {name: undefined, label: undefined, try_catch: undefined,
             catch: undefined, finally: undefined, cancel: undefined};
@@ -3879,7 +3879,7 @@ describe('etask', function(){
     }, function catch$(err){ seq(false); }]));
     it('loop', ()=>zetask(5, [function(res){
         seq(1, 2);
-        if (ztest.seq_curr==1)
+        if (xtest.seq_curr==1)
         {
             assert.strictEqual(res, undefined);
             return this.loop(5);
@@ -3887,7 +3887,7 @@ describe('etask', function(){
         assert.strictEqual(res, 5);
     }, function try_catch$(err){
         seq(3, 4);
-        if (ztest.seq_curr==3)
+        if (xtest.seq_curr==3)
             return this.loop(etask.err(1));
     }]));
     it('goto', ()=>zetask({seq: 5, ret: 4}, [function(){
@@ -4835,7 +4835,7 @@ describe('etask', function(){
             }]);
         }, function(){
             assert_ps('r',
-                '|\\_ ztest.etask.0\n'+
+                '|\\_ xtest.etask.0\n'+
                 '|   RUNNING et_call.1\n'+
                 '|    \\> Etask.<anonymous> line COMPLETED\n'+
                 '|        \\_ wait_no_cancel.0\n'+
@@ -5000,7 +5000,7 @@ describe('etask', function(){
         return et;
     });
     describe('TypeError', ()=>{
-        ztest.r_push_pop_prop(zerr, {on_exception: undefined});
+        xtest.r_push_pop_prop(zerr, {on_exception: undefined});
         let t = (name, fn)=>it(name, done=>{
             zerr.on_exception = ()=>done();
             fn();
