@@ -265,8 +265,7 @@ function node_new(role, c){
   assert_not_exist(s);
   assert.ok(!d, 'dst not needed '+d);
   assert.equal(dir, '=', 'must use = '+d);
-  // XXX derry: review args parsing
-  arg.forEach(a=>{
+  arg.forEach(a=>{ // XXX derry: review args parsing
     let val = arg_to_val(a.arg);
     switch (a.cmd)
     {
