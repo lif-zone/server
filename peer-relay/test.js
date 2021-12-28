@@ -11,7 +11,7 @@ import date from '../util/date.js';
 import ws_util from '../util/ws.js';
 import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
-const zetask = xtest.etask, stringify = JSON.stringify;
+const zetask = xtest.etask, stringify = JSON.stringify, assign = Object.assign;
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
   console.log('uncaughtException %o', e);
@@ -96,32 +96,58 @@ function assert_ws(node){
   return t_nodes[node].wsConnector.url;
 }
 
-function arg_to_val(arg){
-  if (arg.length==1)
-    return arg[0].cmd;
-  let ret = [];
+function assert_name_new(val){
+  assert_not_exist(val);
+  assert(/^[a-zA-Z]$/.test(val), 'invalid name '+val);
+  return val;
+}
+
+function assert_wss(arg){
+  let ret = {};
+  assert(arg.length>0, 'invalid wss '+stringify(arg));
   arg.forEach(a=>{
-    assert.ok(!a.arg, 'invalid value '+stringify(a));
-    ret.push(a.cmd);
+    let val = xtest.arg_to_val(a.arg);
+    switch (a.cmd)
+    {
+    case 'port':
+      assert(ret.port===undefined, 'multiple '+a.cmd);
+      ret.port = assert_port(val);
+      break;
+    case 'host':
+      assert(ret.host===undefined, 'multiple '+a.cmd);
+      ret.host = assert_host(val);
+    default: 'invalid wss '+a.cmd;
+    }
   });
   return ret;
 }
 
-function cmd_node_new(role, c){
-  let o = {}, {s, d, dir, arg} = c;
-  assert_not_exist(s);
-  assert.ok(!d, 'dst not needed '+d);
-  assert.equal(dir, '=', 'must use = '+d);
-  arg.forEach(a=>{ // XXX derry: review args parsing
-    let val = arg_to_val(a.arg);
+function cmd_node(role, c){
+  let name, wss, ws;
+  c.arg.forEach(a=>{ // XXX derry: review args parsing
+    let val = xtest.arg_to_val(a.arg);
     switch (a.cmd)
     {
-    case 'port': o.port = assert_port(val); break;
-    case 'host': o.host = assert_host(val); break;
-    case 'bootstrap': o.bootstrap = [assert_ws(val)]; break;
+    case 'name':
+      assert(name===undefined, 'multiple '+a.cmd);
+      name = assert_name_new(val);
+      break;
+    case 'wss':
+      assert(wss===undefined, 'multiple '+a.cmd);
+      wss = assert_wss(val);
+      break;
+    case 'ws':
+      assert(ws===undefined, 'multiple '+a.cmd);
+      assert(val===true, 'ws must be boolean');
+      ws = val;
+      break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
+  let node = new (is_fake(role, name) ? FakeNode : Node)(assign({}, wss));
+  node.t = {name};
+  t_nodes[name] = node;
+  /*
   let node = new (is_fake(role, s) ? FakeNode : Node)(o);
   t_nodes[s] = node;
   node.t = node.t||{};
@@ -139,6 +165,7 @@ function cmd_node_new(role, c){
       test_emit('?'+s+'>message:'+data);
     });
   }
+  */
 }
 
 function cmd_listen(c){
@@ -158,15 +185,6 @@ function cmd_find_peers(s, d, o){
   test_expect(c.orig);
   yield test_ensure_no_events();
 */
-}
-
-function server_from_url(url){
-  for (let name in t_nodes)
-  {
-    let node = t_nodes[name];
-    if (node.wsConnector.url==url)
-      return node;
-  }
 }
 
 function node_from_ws(ws){
@@ -189,11 +207,13 @@ const test_run = (role, test)=>etask(function*(){
   {
     switch (c.cmd)
     {
-    case 'node_new': yield cmd_node_new(role, c); break;
+    case 'node': yield cmd_node(role, c); break;
+    /*
     case 'listen': yield cmd_listen(c); break;
     case 'connect': yield cmd_connect(c); break;
     case 'findPeers': yield cmd_find_peers(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
+    */
     }
     yield util.sleep(); // XXX HACK: fixme
   }
@@ -215,43 +235,18 @@ const test_end = ()=>etask(function*(){
 class FakeWS extends EventEmitter {
   constructor(url, opts){
     super();
-    opts = opts||{};
-    this.t = this.t||{};
-    this.t.client = opts.client;
-    this.t.url;
-    if (url)
-    {
-      let server = server_from_url(url);
-      // XXX HACK: rm client/server
-      let ws = new FakeWS(undefined, {client: opts.client});
-      ws.t_ws = this;
-      server.wsConnector.t_ws = server.wsConnector.t_ws||[];
-      server.wsConnector.t_ws.push(ws); // XXX: need cleanup
-      // XXX HACK: setTimeout is a hack
-      setTimeout(()=>server.wsConnector._wss.emit('connection', ws));
-    }
   }
   close(){
   }
   send(s){
-    let server = server_from_url(this.t.url);
-    server.wsConnector._wss.emit('message', s);
   }
 }
 
 class FakeWebSocketServer extends EventEmitter {
   constructor(opts){
     super();
-    let port = opts.port;
-    this.init();
-    this._server = {address: ()=>({port})};
   }
   init = ()=>{
-    let _this = this;
-    return etask(function*(){
-      yield etask.sleep();
-      _this.emit('listening');
-    });
   }
   close(cb){
     if (cb)
@@ -267,13 +262,18 @@ describe('peer-relay', function(){
   });
   this.timeout(2*t_timeout);
   it('basic', ()=>zetask(function*(){
+    // XXX: need wss://lif.zone:4000 supoort
     const t = (role, test)=>etask(function(){ return test_run(role, test); });
-    yield t('s', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
-      a=node_new(bootstrap:s) as>connect(ws:4000)
-      as>findPeers(a)`);
-    yield t('a', `s=node_new(host:lif.zone port:4000) s<listen(ws:4000)
-      a=node_new(bootstrap:s) as>connect(ws:4000)
-      as>findPeers(a)`);
+    yield t('s', `
+      node(name:s wss(host:lif.zone port:4000))
+      node(name:a ws);
+      a>connect(wss(host:lif.zone port:4000))
+      as>connected
+      as<connected
+      as>find_peers
+      as<found_peers
+      sa>find_peers
+      sa<found_peers`);
   }));
 });
 

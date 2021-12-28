@@ -850,5 +850,27 @@ E.test_parse_rm_meta_orig = function(a){
 E.test_parse = function(s){
   return E.test_run_plugin(E.test_parse_cmd_multi(s), E.plugin_cmd_dir); };
 
+E.arg_to_val = function(arg){
+  if (!arg)
+    return true;
+  if (arg.length==1 && !arg[0].arg)
+    return arg[0].cmd;
+  return arg;
+};
+
+E.arg_to_obj = function(arg){
+  let ret = {};
+  arg.forEach(o=>{
+    assert(ret[o.cmd]===undefined, 'duplicated arg '+o.cmd);
+    if (!o.arg)
+      ret[o.cmd] = true;
+    else if (o.arg.length==1 && !o.arg[0].arg)
+      ret[o.cmd] = o.arg[0].cmd;
+    else
+      ret[o.cmd] = E.arg_to_obj(o.arg);
+  });
+  return ret;
+}
+
 if (xutil.is_mocha())
     proc.zexit_init();

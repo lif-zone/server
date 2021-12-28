@@ -3517,6 +3517,22 @@ describe('test_lib', ()=>{
       t('a(b)(', 'invalid ^^^(');
       t('a( )', 'invalid empty cmd');
     });
+    it('test_arg_to_val', ()=>{
+      const t = (s, exp)=>assert.deepEqual(xtest.arg_to_val(s), exp);
+      t(undefined, true);
+      t([{cmd: 'a'}], 'a');
+      t([{cmd: 'a'}, {cmd: 'b'}], [{cmd: 'a'}, {cmd: 'b'}]);
+      t([{cmd: 'a', arg: [{cmd: 'b'}]}], [{cmd: 'a', arg: [{cmd: 'b'}]}]);
+    });
+    it('test_arg_to_obj', ()=>{
+      const t = (s, exp)=>assert.deepEqual(xtest.arg_to_obj(s), exp);
+      t([{cmd: 'a'}], {a: true});
+      t([{cmd: 'a', arg: [{cmd: 'A'}]}], {a: 'A'});
+      t([{cmd: 'a', arg: [{cmd: 'A'}]}, {cmd: 'b'}], {a: 'A', b: true});
+      t([{cmd: 'a', arg: [{cmd: 'A'}]}, {cmd: 'b', arg: [{cmd: 'B'}]}],
+        {a: 'A', b: 'B'});
+      t([{cmd: 'a', arg: [{cmd: 'b', arg: [{cmd: 'c'}]}]}], {a: {b: 'c'}});
+    });
     it('parse_cmd_dir', ()=>{
       const t = (s, exp)=>{
         let ret = xtest.parse_cmd_dir(s);
