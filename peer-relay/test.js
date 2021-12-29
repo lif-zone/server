@@ -182,14 +182,19 @@ function assert_name_new(val){
   return val;
 }
 
+function assert_wss_url(val){
+  // XXX: TODO
+  return val;
+}
+
 function assert_wss(val){
-  let host, port, arg = xtest.arg_to_obj(val);
-  util.forEach(arg, (val, cmd)=>{
-    switch (cmd)
+  let host, port, arg = xtest.test_parse(val);
+  util.forEach(arg, a=>{
+    switch (a.cmd)
     {
-    case 'host': host = assert_host(val); break;
-    case 'port': port = assert_port(val); break;
-    default: 'invalid cmd '+cmd;
+    case 'host': host = assert_host(a.arg); break;
+    case 'port': port = assert_port(a.arg); break;
+    default: 'invalid cmd '+a.cmd;
     }
   });
   assert(host && port, 'must specify host & port');
@@ -197,14 +202,15 @@ function assert_wss(val){
 }
 
 function cmd_node(role, c){
-  // XXX: review parsing with derry (explain dup)
-  let name, wss, arg = xtest.arg_to_obj(c.arg);
-  util.forEach(arg, (val, cmd)=>{
-    switch (cmd)
+  // XXX: add xtest.test_parse_unique (to avoid multiple args)
+  let arg = xtest.test_parse(c.arg);
+  let name, wss;
+  util.forEach(arg, a=>{
+    switch (a.cmd)
     {
-    case 'name': name = assert_name_new(val); break;
-    case 'wss': wss = assert_wss(val); break;
-    default: throw new Error('unknown arg '+cmd);
+    case 'name': name = assert_name_new(a.arg); break;
+    case 'wss': wss = assert_wss(a.arg); break;
+    default: throw new Error('unknown arg '+a.cmd);
     }
   });
   let fake = is_fake(role, name);
@@ -221,24 +227,22 @@ function cmd_node(role, c){
 }
 
 function cmd_connect(c){
-  let wss;
-  c.arg.forEach(a=>{
-    let val = xtest.arg_to_val(a.arg);
+  let wss, arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
     switch (a.cmd)
     {
     case 'wss':
       assert(wss===undefined, 'multiple '+a.cmd);
-      wss = assert_wss(val);
+      wss = assert_wss_url(a.arg);
       break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  // XXX derry: review args parsing
   assert_exist(c.s);
   assert(!c.d);
   assert.equal(c.dir, '>');
   if (wss)
-    t_nodes[c.s].connect_ws('wss://'+wss.host+':'+wss.port);
+    t_nodes[c.s].connect_ws(wss);
   else
     throw new Error('not implemented yet');
 }
@@ -326,7 +330,7 @@ describe('peer-relay', function(){
     let test = `
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
-      a>connect(wss(host:lif.zone port:4000))
+      a>connect(wss(wss://lif.zone:4000))
       as>connected
       as>findPeers(a)
       sa>connected
