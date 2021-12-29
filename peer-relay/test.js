@@ -414,7 +414,8 @@ const test_run = (role, test)=>etask(function*(){
 const test_end = ()=>etask(function*(){
   try_send_queue();
   assert.ok(t_running, 'test not running');
-  assert(!t_queue.length, 'not all events were sent');
+  assert(!t_queue.length, 'not all events were sent\n'+
+    stringify(t_queue));
   yield test_ensure_no_events();
   for (let n in t_nodes)
   {
@@ -505,7 +506,11 @@ describe('peer-relay', function(){
       ba>handshake-offer
       sb>findPeers(s)
       bs>foundPeers(s,b,a)
+      as>send(ping)
+      sa>send(ping)
+      ba>send(ping)
     `);
+     //XXX BUG: ab>send(ping) not working
   }));
 });
 
