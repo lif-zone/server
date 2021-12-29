@@ -157,10 +157,8 @@ class FakeWsConnector extends EventEmitter {
     let channel = new FakeChannel({localID: this.id, id: node.id});
     this.emit('connection', channel);
     let channel2 = new FakeChannel({localID: node.id, id: this.id});
-    setTimeout(()=>{
-      node.wsConnector.emit('connection', channel2);
-      try_send_queue();
-    }, 100);
+    node.wsConnector.emit('connection', channel2);
+    try_send_queue();
   }
   destroy(){}
 }
@@ -287,12 +285,13 @@ function cmd_connect(c){
     throw new Error('not implemented yet');
 }
 
-function cmd_event(c){
+const cmd_connected = c=>etask(function*(){
   // XXX: check what to assert for events
   test_pending(c.orig);
-}
+  yield test_ensure_no_pending_events();
+});
 
-const cmd_find_peers = c=>etask(function(){
+const cmd_find_peers = c=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
   if (s.t.fake)
@@ -304,9 +303,10 @@ const cmd_find_peers = c=>etask(function(){
     send_msg(c.s, c.d, msg);
   }
   test_pending(c.orig);
+  yield test_ensure_no_pending_events();
 });
 
-const cmd_found_peers = c=>etask(function(){
+const cmd_found_peers = c=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
   if (s.t.fake)
@@ -318,6 +318,7 @@ const cmd_found_peers = c=>etask(function(){
     send_msg(c.s, c.d, msg);
   }
   test_pending(c.orig);
+  yield test_ensure_no_pending_events();
 });
 
 const test_run = (role, test)=>etask(function*(){
@@ -327,12 +328,11 @@ const test_run = (role, test)=>etask(function*(){
   for (let i=0, c; i<a.length, c=a[i]; i++)
   {
     console.log('cmd: %s', c.orig);
-    yield etask.sleep(100); // XXX HACK: rm
     switch (c.cmd)
     {
     case 'node': yield cmd_node(role, c); break;
     case 'connect': yield cmd_connect(c); break;
-    case 'connected': yield cmd_event(c); break;
+    case 'connected': yield cmd_connected(c); break;
     case 'findPeers': yield cmd_find_peers(c); break;
     case 'foundPeers': yield cmd_found_peers(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
