@@ -763,7 +763,7 @@ E.test_parse_cmd_single = function(s){
     }
   }
   if (state=='pre')
-    throw new Error('invalid empty cmd');
+    return;
   if (parentesis)
     throw_invalid(s, i);
   let cmd = ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
@@ -789,12 +789,18 @@ E.test_parse_cmd_single = function(s){
 E.test_parse_cmd_multi = function(s){
   if (!s)
     return [];
-  let ret = [], arg, t = E.test_parse_cmd_single(s), meta = t.meta;
+  let ret = [], arg, t = E.test_parse_cmd_single(s);
+  if (!t)
+    return;
+  let meta = t.meta;
   if (t.arg)
     arg = E.test_parse_cmd_multi(t.arg);
   ret.push(arg ? {cmd: t.cmd, arg, orig: t.orig, meta} :
     {cmd: t.cmd, orig: t.orig, meta});
-  return ret.concat(E.test_parse_cmd_multi(s.substr(t.meta.last)));
+  let rest = E.test_parse_cmd_multi(s.substr(t.meta.last));
+  if (rest)
+    ret = ret.concat(rest);
+  return ret;
 };
 
 E.test_run_plugin = function(a, cb){

@@ -3426,12 +3426,19 @@ describe('test_lib', ()=>{
      it('test_parse_cmd_single_valid', ()=>{
       const t = (s, exp, exp_last)=>{
         let ret = xtest.test_parse_cmd_single(s);
-        let {last} = ret.meta;
-        delete ret.meta;
-        delete ret.orig;
+        if (ret)
+        {
+          let {last} = ret.meta;
+          delete ret.meta;
+          delete ret.orig;
+          assert.equal(last, exp_last);
+        }
         assert.deepEqual(ret, exp);
-        assert.equal(last, exp_last);
       };
+      t('', undefined);
+      t(' ', undefined);
+      t(`
+        `, undefined);
       t('open', {cmd: 'open'}, 4);
       t('open ', {cmd: 'open'}, 5);
       t('open b', {cmd: 'open'}, 5);
@@ -3462,8 +3469,6 @@ describe('test_lib', ()=>{
       t('a(b () ', 'invalid a(b () ^^^');
       t('a:(b)', 'invalid a^^^:');
       t('a:b:c', 'invalid a:b^^^:c');
-      t('', 'invalid empty cmd');
-      t(' ', 'invalid empty cmd');
     });
     it('test_run_plugin', ()=>{
       const t = (a, exp)=>{
@@ -3485,6 +3490,9 @@ describe('test_lib', ()=>{
         assert.deepEqual(ret, exp);
       };
       t('a', [{cmd: 'a'}]);
+      t('a\n', [{cmd: 'a'}]);
+      t(`a
+        `, [{cmd: 'a'}]);
       t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
       t('a(c) b', [{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}]);
       t('a(c) b(d)', [{cmd: 'a', arg: [{cmd: 'c'}]},
@@ -3505,6 +3513,7 @@ describe('test_lib', ()=>{
         ret = xtest.test_parse_rm_meta(ret);
         assert.deepEqual(ret, exp);
       };
+      t('a( )', [{cmd: 'a', orig: 'a( )'}]);
       t('ab>connect', [{cmd: 'ab>connect', orig: 'ab>connect'}]);
       t('ab>connect\n', [{cmd: 'ab>connect', orig: 'ab>connect'}]);
       t('ab>connect(a)', [{cmd: 'ab>connect', orig: 'ab>connect(a)',
@@ -3516,7 +3525,6 @@ describe('test_lib', ()=>{
       t('a(', 'invalid a(^^^');
       t('a(b()', 'invalid a(b()^^^');
       t('a(b)(', 'invalid ^^^(');
-      t('a( )', 'invalid empty cmd');
     });
     it('test_arg_to_val', ()=>{
       const t = (s, exp)=>assert.deepEqual(xtest.arg_to_val(s), exp);
