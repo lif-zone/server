@@ -22,7 +22,7 @@ process.on('unhandledRejection', e=>{
   process.exit(-1);
 });
 
-let t_nodes = {}, t_events = [], t_expect = [];
+let t_nodes = {}, t_events = [], t_pending = [];
 let t_timeout = 2000, t_running;
 
 function test_emit(e){
@@ -31,43 +31,55 @@ function test_emit(e){
   t_events.push(e);
 }
 
-function test_expect(e){
+function test_pending(e){
   assert.ok(t_running, 'test not running');
   assert.ok(e, 'invalid event');
-  t_expect.push(e);
+  t_pending.push(e);
 }
+
+const test_ensure_no_pending_events = ()=>etask(function*(){
+  for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
+  {
+    yield util.sleep(); // XXX HACK: fixme
+    if (t_events[0]==t_pending[0])
+    {
+      t_events.shift();
+      t_pending.shift();
+    }
+    if (!t_pending.length)
+      return;
+  }
+  throw new Error('pending events '+stringify(t_pending)+ ' got'+
+    stringify(t_events));
+});
 
 const test_ensure_no_events = ()=>etask(function*(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
     yield util.sleep(); // XXX HACK: fixme
-    if (!t_events.length && !t_expect.length)
+    if (!t_events.length && !t_pending.length)
       break;
-    if (t_events[t_events.length-1]==t_expect[t_expect.length-1])
+    if (t_events[t_events.length-1]==t_pending[t_pending.length-1])
     {
       t_events.pop();
-      t_expect.pop();
+      t_pending.pop();
     }
   }
-  assert.ok(!t_events.length && !t_expect.length,
-    'event mismatch '+stringify(t_events)+' != '+stringify(t_expect));
+  assert.ok(!t_events.length && !t_pending.length,
+    'event mismatch '+stringify(t_events)+' != '+stringify(t_pending));
 });
 
 class FakeNode extends EventEmitter {
   constructor(opts){
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
-    this.wsConnector = new EventEmitter();
+    this.wsConnector = new FakeWsConnector(this.id);
     this.wsConnector.on('connection', c=>this.emit('connection', c));
   }
   destroy(){}
   connect_ws(url){
     console.log('XXX FakeNode connect_ws TODO');
-    let node = node_from_url(url);
-    let channel = new FakeChannel({localID: this.id, id: node.id});
-    this.wsConnector.emit('connection', channel);
-    let channel2 = new FakeChannel({localID: node.id, id: this.id});
-    node.wsConnector.emit('connection', channel2);
+    this.wsConnector.connect(url);
   }
 }
 
@@ -94,6 +106,23 @@ class FakeChannel extends EventEmitter {
 }
 
 class FakeWsConnector extends EventEmitter {
+  constructor(id, port, host){
+    super();
+    this.id = id;
+  }
+  connect(url){
+    let node = node_from_url(url);
+    // XXX: rm hack of setTimeout
+    setTimeout(()=>{
+      let channel = new FakeChannel({localID: this.id, id: node.id});
+      this.emit('connection', channel);
+      setTimeout(()=>{
+        let channel2 = new FakeChannel({localID: node.id, id: this.id});
+        node.wsConnector.emit('connection', channel2);
+        // XXX HACK: we sleep 100ms to allow >connected event to be sent
+      }, 100);
+    });
+  }
   destroy(){}
 }
 
@@ -115,6 +144,19 @@ function node_from_id(id){
     // XXX: make it nicer
     if (node.t.id == (typeof id=='string' ? id : util.buf_to_str(id)))
       return node;
+  }
+}
+
+function is_same_id(id1, id2){
+  return util.buf_to_str(id1)==util.buf_to_str(id2); }
+
+function node_get_channel(_s, _d){
+  let s = t_nodes[_s], d = t_nodes[_d];
+  for (let i=0; i<s.t.channels.length; i++)
+  {
+    let channel = s.t.channels[i];
+    if (is_same_id(channel.id, d.id))
+      return channel;
   }
 }
 
@@ -165,14 +207,16 @@ function cmd_node(role, c){
     default: throw new Error('unknown arg '+cmd);
     }
   });
-  let node = new (is_fake(role, name) ? FakeNode : Node)(
+  let fake = is_fake(role, name);
+  let node = new (fake ? FakeNode : Node)(
     assign({WsConnector: FakeWsConnector}, wss));
   let id = util.buf_to_str(node.id);
-  node.t = {id, name, wss};
+  node.t = {id, name, fake, wss, channels: []};
   t_nodes[name] = node;
   node.on('connection', channel=>{
     let s = node_from_id(channel.localID), d = node_from_id(channel.id);
     test_emit(s.t.name+d.t.name+'>connected');
+    node.t.channels.push(channel);
   });
 }
 
@@ -201,8 +245,20 @@ function cmd_connect(c){
 
 function cmd_event(c){
   // XXX: check what to assert for events
-  test_expect(c.orig);
+  test_pending(c.orig);
 }
+
+const cmd_find_peers = c=>etask(function*(){
+  let s = t_nodes[c.s];
+  // XXX: check what to assert for events
+  if (s.t.fake)
+  {
+    yield test_ensure_no_pending_events();
+    let channel = node_get_channel(c.s, c.d);
+    channel.send({data: {type: 'findPeers', data: util.buf_to_str(s.id)}});
+  }
+  test_pending(c.orig);
+});
 
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
@@ -215,7 +271,7 @@ const test_run = (role, test)=>etask(function*(){
     case 'node': yield cmd_node(role, c); break;
     case 'connect': yield cmd_connect(c); break;
     case 'connected': yield cmd_event(c); break;
-    case 'findPeers': yield cmd_event(c); break;
+    case 'findPeers': yield cmd_find_peers(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
     yield util.sleep(); // XXX HACK: fixme
@@ -267,22 +323,20 @@ describe('peer-relay', function(){
   it('basic', ()=>zetask(function*(){
     // XXX: need wss://lif.zone:4000 supoort
     const t = (role, test)=>etask(function(){ return test_run(role, test); });
-    yield t('s', `
+    let test = `
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
       a>connect(wss(host:lif.zone port:4000))
       as>connected
+      as>findPeers(a)
       sa>connected
-      sa>findPeers(s)`);
-//      sx>connected`);
-//      sa>connected
-//      sx>connected`);
-      /* XXX TODO
-      as>find_peers
-      as<found_peers
-      sa>find_peers
-      sa<found_peers`);
-      */
+      sa>findPeers(s)`;
+    // XXX: fix parser when there is space at the end (empty cmd error)
+    console.log('XXX 0');
+    yield t('a', test);
+    console.log('XXX 1');
+    yield t('s', test);
+    console.log('XXX 2');
   }));
 });
 

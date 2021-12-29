@@ -81,7 +81,7 @@ Client.prototype._onConnection = function(channel){
   return channel;
 };
 
-Client.prototype.connect_ws = function(uri){ self.wsConnector.connect(uri); };
+Client.prototype.connect_ws = function(uri){ this.wsConnector.connect(uri); };
 
 Client.prototype.connect = function(id){
   var self = this;
