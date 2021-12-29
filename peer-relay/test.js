@@ -126,8 +126,10 @@ class FakeChannel extends EventEmitter {
           test_emit(s.t.name+d.t.name+'>'+type+'('+a.join(',')+')');
           break;
         case 'handshake-offer':
-          console.log('XXX data %o', data);
           test_emit(s.t.name+d.t.name+'>'+type);
+          break;
+        case 'user':
+          test_emit(s.t.name+d.t.name+'>send('+data+')');
           break;
         default: assert(false, 'unexpected msg '+type);
       }
@@ -138,9 +140,12 @@ class FakeChannel extends EventEmitter {
     let {type} = msg.data;
     switch (type)
     {
-    case 'findPeers': send_msg(s.t.name, d.t.name, msg); break;
-    case 'foundPeers': send_msg(s.t.name, d.t.name, msg); break;
-    case 'handshake-offer': send_msg(s.t.name, d.t.name, msg); break;
+    case 'findPeers':
+    case 'foundPeers':
+    case 'handshake-offer':
+    case 'user':
+      send_msg(s.t.name, d.t.name, msg);
+      break;
     default: assert(false, 'unexpected msg '+type);
     }
   }
@@ -353,6 +358,22 @@ const cmd_found_peers = c=>etask(function(){
   test_pending(c.orig);
 });
 
+const cmd_send = c=>etask(function(){
+  // XXX: check what to assert for events
+  let s = t_nodes[c.s], d = t_nodes[c.d], data = c.arg;
+  if (s.t.fake)
+  {
+    var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
+      path: [s.id.toString('hex')],
+      nonce: '' + Math.floor(1e15 * Math.random()),
+      data: {type: 'user', data}};
+    send_msg(c.s, c.d, msg);
+  }
+  else
+    s.send(d.id, data);
+  test_pending(c.orig);
+});
+
 const cmd_handshake_offer = c=>etask(function(){
   // XXX: check what to assert for events
   let s = t_nodes[c.s], d = t_nodes[c.d];
@@ -362,7 +383,6 @@ const cmd_handshake_offer = c=>etask(function(){
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'handshake-offer', data: null}};
-    debugger;
     send_msg(c.s, c.d, msg);
   }
   test_pending(c.orig);
@@ -382,6 +402,7 @@ const test_run = (role, test)=>etask(function*(){
     case 'connected': yield cmd_connected(c); break;
     case 'findPeers': yield cmd_find_peers(c); break;
     case 'foundPeers': yield cmd_found_peers(c); break;
+    case 'send': yield cmd_send(c); break;
     case 'handshake-offer': yield cmd_handshake_offer(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
@@ -435,6 +456,7 @@ describe('peer-relay', function(){
     xtest.set(ws_util, 'WebSocketServer', FakeWebSocketServer);
     // XXX TODO: same for WRTC
   });
+  // XXX: support as> and sa< (normalize function) for event matching
   this.timeout(2*t_timeout);
   describe('basic', ()=>zetask(function(){
     const t = (name, test)=>{
@@ -451,9 +473,10 @@ describe('peer-relay', function(){
       sa>foundPeers(a)
       sa>findPeers(s)
       as>foundPeers(s,a)
+      as>send(ping)
+      as>send(pong)
     `);
     /* XXX TODO:
-      as>send(hello)
       a>connect(node(b))
     */
     const t3 = (name, test)=>{
