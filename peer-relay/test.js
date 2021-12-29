@@ -26,6 +26,12 @@ process.on('unhandledRejection', e=>{
 let t_nodes = {}, t_events = [], t_pending = [];
 let t_queue = [];
 let t_timeout = 2000, t_running;
+let t_peers = {
+  a: '82b88a27669ed361313b2292067b37b4e301ca8b',
+  b: '5f3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
+  c: 'a92e8094373a85cb0e28399f6909ed02080367dc',
+  s: '41e32c1c6ffdc91bbfa7684c67e58f3f36174a59'
+};
 
 function test_emit(e){
   console.log('emit: %s', e);
@@ -260,19 +266,23 @@ function assert_wss(val){
 function cmd_node(role, c){
   // XXX: add xtest.test_parse_unique (to avoid multiple args)
   let arg = xtest.test_parse(c.arg);
-  let name, wss;
+  let id, name, wss;
   util.forEach(arg, a=>{
     switch (a.cmd)
     {
-    case 'name': name = assert_name_new(a.arg); break;
+    case 'name':
+      name = assert_name_new(a.arg);
+      assert(t_peers[name], 'peer id not founnd '+name);
+      id = t_peers[name];
+      break;
     case 'wss': wss = assert_wss(a.arg); break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
   let fake = is_fake(role, name);
   let node = new (fake ? FakeNode : Node)(
-    assign({WsConnector: FakeWsConnector}, wss));
-  let id = util.buf_to_str(node.id);
+    assign({id: util.buf_from_str(id), WsConnector: FakeWsConnector}, wss));
+  assert.equal(id, util.buf_to_str(node.id));
   node.t = {id, name, fake, wss, channels: []};
   t_nodes[name] = node;
   node.on('connection', channel=>{
@@ -304,12 +314,12 @@ function cmd_connect(c){
     throw new Error('not implemented yet');
 }
 
-const cmd_connected = c=>etask(function*(){
+const cmd_connected = c=>etask(function(){
   // XXX: check what to assert for events
   test_pending(c.orig);
 });
 
-const cmd_find_peers = c=>etask(function*(){
+const cmd_find_peers = c=>etask(function(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
   if (s.t.fake && !s.t.is_connect_ws)
@@ -323,8 +333,8 @@ const cmd_find_peers = c=>etask(function*(){
   test_pending(c.orig);
 });
 
-const cmd_found_peers = c=>etask(function*(){
-  let s = t_nodes[c.s], d = t_nodes[c.d], a;
+const cmd_found_peers = c=>etask(function(){
+  let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
   if (s.t.fake)
   {
