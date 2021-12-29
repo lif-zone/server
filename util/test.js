@@ -3494,6 +3494,25 @@ describe('test_lib', ()=>{
       t(`a
         `, [{cmd: 'a'}]);
       t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
+      t('a(c) b', [{cmd: 'a', arg: 'c'}, {cmd: 'b'}]);
+      t('a(c) b(d)', [{cmd: 'a', arg: 'c'}, {cmd: 'b', arg: 'd'}]);
+      t('a(c d(5))', [{cmd: 'a', arg: 'c d(5)'}]);
+      t('a(c d(5s + 3))', [{cmd: 'a', arg: 'c d(5s + 3)'}]);
+      t('ab>connect', [{cmd: 'ab>connect'}]);
+      t('ab>(test go(now 3 send:4))', [{cmd: 'ab>',
+        arg: 'test go(now 3 send:4)'}]);
+    });
+    it('test_parse_cmd_multi_level_valid', ()=>{
+      const t = (s, exp)=>{
+        let ret = xtest.test_parse_cmd_multi_level(s);
+        ret = xtest.test_parse_rm_meta_orig(ret);
+        assert.deepEqual(ret, exp);
+      };
+      t('a', [{cmd: 'a'}]);
+      t('a\n', [{cmd: 'a'}]);
+      t(`a
+        `, [{cmd: 'a'}]);
+      t('a b', [{cmd: 'a'}, {cmd: 'b'}]);
       t('a(c) b', [{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b'}]);
       t('a(c) b(d)', [{cmd: 'a', arg: [{cmd: 'c'}]},
         {cmd: 'b', arg: [{cmd: 'd'}]}]);
@@ -3507,9 +3526,9 @@ describe('test_lib', ()=>{
         {cmd: 'go', arg: [{cmd: 'now'}, {cmd: '3'}, {cmd: 'send',
           arg: [{cmd: '4'}]}]}]}]);
     });
-    it('test_parse_cmd_multi_valid_orig', ()=>{
+    it('test_parse_cmd_multi_level_valid_orig', ()=>{
       const t = (s, exp)=>{
-        let ret = xtest.test_parse_cmd_multi(s);
+        let ret = xtest.test_parse_cmd_multi_level(s);
         ret = xtest.test_parse_rm_meta(ret);
         assert.deepEqual(ret, exp);
       };
@@ -3519,9 +3538,9 @@ describe('test_lib', ()=>{
       t('ab>connect(a)', [{cmd: 'ab>connect', orig: 'ab>connect(a)',
         arg: [{cmd: 'a', orig: 'a'}]}]);
     });
-    it('test_parse_cmd_multi_invalid', ()=>{
+    it('test_parse_cmd_multi_level_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
-        ()=>xtest.test_parse_cmd_multi(s), {message: exp});
+        ()=>xtest.test_parse_cmd_multi_level(s), {message: exp});
       t('a(', 'invalid a(^^^');
       t('a(b()', 'invalid a(b()^^^');
       t('a(b)(', 'invalid ^^^(');

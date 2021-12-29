@@ -792,18 +792,33 @@ E.test_parse_cmd_multi = function(s){
   let ret = [], arg, t = E.test_parse_cmd_single(s);
   if (!t)
     return;
-  let meta = t.meta;
-  if (t.arg)
-    arg = E.test_parse_cmd_multi(t.arg);
-  ret.push(arg ? {cmd: t.cmd, arg, orig: t.orig, meta} :
-    {cmd: t.cmd, orig: t.orig, meta});
+  ret.push(t);
   let rest = E.test_parse_cmd_multi(s.substr(t.meta.last));
   if (rest)
     ret = ret.concat(rest);
   return ret;
 };
 
+E.test_parse_cmd_multi_level = function(s){
+  if (!s)
+    return [];
+  let ret = [], arg, t = E.test_parse_cmd_single(s);
+  if (!t)
+    return;
+  let meta = t.meta;
+  if (t.arg)
+    arg = E.test_parse_cmd_multi_level(t.arg);
+  ret.push(arg ? {cmd: t.cmd, arg, orig: t.orig, meta} :
+    {cmd: t.cmd, orig: t.orig, meta});
+  let rest = E.test_parse_cmd_multi_level(s.substr(t.meta.last));
+  if (rest)
+    ret = ret.concat(rest);
+  return ret;
+};
+
 E.test_run_plugin = function(a, cb){
+  if (!Array.isArray(a))
+    return;
   a.forEach(o=>{
     cb(o);
     if (o.arg)
