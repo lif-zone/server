@@ -125,6 +125,10 @@ class FakeChannel extends EventEmitter {
           a = array_id_to_name(data);
           test_emit(s.t.name+d.t.name+'>'+type+'('+a.join(',')+')');
           break;
+        case 'handshake-offer':
+          console.log('XXX data %o', data);
+          test_emit(s.t.name+d.t.name+'>'+type);
+          break;
         default: assert(false, 'unexpected msg '+type);
       }
     });
@@ -136,6 +140,7 @@ class FakeChannel extends EventEmitter {
     {
     case 'findPeers': send_msg(s.t.name, d.t.name, msg); break;
     case 'foundPeers': send_msg(s.t.name, d.t.name, msg); break;
+    case 'handshake-offer': send_msg(s.t.name, d.t.name, msg); break;
     default: assert(false, 'unexpected msg '+type);
     }
   }
@@ -320,8 +325,8 @@ const cmd_connected = c=>etask(function(){
 });
 
 const cmd_find_peers = c=>etask(function(){
-  let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
+  let s = t_nodes[c.s], d = t_nodes[c.d];
   if (s.t.fake && !s.t.is_connect_ws)
   {
     var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
@@ -334,8 +339,8 @@ const cmd_find_peers = c=>etask(function(){
 });
 
 const cmd_found_peers = c=>etask(function(){
-  let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
+  let s = t_nodes[c.s], d = t_nodes[c.d];
   if (s.t.fake)
   {
     let a = array_name_to_id(c.arg.split(','));
@@ -343,6 +348,21 @@ const cmd_found_peers = c=>etask(function(){
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'foundPeers', data: a}};
+    send_msg(c.s, c.d, msg);
+  }
+  test_pending(c.orig);
+});
+
+const cmd_handshake_offer = c=>etask(function(){
+  // XXX: check what to assert for events
+  let s = t_nodes[c.s], d = t_nodes[c.d];
+  if (s.t.fake)
+  {
+    var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
+      path: [s.id.toString('hex')],
+      nonce: '' + Math.floor(1e15 * Math.random()),
+      data: {type: 'handshake-offer', data: null}};
+    debugger;
     send_msg(c.s, c.d, msg);
   }
   test_pending(c.orig);
@@ -362,6 +382,7 @@ const test_run = (role, test)=>etask(function*(){
     case 'connected': yield cmd_connected(c); break;
     case 'findPeers': yield cmd_find_peers(c); break;
     case 'foundPeers': yield cmd_found_peers(c); break;
+    case 'handshake-offer': yield cmd_handshake_offer(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
   }
@@ -370,7 +391,9 @@ const test_run = (role, test)=>etask(function*(){
 });
 
 const test_end = ()=>etask(function*(){
+  try_send_queue();
   assert.ok(t_running, 'test not running');
+  assert(!t_queue.length, 'not all events were sent');
   yield test_ensure_no_events();
   for (let n in t_nodes)
   {
@@ -433,7 +456,14 @@ describe('peer-relay', function(){
       as>send(hello)
       a>connect(node(b))
     */
-    t('3_peers', `
+    const t3 = (name, test)=>{
+      if (0) // XXX: fixme
+      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
+      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
+      if (0) // XXX: fixme
+      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
+    };
+    t3('3_peers', `
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
       node(name:b)
@@ -449,6 +479,7 @@ describe('peer-relay', function(){
       sb>connected
       bs>findPeers(b)
       sb>foundPeers(b,s,a)
+      ba>handshake-offer
       sb>findPeers(s)
       bs>foundPeers(s,b,a)
     `);
