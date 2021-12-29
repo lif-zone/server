@@ -419,6 +419,26 @@ describe('peer-relay', function(){
       sa>findPeers(s)
       as>foundPeers(s,a)
     `);
+    // XXX: enable after using hard-coded node-id
+    if (0)
+    t('3_peers', `
+      node(name:s wss(host:lif.zone port:4000))
+      node(name:a)
+      node(name:b)
+      a>connect(wss(wss://lif.zone:4000))
+      as>connected
+      sa>connected
+      as>findPeers(a)
+      sa>foundPeers(a)
+      sa>findPeers(s)
+      as>foundPeers(s,a)
+      b>connect(wss(wss://lif.zone:4000))
+      bs>connected
+      sb>connected
+      bs>findPeers(b)
+      sb>foundPeers(b,a,s)
+      sb>findPeers(s)
+    `);
   }));
 });
 
