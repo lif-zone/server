@@ -433,8 +433,6 @@ describe('peer-relay', function(){
       as>send(hello)
       a>connect(node(b))
     */
-    // XXX: enable after using hard-coded node-id
-    if (0)
     t('3_peers', `
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
@@ -450,7 +448,7 @@ describe('peer-relay', function(){
       bs>connected
       sb>connected
       bs>findPeers(b)
-      sb>foundPeers(b,a,s)
+      sb>foundPeers(b,s,a)
       sb>findPeers(s)
       bs>foundPeers(s,b,a)
     `);
