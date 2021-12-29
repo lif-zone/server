@@ -78,7 +78,6 @@ class FakeNode extends EventEmitter {
   }
   destroy(){}
   connect_ws(url){
-    console.log('XXX FakeNode connect_ws TODO');
     this.wsConnector.connect(url);
   }
 }
@@ -91,7 +90,6 @@ class FakeChannel extends EventEmitter {
   }
   send(msg){
     let s = node_from_id(this.localID), d = node_from_id(this.id);
-    console.log('XXX send %s%s> %o', s.t.name, d.t.name, msg);
     let {type, data} = msg.data, p;
     switch (type)
     {
@@ -324,23 +322,19 @@ describe('peer-relay', function(){
     // XXX TODO: same for WRTC
   });
   this.timeout(2*t_timeout);
-  it('basic', ()=>zetask(function*(){
-    // XXX: need wss://lif.zone:4000 supoort
-    const t = (role, test)=>etask(function(){ return test_run(role, test); });
-    let test = `
+  describe('basic', ()=>zetask(function*(){
+    const t = (name, test)=>{
+      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
+      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
+    }
+    t('2_peers', `
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
       a>connect(wss(wss://lif.zone:4000))
       as>connected
       as>findPeers(a)
       sa>connected
-      sa>findPeers(s)`;
-    // XXX: fix parser when there is space at the end (empty cmd error)
-    console.log('XXX 0');
-    yield t('a', test);
-    console.log('XXX 1');
-    yield t('s', test);
-    console.log('XXX 2');
+      sa>findPeers(s)`);
   }));
 });
 
