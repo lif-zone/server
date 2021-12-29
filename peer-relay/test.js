@@ -419,6 +419,10 @@ describe('peer-relay', function(){
       sa>findPeers(s)
       as>foundPeers(s,a)
     `);
+    /* XXX TODO:
+      as>send(hello)
+      a>connect(node(b))
+    */
     // XXX: enable after using hard-coded node-id
     if (0)
     t('3_peers', `
@@ -438,6 +442,7 @@ describe('peer-relay', function(){
       bs>findPeers(b)
       sb>foundPeers(b,a,s)
       sb>findPeers(s)
+      bs>foundPeers(s,b,a)
     `);
   }));
 });
