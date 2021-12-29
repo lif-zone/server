@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import {EventEmitter} from 'events';
 import Node from './client.js';
 import util from '../util/util.js';
+import array from '../util/array.js';
 import xurl from '../util/url.js';
 import date from '../util/date.js';
 import ws_util from '../util/ws.js';
@@ -23,6 +24,7 @@ process.on('unhandledRejection', e=>{
 });
 
 let t_nodes = {}, t_events = [], t_pending = [];
+let t_queue = [];
 let t_timeout = 2000, t_running;
 
 function test_emit(e){
@@ -37,7 +39,7 @@ function test_pending(e){
   assert.ok(e, 'invalid event');
   t_pending.push(e);
 }
-
+// eslint-disable-next-line no-unused-vars
 const test_ensure_no_pending_events = ()=>etask(function*(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
@@ -50,6 +52,7 @@ const test_ensure_no_pending_events = ()=>etask(function*(){
     if (!t_pending.length)
       return;
   }
+  console.log('queue %o', t_queue);
   throw new Error('pending events '+stringify(t_pending)+ ' got'+
     stringify(t_events));
 });
@@ -110,27 +113,35 @@ class FakeChannel extends EventEmitter {
     });
   }
   send(msg){
-    let channel, s = node_from_id(this.localID), d = node_from_id(this.id);
-    let {type, data} = msg.data, p;
+    let s = node_from_id(this.localID), d = node_from_id(this.id);
+    let {type} = msg.data;
     switch (type)
     {
-    case 'findPeers':
-      p = node_from_id(util.buf_from_str(data));
-      console.log('send: %s%s>findPeers %s',
-        s.t.name, d.t.name, p.t.name);
-      channel = node_get_channel(d.t.name, s.t.name);
-      channel.emit('message', msg);
-      break;
-    case 'foundPeers':
-      console.log('send: %s%s>foundPeers',
-        s.t.name, d.t.name);
-      channel = node_get_channel(d.t.name, s.t.name);
-      channel.emit('message', msg);
-      break;
+    case 'findPeers': send_msg(s.t.name, d.t.name, msg); break;
+    case 'foundPeers': send_msg(s.t.name, d.t.name, msg); break;
     default: assert(false, 'unexpected msg '+type);
     }
   }
   destroy(){}
+}
+
+function send_msg(s, d, msg){
+  let channel = node_get_channel(d, s);
+  let channel2 = node_get_channel(s, d);
+  if (!channel || !channel2)
+    t_queue.push({s, d, msg: assign({}, msg)});
+  else
+    channel.emit('message', msg);
+}
+
+function try_send_queue(){
+  let q = t_queue.filter(o=>node_get_channel(o.d, o.s) &&
+    node_get_channel(o.s, o.d));
+  q.forEach(o=>{
+    let channel = node_get_channel(o.d, o.s);
+    channel.emit('message', o.msg);
+  });
+  q.forEach(o=>array.rm_elm(t_queue, o));
 }
 
 class FakeWsConnector extends EventEmitter {
@@ -140,14 +151,13 @@ class FakeWsConnector extends EventEmitter {
   }
   connect(url){
     let node = node_from_url(url);
-    // XXX: rm hack of setTimeout
+    let channel = new FakeChannel({localID: this.id, id: node.id});
+    this.emit('connection', channel);
+    let channel2 = new FakeChannel({localID: node.id, id: this.id});
     setTimeout(()=>{
-      let s = node_from_id(this.id);
-      let channel = new FakeChannel({localID: this.id, id: node.id});
-      this.emit('connection', channel);
-      let channel2 = new FakeChannel({localID: node.id, id: this.id});
       node.wsConnector.emit('connection', channel2);
-    });
+      try_send_queue();
+    }, 100);
   }
   destroy(){}
 }
@@ -247,8 +257,9 @@ function cmd_node(role, c){
   t_nodes[name] = node;
   node.on('connection', channel=>{
     let s = node_from_id(channel.localID), d = node_from_id(channel.id);
-    test_emit(s.t.name+d.t.name+'>connected');
     node.t.channels.push(channel);
+    test_emit(s.t.name+d.t.name+'>connected');
+    try_send_queue();
   });
 }
 
@@ -278,35 +289,31 @@ function cmd_event(c){
   test_pending(c.orig);
 }
 
-const cmd_find_peers = c=>etask(function*(){
+const cmd_find_peers = c=>etask(function(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
   if (s.t.fake)
   {
-    yield test_ensure_no_pending_events();
-    let channel = node_get_channel(c.s, c.d);
     var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'findPeers', data: util.buf_to_str(s.id)}};
-    channel.send(msg);
+    send_msg(c.d, c.s, msg);
   }
   test_pending(c.orig);
 });
 
-const cmd_found_peers = c=>etask(function*(){
+const cmd_found_peers = c=>etask(function(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
   if (s.t.fake)
   {
-    yield test_ensure_no_pending_events();
-    let channel = node_get_channel(c.s, c.d);
-    // XXX: fix foundPeers to return peers parsed from orig
+
     var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'foundPeers', data: [util.buf_to_str(d.id)]}};
-    channel.send(msg);
+    send_msg(c.d, c.s, msg);
   }
   test_pending(c.orig);
 });
@@ -327,7 +334,6 @@ const test_run = (role, test)=>etask(function*(){
     case 'foundPeers': yield cmd_found_peers(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
-    yield util.sleep(); // XXX HACK: fixme
   }
   yield test_end();
   t_running = false;
@@ -377,21 +383,22 @@ describe('peer-relay', function(){
     // XXX TODO: same for WRTC
   });
   this.timeout(2*t_timeout);
-  describe('basic', ()=>zetask(function*(){
+  describe('basic', ()=>zetask(function(){
     const t = (name, test)=>{
       if (0)
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
-    }
+    };
     t('2_peers', `
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
       a>connect(wss(wss://lif.zone:4000))
       as>connected
       sa>connected
-      sa>findPeers(s)
       as>findPeers(a)
-      sa>foundPeers(a)`);
+      as>foundPeers(s)
+      sa>findPeers(s)
+      `);
   }));
 });
 
