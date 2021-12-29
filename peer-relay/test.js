@@ -416,15 +416,15 @@ describe('peer-relay', function(){
     sa>foundPeers(a,s)
   `)));
   it('xxx_a', ()=>zetask(()=>test_run('a', `
-      node(name:s wss(host:lif.zone port:4000))
-      node(name:a)
-      a>connect(wss(wss://lif.zone:4000))
-      as>connected
-      sa>connected
-      as>findPeers(a)
-      sa>foundPeers(a)
-      sa>findPeers(s)
-      as>foundPeers(s,a)
+    node(name:s wss(host:lif.zone port:4000))
+    node(name:a)
+    a>connect(wss(wss://lif.zone:4000))
+    as>connected
+    sa>connected
+    as>findPeers(a)
+    sa>foundPeers(a)
+    sa>findPeers(s)
+    as>foundPeers(s,a)
   `)));
 });
 
