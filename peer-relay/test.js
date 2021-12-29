@@ -26,6 +26,7 @@ let t_nodes = {}, t_events = [], t_pending = [];
 let t_timeout = 2000, t_running;
 
 function test_emit(e){
+  console.log('emit: %s', e);
   assert.ok(t_running, 'test not running');
   assert.ok(e, 'invalid event');
   t_events.push(e);
@@ -74,7 +75,9 @@ class FakeNode extends EventEmitter {
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new FakeWsConnector(this.id);
-    this.wsConnector.on('connection', c=>this.emit('connection', c));
+    this.wsConnector.on('connection', c=>{
+      this.emit('connection', c);
+    });
   }
   destroy(){}
   connect_ws(url){
@@ -87,17 +90,44 @@ class FakeChannel extends EventEmitter {
     super();
     this.id = opts.id;
     this.localID = opts.localID;
+    this.on('message', msg=>{
+      let s = node_from_id(util.buf_from_str(msg.from));
+      let d = node_from_id(util.buf_from_str(msg.to));
+      let p, {type, data} = msg.data;
+      switch (type)
+      {
+        case 'findPeers':
+          p = node_from_id(util.buf_from_str(data));
+          test_emit(s.t.name+d.t.name+'>'+type+'('+p.t.name+')');
+          break;
+        case 'foundPeers':
+          assert(data.length==1, 'TODO: multiple peers'); // XXX TODO
+          p = node_from_id(util.buf_from_str(data[0]));
+          test_emit(s.t.name+d.t.name+'>'+type+'('+p.t.name+')');
+          break;
+        default: assert(false, 'unexpected msg '+type);
+      }
+    });
   }
   send(msg){
-    let s = node_from_id(this.localID), d = node_from_id(this.id);
+    let channel, s = node_from_id(this.localID), d = node_from_id(this.id);
     let {type, data} = msg.data, p;
     switch (type)
     {
     case 'findPeers':
       p = node_from_id(util.buf_from_str(data));
-      test_emit(s.t.name+d.t.name+'>'+type+'('+p.t.name+')');
+      console.log('send: %s%s>findPeers %s',
+        s.t.name, d.t.name, p.t.name);
+      channel = node_get_channel(d.t.name, s.t.name);
+      channel.emit('message', msg);
       break;
-    default: assert(false, 'unepected msg '+type);
+    case 'foundPeers':
+      console.log('send: %s%s>foundPeers',
+        s.t.name, d.t.name);
+      channel = node_get_channel(d.t.name, s.t.name);
+      channel.emit('message', msg);
+      break;
+    default: assert(false, 'unexpected msg '+type);
     }
   }
   destroy(){}
@@ -112,13 +142,11 @@ class FakeWsConnector extends EventEmitter {
     let node = node_from_url(url);
     // XXX: rm hack of setTimeout
     setTimeout(()=>{
+      let s = node_from_id(this.id);
       let channel = new FakeChannel({localID: this.id, id: node.id});
       this.emit('connection', channel);
-      setTimeout(()=>{
-        let channel2 = new FakeChannel({localID: node.id, id: this.id});
-        node.wsConnector.emit('connection', channel2);
-        // XXX HACK: we sleep 100ms to allow >connected event to be sent
-      }, 100);
+      let channel2 = new FakeChannel({localID: node.id, id: this.id});
+      node.wsConnector.emit('connection', channel2);
     });
   }
   destroy(){}
@@ -251,13 +279,34 @@ function cmd_event(c){
 }
 
 const cmd_find_peers = c=>etask(function*(){
-  let s = t_nodes[c.s];
+  let s = t_nodes[c.s], d = t_nodes[c.d];
   // XXX: check what to assert for events
   if (s.t.fake)
   {
     yield test_ensure_no_pending_events();
     let channel = node_get_channel(c.s, c.d);
-    channel.send({data: {type: 'findPeers', data: util.buf_to_str(s.id)}});
+    var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
+      path: [s.id.toString('hex')],
+      nonce: '' + Math.floor(1e15 * Math.random()),
+      data: {type: 'findPeers', data: util.buf_to_str(s.id)}};
+    channel.send(msg);
+  }
+  test_pending(c.orig);
+});
+
+const cmd_found_peers = c=>etask(function*(){
+  let s = t_nodes[c.s], d = t_nodes[c.d];
+  // XXX: check what to assert for events
+  if (s.t.fake)
+  {
+    yield test_ensure_no_pending_events();
+    let channel = node_get_channel(c.s, c.d);
+    // XXX: fix foundPeers to return peers parsed from orig
+    var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
+      path: [s.id.toString('hex')],
+      nonce: '' + Math.floor(1e15 * Math.random()),
+      data: {type: 'foundPeers', data: [util.buf_to_str(d.id)]}};
+    channel.send(msg);
   }
   test_pending(c.orig);
 });
@@ -268,12 +317,14 @@ const test_run = (role, test)=>etask(function*(){
   let a = xtest.test_parse(test);
   for (let i=0, c; i<a.length, c=a[i]; i++)
   {
+    console.log('cmd: %s', c.orig);
     switch (c.cmd)
     {
     case 'node': yield cmd_node(role, c); break;
     case 'connect': yield cmd_connect(c); break;
     case 'connected': yield cmd_event(c); break;
     case 'findPeers': yield cmd_find_peers(c); break;
+    case 'foundPeers': yield cmd_found_peers(c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
     yield util.sleep(); // XXX HACK: fixme
@@ -293,9 +344,11 @@ const test_end = ()=>etask(function*(){
   yield test_ensure_no_events();
 });
 
+// XXX: rm
 class FakeWS extends EventEmitter {
   constructor(url, opts){
     super();
+    throw new Error('FakeWS');
   }
   close(){
   }
@@ -303,9 +356,11 @@ class FakeWS extends EventEmitter {
   }
 }
 
+// XXX: rm
 class FakeWebSocketServer extends EventEmitter {
   constructor(opts){
     super();
+    throw new Error('FakeWebSocketServer');
   }
   init = ()=>{
   }
@@ -324,6 +379,7 @@ describe('peer-relay', function(){
   this.timeout(2*t_timeout);
   describe('basic', ()=>zetask(function*(){
     const t = (name, test)=>{
+      if (0)
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
     }
@@ -332,9 +388,10 @@ describe('peer-relay', function(){
       node(name:a)
       a>connect(wss(wss://lif.zone:4000))
       as>connected
-      as>findPeers(a)
       sa>connected
-      sa>findPeers(s)`);
+      sa>findPeers(s)
+      as>findPeers(a)
+      sa>foundPeers(a)`);
   }));
 });
 
