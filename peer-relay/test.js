@@ -69,8 +69,7 @@ const test_ensure_no_events = ()=>etask(function*(){
       t_pending.pop();
     }
   }
-  assert.ok(!t_events.length && !t_pending.length,
-    'event mismatch '+stringify(t_events)+' != '+stringify(t_pending));
+  assert.deepEqual(t_events, t_pending);
 });
 
 class FakeNode extends EventEmitter {
@@ -96,7 +95,7 @@ class FakeChannel extends EventEmitter {
     this.on('message', msg=>{
       let s = node_from_id(util.buf_from_str(msg.from));
       let d = node_from_id(util.buf_from_str(msg.to));
-      let p, {type, data} = msg.data;
+      let a, p, {type, data} = msg.data;
       switch (type)
       {
         case 'findPeers':
@@ -104,9 +103,8 @@ class FakeChannel extends EventEmitter {
           test_emit(s.t.name+d.t.name+'>'+type+'('+p.t.name+')');
           break;
         case 'foundPeers':
-          assert(data.length==1, 'TODO: multiple peers'); // XXX TODO
-          p = node_from_id(util.buf_from_str(data[0]));
-          test_emit(s.t.name+d.t.name+'>'+type+'('+p.t.name+')');
+          a = node_name_array(data);
+          test_emit(s.t.name+d.t.name+'>'+type+'('+a.join(',')+')');
           break;
         default: assert(false, 'unexpected msg '+type);
       }
@@ -124,11 +122,16 @@ class FakeChannel extends EventEmitter {
   }
   destroy(){}
 }
+function node_name_array(a){
+  let ret = [];
+  a.forEach(id=>ret.push(node_from_id(util.buf_from_str(id)).t.name));
+  return ret;
+}
 
 function send_msg(s, d, msg){
   let channel = node_get_channel(d, s);
   let channel2 = node_get_channel(s, d);
-  if (!channel || !channel2)
+  if (!channel || !channel2 || t_queue.length)
     t_queue.push({s, d, msg: assign({}, msg)});
   else
     channel.emit('message', msg);
@@ -298,7 +301,7 @@ const cmd_find_peers = c=>etask(function(){
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'findPeers', data: util.buf_to_str(s.id)}};
-    send_msg(c.d, c.s, msg);
+    send_msg(c.s, c.d, msg);
   }
   test_pending(c.orig);
 });
@@ -308,12 +311,11 @@ const cmd_found_peers = c=>etask(function(){
   // XXX: check what to assert for events
   if (s.t.fake)
   {
-
     var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'foundPeers', data: [util.buf_to_str(d.id)]}};
-    send_msg(c.d, c.s, msg);
+    send_msg(c.s, c.d, msg);
   }
   test_pending(c.orig);
 });
@@ -325,6 +327,7 @@ const test_run = (role, test)=>etask(function*(){
   for (let i=0, c; i<a.length, c=a[i]; i++)
   {
     console.log('cmd: %s', c.orig);
+    yield etask.sleep(100); // XXX HACK: rm
     switch (c.cmd)
     {
     case 'node': yield cmd_node(role, c); break;
@@ -385,10 +388,10 @@ describe('peer-relay', function(){
   this.timeout(2*t_timeout);
   describe('basic', ()=>zetask(function(){
     const t = (name, test)=>{
-      if (0)
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
     };
+    if (0)
     t('2_peers', `
       node(name:s wss(host:lif.zone port:4000))
       node(name:a)
@@ -396,10 +399,33 @@ describe('peer-relay', function(){
       as>connected
       sa>connected
       as>findPeers(a)
-      as>foundPeers(s)
+      sa>foundPeers(a)
       sa>findPeers(s)
-      `);
+      as>foundPeers(s,a)
+    `);
   }));
+  it('xxx_s', ()=>zetask(()=>test_run('s', `
+    node(name:s wss(host:lif.zone port:4000))
+    node(name:a)
+    a>connect(wss(wss://lif.zone:4000))
+    as>connected
+    sa>connected
+    sa>findPeers(s)
+    as>foundPeers(s)
+    as>findPeers(a)
+    sa>foundPeers(a,s)
+  `)));
+  it('xxx_a', ()=>zetask(()=>test_run('a', `
+      node(name:s wss(host:lif.zone port:4000))
+      node(name:a)
+      a>connect(wss(wss://lif.zone:4000))
+      as>connected
+      sa>connected
+      as>findPeers(a)
+      sa>foundPeers(a)
+      sa>findPeers(s)
+      as>foundPeers(s,a)
+  `)));
 });
 
 if (0) // XXX: review old-style test and decide if needed
