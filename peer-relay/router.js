@@ -3,6 +3,7 @@ import {EventEmitter} from 'events';
 import {inherits} from 'util';
 import _debug from 'debug';
 const debug = _debug('peer-relay:router');
+import assert from 'assert';
 
 export default Router;
 
@@ -71,7 +72,7 @@ Router.prototype._onMessage = function(msg){
     return;
   self._touched[msg.nonce] = true;
   if (typeof msg.from!='string')
-    console.error('invalid from %o', msg);
+    console.error('invalid from self %s %o', self.id.toString('hex'), msg);
   self._paths[msg.from] = msg.path[msg.path.length - 1];
   let to = new Buffer(msg.to, 'hex');
   if (to.equals(self.id))

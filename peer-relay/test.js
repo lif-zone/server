@@ -126,28 +126,36 @@ class FakeChannel extends EventEmitter {
     this.id = opts.id;
     this.localID = opts.localID;
     this.on('message', msg=>{
-      let s = node_from_id(util.buf_from_str(msg.from));
-      let d = node_from_id(util.buf_from_str(msg.to));
-      let a, p, {type, data} = msg.data;
+      let s = node_from_id(this.id);
+      let d = node_from_id(this.localID);
+      let from = node_from_id(util.buf_from_str(msg.from));
+      let to = node_from_id(util.buf_from_str(msg.to));
+      let a, p, {type, data} = msg.data, msg_sd = '';
+      // XXX HACK: fix msg_sd handling
+      if (s!=from || d!=to)
+        msg_sd = from.t.name+to.t.name+'>';
       switch (type)
       {
         case 'findPeers':
           p = node_from_id(util.buf_from_str(data));
-          test_emit(s.t.name+d.t.name+'>'+type+'('+p.t.name+')');
+          test_emit(s.t.name+d.t.name+'>'+type+'('+msg_sd+p.t.name+')');
           break;
         case 'foundPeers':
           a = array_id_to_name(data);
-          test_emit(s.t.name+d.t.name+'>'+type+'('+a.join(',')+')');
+          test_emit(s.t.name+d.t.name+'>'+type+'('+msg_sd+
+          (msg_sd ? '('+a.join(',')+')' : a.join(','))+')');
           break;
         case 'handshake-offer':
-          test_emit(s.t.name+d.t.name+'>'+type);
+          msg_sd = msg_sd ? '('+msg_sd+')' : msg_sd; // XXX HACK;
+          test_emit(s.t.name+d.t.name+'>'+type+msg_sd);
           break;
         case 'handshake-answer':
+          msg_sd = msg_sd ? '('+msg_sd+')' : msg_sd; // XXX HACK;
           assert(!data.ws && !data.wrtc); // XXX: TODO
-          test_emit(s.t.name+d.t.name+'>'+type);
+          test_emit(s.t.name+d.t.name+'>'+type+msg_sd);
           break;
         case 'user':
-          test_emit(s.t.name+d.t.name+'>send('+data+')');
+          test_emit(s.t.name+d.t.name+'>send('+msg_sd+data+')');
           break;
         default: assert(false, 'unexpected msg '+type);
       }
@@ -448,6 +456,7 @@ const test_run = (role, test)=>etask(function*(){
     case 'setup': yield cmd_setup(c.arg); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
+    try_send_queue();
   }
   yield test_end();
   t_running = false;
@@ -504,7 +513,7 @@ describe('peer-relay', function(){
     const t = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
-      it(name+'_*', ()=>zetask(()=>test_run('*', test)));
+      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
     };
     // XXX: support as>connect(wss)
     t('2_nodes', `
@@ -519,7 +528,7 @@ describe('peer-relay', function(){
     */
     const t3 = (name, test)=>{
       if (1) // XXX: fixme
-      it(name+'_*', ()=>zetask(()=>test_run('*', test)));
+      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       if (0) // XXX: fixme
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       if (0) // XXX: enable
@@ -527,6 +536,8 @@ describe('peer-relay', function(){
       if (0) // XXX: fixme
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
     };
+    // XXX: discuss with derry relay
+    if (1)
     t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
@@ -536,11 +547,11 @@ describe('peer-relay', function(){
       node(name:b) b>connect(wss(wss://lif.zone:4000))
       bs>connected bs<connected
       bs>findPeers(b) bs<foundPeers(b,s,a)
-      ba>handshake-offer
-      ba>handshake-offer
-      ba<handshake-answer
-      ba<handshake-answer
-      sb>foundPeers(b,s,a)
+      bs>handshake-offer(ba>)
+      sa>handshake-offer(ba>)
+      sa<handshake-answer(ab>)
+      bs<handshake-answer(ab>)
+      sa>foundPeers(sb>(b,s,a))
       sb>findPeers(s)
       sb<foundPeers(s,b,a)
     `);
