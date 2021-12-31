@@ -508,7 +508,7 @@ describe('peer-relay', function(){
       it(name+'_*', ()=>zetask(()=>test_run('*', test)));
     };
     // XXX: support as>connect(wss)
-    t('2_peers', `
+    t('2_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
       as>findPeers(a) as<foundPeers(a)
@@ -528,7 +528,7 @@ describe('peer-relay', function(){
       if (0) // XXX: fixme
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
     };
-    t3('3_peers', `
+    t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
       as>findPeers(a) as<foundPeers(a)
