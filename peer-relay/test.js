@@ -536,14 +536,14 @@ describe('peer-relay', function(){
       if (0) // XXX: fixme
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
     };
+    // XXX: review with derry 'real' mode
     // XXX: discuss with derry relay
     if (1)
     t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
       as>findPeers(a) as<foundPeers(a)
-      sa>findPeers(s) sa<foundPeers(s,a)
-      -
+      sa>findPeers(s) sa<foundPeers(s,a) -
       node(name:b) b>connect(wss(wss://lif.zone:4000))
       bs>connected bs<connected
       bs>findPeers(b) bs<foundPeers(b,s,a)
