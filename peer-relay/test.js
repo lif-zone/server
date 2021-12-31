@@ -552,7 +552,6 @@ describe('peer-relay', function(){
     */
     const t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      if (0) // XXX: enable
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       if (0) // XXX: fixme
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
