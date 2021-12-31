@@ -83,14 +83,26 @@ const test_ensure_no_events = ()=>etask(function*(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
     try_send_queue();
-    yield util.sleep(); // XXX HACK: fixme
     if (!t_events.length && !t_pending.length)
       break;
+    yield util.sleep(); // XXX HACK: fixme
     if (!t_events.length || !t_pending.length)
       continue;
     if (normalize(t_events[0])==normalize(t_pending[0]))
     {
       t_events.shift();
+      t_pending.shift();
+    }
+    else if (t_events.length>1 && t_events[0].search('foundPeers')!=-1 &&
+      normalize(t_events[1])==normalize(t_pending[0]) &&
+      normalize(t_events[0])==normalize(t_pending[1]))
+    {
+      // XXX HACK: because foundPeers is returned directly from findPeers
+      // handler, when one of the players is real and the other is fake,
+      // the order will change
+      t_events.shift();
+      t_events.shift();
+      t_pending.shift();
       t_pending.shift();
     }
     else
@@ -227,10 +239,16 @@ function fake_send_msg(c, data, real_cb){
     s = t_nodes[fs];
     d = t_nodes[fd];
   }
-  if (data.type!='findPeers' && !s.t.fake)
-    return;
-  if (data.type=='findPeers' && !(s.t.fake && !s.t.is_connect_ws))
-    return;
+  if (data.type!='findPeers')
+  {
+    if (!s.t.fake)
+      return;
+  }
+  else
+  {
+    if (!(s.t.fake && !s.t.is_connect_ws))
+      return;
+  }
   var msg = {to, from, path: [s.id.toString('hex')],
     nonce: '' + Math.floor(1e15 * Math.random()), data};
   if (c.fwd)
@@ -239,14 +257,22 @@ function fake_send_msg(c, data, real_cb){
     send_msg(c.s, c.d, msg);
 }
 
+let t_seq = 0;
 function try_send_queue(){
   let q = t_queue.filter(o=>node_get_channel(o.d, o.s) &&
     node_get_channel(o.s, o.d));
-  q.forEach(o=>array.rm_elm(t_queue, o));
+  let seq = ++t_seq;
   q.forEach(o=>{
+    if (o.t_seq===undefined)
+      o.t_seq = seq;
+  });
+  q.forEach(o=>{
+    if (o.t_seq!=seq)
+      return;
     let channel = node_get_channel(o.d, o.s);
     channel.emit('message', o.msg);
   });
+  q.forEach(o=>array.rm_elm(t_queue, o));
 }
 
 class FakeWsConnector extends EventEmitter {
@@ -543,8 +569,10 @@ describe('peer-relay', function(){
     t('2_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
-      as>findPeers(a) as<foundPeers(a)
-      sa>findPeers(s) sa<foundPeers(s,a)
+      as>findPeers(a) sa>findPeers(s)
+      sa>foundPeers(a)
+      as>foundPeers(s)
+      -
       as>send(ping) as<send(pong)
     `);
     /* XXX TODO:
@@ -553,7 +581,6 @@ describe('peer-relay', function(){
     const t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      if (0) // XXX: fixme
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
@@ -564,17 +591,17 @@ describe('peer-relay', function(){
     t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
-      as>findPeers(a) as<foundPeers(a)
-      sa>findPeers(s) sa<foundPeers(s,a) -
+      as>findPeers(a) sa>findPeers(s)
+      as<foundPeers(a) sa<foundPeers(s) -
       node(name:b) b>connect(wss(wss://lif.zone:4000))
       bs>connected bs<connected
-      bs>findPeers(b) bs<foundPeers(b,s,a)
+      bs>findPeers(b)
+      sb>findPeers(s)
+      bs<foundPeers(b,s,a)
+      bs>foundPeers(s)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
       sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
-      sa>fwd(sb>foundPeers(b,s,a))
-      as>fwd(sb>foundPeers(b,s,a))
-      sb>findPeers(s)
-      sb<foundPeers(s,b,a)`);
+      `);
      // XXX BUG: ab>send(ping) not working
      // ba>send(ping)
      // as>send(ping)
