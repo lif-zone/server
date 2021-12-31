@@ -144,6 +144,7 @@ class FakeChannel extends EventEmitter {
           test_emit(s.t.name+d.t.name+'>'+type);
           break;
         case 'handshake-answer':
+          assert(!data.ws && !data.wrtc); // XXX: TODO
           test_emit(s.t.name+d.t.name+'>'+type);
           break;
         case 'user':
