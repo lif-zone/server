@@ -95,7 +95,7 @@ Client.prototype.connect = function(id){
     return;
   self.pending[id] = true;
   self._debug('Connecting to id=%s', id.toString('hex', 0, 2));
-  debugger;
+  console.log('XXX client.js send handshake-offer');
   self.router.send(id, {type: 'handshake-offer'});
 };
 
