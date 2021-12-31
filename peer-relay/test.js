@@ -151,7 +151,7 @@ class FakeChannel extends EventEmitter {
           break;
         case 'handshake-answer':
           msg_sd = msg_sd ? '('+msg_sd+')' : msg_sd; // XXX HACK;
-          assert(!data.ws && !data.wrtc); // XXX: TODO
+          assert(data && !data.ws && !data.wrtc); // XXX: TODO
           test_emit(s.t.name+d.t.name+'>'+type+msg_sd);
           break;
         case 'user':
@@ -186,13 +186,24 @@ function array_id_to_name(a){
 
 function array_name_to_id(a){
   let ret = [];
-  a.forEach(name=>ret.push(util.buf_to_str(t_nodes[name].id)));
+  a.forEach(name=>{
+    if (name[2]=='>') // XXX HACK:
+      name = name[4];
+    if (name[1]==')') // XXX HACK:
+      name = name[0];
+    ret.push(util.buf_to_str(t_nodes[name].id))
+  });
   return ret;
 }
 
 function send_msg(s, d, msg){
   let channel = node_get_channel(d, s);
   let channel2 = node_get_channel(s, d);
+  if (typeof msg.from!='string')
+  {
+    msg.from = util.buf_to_str(msg.from);
+    msg.to = util.buf_to_str(msg.to);
+  }
   if (!channel || !channel2 || t_queue.length)
     t_queue.push({s, d, msg: assign({}, msg)});
   else
@@ -421,7 +432,7 @@ const cmd_handshake_answer = c=>etask(function(){
     var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
-      data: {type: 'handshake-answer', data: null}};
+      data: {type: 'handshake-answer', data: {}}};
     send_msg(c.s, c.d, msg);
   }
   test_pending(c.orig);
@@ -552,6 +563,7 @@ describe('peer-relay', function(){
       sa<handshake-answer(ab>)
       bs<handshake-answer(ab>)
       sa>foundPeers(sb>(b,s,a))
+      as>foundPeers(sb>(b,s,a))
       sb>findPeers(s)
       sb<foundPeers(s,b,a)
     `);
@@ -560,5 +572,23 @@ describe('peer-relay', function(){
      // as>send(ping)
      // sa>send(ping)
   }));
+  if (0) // XXX: WIP
+  t3('3_nodes', `
+      node(name:s wss(host:lif.zone port:4000)) node(name:a)
+      a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
+      as>findPeers(a) as<foundPeers(a)
+      sa>findPeers(s) sa<foundPeers(s,a) -
+      node(name:b) b>connect(wss(wss://lif.zone:4000))
+      bs>connected bs<connected
+      bs>findPeers(b) bs<foundPeers(b,s,a)
+      bs>fwd(ba>handshake-offer)
+      sa>fwd(ba>handshake-offer)
+      sa<fwd(ab>handshake-answer)
+      bs<fwd(ab>handshake-answer)
+      sa>fwd(sb>foundPeers(b,s,a))
+      sb>findPeers(s)
+      sb<foundPeers(s,b,a)
+    `);
+
 });
 

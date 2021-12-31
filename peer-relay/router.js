@@ -2,13 +2,13 @@
 import {EventEmitter} from 'events';
 import {inherits} from 'util';
 import _debug from 'debug';
-const debug = _debug('peer-relay:router');
 import assert from 'assert';
+const debug = _debug('peer-relay:router');
+const stringify = JSON.stringify;
 
 export default Router;
 
 inherits(Router, EventEmitter);
-
 function Router(channels, id){
   var self = this;
   self.id = id;
@@ -71,8 +71,8 @@ Router.prototype._onMessage = function(msg){
   if (msg.nonce in self._touched)
     return;
   self._touched[msg.nonce] = true;
-  if (typeof msg.from!='string')
-    console.error('invalid from self %s %o', self.id.toString('hex'), msg);
+  assert(typeof msg.from=='string',
+    'invalid from self '+self.id.toString('hex')+' '+stringify(msg));
   self._paths[msg.from] = msg.path[msg.path.length - 1];
   let to = new Buffer(msg.to, 'hex');
   if (to.equals(self.id))
