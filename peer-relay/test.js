@@ -76,15 +76,19 @@ function normalize(e){
 const test_ensure_no_events = ()=>etask(function*(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
+    try_send_queue();
     yield util.sleep(); // XXX HACK: fixme
     if (!t_events.length && !t_pending.length)
       break;
-    if (normalize(t_events[t_events.length-1])==
-      normalize(t_pending[t_pending.length-1]))
+    if (!t_events.length || !t_pending.length)
+      continue;
+    if (normalize(t_events[0])==normalize(t_pending[0]))
     {
-      t_events.pop();
-      t_pending.pop();
+      t_events.shift();
+      t_pending.shift();
     }
+    else
+      assert.deepEqual(t_events, t_pending);
   }
   assert.deepEqual(t_events, t_pending);
 });
@@ -139,6 +143,9 @@ class FakeChannel extends EventEmitter {
         case 'handshake-offer':
           test_emit(s.t.name+d.t.name+'>'+type);
           break;
+        case 'handshake-answer':
+          test_emit(s.t.name+d.t.name+'>'+type);
+          break;
         case 'user':
           test_emit(s.t.name+d.t.name+'>send('+data+')');
           break;
@@ -154,6 +161,7 @@ class FakeChannel extends EventEmitter {
     case 'findPeers':
     case 'foundPeers':
     case 'handshake-offer':
+    case 'handshake-answer':
     case 'user':
       send_msg(s.t.name, d.t.name, msg);
       break;
@@ -209,7 +217,7 @@ class FakeWsConnector extends EventEmitter {
   destroy(){}
 }
 
-function is_fake(role, p){ return role!=p; }
+function is_fake(role, p){ return role!= '*' && role!=p; }
 
 function node_from_url(url){
   for (let name in t_nodes)
@@ -399,6 +407,20 @@ const cmd_handshake_offer = c=>etask(function(){
   test_pending(c.orig);
 });
 
+const cmd_handshake_answer = c=>etask(function(){
+  // XXX: check what to assert for events
+  let s = t_nodes[c.s], d = t_nodes[c.d];
+  if (s.t.fake)
+  {
+    var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
+      path: [s.id.toString('hex')],
+      nonce: '' + Math.floor(1e15 * Math.random()),
+      data: {type: 'handshake-answer', data: null}};
+    send_msg(c.s, c.d, msg);
+  }
+  test_pending(c.orig);
+});
+
 const cmd_setup = c=>etask(function(){
   assert(false, 'cmd_setup TODO');
 /* XXX: TODO
@@ -423,6 +445,7 @@ const test_run = (role, test)=>etask(function*(){
     case 'foundPeers': yield cmd_found_peers(c); break;
     case 'send': yield cmd_send(c); break;
     case 'handshake-offer': yield cmd_handshake_offer(c); break;
+    case 'handshake-answer': yield cmd_handshake_answer(c); break;
     case 'setup': yield cmd_setup(c.arg); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
@@ -432,11 +455,10 @@ const test_run = (role, test)=>etask(function*(){
 });
 
 const test_end = ()=>etask(function*(){
-  try_send_queue();
+  yield test_ensure_no_events();
   assert.ok(t_running, 'test not running');
   assert(!t_queue.length, 'not all events were sent\n'+
     stringify(t_queue));
-  yield test_ensure_no_events();
   for (let n in t_nodes)
   {
     yield t_nodes[n].destroy();
@@ -483,6 +505,7 @@ describe('peer-relay', function(){
     const t = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
+      it(name+'_*', ()=>zetask(()=>test_run('*', test)));
     };
     // XXX: support as>connect(wss)
     t('2_peers', `
@@ -496,8 +519,10 @@ describe('peer-relay', function(){
       a>connect(node(b))
     */
     const t3 = (name, test)=>{
+      it(name+'_*', ()=>zetask(()=>test_run('*', test)));
       if (0) // XXX: fixme
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
+      if (0) // XXX: enable
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       if (0) // XXX: fixme
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
@@ -512,20 +537,23 @@ describe('peer-relay', function(){
       as>findPeers(a)
       sa>foundPeers(a)
       sa>findPeers(s)
-      as>foundPeers(s,a)
       b>connect(wss(wss://lif.zone:4000))
       bs>connected
+      as>foundPeers(s,a)
       sb>connected
       bs>findPeers(b)
       sb>foundPeers(b,s,a)
-      ba>handshake-offer
       sb>findPeers(s)
+      ba>handshake-offer
       bs>foundPeers(s,b,a)
-      as>send(ping)
-      sa>send(ping)
-      ba>send(ping)
+      ba>handshake-offer
+      ba<handshake-answer
+      ba<handshake-answer
     `);
-     // XXX BUG: ab>send(ping) not working
+     //XXX BUG: ab>send(ping) not working
+      // ba>send(ping)
+      // as>send(ping)
+      // sa>send(ping)
   }));
 });
 
