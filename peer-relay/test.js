@@ -600,7 +600,8 @@ describe('peer-relay', function(){
       bs<foundPeers(b,s,a)
       bs>foundPeers(s)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
-      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
+      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer) -
+      as>send(ping) -
       `);
      // XXX BUG: ab>send(ping) not working
      // ba>send(ping)
