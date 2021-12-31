@@ -218,6 +218,26 @@ function send_msg(s, d, msg){
     channel.emit('message', msg);
 }
 
+function fake_send_msg(c, data){
+  let s = t_nodes[c.s], d = t_nodes[c.d];
+  let to = d.id.toString('hex'), from = s.id.toString('hex');
+  let fs = c.fwd&&c.fwd[0], fd = c.fwd&&c.fwd[1];
+  if (c.fwd) // XXX: make it generic and fix all
+  {
+    s = t_nodes[fs];
+    d = t_nodes[fd];
+  }
+  if (!s.t.fake)
+    return;
+  let a = array_name_to_id(c.arg.split(','));
+  var msg = {to, from, path: [s.id.toString('hex')],
+    nonce: '' + Math.floor(1e15 * Math.random()), data};
+  if (c.fwd)
+    send_msg(fs, fd, msg);
+  else
+    send_msg(c.s, c.d, msg);
+}
+
 function try_send_queue(){
   let q = t_queue.filter(o=>node_get_channel(o.d, o.s) &&
     node_get_channel(o.s, o.d));
@@ -388,26 +408,9 @@ const cmd_find_peers = c=>etask(function(){
 });
 
 const cmd_found_peers = c=>etask(function(){
-  // XXX: check what to assert for events
-  let s = t_nodes[c.s], d = t_nodes[c.d];
-  let to = d.id.toString('hex'), from = s.id.toString('hex');
-  let fs = c.fwd&&c.fwd[0], fd = c.fwd&&c.fwd[1];
-  if (c.fwd) // XXX: make it generic and fix all
-  {
-    s = t_nodes[fs];
-    d = t_nodes[fd];
-  }
-  if (s.t.fake)
-  {
-    let a = array_name_to_id(c.arg.split(','));
-    var msg = {to, from, path: [s.id.toString('hex')],
-      nonce: '' + Math.floor(1e15 * Math.random()),
-      data: {type: 'foundPeers', data: a}};
-    if (c.fwd) // XXX: fix all over
-      send_msg(fs, fd, msg);
-    else
-      send_msg(c.s, c.d, msg);
-  }
+  // XXX: check what to assert
+  let a = array_name_to_id(c.arg.split(','));
+  fake_send_msg(c, {type: 'foundPeers', data: a});
   test_pending(c);
 });
 
