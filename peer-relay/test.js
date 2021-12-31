@@ -48,7 +48,7 @@ function test_pending(e, c){
   assert.ok(t_running, 'test not running');
   assert.ok(e, 'invalid event');
   if (c && c.fwd)
-    e = c.fwd+'fwd('+e+')'
+    e = c.fwd+'fwd('+e+')';
   t_pending.push(e);
 }
 // eslint-disable-next-line no-unused-vars
@@ -94,9 +94,17 @@ const test_ensure_no_events = ()=>etask(function*(){
       t_pending.shift();
     }
     else
-      assert.deepEqual(t_events, t_pending);
+    {
+      assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+
+        'real: '+stringify(t_events, null, '\t')+'\n'+
+        'expected: '+stringify(t_pending, null, '\t')+'\n'+
+        'queue: '+stringify(t_queue));
+    }
   }
-  assert.deepEqual(t_events, t_pending);
+  assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+
+    'real: '+stringify(t_events, null, '\t')+'\n'+
+    'expected: '+stringify(t_pending, null, '\t')+'\n'+
+    'queue: '+stringify(t_queue));
 });
 
 class FakeNode extends EventEmitter {
@@ -389,7 +397,10 @@ const cmd_found_peers = c=>etask(function(){
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'foundPeers', data: a}};
-    send_msg(c.s, c.d, msg);
+    if (c.fwd) // XXX: fix all over
+      send_msg(c.fwd[0], c.fwd[1], msg);
+    else
+      send_msg(c.s, c.d, msg);
   }
   test_pending(c);
 });
@@ -419,7 +430,10 @@ const cmd_handshake_offer = c=>etask(function(){
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'handshake-offer', data: null}};
-    send_msg(c.s, c.d, msg);
+    if (c.fwd) // XXX: fix all over
+      send_msg(c.fwd[0], c.fwd[1], msg);
+    else
+      send_msg(c.s, c.d, msg);
   }
   test_pending(c);
 });
@@ -433,7 +447,10 @@ const cmd_handshake_answer = c=>etask(function(){
       path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'handshake-answer', data: {}}};
-    send_msg(c.s, c.d, msg);
+    if (c.fwd)
+      send_msg(c.fwd[0], c.fwd[1], msg);
+    else
+      send_msg(c.s, c.d, msg);
   }
   test_pending(c);
 });
@@ -552,14 +569,10 @@ describe('peer-relay', function(){
       a>connect(node(b))
     */
     const t3 = (name, test)=>{
-      if (0) // XXX: fixme
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      if (0) // XXX: enable
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      if (0) // XXX: fixme
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
-      if (0) // XXX: fixme
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
     // XXX: review with derry 'real' mode
