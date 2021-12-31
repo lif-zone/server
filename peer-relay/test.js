@@ -218,7 +218,7 @@ function send_msg(s, d, msg){
     channel.emit('message', msg);
 }
 
-function fake_send_msg(c, data){
+function fake_send_msg(c, data, real_cb){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let fs = c.fwd&&c.fwd[0], fd = c.fwd&&c.fwd[1];
@@ -409,7 +409,8 @@ const cmd_found_peers = c=>etask(function(){
 });
 
 const cmd_send = c=>etask(function(){
-  // XXX: check what to assert for events
+  // XXX: check what to assert
+  // XXX use: fake_send_msg (need to handle s.send)
   let s = t_nodes[c.s], d = t_nodes[c.d], data = c.arg;
   if (s.t.fake)
   {
