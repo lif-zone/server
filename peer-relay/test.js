@@ -107,17 +107,17 @@ const test_ensure_no_events = ()=>etask(function*(){
     }
     else
     {
-      assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+
-        'real: '+stringify(t_events, null, '\t')+'\n'+
-        'expected: '+stringify(t_pending, null, '\t')+'\n'+
-        'queue: '+stringify(t_queue));
+      assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+str_status());
     }
   }
-  assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+
-    'real: '+stringify(t_events, null, '\t')+'\n'+
-    'expected: '+stringify(t_pending, null, '\t')+'\n'+
-    'queue: '+stringify(t_queue));
+  assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+str_status());
 });
+
+function str_status(){
+  return 'real: '+stringify(t_events, null, '\t')+'\n'+
+  'expected: '+stringify(t_pending, null, '\t')+'\n'+
+  'queue: '+stringify(t_queue);
+}
 
 class FakeNode extends EventEmitter {
   constructor(opts){
@@ -173,7 +173,7 @@ class FakeChannel extends EventEmitter {
           assert(data && !data.ws && !data.wrtc); // XXX: TODO
           e = from.t.name+to.t.name+'>'+type;
           break;
-        case 'user': e = from.t.name+to.t.name+'>send('+data+')'; break;
+        case 'user': e = from.t.name+to.t.name+'>msg('+data+')'; break;
         default: assert(false, 'unexpected msg '+type);
       }
       if (fwd)
@@ -230,7 +230,7 @@ function send_msg(s, d, msg){
     channel.emit('message', msg);
 }
 
-function fake_send_msg(c, data, real_cb){
+function fake_send_msg(c, data){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let fs = c.fwd&&c.fwd[0], fd = c.fwd&&c.fwd[1];
@@ -434,21 +434,25 @@ const cmd_found_peers = c=>etask(function(){
   test_pending(c);
 });
 
+const cmd_msg = c=>etask(function(){
+  // XXX: check what to assert
+  fake_send_msg(c, {type: 'user', data: c.arg});
+  test_pending(c);
+});
+
 const cmd_send = c=>etask(function(){
   // XXX: check what to assert
+  let a = xtest.test_parse(c.arg);
+  assert(a.length==1, 'invalid fwd %'+c.arg);
   // XXX use: fake_send_msg (need to handle s.send)
-  let s = t_nodes[c.s], d = t_nodes[c.d], data = c.arg;
-  if (s.t.fake)
-  {
-    var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
-      path: [s.id.toString('hex')],
-      nonce: '' + Math.floor(1e15 * Math.random()),
-      data: {type: 'user', data}};
-    send_msg(c.s, c.d, msg);
-  }
-  else
-    s.send(d.id, data);
+  let s = t_nodes[a[0].s], d = t_nodes[a[0].d], data = a[0].cmd;
+  test_emit(c.orig);
   test_pending(c);
+  if (!s.t.fake)
+  {
+    console.log('XXX cmd_send %s%s>', s.t.name, d.t.name);
+    s.send(d.id, data);
+  }
 });
 
 const cmd_handshake_offer = c=>etask(function(){
@@ -490,6 +494,7 @@ const run_cmd = (role, c)=>etask(function*(){
     case 'findPeers': yield cmd_find_peers(c); break;
     case 'foundPeers': yield cmd_found_peers(c); break;
     case 'send': yield cmd_send(c); break;
+    case 'msg': yield cmd_msg(c); break;
     case 'handshake-offer': yield cmd_handshake_offer(c); break;
     case 'handshake-answer': yield cmd_handshake_answer(c); break;
     case 'fwd': yield cmd_fwd(role, c); break;
@@ -514,8 +519,8 @@ const test_run = (role, test)=>etask(function*(){
 const test_end = ()=>etask(function*(){
   yield test_ensure_no_events();
   assert.ok(t_running, 'test not running');
-  assert(!t_queue.length, 'not all events were sent\n'+
-    stringify(t_queue));
+  try_send_queue();
+  assert(!t_queue.length, 'not all events were sent\n'+str_status());
   for (let n in t_nodes)
   {
     yield t_nodes[n].destroy();
@@ -571,9 +576,9 @@ describe('peer-relay', function(){
       a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
       as>findPeers(a) sa>findPeers(s)
       sa>foundPeers(a)
-      as>foundPeers(s)
-      -
-      as>send(ping) as<send(pong)
+      as>foundPeers(s) -
+      send(as>hello) as>msg(hello) -
+      send(as<reply) as<msg(reply) -
     `);
     /* XXX TODO:
       a>connect(node(b))
@@ -601,8 +606,11 @@ describe('peer-relay', function(){
       bs>foundPeers(s)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
       sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer) -
-      as>send(ping) -
+      send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello)) -
       `);
+      // send(ba>hello) bs>fwd(ba>msg(hello)) sb>fwd(ba>msg(hello)) -
+//      as>send(hello) -
+//      sa>send(reply) sb>fwd(sa>send(reply)) bs>fwd(sa>send(reply))
      // XXX BUG: ab>send(ping) not working
      // ba>send(ping)
      // as>send(ping)
