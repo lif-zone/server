@@ -130,35 +130,28 @@ class FakeChannel extends EventEmitter {
       let d = node_from_id(this.localID);
       let from = node_from_id(util.buf_from_str(msg.from));
       let to = node_from_id(util.buf_from_str(msg.to));
-      let a, p, {type, data} = msg.data, msg_sd = '';
-      // XXX HACK: fix msg_sd handling
-      if (s!=from || d!=to)
-        msg_sd = from.t.name+to.t.name+'>';
+      let a, p, {type, data} = msg.data, fwd = s!=from||d!=to, e;
       switch (type)
       {
         case 'findPeers':
           p = node_from_id(util.buf_from_str(data));
-          test_emit(s.t.name+d.t.name+'>'+type+'('+msg_sd+p.t.name+')');
+          e = from.t.name+to.t.name+'>'+type+'('+p.t.name+')';
           break;
         case 'foundPeers':
           a = array_id_to_name(data);
-          test_emit(s.t.name+d.t.name+'>'+type+'('+msg_sd+
-          (msg_sd ? '('+a.join(',')+')' : a.join(','))+')');
+          e = from.t.name+to.t.name+'>'+type+'('+a.join(',')+')';
           break;
-        case 'handshake-offer':
-          msg_sd = msg_sd ? '('+msg_sd+')' : msg_sd; // XXX HACK;
-          test_emit(s.t.name+d.t.name+'>'+type+msg_sd);
-          break;
+        case 'handshake-offer': e = from.t.name+to.t.name+'>'+type; break;
         case 'handshake-answer':
-          msg_sd = msg_sd ? '('+msg_sd+')' : msg_sd; // XXX HACK;
           assert(data && !data.ws && !data.wrtc); // XXX: TODO
-          test_emit(s.t.name+d.t.name+'>'+type+msg_sd);
+          e = from.t.name+to.t.name+'>'+type;
           break;
-        case 'user':
-          test_emit(s.t.name+d.t.name+'>send('+msg_sd+data+')');
-          break;
+        case 'user': e = from.t.name+to.t.name+'>send('+data+')'; break;
         default: assert(false, 'unexpected msg '+type);
       }
+      if (fwd)
+        e = s.t.name+d.t.name+'>fwd('+e+')';
+      test_emit(e);
     });
   }
   send(msg){
@@ -191,7 +184,7 @@ function array_name_to_id(a){
       name = name[4];
     if (name[1]==')') // XXX HACK:
       name = name[0];
-    ret.push(util.buf_to_str(t_nodes[name].id))
+    ret.push(util.buf_to_str(t_nodes[name].id));
   });
   return ret;
 }
@@ -391,7 +384,10 @@ const cmd_found_peers = c=>etask(function(){
       data: {type: 'foundPeers', data: a}};
     send_msg(c.s, c.d, msg);
   }
-  test_pending(c.orig);
+  let e = c.orig;
+  if (c.fwd)
+    e = c.fwd+'fwd('+e+')'
+  test_pending(e);
 });
 
 const cmd_send = c=>etask(function(){
@@ -421,7 +417,10 @@ const cmd_handshake_offer = c=>etask(function(){
       data: {type: 'handshake-offer', data: null}};
     send_msg(c.s, c.d, msg);
   }
-  test_pending(c.orig);
+  let e = c.orig;
+  if (c.fwd)
+    e = c.fwd+'fwd('+e+')'
+  test_pending(e);
 });
 
 const cmd_handshake_answer = c=>etask(function(){
@@ -435,7 +434,18 @@ const cmd_handshake_answer = c=>etask(function(){
       data: {type: 'handshake-answer', data: {}}};
     send_msg(c.s, c.d, msg);
   }
-  test_pending(c.orig);
+  let e = c.orig;
+  if (c.fwd)
+    e = c.fwd+'fwd('+e+')'
+  test_pending(e);
+});
+
+const cmd_fwd = (role, c)=>etask(function*(){
+  // XXX: need assert on arg
+  let a = xtest.test_parse(c.arg);
+  assert(a.length==1, 'invalid fwd %'+c.arg);
+  a[0].fwd = c.s+c.d+'>';
+  yield run_cmd(role, a[0]);
 });
 
 const cmd_setup = c=>etask(function(){
@@ -446,16 +456,11 @@ const cmd_setup = c=>etask(function(){
 */
 });
 
-const test_run = (role, test)=>etask(function*(){
-  assert.ok(!t_running, 'test already running');
-  t_running = true;
-  let a = xtest.test_parse(test);
-  for (let i=0, c; i<a.length, c=a[i]; i++)
-  {
-    console.log('cmd: %s', c.orig);
+const run_cmd = (role, c)=>etask(function*(){
     switch (c.cmd)
     {
     case '-': yield test_ensure_no_events(); break;
+    case 'setup': yield cmd_setup(c.arg); break;
     case 'node': yield cmd_node(role, c); break;
     case 'connect': yield cmd_connect(c); break;
     case 'connected': yield cmd_connected(c); break;
@@ -464,9 +469,19 @@ const test_run = (role, test)=>etask(function*(){
     case 'send': yield cmd_send(c); break;
     case 'handshake-offer': yield cmd_handshake_offer(c); break;
     case 'handshake-answer': yield cmd_handshake_answer(c); break;
-    case 'setup': yield cmd_setup(c.arg); break;
+    case 'fwd': yield cmd_fwd(role, c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
+});
+
+const test_run = (role, test)=>etask(function*(){
+  assert.ok(!t_running, 'test already running');
+  t_running = true;
+  let a = xtest.test_parse(test);
+  for (let i=0, c; i<a.length, c=a[i]; i++)
+  {
+    console.log('cmd: %s', c.orig);
+    yield run_cmd(role, c);
     try_send_queue();
   }
   yield test_end();
@@ -558,35 +573,16 @@ describe('peer-relay', function(){
       node(name:b) b>connect(wss(wss://lif.zone:4000))
       bs>connected bs<connected
       bs>findPeers(b) bs<foundPeers(b,s,a)
-      bs>handshake-offer(ba>) sa>handshake-offer(ba>)
-      sa<handshake-answer(ab>) bs<handshake-answer(ab>)
-      sa>foundPeers(sb>(b,s,a))
-      as>foundPeers(sb>(b,s,a))
+      bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
+      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
+      sa>fwd(sb>foundPeers(b,s,a))
+      as>fwd(sb>foundPeers(b,s,a))
       sb>findPeers(s)
-      sb<foundPeers(s,b,a)
-    `);
+      sb<foundPeers(s,b,a)`);
      // XXX BUG: ab>send(ping) not working
      // ba>send(ping)
      // as>send(ping)
      // sa>send(ping)
   }));
-  if (0) // XXX: WIP
-  t3('3_nodes', `
-      node(name:s wss(host:lif.zone port:4000)) node(name:a)
-      a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
-      as>findPeers(a) as<foundPeers(a)
-      sa>findPeers(s) sa<foundPeers(s,a) -
-      node(name:b) b>connect(wss(wss://lif.zone:4000))
-      bs>connected bs<connected
-      bs>findPeers(b) bs<foundPeers(b,s,a)
-      bs>fwd(ba>handshake-offer)
-      sa>fwd(ba>handshake-offer)
-      sa<fwd(ab>handshake-answer)
-      bs<fwd(ab>handshake-answer)
-      sa>fwd(sb>foundPeers(b,s,a))
-      sb>findPeers(s)
-      sb<foundPeers(s,b,a)
-    `);
-
 });
 
