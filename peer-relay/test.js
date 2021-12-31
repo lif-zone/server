@@ -390,15 +390,21 @@ const cmd_find_peers = c=>etask(function(){
 const cmd_found_peers = c=>etask(function(){
   // XXX: check what to assert for events
   let s = t_nodes[c.s], d = t_nodes[c.d];
+  let to = d.id.toString('hex'), from = s.id.toString('hex');
+  let fs = c.fwd&&c.fwd[0], fd = c.fwd&&c.fwd[1];
+  if (c.fwd) // XXX: make it generic and fix all
+  {
+    s = t_nodes[fs];
+    d = t_nodes[fd];
+  }
   if (s.t.fake)
   {
     let a = array_name_to_id(c.arg.split(','));
-    var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
-      path: [s.id.toString('hex')],
+    var msg = {to, from, path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'foundPeers', data: a}};
     if (c.fwd) // XXX: fix all over
-      send_msg(c.fwd[0], c.fwd[1], msg);
+      send_msg(fs, fd, msg);
     else
       send_msg(c.s, c.d, msg);
   }
@@ -441,14 +447,20 @@ const cmd_handshake_offer = c=>etask(function(){
 const cmd_handshake_answer = c=>etask(function(){
   // XXX: check what to assert for events
   let s = t_nodes[c.s], d = t_nodes[c.d];
+  let to = d.id.toString('hex'), from = s.id.toString('hex');
+  let fs = c.fwd[0], fd = c.fwd[1];
+  if (c.fwd) // XXX: make it generic and fix all
+  {
+    s = t_nodes[fs];
+    d = t_nodes[fd];
+  }
   if (s.t.fake)
   {
-    var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
-      path: [s.id.toString('hex')],
+    var msg = {to, from, path: [s.id.toString('hex')],
       nonce: '' + Math.floor(1e15 * Math.random()),
       data: {type: 'handshake-answer', data: {}}};
     if (c.fwd)
-      send_msg(c.fwd[0], c.fwd[1], msg);
+      send_msg(fs, fd, msg);
     else
       send_msg(c.s, c.d, msg);
   }
@@ -569,7 +581,6 @@ describe('peer-relay', function(){
       a>connect(node(b))
     */
     const t3 = (name, test)=>{
-      if (0) // XXX: fixme
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       if (0) // XXX: enable
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
