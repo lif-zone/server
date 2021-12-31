@@ -39,9 +39,16 @@ function test_emit(e){
   t_events.push(e);
 }
 
-function test_pending(e){
+function test_pending(e, c){
+  if (typeof e!='string')
+  {
+    c = e;
+    e = c.orig;
+  }
   assert.ok(t_running, 'test not running');
   assert.ok(e, 'invalid event');
+  if (c && c.fwd)
+    e = c.fwd+'fwd('+e+')'
   t_pending.push(e);
 }
 // eslint-disable-next-line no-unused-vars
@@ -355,7 +362,7 @@ function cmd_connect(c){
 
 const cmd_connected = c=>etask(function(){
   // XXX: check what to assert for events
-  test_pending(c.orig);
+  test_pending(c);
 });
 
 const cmd_find_peers = c=>etask(function(){
@@ -369,7 +376,7 @@ const cmd_find_peers = c=>etask(function(){
       data: {type: 'findPeers', data: util.buf_to_str(s.id)}};
     send_msg(c.s, c.d, msg);
   }
-  test_pending(c.orig);
+  test_pending(c);
 });
 
 const cmd_found_peers = c=>etask(function(){
@@ -384,10 +391,7 @@ const cmd_found_peers = c=>etask(function(){
       data: {type: 'foundPeers', data: a}};
     send_msg(c.s, c.d, msg);
   }
-  let e = c.orig;
-  if (c.fwd)
-    e = c.fwd+'fwd('+e+')'
-  test_pending(e);
+  test_pending(c);
 });
 
 const cmd_send = c=>etask(function(){
@@ -403,7 +407,7 @@ const cmd_send = c=>etask(function(){
   }
   else
     s.send(d.id, data);
-  test_pending(c.orig);
+  test_pending(c);
 });
 
 const cmd_handshake_offer = c=>etask(function(){
@@ -417,10 +421,7 @@ const cmd_handshake_offer = c=>etask(function(){
       data: {type: 'handshake-offer', data: null}};
     send_msg(c.s, c.d, msg);
   }
-  let e = c.orig;
-  if (c.fwd)
-    e = c.fwd+'fwd('+e+')'
-  test_pending(e);
+  test_pending(c);
 });
 
 const cmd_handshake_answer = c=>etask(function(){
@@ -434,10 +435,7 @@ const cmd_handshake_answer = c=>etask(function(){
       data: {type: 'handshake-answer', data: {}}};
     send_msg(c.s, c.d, msg);
   }
-  let e = c.orig;
-  if (c.fwd)
-    e = c.fwd+'fwd('+e+')'
-  test_pending(e);
+  test_pending(c);
 });
 
 const cmd_fwd = (role, c)=>etask(function*(){
