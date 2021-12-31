@@ -63,13 +63,24 @@ const test_ensure_no_pending_events = ()=>etask(function*(){
     stringify(t_events));
 });
 
+// XXX: add test
+function normalize(e){
+  if (!e)
+    return e;
+  let a=e[0], b=e[1], d=e[2];
+  if (d!='<')
+    return e;
+  return b+a+'>'+e.substr(3);
+}
+
 const test_ensure_no_events = ()=>etask(function*(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
     yield util.sleep(); // XXX HACK: fixme
     if (!t_events.length && !t_pending.length)
       break;
-    if (t_events[t_events.length-1]==t_pending[t_pending.length-1])
+    if (normalize(t_events[t_events.length-1])==
+      normalize(t_pending[t_pending.length-1]))
     {
       t_events.pop();
       t_pending.pop();
@@ -388,6 +399,14 @@ const cmd_handshake_offer = c=>etask(function(){
   test_pending(c.orig);
 });
 
+const cmd_setup = c=>etask(function(){
+  assert(false, 'cmd_setup TODO');
+/* XXX: TODO
+  assert(arg=='');
+  M('node(name:s wss(host:lif.zone port:4000)) node(name:a)');
+*/
+});
+
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
   t_running = true;
@@ -404,6 +423,7 @@ const test_run = (role, test)=>etask(function*(){
     case 'foundPeers': yield cmd_found_peers(c); break;
     case 'send': yield cmd_send(c); break;
     case 'handshake-offer': yield cmd_handshake_offer(c); break;
+    case 'setup': yield cmd_setup(c.arg); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
   }
@@ -464,18 +484,13 @@ describe('peer-relay', function(){
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
     };
+    // XXX: support as>connect(wss)
     t('2_peers', `
-      node(name:s wss(host:lif.zone port:4000))
-      node(name:a)
-      a>connect(wss(wss://lif.zone:4000))
-      as>connected
-      sa>connected
-      as>findPeers(a)
-      sa>foundPeers(a)
-      sa>findPeers(s)
-      as>foundPeers(s,a)
-      as>send(ping)
-      as>send(pong)
+      node(name:s wss(host:lif.zone port:4000)) node(name:a)
+      a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
+      as>findPeers(a) as<foundPeers(a)
+      sa>findPeers(s) sa<foundPeers(s,a)
+      as>send(ping) as<send(pong)
     `);
     /* XXX TODO:
       a>connect(node(b))
@@ -510,7 +525,7 @@ describe('peer-relay', function(){
       sa>send(ping)
       ba>send(ping)
     `);
-     //XXX BUG: ab>send(ping) not working
+     // XXX BUG: ab>send(ping) not working
   }));
 });
 
