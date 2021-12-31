@@ -558,10 +558,8 @@ describe('peer-relay', function(){
       node(name:b) b>connect(wss(wss://lif.zone:4000))
       bs>connected bs<connected
       bs>findPeers(b) bs<foundPeers(b,s,a)
-      bs>handshake-offer(ba>)
-      sa>handshake-offer(ba>)
-      sa<handshake-answer(ab>)
-      bs<handshake-answer(ab>)
+      bs>handshake-offer(ba>) sa>handshake-offer(ba>)
+      sa<handshake-answer(ab>) bs<handshake-answer(ab>)
       sa>foundPeers(sb>(b,s,a))
       as>foundPeers(sb>(b,s,a))
       sb>findPeers(s)
