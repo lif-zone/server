@@ -123,7 +123,7 @@ class FakeNode extends EventEmitter {
   constructor(opts){
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
-    this.wsConnector = new FakeWsConnector(this.id);
+    this.wsConnector = new FakeWsConnector(this.id, opts.port, opts.host);
     this.wsConnector.on('connection', c=>{
       this.emit('connection', c);
     });
@@ -279,6 +279,12 @@ class FakeWsConnector extends EventEmitter {
   constructor(id, port, host){
     super();
     this.id = id;
+    if (port || host) // XXX: what if no host?
+    {
+      assert(host, 'missing host');
+      assert(port, 'missing port');
+      this.url = 'wss://'+host+':'+port;
+    }
   }
   connect(url){
     let node = node_from_url(url);
@@ -400,14 +406,21 @@ function cmd_connect(c){
     switch (a.cmd)
     {
     case 'wss':
+      // XXX: write it in a nicer way
       assert(wss===undefined, 'multiple '+a.cmd);
-      wss = assert_wss_url(a.arg);
+      if (!a.arg)
+        wss = assert_wss_url(t_nodes[c.d].wsConnector.url);
+      else
+      {
+        assert(!c.d);
+        wss = assert_wss_url(a.arg);
+      }
+      assert(wss, 'dest '+c.d+' has no ws server');
       break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
   assert_exist(c.s);
-  assert(!c.d);
   assert.equal(c.dir, '>');
   if (wss)
     t_nodes[c.s].connect_ws(wss);
@@ -567,13 +580,11 @@ describe('peer-relay', function(){
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
-    // XXX: support as>connect(wss)
+    // XXX derry: review '-'
     t('2_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
-      a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
-      as>findPeers(a) sa>findPeers(s)
-      sa>foundPeers(a)
-      as>foundPeers(s) -
+      as>connect(wss) as>connected as<connected
+      as>findPeers(a) sa>findPeers(s) sa>foundPeers(a) as>foundPeers(s) -
       send(as>hello) as>msg(hello) -
       send(as<reply) as<msg(reply) -
     `);
@@ -587,15 +598,13 @@ describe('peer-relay', function(){
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
-    // XXX: review with derry 'real' mode
-    // XXX: discuss with derry relay
-    if (1)
+    // XXX derry: review real/fake mode
     t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
-      a>connect(wss(wss://lif.zone:4000)) as>connected as<connected
+      as>connect(wss) as>connected as<connected
       as>findPeers(a) sa>findPeers(s)
       as<foundPeers(a) sa<foundPeers(s) -
-      node(name:b) b>connect(wss(wss://lif.zone:4000))
+      node(name:b) bs>connect(wss)
       bs>connected bs<connected
       bs>findPeers(b)
       sb>findPeers(s)
