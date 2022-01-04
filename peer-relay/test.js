@@ -593,7 +593,9 @@ describe('peer-relay', function(){
     // XXX derry: review real/fake mode
     const t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
+      if (0)
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
+      it(name+'_c', ()=>zetask(()=>test_run('c', test)));
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
@@ -612,7 +614,8 @@ describe('peer-relay', function(){
       send(ab>hello) ab>msg(hello) -
       send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
       send(cb>hello) cb>msg(hello) -
-      send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello))
+      send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello)) -
+      send(ba>hello) ba>msg(hello) bc>fwd(ba>msg(hello)) cb>fwd(ba>msg(hello))
     `);
     t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
