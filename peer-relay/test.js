@@ -494,6 +494,7 @@ const cmd_setup = c=>etask(function(){
 });
 
 const run_cmd = (role, c)=>etask(function*(){
+    console.log('cmd:%s %s', c.fwd ? 'in fwd '+c.fwd : '', c.orig);
     switch (c.cmd)
     {
     case '-': yield test_ensure_no_events(); break;
@@ -518,7 +519,6 @@ const test_run = (role, test)=>etask(function*(){
   let a = xtest.test_parse(test);
   for (let i=0, c; i<a.length, c=a[i]; i++)
   {
-    console.log('cmd: %s', c.orig);
     yield run_cmd(role, c);
     try_send_queue();
   }
