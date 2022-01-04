@@ -599,6 +599,7 @@ describe('peer-relay', function(){
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
     // XXX: if no host, assume lif.zone
+    // XXX: send(ab>xxx) --> ab>send(xxx)
     t3('3_nodes_linear', `
       node(name:a) node(name:b wss(host:lif.zone port:4000))
       node(name:c wss(host:lif.zone port:4001))
@@ -607,7 +608,11 @@ describe('peer-relay', function(){
       bc>connect(wss) bc>connected bc<connected bc>findPeers(b)
       cb>findPeers(c) cb>foundPeers(b) bc>foundPeers(c,a,b)
       cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
-      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer)
+      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer) -
+      send(ab>hello) ab>msg(hello) -
+      send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
+      send(cb>hello) cb>msg(hello) -
+      send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello))
     `);
     t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
