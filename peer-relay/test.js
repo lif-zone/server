@@ -593,7 +593,7 @@ describe('peer-relay', function(){
     // XXX derry: review real/fake mode
     const t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      if (0)
+      if (0) // XXX
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       it(name+'_c', ()=>zetask(()=>test_run('c', test)));
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
@@ -611,12 +611,15 @@ describe('peer-relay', function(){
       cb>findPeers(c) cb>foundPeers(b) bc>foundPeers(c,a,b)
       cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
       ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer) -
+      send(ba>hello) ba>msg(hello) bc>fwd(ba>msg(hello)) cb>fwd(ba>msg(hello))
+      -
+    `);
+    /*
       send(ab>hello) ab>msg(hello) -
       send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
       send(cb>hello) cb>msg(hello) -
       send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello)) -
-      send(ba>hello) ba>msg(hello) bc>fwd(ba>msg(hello)) cb>fwd(ba>msg(hello))
-    `);
+    */
     t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       as>connect(wss) as>connected as<connected
