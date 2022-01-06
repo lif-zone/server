@@ -50,7 +50,7 @@ function Client(opts){
   function onRemoved(channel){ channel.destroy(); }
 }
 
-Client.prototype._onConnection = function(channel){
+Client.prototype._onConnection = async function(channel){
   var self = this;
   if (self.destroyed)
     throw new Error('Cannot setup channel when client is destroyed');
@@ -66,6 +66,8 @@ Client.prototype._onConnection = function(channel){
   }
   self.peers.add(channel);
   self.emit('connection', channel);
+  if (util.test_real_paused)
+    await util.test_real_paused;
   self.router.send(channel.id, {type: 'findPeers',
     data: self.id.toString('hex')});
   self.emit('peer', channel.id);

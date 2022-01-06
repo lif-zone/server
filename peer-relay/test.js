@@ -25,6 +25,7 @@ process.on('unhandledRejection', e=>{
 let t_nodes = {}, t_events = [], t_pending = [];
 let t_queue = [];
 let t_timeout = 2000, t_running;
+let t_cmds, t_i;
 let t_peers = {
   a: '82b88a27669ed361313b2292067b37b4e301ca8b',
   b: '5f3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
@@ -32,11 +33,13 @@ let t_peers = {
   s: '41e32c1c6ffdc91bbfa7684c67e58f3f36174a59'
 };
 
-function test_emit(e){
-  console.log('emit: %s', e);
+function test_emit(o){
+  let {event, fake} = o;
+  console.log('emit: %s%s', event, fake ? ' fake' : '');
   assert.ok(t_running, 'test not running');
-  assert.ok(e, 'invalid event');
-  t_events.push(e);
+  assert.ok(event, 'invalid event');
+  t_events.push(event);
+  test_pause_real(!fake);
 }
 
 function test_pending(e, c){
@@ -93,22 +96,8 @@ const test_ensure_no_events = ()=>etask(function*(){
       t_events.shift();
       t_pending.shift();
     }
-    else if (t_events.length>1 && t_events[0].search('foundPeers')!=-1 &&
-      normalize(t_events[1])==normalize(t_pending[0]) &&
-      normalize(t_events[0])==normalize(t_pending[1]))
-    {
-      // XXX HACK: because foundPeers is returned directly from findPeers
-      // handler, when one of the players is real and the other is fake,
-      // the order will change
-      t_events.shift();
-      t_events.shift();
-      t_pending.shift();
-      t_pending.shift();
-    }
     else
-    {
       assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+str_status());
-    }
   }
   assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+str_status());
 });
@@ -124,27 +113,10 @@ class FakeNode extends EventEmitter {
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new FakeWsConnector(this.id, opts.port, opts.host);
-    this.wsConnector.on('connection', c=>{
-      this.emit('connection', c);
-    });
-    this.on('connection', channel=>{
-      if (!this.t.is_connect_ws)
-        return;
-      let s = node_from_id(util.buf_from_str(channel.localID));
-      let d = node_from_id(util.buf_from_str(channel.id));
-      var msg = {to: d.id.toString('hex'), from: s.id.toString('hex'),
-        path: [s.id.toString('hex')],
-        nonce: '' + Math.floor(1e15 * Math.random()),
-        data: {type: 'findPeers', data: util.buf_to_str(s.id)}};
-      send_msg(s.t.name, d.t.name, msg);
-    });
+    this.wsConnector.on('connection', c=>this.emit('connection', c));
   }
   destroy(){}
-  connect_ws(url){
-    // XXX: ugly hack. need to find proper solution for is_connect_ws
-    this.t.is_connect_ws = true;
-    this.wsConnector.connect(url);
-  }
+  connect_ws(url){ this.wsConnector.connect(url); }
 }
 
 class FakeChannel extends EventEmitter {
@@ -178,7 +150,7 @@ class FakeChannel extends EventEmitter {
       }
       if (fwd)
         e = s.t.name+d.t.name+'>fwd('+e+')';
-      test_emit(e);
+      test_emit({event: e, fake: s.t.fake});
     });
   }
   send(msg){
@@ -224,10 +196,13 @@ function send_msg(s, d, msg){
     msg.from = util.buf_to_str(msg.from);
     msg.to = util.buf_to_str(msg.to);
   }
-  if (!channel || !channel2 || t_queue.length)
+  if (!channel || !channel2)
     t_queue.push({s, d, msg: assign({}, msg)});
   else
+  {
+    try_send_queue(channel, channel2);
     channel.emit('message', msg);
+  }
 }
 
 function fake_send_msg(c, data){
@@ -239,16 +214,8 @@ function fake_send_msg(c, data){
     s = t_nodes[fs];
     d = t_nodes[fd];
   }
-  if (data.type!='findPeers')
-  {
-    if (!s.t.fake)
-      return;
-  }
-  else
-  {
-    if (!(s.t.fake && !s.t.is_connect_ws))
-      return;
-  }
+  if (!s.t.fake)
+    return;
   var msg = {to, from, path: [s.id.toString('hex')],
     nonce: '' + Math.floor(1e15 * Math.random()), data};
   if (c.fwd)
@@ -258,9 +225,17 @@ function fake_send_msg(c, data){
 }
 
 let t_seq = 0;
-function try_send_queue(){
-  let q = t_queue.filter(o=>node_get_channel(o.d, o.s) &&
-    node_get_channel(o.s, o.d));
+function try_send_queue(c, c2){
+  let q = t_queue.filter(o=>{
+    let cds = node_get_channel(o.d, o.s), csd = node_get_channel(o.s, o.d);
+    if (!c)
+    {
+      assert(!c2);
+      return cds && csd;
+    }
+    assert(c2);
+    return cds==c&&cds==c2 || cds==c&&cds==c2;
+  });
   let seq = ++t_seq;
   q.forEach(o=>{
     if (o.t_seq===undefined)
@@ -286,18 +261,13 @@ class FakeWsConnector extends EventEmitter {
       this.url = 'wss://'+host+':'+port;
     }
   }
-  connect(url){
-    let node = node_from_url(url);
-    let channel = new FakeChannel({localID: this.id, id: node.id});
-    this.emit('connection', channel);
-    let channel2 = new FakeChannel({localID: node.id, id: this.id});
-    node.wsConnector.emit('connection', channel2);
-  }
+  connect(url){}
   destroy(){}
 }
 
 function is_fake(role, p){ return role!= '*' && role!=p; }
 
+// eslint-disable-next-line no-unused-vars
 function node_from_url(url){
   for (let name in t_nodes)
   {
@@ -396,7 +366,7 @@ function cmd_node(role, c){
   node.on('connection', channel=>{
     let s = node_from_id(channel.localID), d = node_from_id(channel.id);
     node.t.channels.push(channel);
-    test_emit(s.t.name+d.t.name+'>connected');
+    test_emit({event: s.t.name+d.t.name+'>connected', fake: s.t.fake});
   });
 }
 
@@ -430,6 +400,12 @@ function cmd_connect(c){
 
 const cmd_connected = c=>etask(function(){
   // XXX: check what to assert for events
+  let s = t_nodes[c.s], d = t_nodes[c.d];
+//  if (s.t.fake)
+  {
+    let channel = new FakeChannel({localID: s.id, id: d.id});
+    s.wsConnector.emit('connection', channel);
+  }
   test_pending(c);
 });
 
@@ -459,7 +435,7 @@ const cmd_send = c=>etask(function(){
   assert(a.length==1, 'invalid fwd %'+c.arg);
   // XXX use: fake_send_msg (need to handle s.send)
   let s = t_nodes[a[0].s], d = t_nodes[a[0].d], data = a[0].cmd;
-  test_emit(c.orig);
+  test_emit({event: c.orig, fake: s.t.fake});
   test_pending(c);
   if (!s.t.fake)
     s.send(d.id, data);
@@ -493,8 +469,25 @@ const cmd_setup = c=>etask(function(){
 */
 });
 
+function test_pause_real(pause){
+  console.log('****** %s', pause ? 'PAUSE' : 'RESUME');
+  if (pause)
+  {
+    if (!util.test_real_paused)
+      util.test_real_paused = util.wait();
+  }
+  else
+  {
+    if (util.test_real_paused)
+      util.test_real_paused.continue();
+    util.test_real_paused = undefined;
+  }
+}
+
 const run_cmd = (role, c)=>etask(function*(){
-    console.log('cmd:%s %s', c.fwd ? 'in fwd '+c.fwd : '', c.orig);
+    let fake = is_fake(role, c.s);
+    console.log('cmd:%s %s', c.fwd ? 'in fwd '+c.fwd : '', c.orig,
+      fake? ' fake' : '');
     switch (c.cmd)
     {
     case '-': yield test_ensure_no_events(); break;
@@ -502,28 +495,48 @@ const run_cmd = (role, c)=>etask(function*(){
     case 'node': yield cmd_node(role, c); break;
     case 'connect': yield cmd_connect(c); break;
     case 'connected': yield cmd_connected(c); break;
-    case 'findPeers': yield cmd_find_peers(c); break;
-    case 'foundPeers': yield cmd_found_peers(c); break;
+    case 'findPeers':
+      test_pause_real(fake);
+      yield util.sleep(0);
+      yield cmd_find_peers(c);
+      break;
+    case 'foundPeers':
+      test_pause_real(fake);
+      yield util.sleep(0);
+      yield cmd_found_peers(c);
+      break;
     case 'send': yield cmd_send(c); break;
     case 'msg': yield cmd_msg(c); break;
-    case 'handshake-offer': yield cmd_handshake_offer(c); break;
-    case 'handshake-answer': yield cmd_handshake_answer(c); break;
-    case 'fwd': yield cmd_fwd(role, c); break;
+    case 'handshake-offer':
+      test_pause_real(fake);
+      yield util.sleep(0);
+      yield cmd_handshake_offer(c);
+      break;
+    case 'handshake-answer':
+      test_pause_real(fake);
+      yield util.sleep(0);
+      yield cmd_handshake_answer(c);
+      break;
+    case 'fwd':
+      test_pause_real(fake);
+      yield util.sleep(0);
+      yield cmd_fwd(role, c);
+      break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
+    yield try_send_queue();
 });
 
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
+  assert(!t_cmds && !t_i);
   t_running = true;
-  let a = xtest.test_parse(test);
-  for (let i=0, c; i<a.length, c=a[i]; i++)
-  {
-    yield run_cmd(role, c);
-    try_send_queue();
-  }
+  t_cmds = xtest.test_parse(test);
+  for (t_i=0; t_i<t_cmds.length; t_i++)
+    yield run_cmd(role, t_cmds[t_i]);
   yield test_end();
   t_running = false;
+  t_cmds = t_i = undefined;
 });
 
 const test_end = ()=>etask(function*(){
@@ -583,20 +596,20 @@ describe('peer-relay', function(){
     // XXX derry: review '-'
     t('2_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
-      as>connect(wss) as>connected as<connected
-      as>findPeers(a) sa>findPeers(s) sa>foundPeers(a) as>foundPeers(s) -
+      as>connect(wss) as>connected sa>connected
+      as>findPeers(a) sa>foundPeers(a) sa>findPeers(s) as>foundPeers(s,a) -
       send(as>hello) as>msg(hello) -
       send(as<reply) as<msg(reply) -`);
     /* XXX TODO:
       a>connect(node(b))
     */
     // XXX derry: review real/fake mode
-    const t3 = (name, test)=>{
+    let t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      if (0) // XXX
+      if (0) // XXX: fixme
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
+      if (0) // XXX: fixme
       it(name+'_c', ()=>zetask(()=>test_run('c', test)));
-      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
@@ -606,28 +619,46 @@ describe('peer-relay', function(){
       node(name:a) node(name:b wss(host:lif.zone port:4000))
       node(name:c wss(host:lif.zone port:4001))
       ab>connect(wss) ab>connected ab<connected
-      ab>findPeers(a) ba>findPeers(b) ab<foundPeers(a) ba<foundPeers(b) -
+      ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
       bc>connect(wss) bc>connected bc<connected bc>findPeers(b)
-      cb>findPeers(c) cb>foundPeers(b) bc>foundPeers(c,a,b)
+      cb>foundPeers(b) ba>fwd(bc>findPeers(b)) cb>findPeers(c)
+      bc>foundPeers(c,a,b)
       cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
-      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer) -
-      send(ba>hello) ba>msg(hello) bc>fwd(ba>msg(hello)) cb>fwd(ba>msg(hello))
+      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer)
+      ba>fwd(bc>foundPeers(c,a,b)) ab>fwd(bc>foundPeers(c,a,b))
       -
-    `);
-    /*
+      send(ba>hello) ba>msg(hello) bc>fwd(ba>msg(hello)) cb>fwd(ba>msg(hello))
       send(ab>hello) ab>msg(hello) -
       send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
       send(cb>hello) cb>msg(hello) -
       send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello)) -
+      -
+    `);
+    /*
     */
+    t3 = (name, test)=>{
+      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
+      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
+      if (0) // XXX: fixme
+      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
+      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
+      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+    };
     t3('3_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       as>connect(wss) as>connected as<connected
-      as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s) -
+      as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
       node(name:b) bs>connect(wss) bs>connected bs<connected
-      bs>findPeers(b) sb>findPeers(s) bs<foundPeers(b,s,a) bs>foundPeers(s)
+      bs>findPeers(b) bs<foundPeers(b,s,a)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
-      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer) -`);
+      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
+      sa>fwd(sb>foundPeers(b,s,a))
+      as>fwd(sb>foundPeers(b,s,a))
+      sb>findPeers(s)
+      bs>foundPeers(s,b,a)
+      sa>fwd(sb>findPeers(s))
+      as>fwd(sb>findPeers(s))
+      -`);
       // XXX: TODO
       /* send(sa>hello) sa>msg(hello) bs>fwd(sa>msg(hello)) sa>msg(hello) -
         send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello)) -
