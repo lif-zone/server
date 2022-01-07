@@ -673,21 +673,15 @@ describe('peer-relay', function(){
       ab>connect(wss) ab>connected ab<connected
       ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
       bc>connect(wss) bc>connected bc<connected
-      bc>findPeers(b)
-      cb>foundPeers(b)
-      cb>findPeers(c)
-      bc>foundPeers(c,a,b)
-      cb>fwd(ca>handshake-offer)
-      ba>fwd(ca>handshake-offer)
-      ab>fwd(ac>handshake-answer)
-      bc>fwd(ac>handshake-answer)
-      -
-      send(ba>hello) ba>msg(hello) -
+      bc>findPeers(b) cb>foundPeers(b) cb>findPeers(c) bc>foundPeers(c,a,b)
+      cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
+      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer) -
       send(ab>hello) ab>msg(hello) -
-      send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
+      send(ba>hello) ba>msg(hello) -
+      send(bc>hello) bc>msg(hello) -
       send(cb>hello) cb>msg(hello) -
+      send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
       send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello)) -
-      -
     `);
     t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
@@ -709,10 +703,10 @@ describe('peer-relay', function(){
       sb>findPeers(s)
       bs>foundPeers(s,b,a)
       -
+      send(as>hello) as>msg(hello) -
       send(sa>hello) sa>msg(hello) -
-      send(sa<hello) sa<msg(hello) -
       send(sb>hello) sb>msg(hello) -
-      send(sb<hello) sb<msg(hello) -
+      send(bs>hello) bs>msg(hello) -
       send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello))-
       send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
       `);
