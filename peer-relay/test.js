@@ -30,6 +30,7 @@ let t_peers = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
   b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
   c: 'cc2e8094373a85cb0e28399f6909ed02080367dc',
+  d: 'dd3a9094373a85cb0e28399f6909ed02080363a0',
   s: 'ffe32c1c6ffdc91bbfa7684c67e58f3f36174a59'
 };
 
@@ -143,7 +144,8 @@ class FakeChannel extends EventEmitter {
           break;
         case 'handshake-offer': e = from.t.name+to.t.name+'>'+type; break;
         case 'handshake-answer':
-          assert(data && !data.ws && !data.wrtc); // XXX: TODO
+          if (0) // XXX: TODO
+          assert(data && !data.ws && !data.wrtc, 'TODO '+stringify(data));
           e = from.t.name+to.t.name+'>'+type;
           break;
         case 'user': e = from.t.name+to.t.name+'>msg('+data+')'; break;
@@ -164,6 +166,8 @@ class FakeChannel extends EventEmitter {
     case 'handshake-offer':
     case 'handshake-answer':
     case 'user':
+      if (!s || !d)
+        debugger;
       send_msg(s.t.name, d.t.name, msg);
       break;
     default: assert(false, 'unexpected msg '+type);
@@ -594,6 +598,8 @@ const test_run = (role, test)=>etask(function*(){
 });
 
 const test_end = ()=>etask(function*(){
+  test_pause_real(false);
+  yield util.sleep(0);
   yield test_ensure_no_events();
   assert.ok(t_running, 'test not running');
   try_send_queue();
@@ -713,6 +719,37 @@ describe('peer-relay', function(){
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
+    // XXX: if no host, assume lif.zone
+    // XXX: send(ab>xxx) --> ab>send(xxx)
+    // XXX: verify we don't use same port for different nodes
+    if (0) // XXX: check bug with fwd
+    t4('4_nodes_linear', `
+      node(name:a) node(name:b wss(host:lif.zone port:4000))
+      node(name:c wss(host:lif.zone port:4001))
+      node(name:d wss(host:lif.zone port:4002))
+      ab>connect(wss) ab>connected ab<connected
+      ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
+      bc>connect(wss) bc>connected bc<connected
+      bc>findPeers(b) cb>foundPeers(b) cb>findPeers(c) bc>foundPeers(c,a,b)
+      cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
+      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer) -
+      cd>connect(wss) cd>connected cd<connected
+      cd>findPeers(c) dc>foundPeers(c) dc>findPeers(d) cd>foundPeers(d,c,b,a)
+      dc>fwd(db>handshake-offer)
+      cb>fwd(db>handshake-offer)
+      dc>fwd(da>handshake-offer)
+      cb>fwd(da>handshake-offer)
+      ba>fwd(da>handshake-offer)
+      bc>fwd(bd>handshake-answer)
+	    cd>fwd(bd>handshake-answer)
+	    ab>fwd(ad>handshake-answer)
+	    bc>fwd(ad>handshake-answer)
+      cd>fwd(ad>handshake-answer)
+	    ba>fwd(bd>handshake-answer)
+      ab>fwd(bd>handshake-answer)
+      -
+    `);
+    // XXX: test send
     if (0) // XXX: WIP
     t4('4_nodes', `
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
