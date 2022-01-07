@@ -27,15 +27,15 @@ let t_queue = [];
 let t_timeout = 2000, t_running;
 let t_cmds, t_i;
 let t_peers = {
-  a: '82b88a27669ed361313b2292067b37b4e301ca8b',
-  b: '5f3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
-  c: 'a92e8094373a85cb0e28399f6909ed02080367dc',
-  s: '41e32c1c6ffdc91bbfa7684c67e58f3f36174a59'
+  a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
+  b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
+  c: 'cc2e8094373a85cb0e28399f6909ed02080367dc',
+  s: 'ffe32c1c6ffdc91bbfa7684c67e58f3f36174a59'
 };
 
 let t_debugger_on_events = [
-  'ba>fwd(bc>findPeers(b))',
-  'bc>findPeers(b)'
+  'bc>foundPeers(c,a,b)',
+  'ba>fwd(bc>foundPeers(c,a,b))'
 ];
 
 function test_emit(o){
@@ -504,20 +504,24 @@ const run_cmd = (role, c)=>etask(function*(){
     case 'setup': yield cmd_setup(c.arg); break;
     case 'node': yield cmd_node(role, c); break;
     case 'connect':
+      yield util.sleep(0);
       test_pause_real(fake);
       yield util.sleep(0);
       yield cmd_connect(c); break;
     case 'connected':
+      yield util.sleep(0);
       test_pause_real(fake);
       yield util.sleep(0);
       yield cmd_connected(c);
       break;
     case 'findPeers':
+      yield util.sleep(0);
       test_pause_real(fake);
       yield util.sleep(0);
       yield cmd_find_peers(c);
       break;
     case 'foundPeers':
+      yield util.sleep(0);
       test_pause_real(fake);
       yield util.sleep(0);
       yield cmd_found_peers(c);
@@ -525,16 +529,19 @@ const run_cmd = (role, c)=>etask(function*(){
     case 'send': yield cmd_send(c); break;
     case 'msg': yield cmd_msg(c); break;
     case 'handshake-offer':
+      yield util.sleep(0);
       test_pause_real(fake);
       yield util.sleep(0);
       yield cmd_handshake_offer(c);
       break;
     case 'handshake-answer':
+      yield util.sleep(0);
       test_pause_real(fake);
       yield util.sleep(0);
       yield cmd_handshake_answer(c);
       break;
     case 'fwd':
+      yield util.sleep(0);
       test_pause_real(fake);
       yield util.sleep(0);
       yield cmd_fwd(role, c);
@@ -545,6 +552,7 @@ const run_cmd = (role, c)=>etask(function*(){
 });
 
 const test_run = (role, test)=>etask(function*(){
+  console.log('XXX test_run role %s', role);
   assert.ok(!t_running, 'test already running');
   assert(!t_cmds && !t_i);
   t_running = true;
@@ -623,7 +631,6 @@ describe('peer-relay', function(){
     // XXX derry: review real/fake mode
     let t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      if (0) // XXX: fixme
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       it(name+'_c', ()=>zetask(()=>test_run('c', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
@@ -645,11 +652,8 @@ describe('peer-relay', function(){
       ba>fwd(ca>handshake-offer)
       ab>fwd(ac>handshake-answer)
       bc>fwd(ac>handshake-answer)
-      ba>fwd(bc>foundPeers(c,a,b))
-      ab>fwd(bc>foundPeers(c,a,b))
-
       -
-      send(ba>hello) ba>msg(hello) bc>fwd(ba>msg(hello)) cb>fwd(ba>msg(hello))
+      send(ba>hello) ba>msg(hello) -
       send(ab>hello) ab>msg(hello) -
       send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
       send(cb>hello) cb>msg(hello) -
@@ -671,18 +675,12 @@ describe('peer-relay', function(){
       as>connect(wss) as>connected as<connected
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
       node(name:b) bs>connect(wss) bs>connected bs<connected
-      bs>findPeers(b) bs<foundPeers(b,s,a)
+      bs>findPeers(b) bs<foundPeers(b,a,s)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
-
       sa<fwd(ab>handshake-answer)
       bs<fwd(ab>handshake-answer)
-      sa>fwd(sb>foundPeers(b,s,a))
-      as>fwd(sb>foundPeers(b,s,a))
-
       sb>findPeers(s)
       bs>foundPeers(s,b,a)
-      sa>fwd(sb>findPeers(s))
-      as>fwd(sb>findPeers(s))
       -`);
       // XXX: TODO
       /* send(sa>hello) sa>msg(hello) bs>fwd(sa>msg(hello)) sa>msg(hello) -
@@ -707,7 +705,7 @@ describe('peer-relay', function(){
       as>connect(wss) as>connected as<connected
       as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s) -
       node(name:b) bs>connect(wss) bs>connected bs<connected
-      bs>findPeers(b) sb>findPeers(s) bs<foundPeers(b,s,a) bs>foundPeers(s)
+      bs>findPeers(b) sb>findPeers(s) bs<foundPeers(b,a,s) bs>foundPeers(s)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
       sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer) -
       node(name:c) cs>connect(wss) cs>connected cs<connected cs>findPeers(c)

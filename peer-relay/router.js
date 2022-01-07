@@ -64,8 +64,11 @@ Router.prototype._send = async function(msg){
     channel.send(msg);
     if (util.test_real_paused)
       await util.test_real_paused;
-    if (channel.id.toString('hex') === msg.to)
+    if (channel.id.toString('hex') ===
+      (typeof msg.to==='string' ? msg.to : msg.to.toString('hex')))
+    {
       break;
+    }
   }
 };
 
