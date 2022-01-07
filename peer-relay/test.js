@@ -689,8 +689,6 @@ describe('peer-relay', function(){
       send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello)) -
       -
     `);
-    /*
-    */
     t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
