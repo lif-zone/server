@@ -97,7 +97,6 @@ Client.prototype.connect = function(id){
     return;
   self.pending[id] = true;
   self._debug('Connecting to id=%s', id.toString('hex', 0, 2));
-  console.log('XXX client.js send handshake-offer');
   self.router.send(id, {type: 'handshake-offer'});
 };
 
@@ -158,10 +157,12 @@ Client.prototype._onFoundPeers = function(msg){
   self._populate();
 };
 
-Client.prototype._onHandshakeOffer = function(msg, from){
+Client.prototype._onHandshakeOffer = async function(msg, from){
   var self = this;
   if (self.peers.get(from))
     return;
+  if (util.test_real_paused)
+    await util.test_real_paused;
   if (self.pending[from] == null || from.compare(self.id) < 0)
   {
     self.pending[from] = true;

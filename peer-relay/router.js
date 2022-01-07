@@ -3,6 +3,7 @@ import {EventEmitter} from 'events';
 import {inherits} from 'util';
 import _debug from 'debug';
 import assert from 'assert';
+import util from '../util/util.js';
 const debug = _debug('peer-relay:router');
 const stringify = JSON.stringify;
 
@@ -38,7 +39,7 @@ Router.prototype.send = function(id, data){
   self._send(msg);
 };
 
-Router.prototype._send = function(msg){
+Router.prototype._send = async function(msg){
   var self = this;
   self.emit('send', msg);
   if (msg.path.length >= self.maxHops)
@@ -61,12 +62,14 @@ Router.prototype._send = function(msg){
   {
     // TODO BUG Sometimes the WS on closest in not in the ready state
     channel.send(msg);
+    if (util.test_real_paused)
+      await util.test_real_paused;
     if (channel.id.toString('hex') === msg.to)
       break;
   }
 };
 
-Router.prototype._onMessage = function(msg){
+Router.prototype._onMessage = async function(msg){
   var self = this;
   if (msg.nonce in self._touched)
     return;

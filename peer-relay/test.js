@@ -33,12 +33,20 @@ let t_peers = {
   s: '41e32c1c6ffdc91bbfa7684c67e58f3f36174a59'
 };
 
+let t_debugger_on_events = [
+  'ba>fwd(bc>findPeers(b))',
+  'bc>findPeers(b)'
+];
+
 function test_emit(o){
   let {event, fake} = o;
   console.log('emit: %s%s', event, fake ? ' fake' : '');
   assert.ok(t_running, 'test not running');
   assert.ok(event, 'invalid event');
+  if (t_debugger_on_events.includes(event))
+    debugger;
   t_events.push(event);
+  test_eat_all_events();
   test_pause_real(!fake);
 }
 
@@ -53,24 +61,8 @@ function test_pending(e, c){
   if (c && c.fwd)
     e = c.fwd+'fwd('+e+')';
   t_pending.push(e);
+  test_eat_all_events();
 }
-// eslint-disable-next-line no-unused-vars
-const test_ensure_no_pending_events = ()=>etask(function*(){
-  for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
-  {
-    yield util.sleep(); // XXX HACK: fixme
-    if (t_events[0]==t_pending[0])
-    {
-      t_events.shift();
-      t_pending.shift();
-    }
-    if (!t_pending.length)
-      return;
-  }
-  console.log('queue %o', t_queue);
-  throw new Error('pending events '+stringify(t_pending)+ ' got'+
-    stringify(t_events));
-});
 
 // XXX: add test
 function normalize(e){
@@ -82,13 +74,24 @@ function normalize(e){
   return b+a+'>'+e.substr(3);
 }
 
+const test_eat_all_events = ()=>etask(function*(){
+  try_send_queue();
+  while (t_events.length && t_pending.length)
+  {
+    assert(normalize(t_events[0])==normalize(t_pending[0]),
+     'event mismatch.\n'+str_status())
+    t_events.shift();
+    t_pending.shift();
+  }
+});
+
+// XXX: review and rewrite (no point for loop if no sleep
 const test_ensure_no_events = ()=>etask(function*(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
     try_send_queue();
     if (!t_events.length && !t_pending.length)
       break;
-    yield util.sleep(); // XXX HACK: fixme
     if (!t_events.length || !t_pending.length)
       continue;
     if (normalize(t_events[0])==normalize(t_pending[0]))
@@ -470,16 +473,21 @@ const cmd_setup = c=>etask(function(){
 });
 
 function test_pause_real(pause){
-  console.log('****** %s', pause ? 'PAUSE' : 'RESUME');
   if (pause)
   {
     if (!util.test_real_paused)
+    {
+      console.log('****** %s', pause ? 'PAUSE' : 'RESUME');
       util.test_real_paused = util.wait();
+    }
   }
   else
   {
     if (util.test_real_paused)
+    {
+      console.log('****** %s', pause ? 'PAUSE' : 'RESUME');
       util.test_real_paused.continue();
+    }
     util.test_real_paused = undefined;
   }
 }
@@ -488,13 +496,22 @@ const run_cmd = (role, c)=>etask(function*(){
     let fake = is_fake(role, c.s);
     console.log('cmd:%s %s', c.fwd ? 'in fwd '+c.fwd : '', c.orig,
       fake? ' fake' : '');
+    console.log('t_pending %s', t_pending.join(','));
+    console.log('t_events %s', t_events.join(','));
     switch (c.cmd)
     {
     case '-': yield test_ensure_no_events(); break;
     case 'setup': yield cmd_setup(c.arg); break;
     case 'node': yield cmd_node(role, c); break;
-    case 'connect': yield cmd_connect(c); break;
-    case 'connected': yield cmd_connected(c); break;
+    case 'connect':
+      test_pause_real(fake);
+      yield util.sleep(0);
+      yield cmd_connect(c); break;
+    case 'connected':
+      test_pause_real(fake);
+      yield util.sleep(0);
+      yield cmd_connected(c);
+      break;
     case 'findPeers':
       test_pause_real(fake);
       yield util.sleep(0);
@@ -608,7 +625,6 @@ describe('peer-relay', function(){
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       if (0) // XXX: fixme
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      if (0) // XXX: fixme
       it(name+'_c', ()=>zetask(()=>test_run('c', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
@@ -620,12 +636,18 @@ describe('peer-relay', function(){
       node(name:c wss(host:lif.zone port:4001))
       ab>connect(wss) ab>connected ab<connected
       ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
-      bc>connect(wss) bc>connected bc<connected bc>findPeers(b)
-      cb>foundPeers(b) ba>fwd(bc>findPeers(b)) cb>findPeers(c)
+      bc>connect(wss) bc>connected bc<connected
+      bc>findPeers(b)
+      cb>foundPeers(b)
+      cb>findPeers(c)
       bc>foundPeers(c,a,b)
-      cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
-      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer)
-      ba>fwd(bc>foundPeers(c,a,b)) ab>fwd(bc>foundPeers(c,a,b))
+      cb>fwd(ca>handshake-offer)
+      ba>fwd(ca>handshake-offer)
+      ab>fwd(ac>handshake-answer)
+      bc>fwd(ac>handshake-answer)
+      ba>fwd(bc>foundPeers(c,a,b))
+      ab>fwd(bc>foundPeers(c,a,b))
+
       -
       send(ba>hello) ba>msg(hello) bc>fwd(ba>msg(hello)) cb>fwd(ba>msg(hello))
       send(ab>hello) ab>msg(hello) -
@@ -651,9 +673,12 @@ describe('peer-relay', function(){
       node(name:b) bs>connect(wss) bs>connected bs<connected
       bs>findPeers(b) bs<foundPeers(b,s,a)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
-      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
+
+      sa<fwd(ab>handshake-answer)
+      bs<fwd(ab>handshake-answer)
       sa>fwd(sb>foundPeers(b,s,a))
       as>fwd(sb>foundPeers(b,s,a))
+
       sb>findPeers(s)
       bs>foundPeers(s,b,a)
       sa>fwd(sb>findPeers(s))
