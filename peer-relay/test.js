@@ -710,16 +710,14 @@ describe('peer-relay', function(){
       bs<fwd(ab>handshake-answer)
       sb>findPeers(s)
       bs>foundPeers(s,b,a)
-      -`);
-      // XXX: TODO
-      /* send(sa>hello) sa>msg(hello) bs>fwd(sa>msg(hello)) sa>msg(hello) -
-        send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello)) -
-        send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello)) -
-        send(as>hello) as>msg(hello) -
-        send(ba>hello) bs>fwd(ba>msg(hello)) sb>fwd(ba>msg(hello)) -
-        as>send(hello) -
-        sa>send(reply) sb>fwd(sa>send(reply)) bs>fwd(sa>send(reply))
-      */
+      -
+      send(sa>hello) sa>msg(hello) -
+      send(sa<hello) sa<msg(hello) -
+      send(sb>hello) sb>msg(hello) -
+      send(sb<hello) sb<msg(hello) -
+      send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello))-
+      send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
+      `);
     const t4 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
