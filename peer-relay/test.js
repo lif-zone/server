@@ -696,13 +696,9 @@ describe('peer-relay', function(){
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
       node(name:b) bs>connect(wss) bs>connected bs<connected
       bs>findPeers(b) sb>foundPeers(b,a,s)
-      bs>fwd(ba>handshake-offer)
-      sa>fwd(ba>handshake-offer)
-      sa<fwd(ab>handshake-answer)
-      bs<fwd(ab>handshake-answer)
-      sb>findPeers(s)
-      bs>foundPeers(s,b,a)
-      -
+      bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
+      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
+      sb>findPeers(s) bs>foundPeers(s,b,a) -
       send(as>hello) as>msg(hello) -
       send(sa>hello) sa>msg(hello) -
       send(sb>hello) sb>msg(hello) -
