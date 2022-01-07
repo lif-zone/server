@@ -41,7 +41,7 @@ function test_emit(o){
   console.log('emit: %s%s', event, fake ? ' fake' : '');
   assert.ok(t_running, 'test not running');
   assert.ok(event, 'invalid event');
-  if (t_debugger_on_events.includes(event))
+  if (t_debugger_on_events.includes(event)) // eslint-disable-next-line
     debugger;
   t_events.push(event);
   test_eat_all_events();
@@ -84,7 +84,7 @@ function test_eat_all_events(){
 }
 
 // XXX: review and rewrite (no point for loop if no sleep
-const test_ensure_no_events = ()=>etask(function*(){
+const test_ensure_no_events = ()=>etask(function(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
     try_send_queue();
@@ -475,7 +475,7 @@ const cmd_handshake_offer = (role, c)=>etask(function*(){
   }
 });
 
-const cmd_handshake_answer = (role,c)=>etask(function*(){
+const cmd_handshake_answer = (role, c)=>etask(function*(){
   let fake = is_fake(role, c.s);
   // XXX: check what to assert
   fake_send_msg(c, {type: 'handshake-answer', data: {}});
