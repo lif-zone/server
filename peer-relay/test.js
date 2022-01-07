@@ -708,8 +708,8 @@ describe('peer-relay', function(){
     const t4 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      it(name+'_c', ()=>zetask(()=>test_run('b', test)));
-      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
+      it(name+'_c', ()=>zetask(()=>test_run('c', test)));
+      it(name+'_d', ()=>zetask(()=>test_run('d', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
