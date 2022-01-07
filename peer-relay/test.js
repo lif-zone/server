@@ -643,16 +643,16 @@ describe('peer-relay', function(){
   describe('basic', ()=>zetask(function(){
     const t = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
+      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
     // XXX derry: review '-'
     t('2_nodes', `
-      node(name:s wss(host:lif.zone port:4000)) node(name:a)
-      as>connect(wss) as>connected sa>connected
-      as>findPeers(a) sa>foundPeers(a) sa>findPeers(s) as>foundPeers(s,a) -
-      send(as>hello) as>msg(hello) - send(as<reply) as<msg(reply) -`);
+      node(name:b wss(host:lif.zone port:4000)) node(name:a)
+      ab>connect(wss) ab>connected ba>connected
+      ab>findPeers(a) ba>foundPeers(a) ba>findPeers(b) ab>foundPeers(b,a) -
+      send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply) -`);
     /* XXX TODO:
       a>connect(node(b))
     */
