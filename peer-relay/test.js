@@ -652,8 +652,7 @@ describe('peer-relay', function(){
       node(name:s wss(host:lif.zone port:4000)) node(name:a)
       as>connect(wss) as>connected sa>connected
       as>findPeers(a) sa>foundPeers(a) sa>findPeers(s) as>foundPeers(s,a) -
-      send(as>hello) as>msg(hello) -
-      send(as<reply) as<msg(reply) -`);
+      send(as>hello) as>msg(hello) - send(as<reply) as<msg(reply) -`);
     /* XXX TODO:
       a>connect(node(b))
     */
