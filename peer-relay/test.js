@@ -34,8 +34,6 @@ let t_peers = {
 };
 
 let t_debugger_on_events = [
-  'bc>foundPeers(c,a,b)',
-  'ba>fwd(bc>foundPeers(c,a,b))'
 ];
 
 function test_emit(o){
@@ -47,7 +45,7 @@ function test_emit(o){
     debugger;
   t_events.push(event);
   test_eat_all_events();
-  test_pause_real(!fake);
+  test_pause_real(true);
 }
 
 function test_pending(e, c){
@@ -412,18 +410,36 @@ const cmd_connected = c=>etask(function(){
   test_pending(c);
 });
 
-const cmd_find_peers = c=>etask(function(){
+const cmd_find_peers = (role, c)=>etask(function*(){
+  let fake = is_fake(role, c.s);
   // XXX: check what to assert
   let s = t_nodes[c.s];
   fake_send_msg(c, {type: 'findPeers', data: util.buf_to_str(s.id)});
   test_pending(c);
+  test_eat_all_events();
+  // XXX HACK: need to check only that last c was "eaten"
+  if (t_pending.length)
+  {
+    yield util.sleep(0);
+    test_pause_real(fake);
+    yield util.sleep(0);
+  }
 });
 
-const cmd_found_peers = c=>etask(function(){
+const cmd_found_peers = (role, c)=>etask(function*(){
+  let fake = is_fake(role, c.s);
   // XXX: check what to assert
   let a = array_name_to_id(c.arg.split(','));
   fake_send_msg(c, {type: 'foundPeers', data: a});
   test_pending(c);
+  test_eat_all_events();
+  // XXX HACK: need to check only that last c was "eaten"
+  if (t_pending.length)
+  {
+    yield util.sleep(0);
+    test_pause_real(fake);
+    yield util.sleep(0);
+  }
 });
 
 const cmd_msg = c=>etask(function(){
@@ -444,24 +460,51 @@ const cmd_send = c=>etask(function(){
     s.send(d.id, data);
 });
 
-const cmd_handshake_offer = c=>etask(function(){
+const cmd_handshake_offer = (role, c)=>etask(function*(){
+  let fake = is_fake(role, c.s);
   // XXX: check what to assert
   fake_send_msg(c, {type: 'handshake-offer', data: null});
   test_pending(c);
+  test_eat_all_events();
+  // XXX HACK: need to check only that last c was "eaten"
+  if (t_pending.length)
+  {
+    yield util.sleep(0);
+    test_pause_real(fake);
+    yield util.sleep(0);
+  }
 });
 
-const cmd_handshake_answer = c=>etask(function(){
+const cmd_handshake_answer = (role,c)=>etask(function*(){
+  let fake = is_fake(role, c.s);
   // XXX: check what to assert
   fake_send_msg(c, {type: 'handshake-answer', data: {}});
   test_pending(c);
+  test_eat_all_events();
+  // XXX HACK: need to check only that last c was "eaten"
+  if (t_pending.length)
+  {
+    yield util.sleep(0);
+    test_pause_real(fake);
+    yield util.sleep(0);
+  }
 });
 
 const cmd_fwd = (role, c)=>etask(function*(){
+  let fake = is_fake(role, c.s);
   // XXX: need assert on arg
   let a = xtest.test_parse(c.arg);
   assert(a.length==1, 'invalid fwd %'+c.arg);
   a[0].fwd = c.s+c.d+'>';
   yield run_cmd(role, a[0]);
+  test_eat_all_events();
+  // XXX HACK: need to check only that last c was "eaten"
+  if (t_pending.length)
+  {
+    yield util.sleep(0);
+    test_pause_real(fake);
+    yield util.sleep(0);
+  }
 });
 
 const cmd_setup = c=>etask(function(){
@@ -498,6 +541,7 @@ const run_cmd = (role, c)=>etask(function*(){
       fake? ' fake' : '');
     console.log('t_pending %s', t_pending.join(','));
     console.log('t_events %s', t_events.join(','));
+    // XXX: cleanup
     switch (c.cmd)
     {
     case '-': yield test_ensure_no_events(); break;
@@ -515,35 +559,20 @@ const run_cmd = (role, c)=>etask(function*(){
       yield cmd_connected(c);
       break;
     case 'findPeers':
-      yield util.sleep(0);
-      test_pause_real(fake);
-      yield util.sleep(0);
-      yield cmd_find_peers(c);
+      yield cmd_find_peers(role, c);
       break;
     case 'foundPeers':
-      yield util.sleep(0);
-      test_pause_real(fake);
-      yield util.sleep(0);
-      yield cmd_found_peers(c);
+      yield cmd_found_peers(role, c);
       break;
     case 'send': yield cmd_send(c); break;
     case 'msg': yield cmd_msg(c); break;
     case 'handshake-offer':
-      yield util.sleep(0);
-      test_pause_real(fake);
-      yield util.sleep(0);
-      yield cmd_handshake_offer(c);
+      yield cmd_handshake_offer(role, c);
       break;
     case 'handshake-answer':
-      yield util.sleep(0);
-      test_pause_real(fake);
-      yield util.sleep(0);
-      yield cmd_handshake_answer(c);
+      yield cmd_handshake_answer(role, c);
       break;
     case 'fwd':
-      yield util.sleep(0);
-      test_pause_real(fake);
-      yield util.sleep(0);
       yield cmd_fwd(role, c);
       break;
     default: throw new Error('unknown cmd '+c.cmd);
@@ -665,7 +694,6 @@ describe('peer-relay', function(){
     t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      if (0) // XXX: fixme
       it(name+'_s', ()=>zetask(()=>test_run('s', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
@@ -675,8 +703,9 @@ describe('peer-relay', function(){
       as>connect(wss) as>connected as<connected
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
       node(name:b) bs>connect(wss) bs>connected bs<connected
-      bs>findPeers(b) bs<foundPeers(b,a,s)
-      bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
+      bs>findPeers(b) sb>foundPeers(b,a,s)
+      bs>fwd(ba>handshake-offer)
+      sa>fwd(ba>handshake-offer)
       sa<fwd(ab>handshake-answer)
       bs<fwd(ab>handshake-answer)
       sb>findPeers(s)
