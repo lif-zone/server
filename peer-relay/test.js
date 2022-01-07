@@ -74,16 +74,16 @@ function normalize(e){
   return b+a+'>'+e.substr(3);
 }
 
-const test_eat_all_events = ()=>etask(function*(){
+function test_eat_all_events(){
   try_send_queue();
   while (t_events.length && t_pending.length)
   {
     assert(normalize(t_events[0])==normalize(t_pending[0]),
-     'event mismatch.\n'+str_status())
+     'event mismatch.\n'+str_status());
     t_events.shift();
     t_pending.shift();
   }
-});
+}
 
 // XXX: review and rewrite (no point for loop if no sleep
 const test_ensure_no_events = ()=>etask(function*(){
