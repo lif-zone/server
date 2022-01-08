@@ -654,6 +654,7 @@ describe('peer-relay', function(){
   // XXX: support as> and sa< (normalize function) for event matching
   this.timeout(2*t_timeout);
   describe('basic', ()=>zetask(function(){
+    // XXX: organize all t/t2/t3/t4
     const t = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
@@ -718,7 +719,7 @@ describe('peer-relay', function(){
       send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello))-
       send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
       `);
-    const t4 = (name, test)=>{
+    let t4 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       it(name+'_c', ()=>zetask(()=>test_run('c', test)));
@@ -752,22 +753,30 @@ describe('peer-relay', function(){
 	    cd>fwd(ad>handshake-answer)
       -
     `);
-    // XXX: test send
-    if (0) // XXX: WIP
-    t4('4_nodes', `
+    t4 = (name, test)=>{
+      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
+      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
+      it(name+'_c', ()=>zetask(()=>test_run('c', test)));
+      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
+      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
+      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+    };
+    t4('4_nodes_star', `
       node(name:s wss(port:4000)) node(name:a)
       as>connect(wss) as>connected as<connected
-      as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s) -
+      as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
       node(name:b) bs>connect(wss) bs>connected bs<connected
-      bs>findPeers(b) sb>findPeers(s) bs<foundPeers(b,a,s) bs>foundPeers(s)
+      bs>findPeers(b) sb>foundPeers(b,a,s)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
-      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer) -
-      node(name:c) cs>connect(wss) cs>connected cs<connected cs>findPeers(c)
-      sc>findPeers(s) cs<foundPeers(c,a,s,b) cs>foundPeers(s)
-      cs>fwd(ca>handshake-offer) cs>fwd(cb>handshake-offer)
-      sa>fwd(ca>handshake-offer) sb>fwd(cb>handshake-offer)
-      as>fwd(ac>handshake-answer) bs>fwd(bc>handshake-answer)
-      sc>fwd(ac>handshake-answer) sc>fwd(bc>handshake-answer)`);
+      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
+      sb>findPeers(s) bs>foundPeers(s,b,a) -
+      send(as>hello) as>msg(hello) -
+      send(sa>hello) sa>msg(hello) -
+      send(sb>hello) sb>msg(hello) -
+      send(bs>hello) bs>msg(hello) -
+      send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello))-
+      send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
+    `);
   }));
 });
 
