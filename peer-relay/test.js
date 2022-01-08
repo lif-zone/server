@@ -35,6 +35,9 @@ let t_peers = {
 };
 
 let t_debugger_on_events = [
+'ab>fwd(bd>handshake-answer)',
+'bc>fwd(bd>handshake-answer)'
+
 ];
 
 function test_emit(o){
@@ -84,11 +87,13 @@ function test_eat_all_events(){
   }
 }
 
-// XXX: review and rewrite (no point for loop if no sleep
-const test_ensure_no_events = ()=>etask(function(){
+// XXX: review and rewrite
+const test_ensure_no_events = ()=>etask(function*(){
+  test_pause_real(false);
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
   {
     try_send_queue();
+    yield util.sleep();
     if (!t_events.length && !t_pending.length)
       break;
     if (!t_events.length || !t_pending.length)
@@ -165,11 +170,7 @@ class FakeChannel extends EventEmitter {
     case 'foundPeers':
     case 'handshake-offer':
     case 'handshake-answer':
-    case 'user':
-      if (!s || !d)
-        debugger;
-      send_msg(s.t.name, d.t.name, msg);
-      break;
+    case 'user': send_msg(s.t.name, d.t.name, msg); break;
     default: assert(false, 'unexpected msg '+type);
     }
   }
@@ -548,7 +549,10 @@ const run_cmd = (role, c)=>etask(function*(){
     // XXX: cleanup
     switch (c.cmd)
     {
-    case '-': yield test_ensure_no_events(); break;
+    case '-':
+      test_pause_real(false);
+      yield test_ensure_no_events();
+      break;
     case 'setup': yield cmd_setup(c.arg); break;
     case 'node': yield cmd_node(role, c); break;
     case 'connect':
@@ -598,8 +602,6 @@ const test_run = (role, test)=>etask(function*(){
 });
 
 const test_end = ()=>etask(function*(){
-  test_pause_real(false);
-  yield util.sleep(0);
   yield test_ensure_no_events();
   assert.ok(t_running, 'test not running');
   try_send_queue();

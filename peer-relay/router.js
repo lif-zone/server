@@ -62,7 +62,7 @@ Router.prototype._send = async function(msg){
   {
     // TODO BUG Sometimes the WS on closest in not in the ready state
     channel.send(msg);
-    if (util.test_real_paused)
+    if (util.test_real_paused) // XXX: review if needed here
       await util.test_real_paused;
     if (channel.id.toString('hex') ===
       (typeof msg.to==='string' ? msg.to : msg.to.toString('hex')))
