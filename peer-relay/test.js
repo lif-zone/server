@@ -119,7 +119,7 @@ class FakeNode extends EventEmitter {
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new FakeWsConnector(this.id, opts.port, opts.host);
-    this.wsConnector.on('connection', c=>this.emit('connection-test', c));
+    this.wsConnector.on('connection', c=>this.emit('connection', c));
   }
   destroy(){}
   connect_ws(url){ this.wsConnector.connect(url); }
@@ -371,7 +371,7 @@ function cmd_node(role, c){
   assert.equal(id, util.buf_to_str(node.id));
   node.t = {id, name, fake, wss, channels: []};
   t_nodes[name] = node;
-  node.on('connection-test', channel=>{
+  node.on('connection', channel=>{
     let s = node_from_id(channel.localID), d = node_from_id(channel.id);
     node.t.channels.push(channel);
     test_emit({event: s.t.name+d.t.name+'>connected', fake: s.t.fake});
