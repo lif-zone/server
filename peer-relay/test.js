@@ -800,6 +800,38 @@ describe('peer-relay', function(){
       send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
       send(bc>hello) bs>fwd(bc>msg(hello)) sc>fwd(bc>msg(hello))-
     `);
+    let t5 = (name, test)=>{
+      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
+      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
+      it(name+'_c', ()=>zetask(()=>test_run('c', test)));
+      it(name+'_d', ()=>zetask(()=>test_run('d', test)));
+      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
+      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
+      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+    };
+    t5('5_nodes_2_networks', `
+      node(name:b wss(port:4000)) node(name:a)
+      ab>connect(wss) ab>connected ba>connected
+      ab>findPeers(a) ba>foundPeers(a) ba>findPeers(b) ab>foundPeers(b,a) -
+      send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply) -
+      node(name:d wss(port:4000)) node(name:c)
+      cd>connect(wss) cd>connected dc>connected
+      cd>findPeers(c) dc>foundPeers(c) dc>findPeers(d) cd>foundPeers(d,c) -
+      send(cd>hello) cd>msg(hello) - send(cd<reply) cd<msg(reply) -
+      bd>connect(wss) bd>connected bd<connected
+      bd>findPeers(b) db>foundPeers(b,d,c)
+      bd>fwd(bc>handshake-offer) dc>fwd(bc>handshake-offer)
+      cd>fwd(cb>handshake-answer) db>fwd(cb>handshake-answer)
+      ba>fwd(bc>handshake-offer) db>findPeers(d) bd>foundPeers(d,c,b,a)
+      db>fwd(da>handshake-offer) ba>fwd(da>handshake-offer)
+      ab>fwd(ad>handshake-answer) bd>fwd(ad>handshake-answer)
+      dc>fwd(da>handshake-offer) -
+
+
+
+-
+
+      `);
   }));
 });
 
