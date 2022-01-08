@@ -22,8 +22,7 @@ process.on('unhandledRejection', e=>{
   process.exit(-1);
 });
 
-let t_nodes = {}, t_events = [], t_pending = [];
-let t_queue = [];
+let t_nodes = {}, t_events = [], t_pending = [], t_queue = [], t_nonce;
 let t_timeout = 2000, t_running;
 let t_cmds, t_i;
 let t_peers = {
@@ -156,6 +155,8 @@ class FakeChannel extends EventEmitter {
         case 'user': e = from.t.name+to.t.name+'>msg('+data+')'; break;
         default: assert(false, 'unexpected msg '+type);
       }
+      // XXX: normalize e
+      t_nonce[e] = msg.nonce;
       if (fwd)
         e = s.t.name+d.t.name+'>fwd('+e+')';
       test_emit({event: e, fake: s.t.fake});
@@ -215,15 +216,17 @@ function fake_send_msg(c, data){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let fs = c.fwd&&c.fwd[0], fd = c.fwd&&c.fwd[1];
+  let nonce = '' + Math.floor(1e15 * Math.random());
   if (c.fwd) // XXX: make it generic and fix all
   {
     s = t_nodes[fs];
     d = t_nodes[fd];
+    // XXX: normalize c.orig
+    nonce = t_nonce[c.orig]||nonce;
   }
   if (!s.t.fake)
     return;
-  var msg = {to, from, path: [s.id.toString('hex')],
-    nonce: '' + Math.floor(1e15 * Math.random()), data};
+  var msg = {to, from, path: [s.id.toString('hex')], nonce, data};
   if (c.fwd)
     send_msg(fs, fd, msg);
   else
@@ -594,11 +597,12 @@ const test_run = (role, test)=>etask(function*(){
   assert(!t_cmds && !t_i);
   t_running = true;
   t_cmds = xtest.test_parse(test);
+  t_nonce = {};
   for (t_i=0; t_i<t_cmds.length; t_i++)
     yield run_cmd(role, t_cmds[t_i]);
   yield test_end();
   t_running = false;
-  t_cmds = t_i = undefined;
+  t_nonce = t_cmds = t_i = undefined;
 });
 
 const test_end = ()=>etask(function*(){
@@ -715,7 +719,6 @@ describe('peer-relay', function(){
       `);
     const t4 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      if (0) // XXX FIXME
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       it(name+'_c', ()=>zetask(()=>test_run('c', test)));
       if (0) // XXX FIXME

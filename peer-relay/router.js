@@ -15,7 +15,7 @@ function Router(channels, id){
   self.id = id;
   self.concurrency = 2;
   self.maxHops = 20;
-  self._touched = {};
+  self._touched = {}; // XXX: memory leak - no cleanup
   self._channelListeners = {};
   self._paths = {};
   self._queue = [];
