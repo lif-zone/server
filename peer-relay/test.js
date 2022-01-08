@@ -704,10 +704,10 @@ describe('peer-relay', function(){
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
     t3('3_nodes_star', `
-      node(name:s wss(port:4000)) node(name:a)
+      node(name:s wss(port:4000)) node(name:a) node(name:b)
       as>connect(wss) as>connected as<connected
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
-      node(name:b) bs>connect(wss) bs>connected bs<connected
+     bs>connect(wss) bs>connected bs<connected
       bs>findPeers(b) sb>foundPeers(b,a,s)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
       sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
@@ -753,6 +753,7 @@ describe('peer-relay', function(){
 	    cd>fwd(ad>handshake-answer)
       -
     `);
+    // XXX: missing send test
     t4 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
@@ -761,21 +762,34 @@ describe('peer-relay', function(){
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
+    // XXX BUG: if we just put cs>connect(wss) with no other events,
+    // test will not fail. need to fix test to fail on such case
     t4('4_nodes_star', `
-      node(name:s wss(port:4000)) node(name:a)
+      node(name:s wss(port:4000)) node(name:a) node(name:b) node(name:c)
       as>connect(wss) as>connected as<connected
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
-      node(name:b) bs>connect(wss) bs>connected bs<connected
+      bs>connect(wss) bs>connected bs<connected
       bs>findPeers(b) sb>foundPeers(b,a,s)
       bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
       sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
       sb>findPeers(s) bs>foundPeers(s,b,a) -
+      cs>connect(wss) cs>connected cs<connected
+      cs>findPeers(c) sc>foundPeers(c,s,a,b)
+      cs>fwd(ca>handshake-offer) sa>fwd(ca>handshake-offer)
+      as>fwd(ac>handshake-answer) sc>fwd(ac>handshake-answer)
+      cs>fwd(cb>handshake-offer) sb>fwd(cb>handshake-offer)
+      bs>fwd(bc>handshake-answer) sc>fwd(bc>handshake-answer)
+      sc>findPeers(s) cs>foundPeers(s,c,b,a) -
       send(as>hello) as>msg(hello) -
       send(sa>hello) sa>msg(hello) -
-      send(sb>hello) sb>msg(hello) -
       send(bs>hello) bs>msg(hello) -
+      send(sb>hello) sb>msg(hello) -
+      send(cs>hello) cs>msg(hello) -
+      send(sc>hello) sc>msg(hello) -
       send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello))-
+      send(ac>hello) as>fwd(ac>msg(hello)) sc>fwd(ac>msg(hello))-
       send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
+      send(bc>hello) bs>fwd(bc>msg(hello)) sc>fwd(bc>msg(hello))-
     `);
   }));
 });
