@@ -183,7 +183,7 @@ Client.prototype._onHandshakeAnswer = function(msg, from){
     self.wsConnector.connect(msg.data.ws);
 };
 
-Client.prototype._populate = function(){
+Client.prototype._populate = async function(){
   var self = this;
   var optimal = 15;
   var closest = self.canidates.closest(self.id, optimal);
@@ -193,6 +193,8 @@ Client.prototype._populate = function(){
     if (self.peers.get(closest[i].id))
       continue;
     self.connect(closest[i].id);
+    if (util.test_real_paused)
+      await util.test_real_paused;
   }
 };
 

@@ -24,7 +24,7 @@ process.on('unhandledRejection', e=>{
 
 let t_nodes = {}, t_events = [], t_pending = [], t_queue = [], t_nonce;
 let t_timeout = 2000, t_running;
-let t_cmds, t_i;
+let t_cmds, t_i, t_disable_pause;
 let t_peers = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
   b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
@@ -148,8 +148,7 @@ class FakeChannel extends EventEmitter {
           break;
         case 'handshake-offer': e = from.t.name+to.t.name+'>'+type; break;
         case 'handshake-answer':
-          if (0) // XXX: TODO
-          assert(data && !data.ws && !data.wrtc, 'TODO '+stringify(data));
+          assert(data && !data.wrtc, 'TODO '+stringify(data)); // XXX: TODO
           e = from.t.name+to.t.name+'>'+type;
           break;
         case 'user': e = from.t.name+to.t.name+'>msg('+data+')'; break;
@@ -526,6 +525,8 @@ const cmd_setup = c=>etask(function(){
 function test_pause_real(pause){
   if (pause)
   {
+    if (t_disable_pause)
+      return;
     if (!util.test_real_paused)
     {
       console.log('****** %s', pause ? 'PAUSE' : 'RESUME');
@@ -592,12 +593,12 @@ const run_cmd = (role, c)=>etask(function*(){
 });
 
 const test_run = (role, test)=>etask(function*(){
-  console.log('XXX test_run role %s', role);
   assert.ok(!t_running, 'test already running');
   assert(!t_cmds && !t_i);
   t_running = true;
   t_cmds = xtest.test_parse(test);
   t_nonce = {};
+  t_disable_pause = role=='*';
   for (t_i=0; t_i<t_cmds.length; t_i++)
     yield run_cmd(role, t_cmds[t_i]);
   yield test_end();
@@ -721,7 +722,6 @@ describe('peer-relay', function(){
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       it(name+'_c', ()=>zetask(()=>test_run('c', test)));
-      if (0) // XXX FIXME
       it(name+'_d', ()=>zetask(()=>test_run('d', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
@@ -743,16 +743,15 @@ describe('peer-relay', function(){
       cd>findPeers(c) dc>foundPeers(c) dc>findPeers(d) cd>foundPeers(d,c,b,a)
       dc>fwd(db>handshake-offer)
       cb>fwd(db>handshake-offer)
-      dc>fwd(da>handshake-offer)
-      cb>fwd(da>handshake-offer)
-      ba>fwd(da>handshake-offer)
       bc>fwd(bd>handshake-answer)
 	    cd>fwd(bd>handshake-answer)
+	    ba>fwd(bd>handshake-answer)
+	    dc>fwd(da>handshake-offer)
+	    cb>fwd(da>handshake-offer)
+	    ba>fwd(da>handshake-offer)
 	    ab>fwd(ad>handshake-answer)
 	    bc>fwd(ad>handshake-answer)
-      cd>fwd(ad>handshake-answer)
-	    ba>fwd(bd>handshake-answer)
-      ab>fwd(bd>handshake-answer)
+	    cd>fwd(ad>handshake-answer)
       -
     `);
     // XXX: test send
