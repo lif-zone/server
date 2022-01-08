@@ -880,7 +880,7 @@ describe('peer-relay', function(){
       sb>fwd(sa>handshake-offer)
       ba>fwd(sa>handshake-offer)
       ab>fwd(as>handshake-answer)
-      bs>fwd(as>handshake-answer)
+      bs>fwd(as>handshake-answer) -
     `);
   }));
 });
