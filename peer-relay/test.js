@@ -336,7 +336,7 @@ function assert_wss_url(val){
 }
 
 function assert_wss(val){
-  let host, port, arg = xtest.test_parse(val);
+  let host = 'lif.zone', port, arg = xtest.test_parse(val);
   util.forEach(arg, a=>{
     switch (a.cmd)
     {
@@ -662,7 +662,7 @@ describe('peer-relay', function(){
     };
     // XXX derry: review '-'
     t('2_nodes', `
-      node(name:b wss(host:lif.zone port:4000)) node(name:a)
+      node(name:b wss(port:4000)) node(name:a)
       ab>connect(wss) ab>connected ba>connected
       ab>findPeers(a) ba>foundPeers(a) ba>findPeers(b) ab>foundPeers(b,a) -
       send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply) -`);
@@ -677,11 +677,10 @@ describe('peer-relay', function(){
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
-    // XXX: if no host, assume lif.zone
     // XXX: send(ab>xxx) --> ab>send(xxx)
     t3('3_nodes_linear', `
-      node(name:a) node(name:b wss(host:lif.zone port:4000))
-      node(name:c wss(host:lif.zone port:4001))
+      node(name:a) node(name:b wss(port:4000))
+      node(name:c wss(port:4001))
       ab>connect(wss) ab>connected ab<connected
       ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
       bc>connect(wss) bc>connected bc<connected
@@ -703,7 +702,7 @@ describe('peer-relay', function(){
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
     t3('3_nodes', `
-      node(name:s wss(host:lif.zone port:4000)) node(name:a)
+      node(name:s wss(port:4000)) node(name:a)
       as>connect(wss) as>connected as<connected
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
       node(name:b) bs>connect(wss) bs>connected bs<connected
@@ -726,13 +725,11 @@ describe('peer-relay', function(){
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
-    // XXX: if no host, assume lif.zone
-    // XXX: send(ab>xxx) --> ab>send(xxx)
     // XXX: verify we don't use same port for different nodes
     t4('4_nodes_linear', `
-      node(name:a) node(name:b wss(host:lif.zone port:4000))
-      node(name:c wss(host:lif.zone port:4001))
-      node(name:d wss(host:lif.zone port:4002))
+      node(name:a) node(name:b wss(port:4000))
+      node(name:c wss(port:4001))
+      node(name:d wss(port:4002))
       ab>connect(wss) ab>connected ab<connected
       ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
       bc>connect(wss) bc>connected bc<connected
@@ -757,7 +754,7 @@ describe('peer-relay', function(){
     // XXX: test send
     if (0) // XXX: WIP
     t4('4_nodes', `
-      node(name:s wss(host:lif.zone port:4000)) node(name:a)
+      node(name:s wss(port:4000)) node(name:a)
       as>connect(wss) as>connected as<connected
       as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s) -
       node(name:b) bs>connect(wss) bs>connected bs<connected
