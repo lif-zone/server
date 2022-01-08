@@ -678,6 +678,7 @@ describe('peer-relay', function(){
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
     // XXX: send(ab>xxx) --> ab>send(xxx)
+    // XXX BUG: why a and c don't try to connect directly once found each other
     t3('3_nodes_linear', `
       node(name:a) node(name:b wss(port:4000))
       node(name:c wss(port:4001))
@@ -701,7 +702,7 @@ describe('peer-relay', function(){
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
       it(name+'_fake', ()=>zetask(()=>test_run('', test)));
     };
-    t3('3_nodes', `
+    t3('3_nodes_star', `
       node(name:s wss(port:4000)) node(name:a)
       as>connect(wss) as>connected as<connected
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
