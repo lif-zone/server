@@ -65,6 +65,7 @@ Client.prototype._onConnection = async function(channel){
     return;
   }
   self.peers.add(channel);
+  self.emit('connection-test', channel);
   self.emit('connection', channel);
   if (util.test_real_paused)
     await util.test_real_paused;
