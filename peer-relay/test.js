@@ -863,45 +863,17 @@ describe('peer-relay', function(){
       cd>findPeers(c) dc>foundPeers(c) dc>findPeers(d) cd>foundPeers(d,c) -
       send(cd>hello) cd>msg(hello) - send(cd<reply) cd<msg(reply) -
       bd>connect(wss) bd>connected bd<connected
-      node(name:s wss(port(4002)))
-      bs>connect(wss)
-      bd>findPeers(b)
-      db>foundPeers(b,d,c)
-      bd>fwd(bc>handshake-offer)
-      dc>fwd(bc>handshake-offer)
-      cd>fwd(cb>handshake-answer)
-      db>fwd(cb>handshake-answer)
-      ba>fwd(bc>handshake-offer)
-      db>findPeers(d)
-      bd>foundPeers(d,c,b,a)
-      db>fwd(da>handshake-offer)
-      ba>fwd(da>handshake-offer)
-      ab>fwd(ad>handshake-answer)
-      bd>fwd(ad>handshake-answer)
-      dc>fwd(da>handshake-offer)
-      bs>connected
-      bs<connected
-      bs>findPeers(b)
-      sb>foundPeers(b)
-      sb>findPeers(s)
-      bs>foundPeers(s,d,c,b,a)
-      sb>fwd(sd>handshake-offer)
-      bd>fwd(sd>handshake-offer)
-      dc>fwd(ds>handshake-answer)
-      db>fwd(ds>handshake-answer)
-      bs>fwd(ds>handshake-answer)
-      sb>fwd(sc>handshake-offer)
-      bd>fwd(sc>handshake-offer)
-      dc>fwd(sc>handshake-offer)
-      cd>fwd(cs>handshake-answer)
-      db>fwd(cs>handshake-answer)
-      bs>fwd(cs>handshake-answer)
-      ba>fwd(sc>handshake-offer)
-      sb>fwd(sa>handshake-offer)
-      ba>fwd(sa>handshake-offer)
-      ab>fwd(as>handshake-answer)
-      bs>fwd(as>handshake-answer) -
-    `);
+      node(name:s wss(port(4002))) bs>connect(wss)
+      bd>findPeers(b) db>foundPeers(b,d,c)
+      bd,dc>fwd(bc>handshake-offer) cd,db>fwd(cb>handshake-answer)
+      ba>fwd(bc>handshake-offer) db>findPeers(d) bd>foundPeers(d,c,b,a)
+      db,ba>fwd(da>handshake-offer) ab,bd>fwd(ad>handshake-answer)
+      dc>fwd(da>handshake-offer) bs>connected bs<connected
+      bs>findPeers(b) sb>foundPeers(b) sb>findPeers(s) bs>foundPeers(s,d,c,b,a)
+      sb,bd>fwd(sd>handshake-offer) dc,db>fwd(ds>handshake-answer)
+      bs>fwd(ds>handshake-answer) sb,bd,dc>fwd(sc>handshake-offer)
+      cd,db,bs>fwd(cs>handshake-answer) ba>fwd(sc>handshake-offer)
+      sb,ba>fwd(sa>handshake-offer) ab,bs>fwd(as>handshake-answer)`);
   });
 });
 
