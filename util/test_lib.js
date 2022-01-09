@@ -730,14 +730,12 @@ E.test_parse_cmd_single = function(s){
     case 'pre':
       if (string.is_ws(c))
         continue;
-      if ('()'.includes(c))
-        throw_invalid(s, i);
+      assert_invalid(!'()'.includes(c), s, i);
       state = 'cmd';
       cmd_s = i;
       break;
     case 'cmd':
-      if (')'.includes(c))
-        throw_invalid(s, i);
+      assert_invalid(!')'.includes(c), s, i);
       if (string.is_ws(c))
       {
         cmd_e = i;
@@ -756,8 +754,7 @@ E.test_parse_cmd_single = function(s){
         parentesis++;
       if (c==')')
         parentesis--;
-      if (parentesis<0)
-        throw_invalid(s, i);
+      assert_invalid(parentesis>=0, s, i);
       if (!parentesis)
       {
         arg_e = i;
@@ -769,20 +766,17 @@ E.test_parse_cmd_single = function(s){
   }
   if (state=='pre')
     return;
-  if (parentesis)
-    throw_invalid(s, i);
+  assert_invalid(!parentesis, s, i);
   let cmd = ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
   if (arg_e>arg_s)
   {
-    if (cmd.includes(':'))
-      throw_invalid(cmd, cmd.indexOf(':'));
+    assert_invalid(!cmd.includes(':'), cmd, cmd.indexOf(':'));
     ret.arg = s.substr(arg_s, arg_e-arg_s);
   }
   else if (cmd.includes(':'))
   {
     let m = cmd.match(/(^[^:]+):([^:]+$)/);
-    if (!m)
-      throw_invalid(cmd, cmd.lastIndexOf(':'));
+    assert_invalid(m, cmd, cmd.lastIndexOf(':'));
     cmd = ret.cmd = m[1];
     ret.arg = m[2];
   }
@@ -846,7 +840,7 @@ E.parse_cmd_dir = function(s){
       assert_invalid(a||b, s, i);
       let sd = dir=='>' ? {s: a, d: b, dir} : {s: b, d: a, dir};
       loop.push({...sd});
-      assert_invalid((loop[0].d && sd.d) || (!loop[0].d && !sd.d), s, i);
+      assert_invalid(loop[0].d && sd.d || !loop[0].d && !sd.d, s, i);
       a = b = '';
     }
     else if (!a)
