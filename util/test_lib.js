@@ -877,23 +877,7 @@ E.test_parse_rm_meta_orig = function(a){
 };
 
 E.test_parse = function(s){
-  let a = E.test_run_plugin(E.test_parse_cmd_multi(s), E.plugin_cmd_dir);
-  let b = [];
-  for (let i=0; i<a.length; i++)
-  {
-    if (!a[i].loop)
-      b.push(a[i]);
-    else
-    {
-      for (let j=0; j<a[i].loop.length; j++)
-      {
-        b.push(assign(a[i].loop[j], a[i]));
-        delete b[b.length-1].loop;
-      }
-    }
-  }
-  return b;
-};
+  return E.test_run_plugin(E.test_parse_cmd_multi(s), E.plugin_cmd_dir); };
 
 E.arg_to_val = function(arg){
   if (!arg)

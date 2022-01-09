@@ -3611,10 +3611,6 @@ describe('test_lib', ()=>{
         xtest.test_parse_rm_meta(xtest.test_parse(test)), exp);
       t('ab>c',
         [{cmd: 'c', s: 'a', d: 'b', dir: '>', orig: 'ab>c', arg: undefined}]);
-      t('ab,bd>c', [
-        {cmd: 'c', s: 'a', d: 'b', dir: '>', orig: 'ab,bd>c', arg: undefined},
-        {cmd: 'c', s: 'b', d: 'd', dir: '>', orig: 'ab,bd>c', arg: undefined}
-      ]);
     });
   });
 });

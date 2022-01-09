@@ -454,7 +454,7 @@ const cmd_find_peers = (role, c)=>etask(function*(){
     }
   });
   if (r)
-    push_cmd(rev_cmd(c.orig, 'foundPeers', r));
+    push_cmd(xtest.test_parse(rev_cmd(c.orig, 'foundPeers', r)));
   let e = build_cmd(c.meta.cmd, peers);
   let fake = is_fake(role, c.s);
   // XXX: check what to assert
@@ -507,6 +507,8 @@ const cmd_send = c=>etask(function(){
 
 const cmd_handshake_offer = (role, c)=>etask(function*(){
   let r, arg = xtest.test_parse(c.arg);
+  console.log('XXX orig %s', c.orig);
+  assert(!c.loop);
   util.forEach(arg, a=>{
     if (a.cmd=='r')
     {
@@ -516,8 +518,7 @@ const cmd_handshake_offer = (role, c)=>etask(function*(){
     else
       throw new Error('unsupported yet');
   });
-  if (r)
-    push_cmd(rev_cmd(c.orig, 'handshake-answer', r));
+  assert(!r, 'handshake-offer r not implement yet');
   let e = build_cmd(c.meta.cmd);
   let fake = is_fake(role, c.s);
   // XXX: check what to assert
@@ -597,10 +598,22 @@ function test_pause_real(pause){
 
 const run_cmd = (role, c)=>etask(function*(){
     let fake = is_fake(role, c.s);
+    // XXX: remove or use zerr with levels
     console.log('cmd:%s %s', c.fwd ? 'in fwd '+c.fwd : '', c.orig,
       fake? ' fake' : '');
     console.log('t_pending %s', t_pending.join(','));
     console.log('t_events %s', t_events.join(','));
+    if (c.loop) // XXX HACK: need to think how we parse it
+    {
+      let a = [];
+      for (let i=0; i<c.loop.length; i++)
+      {
+        a.push(assign({}, c, c.loop[i]));
+        delete a[a.length-1].loop;
+      }
+      push_cmd(a);
+      return;
+    }
     // XXX: cleanup
     switch (c.cmd)
     {
@@ -643,7 +656,7 @@ const run_cmd = (role, c)=>etask(function*(){
     yield try_send_queue();
 });
 
-function push_cmd(cmd){ t_cmds.splice(t_i+1, 0, xtest.test_parse(cmd)[0]); }
+function push_cmd(cmd){ t_cmds.splice(t_i+1, 0, ...cmd); }
 
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
