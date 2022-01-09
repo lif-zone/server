@@ -11,7 +11,7 @@ import date from '../util/date.js';
 import ws_util from '../util/ws.js';
 import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
-const zetask = xtest.etask, stringify = JSON.stringify, assign = Object.assign;
+const xetask = xtest.etask, stringify = JSON.stringify, assign = Object.assign;
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
   console.log('uncaughtException %o', e);
@@ -277,7 +277,7 @@ class FakeWsConnector extends EventEmitter {
   destroy(){}
 }
 
-function is_fake(role, p){ return role!= '*' && role!=p; }
+function is_fake(role, p){ return role!= 'all' && role!=p; }
 
 // eslint-disable-next-line no-unused-vars
 function node_from_url(url){
@@ -602,7 +602,7 @@ const test_run = (role, test)=>etask(function*(){
   t_running = true;
   t_cmds = xtest.test_parse(test);
   t_nonce = {};
-  t_disable_pause = role=='*';
+  t_disable_pause = role=='all';
   for (t_i=0; t_i<t_cmds.length; t_i++)
     yield run_cmd(role, t_cmds[t_i]);
   yield test_end();
@@ -657,27 +657,20 @@ describe('peer-relay', function(){
   });
   // XXX: support as> and sa< (normalize function) for event matching
   this.timeout(2*t_timeout);
-  describe('basic', ()=>zetask(function(){
-    // XXX: organize all t/t2/t3/t4
-    // XXX: derry
-    // const _it = (name, role, test)=>
-    //  it(name, ()=>zetask(()=>test_run(role, test));
-    const t = (name, test)=>{
-      // XXX: _it(name+'_a', 'a', test);
-      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
-      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+  describe('basic', function(){
+    const xit = (name, role, test)=> it(name+'_'+role,
+      ()=>xetask(()=>test_run(role, test)));
+    let t = (name, test)=>{
+      xit(name, 'a', test);
+      xit(name, 'b', test);
+      xit(name, 'all', test);
+      xit(name, 'fake', test);
     };
-    // XXX derry: review '-'
     t('2_nodes', `
       node(name:b wss(port:4000)) node(name:a)
       ab>connect(wss) ab>connected ba>connected
       ab>findPeers(a) ba>foundPeers(a) ba>findPeers(b) ab>foundPeers(b,a) -
       send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply) -`);
-    /* XXX TODO:
-      a>connect(node(b))
-    */
 /* XXX derry: review real/fake mode
   ab>connect(wss) === ab>connect(wss |) ab<connected
   test_connected(){
@@ -699,16 +692,16 @@ describe('peer-relay', function(){
       test_foundPeers()
   }
 */
-    let t3 = (name, test)=>{
-      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      it(name+'_c', ()=>zetask(()=>test_run('c', test)));
-      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
-      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+    t = (name, test)=>{
+      xit(name, 'a', test);
+      xit(name, 'b', test);
+      xit(name, 'c', test);
+      xit(name, 'real', test);
+      xit(name, 'fake', test);
     };
     // XXX: send(ab>xxx) --> ab>send(xxx)
     // XXX BUG: why a and c don't try to connect directly once found each other
-    t3('3_nodes_linear', `
+    t('3_nodes_linear', `
       node(name:a) node(name:b wss(port:4000))
       node(name:c wss(port:4001))
       ab>connect(wss) ab>connected ab<connected
@@ -724,14 +717,14 @@ describe('peer-relay', function(){
       send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
       send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello)) -
     `);
-    t3 = (name, test)=>{
-      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
-      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
-      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+    t = (name, test)=>{
+      xit(name, 'a', test);
+      xit(name, 'b', test);
+      xit(name, 's', test);
+      xit(name, 'real', test);
+      xit(name, 'fake', test);
     };
-    t3('3_nodes_star', `
+    t('3_nodes_star', `
       node(name:s wss(port:4000)) node(name:a) node(name:b)
       as>connect(wss) as>connected as<connected
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
@@ -747,16 +740,16 @@ describe('peer-relay', function(){
       send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello))-
       send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
       `);
-    let t4 = (name, test)=>{
-      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      it(name+'_c', ()=>zetask(()=>test_run('c', test)));
-      it(name+'_d', ()=>zetask(()=>test_run('d', test)));
-      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
-      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+    t = (name, test)=>{
+      xit(name, 'a', test);
+      xit(name, 'b', test);
+      xit(name, 'c', test);
+      xit(name, 'd', test);
+      xit(name, 'real', test);
+      xit(name, 'fake', test);
     };
     // XXX: verify we don't use same port for different nodes
-    t4('4_nodes_linear', `
+    t('4_nodes_linear', `
       node(name:a) node(name:b wss(port:4000))
       node(name:c wss(port:4001))
       node(name:d wss(port:4002))
@@ -792,7 +785,7 @@ describe('peer-relay', function(){
       send(dc>hello) dc>msg(hello) -
     `);
     // XXX derry: ab>msg(hello) - ab<msg(hello-rep) -
-    t4('4_nodes_2_networks', `
+    t('4_nodes_2_networks', `
       node(name:b wss(port:4000)) node(name:a)
       ab>connect(wss) ab>connected ba>connected
       ab>findPeers(a) ba>foundPeers(a) ba>findPeers(b) ab>foundPeers(b,a) -
@@ -838,17 +831,17 @@ describe('peer-relay', function(){
       // ping(!r) pong == ping
       // handshake-offer handshake-anser == handshake |handshake
       // findPeers foundPeers === findPeers |findPeers
-    t4 = (name, test)=>{
-      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      it(name+'_c', ()=>zetask(()=>test_run('c', test)));
-      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
-      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
-      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+    t = (name, test)=>{
+      xit(name, 'a', test);
+      xit(name, 'b', test);
+      xit(name, 'c', test);
+      xit(name, 's', test);
+      xit(name, 'real', test);
+      xit(name, 'fake', test);
     };
     // XXX BUG: if we just put cs>connect(wss) with no other events,
     // test will not fail. need to fix test to fail on such case
-    t4('4_nodes_star', `
+    t('4_nodes_star', `
       node(name:s wss(port:4000)) node(name:a) node(name:b) node(name:c)
       as>connect(wss) as>connected as<connected
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
@@ -875,18 +868,18 @@ describe('peer-relay', function(){
       send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
       send(bc>hello) bs>fwd(bc>msg(hello)) sc>fwd(bc>msg(hello))-
     `);
-    let t5 = (name, test)=>{
-      it(name+'_a', ()=>zetask(()=>test_run('a', test)));
-      it(name+'_b', ()=>zetask(()=>test_run('b', test)));
-      it(name+'_c', ()=>zetask(()=>test_run('c', test)));
-      it(name+'_d', ()=>zetask(()=>test_run('d', test)));
-      it(name+'_s', ()=>zetask(()=>test_run('s', test)));
-      it(name+'_real', ()=>zetask(()=>test_run('*', test)));
-      it(name+'_fake', ()=>zetask(()=>test_run('', test)));
+    t = (name, test)=>{
+      xit(name, 'a', test);
+      xit(name, 'b', test);
+      xit(name, 'c', test);
+      xit(name, 'd', test);
+      xit(name, 's', test);
+      xit(name, 'real', test);
+      xit(name, 'fake', test);
     };
     // XXX BUG: why bs>connected bs<connected events are sent out of order
     // XXX: missing ds>connect(wss)
-    t5('5_nodes_2_networks', `
+    t('5_nodes_2_networks', `
       node(name:b wss(port:4000)) node(name:a)
       ab>connect(wss) ab>connected ba>connected
       ab>findPeers(a) ba>foundPeers(a) ba>findPeers(b) ab>foundPeers(b,a) -
@@ -935,6 +928,6 @@ describe('peer-relay', function(){
       ab>fwd(as>handshake-answer)
       bs>fwd(as>handshake-answer) -
     `);
-  }));
+  });
 });
 
