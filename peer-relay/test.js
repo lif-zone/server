@@ -66,6 +66,14 @@ function test_pending(e, c){
 }
 
 // XXX: add test
+function rev(s){
+  let i = s.search(/[<>]/);
+  assert(i>=0 && i<3, 'invalid [<>] '+s);
+  s = s.substr(0, i)+(s[i]=='<' ? '>' : '<');
+  return s;
+}
+
+// XXX: add test
 function normalize(e){
   if (!e)
     return e;
@@ -339,6 +347,12 @@ function assert_wss_url(val){
   return val;
 }
 
+function assert_peers(peers){
+  let a = peers.split(',');
+  assert(a.length>0, 'no peers specified');
+  a.forEach(name=>assert(t_nodes[name], 'node not found '+name+'/'+peers));
+}
+
 function assert_wss(val){
   let host = 'lif.zone', port, arg = xtest.test_parse(val);
   util.forEach(arg, a=>{
@@ -422,11 +436,29 @@ const cmd_connected = c=>etask(function(){
 });
 
 const cmd_find_peers = (role, c)=>etask(function*(){
+  let arg = xtest.test_parse(c.arg);
+  let r, peers;
+  util.forEach(arg, a=>{
+    if (a.cmd=='r')
+    {
+      assert(!r);
+      r = a.arg||true;
+    }
+    else
+    {
+      assert(!peers);
+      peers = a.cmd;
+      assert_peers(peers);
+    }
+  });
+  if (r)
+    push_cmd(rev(c.orig)+'foundPeers('+r+')');
+  let e = c.meta.cmd+'('+peers+')';
   let fake = is_fake(role, c.s);
   // XXX: check what to assert
   let s = t_nodes[c.s];
   fake_send_msg(c, {type: 'findPeers', data: util.buf_to_str(s.id)});
-  test_pending(c);
+  test_pending(e, c);
   test_eat_all_events();
   // XXX HACK: need to check only that last c was "eaten"
   if (t_pending.length)
@@ -596,6 +628,8 @@ const run_cmd = (role, c)=>etask(function*(){
     yield try_send_queue();
 });
 
+function push_cmd(cmd){ t_cmds.splice(t_i+1, 0, xtest.test_parse(cmd)[0]); }
+
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
   assert(!t_cmds && !t_i);
@@ -671,7 +705,7 @@ describe('peer-relay', function(){
     t('2_nodes', `
       node(name:b wss(port:4000)) node(name:a)
       ab>connect(wss) ab>connected ba>connected
-      ab>findPeers(a) ba>foundPeers(a) ba>findPeers(b) ab>foundPeers(b,a) -
+      ab>findPeers(a r(a)) ba>findPeers(b r(b,a))
       send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply)`);
 /* XXX derry: review real/fake mode
   ab>connect(wss) === ab>connect(wss |) ab<connected
