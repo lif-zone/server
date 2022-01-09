@@ -60,7 +60,7 @@ function test_pending(e, c){
   assert.ok(t_running, 'test not running');
   assert.ok(e, 'invalid event');
   if (c && c.fwd)
-    e = c.fwd+'fwd('+e+')';
+    e = c.fwd+'fwd('+normalize(e)+')';
   t_pending.push(e);
   test_eat_all_events();
 }
@@ -771,7 +771,7 @@ describe('peer-relay', function(){
       ab>findPeers(a r(a)) ba>findPeers(b r(b,a)) -
       bc>connect(wss) bc>connected bc<connected
       bc>findPeers(b r(b)) cb>findPeers(c r(c,a,b))
-      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ac>handshake-answer) -
+      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer) -
       send(ab>hello) ab>msg(hello) - send(ba>hello) ba>msg(hello) -
       send(bc>hello) bc>msg(hello) - send(cb>hello) cb>msg(hello) -
       send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
@@ -788,7 +788,7 @@ describe('peer-relay', function(){
       as>connect(wss) as>connected as<connected
       as>findPeers(a r(a)) sa>findPeers(s r(s,a)) -
      bs>connect(wss) bs>connected bs<connected bs>findPeers(b r(b,a,s))
-      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ab>handshake-answer)
+      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer)
       sb>findPeers(s r(s,b,a)) -
       send(as>hello) as>msg(hello) - send(sa>hello) sa>msg(hello) -
       send(sb>hello) sb>msg(hello) - send(bs>hello) bs>msg(hello) -
@@ -811,11 +811,11 @@ describe('peer-relay', function(){
       ab>findPeers(a r(a)) ba>findPeers(b r(b,a)) -
       bc>connect(wss) bc>connected bc<connected
       bc>findPeers(b r(b)) cb>findPeers(c r(c,a,b))
-      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ac>handshake-answer)
+      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer)
       cd>connect(wss) cd>connected cd<connected
       cd>findPeers(c r(c)) dc>findPeers(d r(d,c,b,a))
-      dc,cb>fwd(db>handshake-offer) bc,cd,ba>fwd(bd>handshake-answer)
-	    dc,cb,ba>fwd(da>handshake-offer) ab,bc,cd>fwd(ad>handshake-answer)
+      dc,cb>fwd(db>handshake-offer) bc,cd,ba>fwd(db<handshake-answer)
+	    dc,cb,ba>fwd(da>handshake-offer) ab,bc,cd>fwd(da<handshake-answer)
       send(ab>hello) ab>msg(hello) - send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
       send(ad>hello) ab,bc,cd>fwd(ad>msg(hello)) -
       send(ba>hello) ba>msg(hello) - send(bc>hello) bc>msg(hello) -
@@ -839,9 +839,9 @@ describe('peer-relay', function(){
       send(cd>hello) cd>msg(hello) - send(cd<reply) cd<msg(reply) -
       bd>connect(wss) bd>connected bd<connected
       bd>findPeers(b r(b,d,c))
-      bd,dc>fwd(bc>handshake-offer) cd,db>fwd(cb>handshake-answer)
+      bd,dc>fwd(bc>handshake-offer) cd,db>fwd(bc<handshake-answer)
       ba>fwd(bc>handshake-offer) db>findPeers(d r(d,c,b,a))
-      db,ba>fwd(da>handshake-offer) ab,bd>fwd(ad>handshake-answer)
+      db,ba>fwd(da>handshake-offer) ab,bd>fwd(da<handshake-answer)
       dc>fwd(da>handshake-offer) - send(ab>hello) ab>msg(hello) -
       send(ac>hello) ab>fwd(ac>msg(hello)) bd,dc>fwd(ac>msg(hello)) -
       send(ad>hello) ab,bd>fwd(ad>msg(hello))`);
@@ -885,15 +885,13 @@ describe('peer-relay', function(){
       node(name:s wss(port:4000)) node(name:a) node(name:b) node(name:c)
       as>connect(wss) as>connected as<connected
       as>findPeers(a r(a)) sa>findPeers(s r(s,a)) -
-      bs>connect(wss) bs>connected bs<connected
-      bs>findPeers(b r(b,a,s))
-      bs,sa>fwd(ba>handshake-offer)
-      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
+      bs>connect(wss) bs>connected bs<connected bs>findPeers(b r(b,a,s))
+      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer)
       sb>findPeers(s r(s,b,a)) -
       cs>connect(wss) cs>connected cs<connected
       cs>findPeers(c r(c,s,a,b))
-      cs,sa>fwd(ca>handshake-offer) as,sc>fwd(ac>handshake-answer)
-      cs,sb>fwd(cb>handshake-offer) bs,sc>fwd(bc>handshake-answer)
+      cs,sa>fwd(ca>handshake-offer) as,sc>fwd(ca<handshake-answer)
+      cs,sb>fwd(cb>handshake-offer) bs,sc>fwd(cb<handshake-answer)
       sc>findPeers(s r(s,c,b,a)) -
       send(as>hello) as>msg(hello) -
       send(sa>hello) sa>msg(hello) -
@@ -929,15 +927,15 @@ describe('peer-relay', function(){
       bd>connect(wss) bd>connected bd<connected
       node(name:s wss(port(4002))) bs>connect(wss)
       bd>findPeers(b r(b,d,c))
-      bd,dc>fwd(bc>handshake-offer) cd,db>fwd(cb>handshake-answer)
+      bd,dc>fwd(bc>handshake-offer) cd,db>fwd(bc<handshake-answer)
       ba>fwd(bc>handshake-offer) db>findPeers(d r(d,c,b,a))
-      db,ba>fwd(da>handshake-offer) ab,bd>fwd(ad>handshake-answer)
+      db,ba>fwd(da>handshake-offer) ab,bd>fwd(da<handshake-answer)
       dc>fwd(da>handshake-offer) bs>connected bs<connected
       bs>findPeers(b r(b)) sb>findPeers(s r(s,d,c,b,a))
-      sb,bd>fwd(sd>handshake-offer) dc,db>fwd(ds>handshake-answer)
-      bs>fwd(ds>handshake-answer) sb,bd,dc>fwd(sc>handshake-offer)
-      cd,db,bs>fwd(cs>handshake-answer) ba>fwd(sc>handshake-offer)
-      sb,ba>fwd(sa>handshake-offer) ab,bs>fwd(as>handshake-answer)`);
+      sb,bd>fwd(sd>handshake-offer) dc,db,bs>fwd(sd<handshake-answer)
+      sb,bd,dc>fwd(sc>handshake-offer) cd,db,bs>fwd(sc<handshake-answer)
+      ba>fwd(sc>handshake-offer) sb,ba>fwd(sa>handshake-offer)
+      ab,bs>fwd(sa<handshake-answer)`);
   });
 });
 
