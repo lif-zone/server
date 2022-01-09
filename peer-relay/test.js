@@ -666,6 +666,7 @@ describe('peer-relay', function(){
       xit(name, 'all', test);
       xit(name, 'fake', test);
     };
+    // XXX: fix all roles ab> ab<
     t('2_nodes', `
       node(name:b wss(port:4000)) node(name:a)
       ab>connect(wss) ab>connected ba>connected
@@ -708,6 +709,7 @@ describe('peer-relay', function(){
       ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
       bc>connect(wss) bc>connected bc<connected
       bc>findPeers(b) cb>foundPeers(b) cb>findPeers(c) bc>foundPeers(c,a,b)
+      cb,ba>ca>handshake-offer
       cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
       ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer) -
       send(ab>hello) ab>msg(hello) -

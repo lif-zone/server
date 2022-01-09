@@ -3457,6 +3457,7 @@ describe('test_lib', ()=>{
       t('open(a) (', {cmd: 'open', arg: 'a'}, 7);
       t('open(a) )', {cmd: 'open', arg: 'a'}, 7);
       t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'}, 12);
+      t('bc>d(hc hget)', {cmd: 'bc>d', arg: 'hc hget'}, 13);
     });
     it('test_parse_cmd_single_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
