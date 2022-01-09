@@ -3593,6 +3593,7 @@ describe('test_lib', ()=>{
       t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
       t('a=b', {s: 'a', d: '', dir: '=', cmd: 'b'});
+      t('a>b(c)', {s: 'a', d: '', dir: '>', cmd: 'b(c)'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },
