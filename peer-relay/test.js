@@ -564,7 +564,7 @@ const run_cmd = (role, c)=>etask(function*(){
     case 'setup': yield cmd_setup(c.arg); break;
     case 'node': yield cmd_node(role, c); break;
     case 'connect':
-      yield util.sleep(0);
+      yield util.sleep(0); // XXX: change to tick
       test_pause_real(fake);
       yield util.sleep(0);
       yield cmd_connect(c); break;
@@ -709,15 +709,13 @@ describe('peer-relay', function(){
       ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
       bc>connect(wss) bc>connected bc<connected
       bc>findPeers(b) cb>foundPeers(b) cb>findPeers(c) bc>foundPeers(c,a,b)
-      cb,ba>ca>handshake-offer
-      cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
-      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer) -
+      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ac>handshake-answer) -
       send(ab>hello) ab>msg(hello) -
       send(ba>hello) ba>msg(hello) -
       send(bc>hello) bc>msg(hello) -
       send(cb>hello) cb>msg(hello) -
-      send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
-      send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello)) -
+      send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
+      send(ca>hello) cb,ba>fwd(ca>msg(hello)) -
     `);
     t = (name, test)=>{
       xit(name, 'a', test);
