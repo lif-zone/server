@@ -84,6 +84,10 @@ function test_eat_all_events(){
     t_events.shift();
     t_pending.shift();
   }
+  // XXX: TODO (verify all events were eaten) - fix that we always
+  // have one pending event
+  if (0)
+  assert(!t_events.length && !t_pending.length);
 }
 
 // XXX: review and rewrite
@@ -655,7 +659,11 @@ describe('peer-relay', function(){
   this.timeout(2*t_timeout);
   describe('basic', ()=>zetask(function(){
     // XXX: organize all t/t2/t3/t4
+    // XXX: derry
+    // const _it = (name, role, test)=>
+    //  it(name, ()=>zetask(()=>test_run(role, test));
     const t = (name, test)=>{
+      // XXX: _it(name+'_a', 'a', test);
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
       it(name+'_real', ()=>zetask(()=>test_run('*', test)));
@@ -670,7 +678,27 @@ describe('peer-relay', function(){
     /* XXX TODO:
       a>connect(node(b))
     */
-    // XXX derry: review real/fake mode
+/* XXX derry: review real/fake mode
+  ab>connect(wss) === ab>connect(wss |) ab<connected
+  test_connected(){
+    conntedted...
+  }
+  test_connect(){
+    connect....
+    if ('|') noack = 1;
+    if (!noack)
+      test_connected(rev_roles)
+  }
+  test_foundPeers(){
+     foundPeers...
+  }
+  test_findPeers(){
+    findPeers....
+    if ('|') noack = 1;
+    if (!noack)
+      test_foundPeers()
+  }
+*/
     let t3 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
@@ -763,6 +791,7 @@ describe('peer-relay', function(){
       send(db>hello) dc>fwd(db>msg(hello)) cb>fwd(db>msg(hello)) -
       send(dc>hello) dc>msg(hello) -
     `);
+    // XXX derry: ab>msg(hello) - ab<msg(hello-rep) -
     t4('4_nodes_2_networks', `
       node(name:b wss(port:4000)) node(name:a)
       ab>connect(wss) ab>connected ba>connected
@@ -785,6 +814,30 @@ describe('peer-relay', function(){
       dc>fwd(ac>msg(hello)) -
       send(ad>hello) ab>fwd(ad>msg(hello)) bd>fwd(ad>msg(hello)) -
       `);
+      // XXX: derry
+      // XXX ab,bd>fwd(ad>msg(hello)) ===
+      // ab>fwd(ad>msg(hello) bd>fwd(ad>msg(hello))
+      // bd>findPeers(b) db>foundPeers(b,d,c) ===
+      // bd>findPeers(b r(b,d,c)) == findPeers(b !r) foundPeers(b,d,c)
+      // bd>findPeers(b r()) == findPeers(b !r) foundPeers()
+      // bd>findPeers(b r) == findPeers(b !r) foundPeers()
+      // bd>findPeers(b) == findPeers(b !r) foundPeers()
+      // bd>findPeers(b !r) - no reply
+      // bd>findPeers(b) - no reply
+      /*
+      test_findPeers(){
+        let r = '';
+        case '!r': r = null; break;
+        ...
+        if (r==null)
+          return;
+        test_foundPeers(r);
+      }
+      */
+      // ab>msg(hello) === ab>:hello
+      // ping(!r) pong == ping
+      // handshake-offer handshake-anser == handshake |handshake
+      // findPeers foundPeers === findPeers |findPeers
     t4 = (name, test)=>{
       it(name+'_a', ()=>zetask(()=>test_run('a', test)));
       it(name+'_b', ()=>zetask(()=>test_run('b', test)));
