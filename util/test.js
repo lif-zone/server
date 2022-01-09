@@ -3592,19 +3592,19 @@ describe('test_lib', ()=>{
       t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
       t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
-      t('a=b', {s: 'a', d: '', dir: '=', cmd: 'b'});
       t('a>b(c)', {s: 'a', d: '', dir: '>', cmd: 'b(c)'});
+      if (0) t('ab,cd>e', {loop: [{s: 'a', d: 'b'}, {s: 'c', d: 'd'}],
+        dir: '>', cmd: 'e'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },
         {message: exp}); };
-      t('a>>', 'invalid a^^^>>');
-      t('abc>', 'invalid abc^^^>');
+      t('abc>', 'invalid ab^^^c>');
       t('>', 'invalid ^^^>');
-      t('a=', 'invalid a=^^^');
-      t('=a', 'invalid ^^^=a');
-      t('=', 'invalid ^^^=');
-      t('ab=c', 'invalid ab^^^=c');
+      t(',a>e', 'invalid ^^^,a>e');
+      t('ab,c>e', 'invalid ab,c^^^>e');
+      t('a,cd>e', 'invalid a,cd^^^>e');
+      t('ab,cd,e>f', 'invalid ab,cd,e^^^>f');
     });
   });
 });

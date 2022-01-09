@@ -714,8 +714,13 @@ E.stub_res = sb=>{
 function throw_invalid(s, i){
   throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
 
+function assert_invalid(exp, s, i){
+  if (!exp)
+    throw_invalid(s, i);
+}
+
 E.test_parse_cmd_single = function(s){
-  let state = 'pre', i=0, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
+  let state = 'pre', i, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
   let parentesis = 0, done = false;
   for (i=0; i<s.length && !done; i++)
   {
@@ -789,7 +794,7 @@ E.test_parse_cmd_single = function(s){
 E.test_parse_cmd_multi = function(s){
   if (!s)
     return [];
-  let ret = [], arg, t = E.test_parse_cmd_single(s);
+  let ret = [], t = E.test_parse_cmd_single(s);
   if (!t)
     return;
   ret.push(t);
@@ -828,23 +833,33 @@ E.test_run_plugin = function(a, cb){
 };
 
 E.parse_cmd_dir = function(s){
-  if (!/[><=]/.test(s))
+  let _d = s.search(/[<>]/);
+  if (_d==-1)
     return {cmd: s};
-  let m = s.match(/^([a-zA-Z])([a-zA-Z]?)([<>=])([^<^>]*$)/);
-  if (!m)
+  let loop = [], dir = s[_d], a='', b='';
+  for (let i=0; i<_d+1; i++)
   {
-    throw_invalid(s, (s.indexOf('<')+1 ||
-      s.indexOf('>')+1 || s.indexOf('=')+1)-1);
+    let ch = s[i];
+    assert_invalid(/[a-z,<>]/i.test(ch), s, i);
+    if (/[<>,]/.test(ch))
+    {
+      assert_invalid(a||b, s, i);
+      let sd = dir=='>' ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      loop.push({...sd});
+      assert_invalid((loop[0].d && sd.d) || (!loop[0].d && !sd.d), s, i);
+      a = b = '';
+    }
+    else if (!a)
+      a = ch;
+    else
+    {
+      assert_invalid(!b, s, i);
+      b = ch;
+    }
   }
-  if (m[3]=='=')
-  {
-    if (m[2])
-      throw_invalid(s, 2);
-    if (!m[4])
-      throw_invalid(s, 2);
-  }
-  let sd = m[3]=='>' || m[3]=='=' ? {s: m[1], d: m[2]} : {s: m[2], d: m[1]};
-  return {...sd, dir: m[3], cmd: m[4], meta: {cmd: s}};
+  assert_invalid(loop.length, _d);
+  return assign(loop.length>1 ? {loop} : loop[0], {cmd: s.substr(_d+1),
+    meta: {cmd: s}});
 };
 
 E.plugin_cmd_dir = function(o){
