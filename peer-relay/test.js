@@ -611,6 +611,7 @@ const test_run = (role, test)=>etask(function*(){
 });
 
 const test_end = ()=>etask(function*(){
+  test_pause_real(false);
   yield test_ensure_no_events();
   assert.ok(t_running, 'test not running');
   try_send_queue();
@@ -671,7 +672,7 @@ describe('peer-relay', function(){
       node(name:b wss(port:4000)) node(name:a)
       ab>connect(wss) ab>connected ba>connected
       ab>findPeers(a) ba>foundPeers(a) ba>findPeers(b) ab>foundPeers(b,a) -
-      send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply) -`);
+      send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply)`);
 /* XXX derry: review real/fake mode
   ab>connect(wss) === ab>connect(wss |) ab<connected
   test_connected(){
@@ -710,13 +711,10 @@ describe('peer-relay', function(){
       bc>connect(wss) bc>connected bc<connected
       bc>findPeers(b) cb>foundPeers(b) cb>findPeers(c) bc>foundPeers(c,a,b)
       cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ac>handshake-answer) -
-      send(ab>hello) ab>msg(hello) -
-      send(ba>hello) ba>msg(hello) -
-      send(bc>hello) bc>msg(hello) -
-      send(cb>hello) cb>msg(hello) -
+      send(ab>hello) ab>msg(hello) - send(ba>hello) ba>msg(hello) -
+      send(bc>hello) bc>msg(hello) - send(cb>hello) cb>msg(hello) -
       send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
-      send(ca>hello) cb,ba>fwd(ca>msg(hello)) -
-    `);
+      send(ca>hello) cb,ba>fwd(ca>msg(hello))`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
@@ -730,16 +728,12 @@ describe('peer-relay', function(){
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
      bs>connect(wss) bs>connected bs<connected
       bs>findPeers(b) sb>foundPeers(b,a,s)
-      bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
-      sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
+      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ab>handshake-answer)
       sb>findPeers(s) bs>foundPeers(s,b,a) -
-      send(as>hello) as>msg(hello) -
-      send(sa>hello) sa>msg(hello) -
-      send(sb>hello) sb>msg(hello) -
-      send(bs>hello) bs>msg(hello) -
-      send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello))-
-      send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
-      `);
+      send(as>hello) as>msg(hello) - send(sa>hello) sa>msg(hello) -
+      send(sb>hello) sb>msg(hello) - send(bs>hello) bs>msg(hello) -
+      send(ab>hello) as,sb>fwd(ab>msg(hello)) -
+      send(ba>hello) bs,sa>fwd(ba>msg(hello))`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
