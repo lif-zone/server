@@ -823,15 +823,13 @@ describe('peer-relay', function(){
       as>findPeers(a) as<foundPeers(a) sa>findPeers(s) sa<foundPeers(s,a) -
       bs>connect(wss) bs>connected bs<connected
       bs>findPeers(b) sb>foundPeers(b,a,s)
-      bs>fwd(ba>handshake-offer) sa>fwd(ba>handshake-offer)
+      bs,sa>fwd(ba>handshake-offer)
       sa<fwd(ab>handshake-answer) bs<fwd(ab>handshake-answer)
       sb>findPeers(s) bs>foundPeers(s,b,a) -
       cs>connect(wss) cs>connected cs<connected
       cs>findPeers(c) sc>foundPeers(c,s,a,b)
-      cs>fwd(ca>handshake-offer) sa>fwd(ca>handshake-offer)
-      as>fwd(ac>handshake-answer) sc>fwd(ac>handshake-answer)
-      cs>fwd(cb>handshake-offer) sb>fwd(cb>handshake-offer)
-      bs>fwd(bc>handshake-answer) sc>fwd(bc>handshake-answer)
+      cs,sa>fwd(ca>handshake-offer) as,sc>fwd(ac>handshake-answer)
+      cs,sb>fwd(cb>handshake-offer) bs,sc>fwd(bc>handshake-answer)
       sc>findPeers(s) cs>foundPeers(s,c,b,a) -
       send(as>hello) as>msg(hello) -
       send(sa>hello) sa>msg(hello) -
@@ -839,10 +837,10 @@ describe('peer-relay', function(){
       send(sb>hello) sb>msg(hello) -
       send(cs>hello) cs>msg(hello) -
       send(sc>hello) sc>msg(hello) -
-      send(ab>hello) as>fwd(ab>msg(hello)) sb>fwd(ab>msg(hello))-
-      send(ac>hello) as>fwd(ac>msg(hello)) sc>fwd(ac>msg(hello))-
-      send(ba>hello) bs>fwd(ba>msg(hello)) sa>fwd(ba>msg(hello))-
-      send(bc>hello) bs>fwd(bc>msg(hello)) sc>fwd(bc>msg(hello))-
+      send(ab>hello) as,sb>fwd(ab>msg(hello)) -
+      send(ac>hello) as,sc>fwd(ac>msg(hello)) -
+      send(ba>hello) bs,sa>fwd(ba>msg(hello)) -
+      send(bc>hello) bs,sc>fwd(bc>msg(hello))
     `);
     t = (name, test)=>{
       xit(name, 'a', test);
