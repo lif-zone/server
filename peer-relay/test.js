@@ -120,6 +120,9 @@ const test_ensure_no_events = ()=>etask(function*(){
   assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+str_status());
 });
 
+function build_cmd(cmd, arg){ return cmd+(arg ? '('+arg+')' : ''); }
+function rev_cmd(sd, cmd, arg){ return build_cmd(rev(sd)+cmd, arg); }
+
 function str_status(){
   return 'real: '+stringify(t_events, null, '\t')+'\n'+
   'expected: '+stringify(t_pending, null, '\t')+'\n'+
@@ -436,8 +439,7 @@ const cmd_connected = c=>etask(function(){
 });
 
 const cmd_find_peers = (role, c)=>etask(function*(){
-  let arg = xtest.test_parse(c.arg);
-  let r, peers;
+  let r, peers, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     if (a.cmd=='r')
     {
@@ -452,8 +454,8 @@ const cmd_find_peers = (role, c)=>etask(function*(){
     }
   });
   if (r)
-    push_cmd(rev(c.orig)+'foundPeers('+r+')');
-  let e = c.meta.cmd+'('+peers+')';
+    push_cmd(rev_cmd(c.orig, 'foundPeers', r));
+  let e = build_cmd(c.meta.cmd, peers);
   let fake = is_fake(role, c.s);
   // XXX: check what to assert
   let s = t_nodes[c.s];
@@ -504,10 +506,23 @@ const cmd_send = c=>etask(function(){
 });
 
 const cmd_handshake_offer = (role, c)=>etask(function*(){
+  let r, arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
+    if (a.cmd=='r')
+    {
+      assert(!r);
+      r = a.arg||true;
+    }
+    else
+      throw new Error('unsupported yet');
+  });
+  if (r)
+    push_cmd(rev_cmd(c.orig, 'handshake-answer', r));
+  let e = build_cmd(c.meta.cmd);
   let fake = is_fake(role, c.s);
   // XXX: check what to assert
   fake_send_msg(c, {type: 'handshake-offer', data: null});
-  test_pending(c);
+  test_pending(e, c);
   test_eat_all_events();
   // XXX HACK: need to check only that last c was "eaten"
   if (t_pending.length)
@@ -738,8 +753,7 @@ describe('peer-relay', function(){
     // XXX: send(ab>xxx) --> ab>send(xxx)
     // XXX BUG: why a and c don't try to connect directly once found each other
     t('3_nodes_linear', `
-      node(name:a) node(name:b wss(port:4000))
-      node(name:c wss(port:4001))
+      node(name:a) node(name:b wss(port:4000)) node(name:c wss(port:4001))
       ab>connect(wss) ab>connected ab<connected
       ab>findPeers(a r(a)) ba>findPeers(b r(b,a)) -
       bc>connect(wss) bc>connected bc<connected
