@@ -779,20 +779,13 @@ describe('peer-relay', function(){
       send(cd>hello) cd>msg(hello) - send(cd<reply) cd<msg(reply) -
       bd>connect(wss) bd>connected bd<connected
       bd>findPeers(b) db>foundPeers(b,d,c)
-      bd>fwd(bc>handshake-offer) dc>fwd(bc>handshake-offer)
-      cd>fwd(cb>handshake-answer) db>fwd(cb>handshake-answer)
+      bd,dc>fwd(bc>handshake-offer) cd,db>fwd(cb>handshake-answer)
       ba>fwd(bc>handshake-offer) db>findPeers(d) bd>foundPeers(d,c,b,a)
-      db>fwd(da>handshake-offer) ba>fwd(da>handshake-offer)
-      ab>fwd(ad>handshake-answer) bd>fwd(ad>handshake-answer)
-      dc>fwd(da>handshake-offer) -
-      send(ab>hello) ab>msg(hello) -
-      send(ac>hello) ab>fwd(ac>msg(hello)) bd>fwd(ac>msg(hello))
-      dc>fwd(ac>msg(hello)) -
-      send(ad>hello) ab>fwd(ad>msg(hello)) bd>fwd(ad>msg(hello)) -
-      `);
+      db,ba>fwd(da>handshake-offer) ab,bd>fwd(ad>handshake-answer)
+      dc>fwd(da>handshake-offer) - send(ab>hello) ab>msg(hello) -
+      send(ac>hello) ab>fwd(ac>msg(hello)) bd,dc>fwd(ac>msg(hello)) -
+      send(ad>hello) ab,bd>fwd(ad>msg(hello))`);
       // XXX: derry
-      // XXX ab,bd>fwd(ad>msg(hello)) ===
-      // ab>fwd(ad>msg(hello) bd>fwd(ad>msg(hello))
       // bd>findPeers(b) db>foundPeers(b,d,c) ===
       // bd>findPeers(b r(b,d,c)) == findPeers(b !r) foundPeers(b,d,c)
       // bd>findPeers(b r()) == findPeers(b !r) foundPeers()
