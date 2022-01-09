@@ -288,7 +288,7 @@ class FakeWsConnector extends EventEmitter {
   destroy(){}
 }
 
-function is_fake(role, p){ return role!= 'all' && role!=p; }
+function is_fake(role, p){ return role!= 'real' && role!=p; }
 
 // eslint-disable-next-line no-unused-vars
 function node_from_url(url){
@@ -651,7 +651,7 @@ const test_run = (role, test)=>etask(function*(){
   t_running = true;
   t_cmds = xtest.test_parse(test);
   t_nonce = {};
-  t_disable_pause = role=='all';
+  t_disable_pause = role=='real';
   for (t_i=0; t_i<t_cmds.length; t_i++)
     yield run_cmd(role, t_cmds[t_i]);
   yield test_end();
@@ -713,7 +713,7 @@ describe('peer-relay', function(){
     let t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
-      xit(name, 'all', test);
+      xit(name, 'real', test);
       xit(name, 'fake', test);
     };
     // XXX: fix all roles ab> ab<
