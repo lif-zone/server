@@ -847,6 +847,9 @@ describe('peer-relay', function(){
       send(ad>hello) ab,bd>fwd(ad>msg(hello))`);
       // XXX: derry
       // and all other commands with reply
+      // XXX derry: it's difficult to implement reply with fwd...
+      // XXX derry: we cannot implement !r for findPeers. the reply is critical
+      // for the test
       // bd>findPeers(b) db>foundPeers(b,d,c) ===
       // bd>findPeers(b r(b,d,c)) == findPeers(b !r) foundPeers(b,d,c)
       // bd>findPeers(b r()) == findPeers(b !r) foundPeers()
