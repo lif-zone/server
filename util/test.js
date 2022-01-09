@@ -3460,6 +3460,8 @@ describe('test_lib', ()=>{
       t('bc>()', {cmd: 'bc>'}, 5);
       t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'}, 12);
       t('bc>d(hc hget)', {cmd: 'bc>d', arg: 'hc hget'}, 13);
+      t('ab,cd>e', {cmd: 'ab,cd>e'}, 7);
+      t('ab,cd>e(f)', {cmd: 'ab,cd>e', arg: 'f'}, 10);
     });
     it('test_parse_cmd_single_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
