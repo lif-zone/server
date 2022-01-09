@@ -751,31 +751,20 @@ describe('peer-relay', function(){
       ab>findPeers(a) ab<foundPeers(a) ba>findPeers(b) ba<foundPeers(b,a) -
       bc>connect(wss) bc>connected bc<connected
       bc>findPeers(b) cb>foundPeers(b) cb>findPeers(c) bc>foundPeers(c,a,b)
-      cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
-      ab>fwd(ac>handshake-answer) bc>fwd(ac>handshake-answer) -
+      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ac>handshake-answer)
       cd>connect(wss) cd>connected cd<connected
       cd>findPeers(c) dc>foundPeers(c) dc>findPeers(d) cd>foundPeers(d,c,b,a)
-      dc>fwd(db>handshake-offer) cb>fwd(db>handshake-offer)
-      bc>fwd(bd>handshake-answer) cd>fwd(bd>handshake-answer)
-	    ba>fwd(bd>handshake-answer) dc>fwd(da>handshake-offer)
-	    cb>fwd(da>handshake-offer) ba>fwd(da>handshake-offer)
-	    ab>fwd(ad>handshake-answer) bc>fwd(ad>handshake-answer)
-	    cd>fwd(ad>handshake-answer) -
-      send(ab>hello) ab>msg(hello) -
-      send(ac>hello) ab>fwd(ac>msg(hello)) bc>fwd(ac>msg(hello)) -
-      send(ad>hello) ab>fwd(ad>msg(hello)) bc>fwd(ad>msg(hello))
-      cd>fwd(ad>msg(hello)) -
-      send(ba>hello) ba>msg(hello) -
-      send(bc>hello) bc>msg(hello) -
-      send(bd>hello) bc>fwd(bd>msg(hello))
-      cd>fwd(bd>msg(hello)) ba>fwd(bd>msg(hello)) ab>fwd(bd>msg(hello)) -
+      dc,cb>fwd(db>handshake-offer) bc,cd,ba>fwd(bd>handshake-answer)
+	    dc,cb,ba>fwd(da>handshake-offer) ab,bc,cd>fwd(ad>handshake-answer)
+      send(ab>hello) ab>msg(hello) - send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
+      send(ad>hello) ab,bc,cd>fwd(ad>msg(hello)) -
+      send(ba>hello) ba>msg(hello) - send(bc>hello) bc>msg(hello) -
+      send(bd>hello) bc,cd,ba,ab>fwd(bd>msg(hello)) -
       send(ca>hello) cb>fwd(ca>msg(hello)) ba>fwd(ca>msg(hello))
-      cd>fwd(ca>msg(hello)) dc>fwd(ca>msg(hello)) -
-      send(cb>hello) cb>msg(hello) -
+      cd,dc>fwd(ca>msg(hello)) - send(cb>hello) cb>msg(hello) -
       send(cd>hello) cd>msg(hello) -
-      send(da>hello) dc>fwd(da>msg(hello)) cb>fwd(da>msg(hello))
-      ba>fwd(da>msg(hello)) -
-      send(db>hello) dc>fwd(db>msg(hello)) cb>fwd(db>msg(hello)) -
+      send(da>hello) dc,cb,ba>fwd(da>msg(hello)) -
+      send(db>hello) dc,cb>fwd(db>msg(hello)) -
       send(dc>hello) dc>msg(hello) -
     `);
     // XXX derry: ab>msg(hello) - ab<msg(hello-rep) -
