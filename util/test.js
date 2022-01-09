@@ -3423,7 +3423,7 @@ describe('test_lib', ()=>{
     });
   });
   describe('test_parse', function(){
-     it('test_parse_cmd_single_valid', ()=>{
+     it('cmd_single_valid', ()=>{
       const t = (s, exp, exp_last)=>{
         let ret = xtest.test_parse_cmd_single(s);
         if (ret)
@@ -3463,7 +3463,7 @@ describe('test_lib', ()=>{
       t('ab,cd>e', {cmd: 'ab,cd>e'}, 7);
       t('ab,cd>e(f)', {cmd: 'ab,cd>e', arg: 'f'}, 10);
     });
-    it('test_parse_cmd_single_invalid', ()=>{
+    it('cmd_single_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
         ()=>xtest.test_parse_cmd_single(s), {message: exp});
       t('abcdefg)12345678', 'invalid abcdefg^^^)12345678');
@@ -3488,7 +3488,7 @@ describe('test_lib', ()=>{
       t([{cmd: 'a', arg: [{cmd: 'c'}]}, {cmd: 'b', arg: [{cmd: 'd'}]}],
         [{cmd: 'aa', arg: [{cmd: 'cc'}]}, {cmd: 'bb', arg: [{cmd: 'dd'}]}]);
     });
-    it('test_parse_cmd_multi_valid', ()=>{
+    it('cmd_multi_valid', ()=>{
       const t = (s, exp)=>{
         let ret = xtest.test_parse_cmd_multi(s);
         ret = xtest.test_parse_rm_meta_orig(ret);
@@ -3507,7 +3507,7 @@ describe('test_lib', ()=>{
       t('ab>(test go(now 3 send:4))', [{cmd: 'ab>',
         arg: 'test go(now 3 send:4)'}]);
     });
-    it('test_parse_cmd_multi_level_valid', ()=>{
+    it('cmd_multi_level_valid', ()=>{
       const t = (s, exp)=>{
         let ret = xtest.test_parse_cmd_multi_level(s);
         ret = xtest.test_parse_rm_meta_orig(ret);
@@ -3531,7 +3531,7 @@ describe('test_lib', ()=>{
         {cmd: 'go', arg: [{cmd: 'now'}, {cmd: '3'}, {cmd: 'send',
           arg: [{cmd: '4'}]}]}]}]);
     });
-    it('test_parse_cmd_multi_level_valid_orig', ()=>{
+    it('cmd_multi_level_valid_orig', ()=>{
       const t = (s, exp)=>{
         let ret = xtest.test_parse_cmd_multi_level(s);
         ret = xtest.test_parse_rm_meta(ret);
@@ -3543,7 +3543,7 @@ describe('test_lib', ()=>{
       t('ab>connect(a)', [{cmd: 'ab>connect', orig: 'ab>connect(a)',
         arg: [{cmd: 'a', orig: 'a'}]}]);
     });
-    it('test_parse_cmd_multi_level_invalid', ()=>{
+    it('cmd_multi_level_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
         ()=>xtest.test_parse_cmd_multi_level(s), {message: exp});
       t('a(', 'invalid a(^^^');
@@ -3605,6 +3605,16 @@ describe('test_lib', ()=>{
       t('ab,c>e', 'invalid ab,c^^^>e');
       t('a,cd>e', 'invalid a,cd^^^>e');
       t('ab,cd,e>f', 'invalid ab,cd,e^^^>f');
+    });
+    it('parse', ()=>{
+      const t = (test, exp)=>assert.deepEqual(
+        xtest.test_parse_rm_meta(xtest.test_parse(test)), exp);
+      t('ab>c',
+        [{cmd: 'c', s: 'a', d: 'b', dir: '>', orig: 'ab>c', arg: undefined}]);
+      t('ab,bd>c', [
+        {cmd: 'c', s: 'a', d: 'b', dir: '>', orig: 'ab,bd>c', arg: undefined},
+        {cmd: 'c', s: 'b', d: 'd', dir: '>', orig: 'ab,bd>c', arg: undefined}
+      ]);
     });
   });
 });
