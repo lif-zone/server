@@ -507,7 +507,6 @@ const cmd_send = c=>etask(function(){
 
 const cmd_handshake_offer = (role, c)=>etask(function*(){
   let r, arg = xtest.test_parse(c.arg);
-  console.log('XXX orig %s', c.orig);
   assert(!c.loop);
   util.forEach(arg, a=>{
     if (a.cmd=='r')
@@ -609,8 +608,9 @@ const run_cmd = (role, c)=>etask(function*(){
       for (let i=0; i<c.loop.length; i++)
       {
         a.push(assign({}, c, c.loop[i]));
-        delete a[a.length-1].loop;
+        delete a[i].loop;
       }
+      a[a.length-1].orig_loop = c.loop;
       push_cmd(a);
       return;
     }
