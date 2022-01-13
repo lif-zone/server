@@ -49,7 +49,7 @@ function test_emit(o){
     debugger;
   assert.ok(t_running, 'test not running');
   assert.ok(event, 'invalid event');
-  assert.ok(!t_events.length, 'got '+event+' but still pending '+
+  assert.ok(!t_events.length, 'got '+event+' but still didn\'t get '+
     t_events[0]);
   t_events.push(event);
   test_eat_all_events();
