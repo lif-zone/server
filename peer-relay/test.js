@@ -87,16 +87,10 @@ function normalize(e){
 
 function test_eat_all_events(){
   try_send_queue();
-  if (t_events && t_pending)
-  {
-    assert(normalize(t_events)==normalize(t_pending),
-     'event mismatch.\n'+str_status());
-    t_events = t_pending = undefined;
-  }
-  // XXX: TODO (verify all events were eaten) - fix that we always
-  // have one pending event
-  if (0)
-  assert(!t_events && !t_pending);
+  if (!t_events || !t_pending)
+    return;
+  assert(normalize(t_events)==normalize(t_pending), 'mismatch\n'+str_status());
+  t_events = t_pending = undefined;
 }
 
 // XXX: review and rewrite
