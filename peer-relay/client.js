@@ -66,8 +66,6 @@ Client.prototype._onConnection = async function(channel){
   }
   self.peers.add(channel);
   self.emit('connection', channel);
-  if (util.test_real_paused)
-    await util.test_real_paused;
   self.router.send(channel.id, {type: 'findPeers',
     data: self.id.toString('hex')});
   self.emit('peer', channel.id);
@@ -128,7 +126,6 @@ Client.prototype._onMessage = function(msg, from){
   var self = this;
   if (self.destroyed)
     return;
-
   // self._debug('RECV', from.toString('hex', 0, 2), JSON.stringify(msg.data))
   if (msg.type === 'user')
     self.emit('message', msg.data, from);
@@ -161,8 +158,6 @@ Client.prototype._onHandshakeOffer = async function(msg, from){
   var self = this;
   if (self.peers.get(from))
     return;
-  if (util.test_real_paused)
-    await util.test_real_paused;
   if (self.pending[from] == null || from.compare(self.id) < 0)
   {
     self.pending[from] = true;
@@ -171,7 +166,7 @@ Client.prototype._onHandshakeOffer = async function(msg, from){
   }
 };
 
-Client.prototype._onHandshakeAnswer = function(msg, from){
+Client.prototype._onHandshakeAnswer = async function(msg, from){
   var self = this;
   if (self.peers.get(from))
     return;
@@ -180,7 +175,12 @@ Client.prototype._onHandshakeAnswer = function(msg, from){
   if (msg.data.wrtc && self.wrtcConnector.supported)
     self.wrtcConnector.connect(from);
   else if (msg.data.ws)
+  {
+    // XXX HACK: move to connection event
+    if (util.test_pause_func)
+      await util.test_pause_func('Client._onHandshakeAnswer '+msg.data.type);
     self.wsConnector.connect(msg.data.ws);
+  }
 };
 
 Client.prototype._populate = async function(){
@@ -193,8 +193,6 @@ Client.prototype._populate = async function(){
     if (self.peers.get(closest[i].id))
       continue;
     self.connect(closest[i].id);
-    if (util.test_real_paused)
-      await util.test_real_paused;
   }
 };
 

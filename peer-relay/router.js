@@ -60,10 +60,10 @@ Router.prototype._send = async function(msg){
   }
   for (var channel of closests)
   {
+    if (util.test_pause_func)
+      await util.test_pause_func('Router._send '+msg.data.type);
     // TODO BUG Sometimes the WS on closest in not in the ready state
     channel.send(msg);
-    if (util.test_real_paused) // XXX: review if needed here
-      await util.test_real_paused;
     if (channel.id.toString('hex') ===
       (typeof msg.to==='string' ? msg.to : msg.to.toString('hex')))
     {
