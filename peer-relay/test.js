@@ -701,8 +701,8 @@ describe('peer-relay', function(){
     };
     // XXX: fix all roles ab> ab<
     t('2_nodes', `
-      node(name:b wss(port:4000)) node(name:a) ab>connect(wss) ba>connected
-      ab>findPeers(a)ba>findPeers(b) ab<foundPeers(a) ba<foundPeers(b) -
+      node(name:b wss(port:4000)) node(name:a) ab>connect(wss) ab<connected
+      ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply)`);
 /* XXX derry: review real/fake mode
   ab>connect(wss) === ab>connect(wss |) ab<connected
