@@ -912,13 +912,13 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
       xit(name, 'c', test);
       xit(name, 'd', test);
+      if (0) // XXX: fixme
       xit(name, 's', test);
       xit(name, 'real', test);
       xit(name, 'fake', test);
     };
     // XXX: fix order of ab/ba/... all over
     // review all events and make sure it makes sense
-    if (0) // XXX: fixme
     t('5_nodes_2_networks', `
       node(name:b wss(port:4000)) node(name:a) - ab>connect(wss) ab<connected
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
