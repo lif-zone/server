@@ -669,7 +669,6 @@ const test_end = ()=>etask(function*(){
 });
 
 // XXX: rm
-// XXX: rm
 class FakeWebSocketServer extends EventEmitter {
   constructor(opts){
     super();
@@ -701,10 +700,10 @@ describe('peer-relay', function(){
     };
     // XXX: fix all roles ab> ab<
     t('2_nodes', `
-      node(name:b wss(port:4000)) node(name:a) ab>connect(wss) ab<connected
+      node(name:b wss(port:4000)) node(name:a) - ab>connect(wss) ab<connected
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply)`);
-/* XXX derry: review real/fake mode
+/* XXX derry:
   ab>connect(wss) === ab>connect(wss |) ab<connected
   test_connected(){
     conntedted...
@@ -734,13 +733,14 @@ describe('peer-relay', function(){
     };
     // XXX: send(ab>xxx) --> ab>send(xxx)
     // XXX BUG: why a and c don't try to connect directly once found each other
+    // ac>connect(auto wss) ac<connected -
     t('3_nodes_linear', `
       node(name:a) node(name:b wss(port:4000)) node(name:c wss(port:4001))
       ab>connect(wss) ab<connected
       ab>findPeers(a) ba>findPeers(b) ab<foundPeers(a) ba<foundPeers(b) -
       bc>connect(wss) bc<connected
       bc>findPeers(b) cb>findPeers(c) bc<foundPeers(b) cb<foundPeers(c,a,b)
-      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer) -
+      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer)
       send(ab>hello) ab>msg(hello) - send(ba>hello) ba>msg(hello) -
       send(bc>hello) bc>msg(hello) - send(cb>hello) cb>msg(hello) -
       send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
