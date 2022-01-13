@@ -790,23 +790,18 @@ describe('peer-relay', function(){
       node(name:d wss(port:4002)) ab>connect(wss) ab<connected
       ab>findPeers(a) ba>findPeers(b) ab<foundPeers(a) ba<foundPeers(b) -
       bc>connect(wss) bc<connected bc>findPeers(b) cb>findPeers(c)
-      bc<foundPeers(b) cb<foundPeers(c,a,b)
-      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer)
-      cd>connect(wss) cd<connected
+      bc<foundPeers(b) cb<foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
+      ab,bc>fwd(ca<handshake-answer) cd>connect(wss) cd<connected
       cd>findPeers(c) dc>findPeers(d) cd<foundPeers(c) dc<foundPeers(d,c,b,a)
       dc>fwd(db>handshake-offer) dc>fwd(da>handshake-offer)
       cb>fwd(db>handshake-offer) cb>fwd(da>handshake-offer)
       cb<fwd(db<handshake-answer) ba>fwd(da>handshake-offer)
-      dc<fwd(db<handshake-answer)
-      ba>fwd(db<handshake-answer)
-      ab>fwd(da<handshake-answer)
-      db>connect(wss auto) db<connected
-      ba<fwd(db<handshake-answer)
-      cb<fwd(da<handshake-answer)
+      dc<fwd(db<handshake-answer) ba>fwd(db<handshake-answer)
+      ab>fwd(da<handshake-answer) db>connect(wss auto) db<connected
+      ba<fwd(db<handshake-answer) cb<fwd(da<handshake-answer)
       db>findPeers(d) bd>findPeers(b) cd>fwd(da<handshake-answer)
       db<foundPeers(d,c,b,a) bd<foundPeers(b,a,d,c) -
-      send(ab>hello) ab>msg(hello) -
-      send(ac>hello) ab,bc>fwd(ac>msg(hello))
+      send(ab>hello) ab>msg(hello) - send(ac>hello) ab,bc>fwd(ac>msg(hello))
       send(ad>hello) ab,bd>fwd(ad>msg(hello)) -
       send(ba>hello) ba>msg(hello) - send(bc>hello) bc>msg(hello) -
       send(bd>hello) bd>msg(hello) -
@@ -815,8 +810,7 @@ describe('peer-relay', function(){
       send(cd>hello) cd>msg(hello) -
       send(da>hello) db>fwd(da>msg(hello)) ba>fwd(da>msg(hello))
       dc>fwd(da>msg(hello)) cb>fwd(da>msg(hello)) -
-      send(db>hello) db>msg(hello) -
-      send(dc>hello) dc>msg(hello) -
+      send(db>hello) db>msg(hello) - send(dc>hello) dc>msg(hello) -
     `);
     // XXX derry: ab>msg(hello) - ab<msg(hello-rep) -
     t('4_nodes_2_networks', `
@@ -925,24 +919,15 @@ describe('peer-relay', function(){
       ab>fwd(ad>handshake-answer) db>fwd(cb>handshake-answer)
       bd>fwd(ad>handshake-answer) - node(name:s wss(port(4002))) -
       bs>connect(wss) bs<connected bs>findPeers(b) bs<findPeers(s)
-      bs<foundPeers(b) bs>foundPeers(s,d,c,b,a)
-      sb>fwd(sd>handshake-offer)
-      sb>fwd(sc>handshake-offer)
-      sb>fwd(sa>handshake-offer)
-      bd>fwd(sd>handshake-offer)
-      bd>fwd(sc>handshake-offer)
-      ba>fwd(sa>handshake-offer)
-      dc>fwd(ds>handshake-answer)
-      dc>fwd(sc>handshake-offer)
-      ba>fwd(sc>handshake-offer)
-      ab>fwd(as>handshake-answer)
-      db>fwd(ds>handshake-answer)
-      cd>fwd(cs>handshake-answer)
-      bs>fwd(as>handshake-answer)
-      bs>fwd(ds>handshake-answer)
-      db>fwd(cs>handshake-answer)
-      sd>connect(auto wss) sd<connected
-      bs>fwd(cs>handshake-answer)
+      bs<foundPeers(b) bs>foundPeers(s,d,c,b,a) sb>fwd(sd>handshake-offer)
+      sb>fwd(sc>handshake-offer) sb>fwd(sa>handshake-offer)
+      bd>fwd(sd>handshake-offer) bd>fwd(sc>handshake-offer)
+      ba>fwd(sa>handshake-offer) dc>fwd(ds>handshake-answer)
+      dc>fwd(sc>handshake-offer) ba>fwd(sc>handshake-offer)
+      ab>fwd(as>handshake-answer) db>fwd(ds>handshake-answer)
+      cd>fwd(cs>handshake-answer) bs>fwd(as>handshake-answer)
+      bs>fwd(ds>handshake-answer) db>fwd(cs>handshake-answer)
+      sd>connect(auto wss) sd<connected bs>fwd(cs>handshake-answer)
       sd>findPeers(s) db>fwd(ds>findPeers(d)) ds>foundPeers(s,d,c,b,a)
       bs>fwd(ds>findPeers(d)) ds>findPeers(d) sd>foundPeers(d,c,s,b,a)
     `);
