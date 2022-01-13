@@ -12,6 +12,7 @@ import ws_util from '../util/ws.js';
 import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
 const xetask = xtest.etask, stringify = JSON.stringify, assign = Object.assign;
+
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
   console.log('uncaughtException %o', e);
@@ -31,8 +32,7 @@ function run_event_loop(){
 
 // XXX: rm t_queue
 let t_nodes = {}, t_events = [], t_pending = [], t_queue = [], t_nonce;
-let t_timeout = 2000, t_running;
-let t_cmds, t_i;
+let t_timeout = 2000, t_running, t_cmds, t_i;
 let t_peers = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
   b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
@@ -48,8 +48,7 @@ function test_emit(o){
     debugger;
   assert.ok(t_running, 'test not running');
   assert.ok(event, 'invalid event');
-  assert.ok(!t_events.length, 'got '+event+' but still didn\'t get '+
-    t_events[0]);
+  assert.ok(!t_events.length, 'got '+event+' but '+t_events[0]+' not eaten');
   t_events.push(event);
   test_eat_all_events();
 }
