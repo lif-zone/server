@@ -382,6 +382,8 @@ function cmd_node(role, c){
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
+  if (wss)
+    assert(!node_from_url(wss.url), wss.url+' already used');
   let fake = is_fake(role, name);
   let node = new (fake ? FakeNode : Node)(
     assign({id: util.buf_from_str(id), WsConnector: FakeWsConnector}, wss));
