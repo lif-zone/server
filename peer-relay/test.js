@@ -31,7 +31,7 @@ function run_event_loop(){
 }
 
 // XXX: rm t_queue
-let t_nodes = {}, t_event, t_pending, t_queue = [], t_nonce;
+let t_nodes = {}, t_event, t_expect, t_queue = [], t_nonce;
 let t_timeout = 2000, t_running, t_cmds, t_i;
 let t_peers = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
@@ -63,7 +63,7 @@ function test_pending(e, c){
   assert.ok(e, 'invalid event');
   if (c && c.fwd)
     e = c.fwd+'fwd('+normalize(e)+')';
-  t_pending = e;
+  t_expect = e;
   test_eat_all_events();
 }
 
@@ -87,10 +87,10 @@ function normalize(e){
 
 function test_eat_all_events(){
   try_send_queue();
-  if (!t_event || !t_pending)
+  if (!t_event || !t_expect)
     return;
-  assert(normalize(t_event)==normalize(t_pending), 'mismatch\n'+str_status());
-  t_event = t_pending = undefined;
+  assert(normalize(t_event)==normalize(t_expect), 'mismatch\n'+str_status());
+  t_event = t_expect = undefined;
 }
 
 // XXX: review and rewrite
@@ -102,16 +102,16 @@ const test_ensure_no_events = ()=>etask(function*(){
     yield run_event_loop();
     if (t_pause.length)
         continue;
-    if (!t_event && !t_pending)
+    if (!t_event && !t_expect)
       break;
-    if (!t_event || !t_pending)
+    if (!t_event || !t_expect)
       continue;
-    if (normalize(t_event)==normalize(t_pending))
-      t_event = t_pending = undefined;
+    if (normalize(t_event)==normalize(t_expect))
+      t_event = t_expect = undefined;
     else
-      assert.equal(t_event, t_pending, 'event mismatch.\n'+str_status());
+      assert.equal(t_event, t_expect, 'event mismatch.\n'+str_status());
   }
-  assert.equal(t_event, t_pending, 'event mismatch.\n'+str_status());
+  assert.equal(t_event, t_expect, 'event mismatch.\n'+str_status());
 });
 
 function build_cmd(cmd, arg){ return cmd+(arg ? '('+arg+')' : ''); }
@@ -119,7 +119,7 @@ function rev_cmd(sd, cmd, arg){ return build_cmd(rev(sd)+cmd, arg); }
 
 function str_status(){
   return 'real: '+t_event+'\n'+
-  'expected: '+t_pending+'\n'+
+  'expected: '+t_expect+'\n'+
   'queue: '+stringify(t_queue);
 }
 
@@ -593,8 +593,7 @@ const run_cmd = (role, c)=>etask(function*(){
       c.loop ? 'loop' : c.s, c.d||'',
       c.cmd, c.arg||'', c.orig, fake? ' fake' : '');
     assert(!t_event, 'event alrady fired '+t_event+'\n'+str_status());
-    assert(!t_pending, 'event not recieved '+t_pending+'\n'+
-      str_status());
+    assert(!t_expect, 'event not recieved '+t_expect+'\n'+str_status());
     if (t_debugger_on_cmd.includes(c.orig)) // eslint-disable-next-line
       debugger;
     if (c.loop) // XXX HACK: need to think how we parse it
