@@ -732,19 +732,30 @@ describe('peer-relay', function(){
       xit(name, 'fake', test);
     };
     // XXX: send(ab>xxx) --> ab>send(xxx)
-    // XXX BUG: why a and c don't try to connect directly once found each other
-    // ac>connect(auto wss) ac<connected -
+    // XXX BUG: missing ca>connect
     t('3_nodes_linear', `
       node(name:a) node(name:b wss(port:4000)) node(name:c wss(port:4001))
       ab>connect(wss) ab<connected
       ab>findPeers(a) ba>findPeers(b) ab<foundPeers(a) ba<foundPeers(b) -
       bc>connect(wss) bc<connected
       bc>findPeers(b) cb>findPeers(c) bc<foundPeers(b) cb<foundPeers(c,a,b)
-      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer)
+      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer) -
       send(ab>hello) ab>msg(hello) - send(ba>hello) ba>msg(hello) -
       send(bc>hello) bc>msg(hello) - send(cb>hello) cb>msg(hello) -
       send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
       send(ca>hello) cb,ba>fwd(ca>msg(hello))`);
+    t('3_nodes_linear_wss', `
+      node(name:a wss(port:4000)) node(name:b wss(port:4001))
+      node(name:c wss(port:4002)) ab>connect(wss) ab<connected
+      ab>findPeers(a) ba>findPeers(b) ab<foundPeers(a) ba<foundPeers(b) -
+      bc>connect(wss) bc<connected
+      bc>findPeers(b) cb>findPeers(c) bc<foundPeers(b) cb<foundPeers(c,a,b)
+      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer)
+      ca>connect(auto wss) ca<connected ca>findPeers(c) ca<findPeers(a)
+      ca<foundPeers(c,a,b) ca>foundPeers(a,b,c) -
+      send(ab>hello) ab>msg(hello) - send(ba>hello) ba>msg(hello) -
+      send(bc>hello) bc>msg(hello) - send(cb>hello) cb>msg(hello) -
+      send(ac>hello) ac>msg(hello) - send(ca>hello) ca>msg(hello)`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
