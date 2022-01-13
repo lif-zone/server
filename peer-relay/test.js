@@ -22,9 +22,8 @@ process.on('unhandledRejection', e=>{
   process.exit(-1);
 });
 
-let t_debugger_on_events = [
-  'cb>connect',
-];
+let t_debugger_on_events = [];
+let t_debugger_on_cmd = [];
 
 function run_event_loop(){
   return util.sleep(0); // XXX: use etask.nextTick()
@@ -235,12 +234,12 @@ function fake_send_msg(c, data){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let fs = c.fwd&&c.fwd[0], fd = c.fwd&&c.fwd[1];
-  let nonce = '' + Math.floor(1e15 * Math.random());
+  let nonce = t_nonce[normalize(c.orig)]||
+    '' + Math.floor(1e15 * Math.random());
   if (c.fwd) // XXX: make it generic and fix all
   {
     s = t_nodes[fs];
     d = t_nodes[fd];
-    nonce = t_nonce[normalize(c.orig)]||nonce;
   }
   if (!s.t.fake)
     return;
@@ -606,6 +605,8 @@ const run_cmd = (role, c)=>etask(function*(){
       str_status());
     assert(!t_pending.length, 'event not recieved '+t_pending[0]+'\n'+
       str_status());
+    if (t_debugger_on_cmd.includes(c.orig)) // eslint-disable-next-line
+      debugger;
     if (c.loop) // XXX HACK: need to think how we parse it
     {
       let a = [];
@@ -680,17 +681,6 @@ const test_end = ()=>etask(function*(){
 });
 
 // XXX: rm
-class FakeWS extends EventEmitter {
-  constructor(url, opts){
-    super();
-    throw new Error('FakeWS');
-  }
-  close(){
-  }
-  send(s){
-  }
-}
-
 // XXX: rm
 class FakeWebSocketServer extends EventEmitter {
   constructor(opts){
@@ -707,9 +697,9 @@ class FakeWebSocketServer extends EventEmitter {
 
 describe('peer-relay', function(){
   beforeEach(function(){
-    xtest.set(ws_util, 'WS', FakeWS);
     xtest.set(ws_util, 'WebSocketServer', FakeWebSocketServer);
     // XXX TODO: same for WRTC
+    // XXX TODO: same for overload send on router.js
   });
   this.timeout(2*t_timeout);
   describe('basic', function(){
@@ -912,12 +902,12 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
       xit(name, 'c', test);
       xit(name, 'd', test);
-      if (0) // XXX: fixme
       xit(name, 's', test);
       xit(name, 'real', test);
       xit(name, 'fake', test);
     };
     // XXX: fix order of ab/ba/... all over
+    // XXX: fix using ab,bc>fwd to simplify all over
     // review all events and make sure it makes sense
     t('5_nodes_2_networks', `
       node(name:b wss(port:4000)) node(name:a) - ab>connect(wss) ab<connected
@@ -953,7 +943,7 @@ describe('peer-relay', function(){
       sd>connect(auto wss) sd<connected
       bs>fwd(cs>handshake-answer)
       sd>findPeers(s) db>fwd(ds>findPeers(d)) ds>foundPeers(s,d,c,b,a)
-      bs>fwd(ds>findPeers(d)) sd<findPeers(d) sd>foundPeers(d,c,s,b,a)
+      bs>fwd(ds>findPeers(d)) ds>findPeers(d) sd>foundPeers(d,c,s,b,a)
     `);
   });
   // XXX: missing send/msg test
