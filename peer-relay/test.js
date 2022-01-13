@@ -31,7 +31,7 @@ function run_event_loop(){
 }
 
 // XXX: rm t_queue
-let t_nodes = {}, t_events = [], t_pending = [], t_queue = [], t_nonce;
+let t_nodes = {}, t_events, t_pending, t_queue = [], t_nonce;
 let t_timeout = 2000, t_running, t_cmds, t_i;
 let t_peers = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
@@ -48,8 +48,8 @@ function test_emit(o){
     debugger;
   assert.ok(t_running, 'test not running');
   assert.ok(event, 'invalid event');
-  assert.ok(!t_events.length, 'got '+event+' but '+t_events[0]+' not eaten');
-  t_events.push(event);
+  assert.ok(!t_events, 'got '+event+' but '+t_events+' not eaten');
+  t_events = event;
   test_eat_all_events();
 }
 
@@ -63,7 +63,7 @@ function test_pending(e, c){
   assert.ok(e, 'invalid event');
   if (c && c.fwd)
     e = c.fwd+'fwd('+normalize(e)+')';
-  t_pending.push(e);
+  t_pending = e;
   test_eat_all_events();
 }
 
@@ -87,17 +87,16 @@ function normalize(e){
 
 function test_eat_all_events(){
   try_send_queue();
-  while (t_events.length && t_pending.length)
+  if (t_events && t_pending)
   {
-    assert(normalize(t_events[0])==normalize(t_pending[0]),
+    assert(normalize(t_events)==normalize(t_pending),
      'event mismatch.\n'+str_status());
-    t_events.shift();
-    t_pending.shift();
+    t_events = t_pending = undefined;
   }
   // XXX: TODO (verify all events were eaten) - fix that we always
   // have one pending event
   if (0)
-  assert(!t_events.length && !t_pending.length);
+  assert(!t_events && !t_pending);
 }
 
 // XXX: review and rewrite
@@ -109,27 +108,24 @@ const test_ensure_no_events = ()=>etask(function*(){
     yield run_event_loop();
     if (t_pause.length)
         continue;
-    if (!t_events.length && !t_pending.length)
+    if (!t_events && !t_pending)
       break;
-    if (!t_events.length || !t_pending.length)
+    if (!t_events || !t_pending)
       continue;
-    if (normalize(t_events[0])==normalize(t_pending[0]))
-    {
-      t_events.shift();
-      t_pending.shift();
-    }
+    if (normalize(t_events)==normalize(t_pending))
+      t_events = t_pending = undefined;
     else
-      assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+str_status());
+      assert.equal(t_events, t_pending, 'event mismatch.\n'+str_status());
   }
-  assert.deepEqual(t_events, t_pending, 'event mismatch.\n'+str_status());
+  assert.equal(t_events, t_pending, 'event mismatch.\n'+str_status());
 });
 
 function build_cmd(cmd, arg){ return cmd+(arg ? '('+arg+')' : ''); }
 function rev_cmd(sd, cmd, arg){ return build_cmd(rev(sd)+cmd, arg); }
 
 function str_status(){
-  return 'real: '+stringify(t_events, null, '\t')+'\n'+
-  'expected: '+stringify(t_pending, null, '\t')+'\n'+
+  return 'real: '+t_events+'\n'+
+  'expected: '+t_pending+'\n'+
   'queue: '+stringify(t_queue);
 }
 
@@ -600,9 +596,8 @@ const run_cmd = (role, c)=>etask(function*(){
     console.log('cmd:%s %s%s>%s(%s) orig %s', c.fwd ? 'in fwd '+c.fwd : '',
       c.loop ? 'loop' : c.s, c.d||'',
       c.cmd, c.arg||'', c.orig, fake? ' fake' : '');
-    assert(!t_events.length, 'event alrady fired '+t_events[0]+'\n'+
-      str_status());
-    assert(!t_pending.length, 'event not recieved '+t_pending[0]+'\n'+
+    assert(!t_events, 'event alrady fired '+t_events+'\n'+str_status());
+    assert(!t_pending, 'event not recieved '+t_pending+'\n'+
       str_status());
     if (t_debugger_on_cmd.includes(c.orig)) // eslint-disable-next-line
       debugger;
