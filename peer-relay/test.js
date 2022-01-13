@@ -637,7 +637,7 @@ const run_cmd = (role, c)=>etask(function*(){
       break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
-    yield try_send_queue();
+    try_send_queue();
 });
 
 function push_cmd(cmd){ t_cmds.splice(t_i+1, 0, ...cmd); }
