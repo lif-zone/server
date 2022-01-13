@@ -741,10 +741,13 @@ describe('peer-relay', function(){
       bc>connect(wss) bc<connected bc>findPeers(b) bc<findPeers(c)
       bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
       ab,bc>fwd(ca<handshake-answer) -
-      send(ab>hello) ab>msg(hello) - send(ab<hello) ba>msg(hello) -
-      send(bc>hello) bc>msg(hello) - send(bc<hello) cb>msg(hello) -
+      send(ab>hello) ab>msg(hello) - send(ab<reply) ba>msg(reply) -
+      send(bc>hello) bc>msg(hello) - send(bc<reply) cb>msg(reply) -
       send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
-      send(ca>hello) cb,ba>fwd(ca>msg(hello))`);
+      send(ca>reply) cb,ba>fwd(ca>msg(reply))`);
+    // XXX review with derry:
+    // send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
+    // ac>send(hello) ab,bc>fwd(ac>msg(hello)) -
     // XXX: review with derry ca>connect(auto)
     t('3_nodes_linear_wss', `
       node(name:a wss(port:4000)) node(name:b wss(port:4001))
@@ -755,9 +758,9 @@ describe('peer-relay', function(){
       ab,bc>fwd(ca<handshake-answer) ca>connect(auto wss)
       ca<connected ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
       ca>foundPeers(a,b,c) -
-      send(ab>hello) ab>msg(hello) - send(ab<hello) ab<msg(hello) -
-      send(bc>hello) bc>msg(hello) - send(bc<hello) bc<msg(hello) -
-      send(ac>hello) ac>msg(hello) - send(ca>hello) ca>msg(hello)`);
+      send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply) -
+      send(bc>hello) bc>msg(hello) - send(bc<reply) bc<msg(reply) -
+      send(ca>hello) ca>msg(hello) - send(ca>reply) ca>msg(reply)`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
