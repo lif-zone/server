@@ -741,10 +741,10 @@ describe('peer-relay', function(){
       bc>connect(wss) bc<connected bc>findPeers(b) bc<findPeers(c)
       bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
       ab,bc>fwd(ca<handshake-answer) -
-      send(ab>hello) ab>msg(hello) - send(ab<reply) ba>msg(reply) -
-      send(bc>hello) bc>msg(hello) - send(bc<reply) cb>msg(reply) -
+      send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply) -
+      send(bc>hello) bc>msg(hello) - send(bc<reply) bc<msg(reply) -
       send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
-      send(ca>reply) cb,ba>fwd(ca>msg(reply))`);
+      send(ac<reply) cb,ba>fwd(ac<msg(reply))`);
     // XXX review with derry:
     // send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
     // ac>send(hello) ab,bc>fwd(ac>msg(hello)) -
@@ -760,7 +760,7 @@ describe('peer-relay', function(){
       ca>foundPeers(a,b,c) -
       send(ab>hello) ab>msg(hello) - send(ab<reply) ab<msg(reply) -
       send(bc>hello) bc>msg(hello) - send(bc<reply) bc<msg(reply) -
-      send(ca>hello) ca>msg(hello) - send(ca>reply) ca>msg(reply)`);
+      send(ca>hello) ca>msg(hello) - send(ca<reply) ca<msg(reply)`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
