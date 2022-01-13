@@ -746,6 +746,7 @@ describe('peer-relay', function(){
       send(bc>hello) bc>msg(hello) - send(bc<hello) cb>msg(hello) -
       send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
       send(ca>hello) cb,ba>fwd(ca>msg(hello))`);
+    // XXX: review with derry ca>connect(auto)
     t('3_nodes_linear_wss', `
       node(name:a wss(port:4000)) node(name:b wss(port:4001))
       node(name:c wss(port:4002)) ab>connect(wss) ab<connected
