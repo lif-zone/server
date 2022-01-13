@@ -740,8 +740,8 @@ describe('peer-relay', function(){
       ab>connect(wss) ab<connected ab>findPeers(a) ab<findPeers(b)
       ab<foundPeers(a) ab>foundPeers(b) -
       bc>connect(wss) bc<connected bc>findPeers(b) bc<findPeers(c)
-      bc<foundPeers(b) bc>foundPeers(c,a,b)
-      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer) -
+      bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
+      ab,bc>fwd(ca<handshake-answer) -
       send(ab>hello) ab>msg(hello) - send(ab<hello) ba>msg(hello) -
       send(bc>hello) bc>msg(hello) - send(bc<hello) cb>msg(hello) -
       send(ac>hello) ab,bc>fwd(ac>msg(hello)) -
@@ -751,11 +751,11 @@ describe('peer-relay', function(){
       node(name:a wss(port:4000)) node(name:b wss(port:4001))
       node(name:c wss(port:4002)) ab>connect(wss) ab<connected
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
-      bc>connect(wss) bc<connected
-      bc>findPeers(b) bc<findPeers(c) bc<foundPeers(b) bc>foundPeers(c,a,b)
-      cb,ba>fwd(ca>handshake-offer) ab,bc>fwd(ca<handshake-answer)
-      ca>connect(auto wss) ca<connected ca>findPeers(c) ca<findPeers(a)
-      ca<foundPeers(c,a,b) ca>foundPeers(a,b,c) -
+      bc>connect(wss) bc<connected bc>findPeers(b) bc<findPeers(c)
+      bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
+      ab,bc>fwd(ca<handshake-answer) ca>connect(auto wss)
+      ca<connected ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
+      ca>foundPeers(a,b,c) -
       send(ab>hello) ab>msg(hello) - send(ab<hello) ab<msg(hello) -
       send(bc>hello) bc>msg(hello) - send(bc<hello) bc<msg(hello) -
       send(ac>hello) ac>msg(hello) - send(ca>hello) ca>msg(hello)`);
