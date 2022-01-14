@@ -808,6 +808,19 @@ describe('peer-relay', function(){
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
       bc>send(hello) bc>msg(hello) - bc<send(reply) bc<msg(reply) -
       ca>send(hello) ca>msg(hello) - ca<send(reply) ca<msg(reply)`);
+    // XXX: why not also connect via ws if both wrtc+ws are avail
+    t('3_nodes_linear_wrtc', `
+      node(a wrtc wss(port:4000)) node(b wss(port:4001))
+      node(c wrtc wss(port:4002)) ab>!connect(wss) ab<connected
+      ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
+      bc>!connect(wss) bc<connected bc>findPeers(b) bc<findPeers(c)
+      bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
+      ab,bc>fwd(ca<handshake-answer(ws wrtc)) ca>connect(wss)
+      ca<connected ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
+      ca>foundPeers(a,b,c) -
+      ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
+      bc>send(hello) bc>msg(hello) - bc<send(reply) bc<msg(reply) -
+      ca>send(hello) ca>msg(hello) - ca<send(reply) ca<msg(reply)`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
