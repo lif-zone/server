@@ -161,8 +161,8 @@ class FakeChannel extends EventEmitter {
         case 'handshake-offer': e = from.t.name+to.t.name+'>'+type; break;
         case 'handshake-answer':
           a = [];
-          if (data.wss)
-            a.push('wss'); // XXX: asswert correct val of wss
+          if (data.ws)
+            a.push('ws'); // XXX: asswert correct val of ws
           if (data.wrtc)
             a.push('wrtc');
           e = build_cmd(from.t.name+to.t.name+'>'+type, a.join(' '));
@@ -313,10 +313,12 @@ function node_from_url(url){
   for (let name in t_nodes)
   {
     let node = t_nodes[name];
-    if (node.t.wss && node.t.wss.url==url)
+    if (node.t.wss && url_from_node(node)==url)
       return node;
   }
 }
+
+function url_from_node(node){ return node.t.wss.url; }
 
 function node_from_id(id){
   for (let name in t_nodes)
@@ -469,13 +471,21 @@ const cmd_connect = c=>etask(function*(){
   else
   {
     if (wss)
-      t_nodes[c.s].connect_ws(wss);
+    {
+      if (s.t.fake)
+        t_nodes[c.s].connect_ws(wss);
+      else
+        yield test_resume();
+    }
     else if (wrtc)
-      t_nodes[c.s].connect_wrtc(d.id);
+    {
+      if (s.t.fake)
+        t_nodes[c.s].connect_wrtc(d.id);
+      else
+        yield test_resume();
+    }
     else
       throw new Error('not implemented yet');
-    if (!d.t.fake && !s.t.fake)
-      yield test_resume();
   }
 });
 
@@ -565,16 +575,18 @@ const cmd_handshake_offer = (role, c)=>etask(function*(){
 });
 
 const cmd_handshake_answer = (role, c)=>etask(function*(){
-  let s = t_nodes[c.s], wrtc, arg = xtest.test_parse(c.arg);
+  let s = t_nodes[c.s], wrtc, ws, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd)
     {
       case 'wrtc': wrtc = assert_wrtc(a.arg); break;
+      // XXX: assert and verify ws is correct url
+      case 'ws': ws = url_from_node(s); break;
       default: throw new Error('unknown arg '+a.cmd);
     }
   });
   // XXX: support also wss
-  fake_send_msg(c, {type: 'handshake-answer', data: {wrtc}});
+  fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
   test_pending(c);
   if (!s.t.fake && !c.fwd)
     yield test_resume();
@@ -783,13 +795,14 @@ describe('peer-relay', function(){
     // ab>http_get ab>tcp_open ab<ack ab>write(GET...)
     // ab>!http_get ab>tcp_open ab<ack ab>write(GET...)
     // XXX: review with derry ca>connect
+    // XXX: wss -> ws
     t('3_nodes_linear_wss', `
       node(a wss(port:4000)) node(b wss(port:4001))
       node(c wss(port:4002)) ab>!connect(wss) ab<connected
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       bc>!connect(wss) bc<connected bc>findPeers(b) bc<findPeers(c)
       bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
-      ab,bc>fwd(ca<handshake-answer) ca>connect(wss)
+      ab,bc>fwd(ca<handshake-answer(ws)) ca>connect(wss)
       ca<connected ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
       ca>foundPeers(a,b,c) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
@@ -803,10 +816,9 @@ describe('peer-relay', function(){
       xit(name, 'fake', test);
     };
     t('3_nodes_star', `
-      node(s wss(port:4000)) node(a) node(b)
-      as>!connect(wss) as<connected
-      as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s)
-     bs>!connect(wss) bs<connected bs>findPeers(b) sb>findPeers(s)
+      node(s wss(port:4000)) node(a) node(b) - as>!connect(wss) as<connected
+      as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s) -
+      bs>!connect(wss) bs<connected bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer)
       as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
@@ -814,12 +826,11 @@ describe('peer-relay', function(){
       ab>send(hello) as,sb>fwd(ab>msg(hello)) -
       ba>send(hello) bs,sa>fwd(ba>msg(hello))`);
     // XXX: derry, review >connect(wss) >connect(wrtc)
-    if (0) // XXX WIP
     t('3_nodes_star_wrtc', `
-      node(s wss(port:4000)) node(a wrtc) node(b wrtc)
-      as>!connect(wss) as<connected
-      as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s)
-     bs>!connect(wss) bs<connected bs>findPeers(b) sb>findPeers(s)
+      node(s wss(port:4000)) node(a wrtc) node(b wrtc) -
+      as>!connect(wss) as<connected as>findPeers(a) sa>findPeers(s)
+      as<foundPeers(a) sa<foundPeers(s) -
+      bs>!connect(wss) bs<connected bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(wrtc))
       ba>connect(wrtc) ba<connected ba>findPeers(b) ba<findPeers(a)
@@ -846,10 +857,10 @@ describe('peer-relay', function(){
       cd>findPeers(c) dc>findPeers(d) cd<foundPeers(c) dc<foundPeers(d,c,b,a)
       dc>fwd(db>handshake-offer) dc>fwd(da>handshake-offer)
       cb>fwd(db>handshake-offer) cb>fwd(da>handshake-offer)
-      cb<fwd(db<handshake-answer) ba>fwd(da>handshake-offer)
-      dc<fwd(db<handshake-answer) ba>fwd(db<handshake-answer)
+      cb<fwd(db<handshake-answer(ws)) ba>fwd(da>handshake-offer)
+      dc<fwd(db<handshake-answer(ws)) ba>fwd(db<handshake-answer(ws))
       ab>fwd(da<handshake-answer) db>connect(wss) db<connected
-      ba<fwd(db<handshake-answer) cb<fwd(da<handshake-answer)
+      ba<fwd(db<handshake-answer(ws)) cb<fwd(da<handshake-answer)
       db>findPeers(d) bd>findPeers(b) cd>fwd(da<handshake-answer)
       db<foundPeers(d,c,b,a) bd<foundPeers(b,a,d,c) -
       ab>send(hello) ab>msg(hello) - ac>send(hello) ab,bc>fwd(ac>msg(hello))
@@ -973,11 +984,11 @@ describe('peer-relay', function(){
       bs<foundPeers(b) bs>foundPeers(s,d,c,b,a) sb>fwd(sd>handshake-offer)
       sb>fwd(sc>handshake-offer) sb>fwd(sa>handshake-offer)
       bd>fwd(sd>handshake-offer) bd>fwd(sc>handshake-offer)
-      ba>fwd(sa>handshake-offer) dc>fwd(ds>handshake-answer)
+      ba>fwd(sa>handshake-offer) dc>fwd(ds>handshake-answer(ws))
       dc>fwd(sc>handshake-offer) ba>fwd(sc>handshake-offer)
-      ab>fwd(as>handshake-answer) db>fwd(ds>handshake-answer)
+      ab>fwd(as>handshake-answer) db>fwd(ds>handshake-answer(ws))
       cd>fwd(cs>handshake-answer) bs>fwd(as>handshake-answer)
-      bs>fwd(ds>handshake-answer) db>fwd(cs>handshake-answer)
+      bs>fwd(ds>handshake-answer(ws)) db>fwd(cs>handshake-answer)
       sd>connect(wss) sd<connected bs>fwd(cs>handshake-answer)
       sd>findPeers(s) db>fwd(ds>findPeers(d)) ds>foundPeers(s,d,c,b,a)
       bs>fwd(ds>findPeers(d)) ds>findPeers(d) sd>foundPeers(d,c,s,b,a)
