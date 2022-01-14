@@ -2,12 +2,12 @@
 import KBucket from 'k-bucket';
 import crypto from 'crypto';
 import {EventEmitter} from 'events';
-import _debug from 'debug';
+import assert from 'assert';
 import Router from './router.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
-import assert from 'assert';
+import etask from '../util/etask.js';
 
 function ids(id){ return util.buf_to_str(id); }
 
@@ -130,26 +130,28 @@ export default class Client extends EventEmitter {
         data: {ws: this.wsConnector.url, wrtc: this.wrtcConnector.supported}});
     }
   }
-  // XXX: change to etask
-  async _onHandshakeAnswer(msg, from){
-    if (this.peers.get(from))
-      return;
-    if (msg.data == null)
-      return;
-    if (msg.data.wrtc && this.wrtcConnector.supported)
-    {
-      // XXX HACK: move to connection event
-      if (util.test_pause_func)
-        await util.test_pause_func('Client._onHandshakeAnswer '+msg.data.type);
-      this.connect_wrtc(from);
-    }
-    else if (msg.data.ws)
-    {
-      // XXX HACK: move to connection event
-      if (util.test_pause_func)
-        await util.test_pause_func('Client._onHandshakeAnswer '+msg.data.type);
-      this.wsConnector.connect(msg.data.ws);
-    }
+  _onHandshakeAnswer(msg, from){
+    let _this = this;
+    return etask(function*(){
+      if (_this.peers.get(from))
+        return;
+      if (msg.data == null)
+        return;
+      if (msg.data.wrtc && _this.wrtcConnector.supported)
+      {
+        // XXX HACK: move to connection event
+        if (util.test_pause_func)
+          yield util.test_pause_func('onHandshakeAnswer '+msg.data.type);
+        _this.connect_wrtc(from);
+      }
+      else if (msg.data.ws)
+      {
+        // XXX HACK: move to connection event
+        if (util.test_pause_func)
+          yield util.test_pause_func('onHandshakeAnswer '+msg.data.type);
+        _this.wsConnector.connect(msg.data.ws);
+      }
+    });
   }
   _populate(){
     var optimal = 15;
