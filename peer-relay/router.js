@@ -4,6 +4,7 @@ import {inherits} from 'util';
 import _debug from 'debug';
 import assert from 'assert';
 import util from '../util/util.js';
+import etask from '../util/etask.js';
 const debug = _debug('peer-relay:router');
 const stringify = JSON.stringify;
 
@@ -39,38 +40,41 @@ Router.prototype.send = function(id, data){
   self._send(msg);
 };
 
-Router.prototype._send = async function(msg){
-  var self = this;
-  self.emit('send', msg);
-  if (msg.path.length >= self.maxHops)
-    return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
-  if (self._channels.count()===0)
-    self._queue.push(msg);
-  msg.path.push(self.id.toString('hex'));
-  var target = new Buffer(msg.to, 'hex');
-  var closests = self._channels.closest(target, 20)
-    .filter(c=>msg.path.indexOf(c.id.toString('hex'))===-1)
-    .filter((_, index) => index < self.concurrency);
-  if (msg.to in self._paths)
-  {
-    var preferred = self._channels.closest(
-      new Buffer(self._paths[msg.to], 'hex'), 1)[0];
-    if (preferred != null && closests.indexOf(preferred) === -1)
-      closests.unshift(preferred);
-  }
-  for (var channel of closests)
-  {
-    if (util.test_pause_func)
-      await util.test_pause_func('Router._send '+msg.data.type);
-    // TODO BUG Sometimes the WS on closest in not in the ready state
-    channel.send(msg);
-    if (channel.id.toString('hex') ===
-      (typeof msg.to==='string' ? msg.to : msg.to.toString('hex')))
+Router.prototype._send = function(msg){
+  var self = this; // XXX: is this the best way to use etask as methods
+  return etask(function*(){
+    self.emit('send', msg);
+    if (msg.path.length >= self.maxHops)
+      return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
+    if (self._channels.count()===0)
+      self._queue.push(msg);
+    msg.path.push(self.id.toString('hex'));
+    var target = new Buffer(msg.to, 'hex');
+    var closests = self._channels.closest(target, 20)
+      .filter(c=>msg.path.indexOf(c.id.toString('hex'))===-1)
+      .filter((_, index) => index < self.concurrency);
+    if (msg.to in self._paths)
     {
-      break;
+      var preferred = self._channels.closest(
+        new Buffer(self._paths[msg.to], 'hex'), 1)[0];
+      if (preferred != null && closests.indexOf(preferred) === -1)
+        closests.unshift(preferred);
     }
-  }
+    for (var channel of closests)
+    {
+      if (util.test_pause_func)
+        yield util.test_pause_func('Router._send '+msg.data.type);
+      // TODO BUG Sometimes the WS on closest in not in the ready state
+      channel.send(msg);
+      if (channel.id.toString('hex') ===
+        (typeof msg.to==='string' ? msg.to : msg.to.toString('hex')))
+      {
+        break;
+      }
+    }
+  });
 };
+
 
 Router.prototype._onMessage = function(msg){
   var self = this;
