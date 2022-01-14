@@ -29,11 +29,10 @@ export default class Client extends EventEmitter {
     this.router.on('message', (msg, from)=>this._onMessage(msg, from));
     if (opts.port)
       console.log('peer-relay: listen on %s id %s', opts.port, ids(this.id));
-    this.wsConnector = new (opts.WsConnector||WsConnector)(
-      this.id, opts.port, opts.host);
+    this.wsConnector = new Client.WsConnector(this.id, opts.port, opts.host);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
-    this.wrtcConnector = new (opts.WrtcConnector||WrtcConnector)(
-      this.id, this.router, opts.wrtc);
+    this.wrtcConnector = new Client.WrtcConnector(this.id, this.router,
+      opts.wrtc);
     this.wrtcConnector.on('connection', channel=>this._onConnection(channel));
     setTimeout(()=>{ // XXX HACK: rm timeout
       for (var uri of opts.bootstrap||[])
@@ -175,3 +174,5 @@ export default class Client extends EventEmitter {
   }
  get_peers(){ return this.peers; }
 }
+Client.WsConnector = WsConnector;
+Client.WrtcConnector = WrtcConnector;

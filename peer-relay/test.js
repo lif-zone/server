@@ -294,7 +294,7 @@ class FakeWrtcConnector extends EventEmitter {
   constructor(id, router, wrtc){
     super();
     this.id = id;
-    this.supported = true;
+    this.supported = wrtc;
   }
   connect(_d){
     let d = node_from_id(_d), s = node_from_id(this.id);
@@ -429,8 +429,7 @@ function cmd_node(role, c){
     assert(!node_from_url(wss.url), wss.url+' already used');
   let fake = is_fake(role, name);
   let node = new (fake ? FakeNode : Node)(assign({id: util.buf_from_str(id),
-    bootstrap, WsConnector: FakeWsConnector,
-    WrtcConnector: wrtc&&FakeWrtcConnector}, wss));
+    bootstrap, wrtc}, wss));
   assert.equal(id, util.buf_to_str(node.id));
   node.t = {id, name, fake, wss, channels: []};
   t_nodes[name] = node;
@@ -723,8 +722,8 @@ const test_end = ()=>etask(function*(){
 
 describe('peer-relay', function(){
   beforeEach(function(){
-    // xtest.set(ws_util, 'WebSocketServer', FakeWebSocketServer);
-    // XXX TODO: same for WRTC
+    xtest.set(Node, 'WsConnector', FakeWsConnector);
+    xtest.set(Node, 'WrtcConnector', FakeWrtcConnector);
     // XXX TODO: same for overload send on router.js
   });
   this.timeout(2*t_timeout);
