@@ -7,6 +7,7 @@ import Router from './router.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
+import assert from 'assert';
 const debug = _debug('peer-relay:client');
 
 function ids(id){ return util.buf_to_str(id); }
@@ -42,32 +43,26 @@ export default class Client extends EventEmitter {
     });
   }
   _onConnection(channel){
-    var self = this;
-    if (self.destroyed)
-      throw new Error('Cannot setup channel when client is destroyed');
+    const onClose = ()=>{
+      delete this.pending[channel.id];
+      this.canidates.remove(channel.id);
+      this.peers.remove(channel.id);
+    };
+    assert(!this.destroyed, 'node already destroyed');
     channel.on('close', onClose);
-    channel.on('error', onError);
-    delete self.pending[channel.id];
-    self.canidates.add({id: channel.id});
-    if (self.peers.get(channel.id))
+    channel.on('error', err=>this._debug('Error', err));
+    delete this.pending[channel.id];
+    this.canidates.add({id: channel.id});
+    if (this.peers.get(channel.id))
     {
-      if (channel.id.compare(self.id) >= 0)
+      if (channel.id.compare(this.id) >= 0)
         channel.destroy();
       return;
     }
-    self.peers.add(channel);
-    self.emit('connection', channel);
-    self.router.send(channel.id, {type: 'findPeers', data: ids(self.id)});
-    self.emit('peer', channel.id);
-
-    function onClose(){
-      delete self.pending[channel.id];
-      self.canidates.remove(channel.id);
-      self.peers.remove(channel.id);
-    }
-
-    function onError(err){ self._debug('Error', err); }
-
+    this.peers.add(channel);
+    this.emit('connection', channel);
+    this.router.send(channel.id, {type: 'findPeers', data: ids(this.id)});
+    this.emit('peer', channel.id);
     return channel;
   }
   connect_ws(uri){ this.wsConnector.connect(uri); }
