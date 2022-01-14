@@ -980,7 +980,9 @@ describe('peer-relay', function(){
       ba>send(hello) bs,sa>fwd(ba>msg(hello)) -
       bc>send(hello) bs,sc>fwd(bc>msg(hello))
     `);
-    if (0) // XXX: fixme
+    // XXX: if missing <connected event, the error is not clear.
+    // XXX derry: review events
+    if (1) // XXX: fixme
     t('4_nodes_star_wrtc', `
       node(s wss(port:4000)) node(a wrtc) node(b wrtc) node(c wrtc) -
       as>!connect(wss) as<connected
@@ -998,19 +1000,17 @@ describe('peer-relay', function(){
       as>fwd(ac>handshake-answer(wrtc)) bs>fwd(bc>handshake-answer(wrtc))
       sc>fwd(ac>handshake-answer(wrtc)) ab>fwd(ac>handshake-answer(wrtc))
       sc>fwd(bc>handshake-answer(wrtc)) ba>fwd(bc>handshake-answer(wrtc))
-      ca>connect(wrtc) ca<connected
-      bs>fwd(ac>handshake-answer(wrtc))
-      -
-      as>send(hello) as>msg(hello) -
-      sa>send(hello) sa>msg(hello) -
-      bs>send(hello) bs>msg(hello) -
-      sb>send(hello) sb>msg(hello) -
-      cs>send(hello) cs>msg(hello) -
-      sc>send(hello) sc>msg(hello) -
-      ab>send(hello) as,sb>fwd(ab>msg(hello)) -
-      ac>send(hello) as,sc>fwd(ac>msg(hello)) -
-      ba>send(hello) bs,sa>fwd(ba>msg(hello)) -
-      bc>send(hello) bs,sc>fwd(bc>msg(hello))
+      ca>connect(wrtc) ca<connected bs>fwd(ac>handshake-answer(wrtc))
+      cb>connect(wrtc) cb<connected as>fwd(bc>handshake-answer(wrtc))
+      ca>findPeers(c) ca<findPeers(a) cs>fwd(cb>findPeers(c))
+      bc>findPeers(b) ac>foundPeers(c,s,a,b) ca>foundPeers(a,b,s,c)
+      sb>fwd(cb>findPeers(c)) cb>findPeers(c) cb>foundPeers(b,a,s,c)
+      bc>foundPeers(c,s,a,b) -
+      as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
+      bs>send(hello) bs>msg(hello) - sb>send(hello) sb>msg(hello) -
+      cs>send(hello) cs>msg(hello) - sc>send(hello) sc>msg(hello) -
+      ab>send(hello) ab>msg(hello) - ac>send(hello) ac>msg(hello) -
+      ba>send(hello) ba>msg(hello) - bc>send(hello) bc>msg(hello)
     `);
     t = (name, test)=>{
       xit(name, 'a', test);
