@@ -816,8 +816,9 @@ describe('peer-relay', function(){
       xit(name, 'fake', test);
     };
     t('3_nodes_star', `
-      node(s wss(port:4000)) node(a) node(b) - as>!connect(wss) as<connected
-      as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s) -
+      node(s wss(port:4000)) node(a) node(b wss(port:4001)) -
+      as>!connect(wss) as<connected as>findPeers(a) sa>findPeers(s)
+      as<foundPeers(a) sa<foundPeers(s) -
       bs>!connect(wss) bs<connected bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer)
@@ -825,7 +826,19 @@ describe('peer-relay', function(){
       sb>send(hello) sb>msg(hello) - bs>send(hello) bs>msg(hello) -
       ab>send(hello) as,sb>fwd(ab>msg(hello)) -
       ba>send(hello) bs,sa>fwd(ba>msg(hello))`);
-    // XXX: derry, review >connect(wss) >connect(wrtc)
+    // XXX derry: make port automatic
+    t('3_nodes_star_wss', `
+      node(s wss(port:4000)) node(a wss(port:4001)) node(b) -
+      as>!connect(wss) as<connected as>findPeers(a) sa>findPeers(s)
+      as<foundPeers(a) sa<foundPeers(s) -
+      bs>!connect(wss) bs<connected bs>findPeers(b) sb>findPeers(s)
+      bs<foundPeers(b,a,s) sb<foundPeers(s)
+      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(ws))
+      ba>connect(wss) ba<connected ba>findPeers(b) ba<findPeers(a)
+      ba<foundPeers(b,a,s) ba>foundPeers(a,b,s) -
+      as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
+      sb>send(hello) sb>msg(hello) - bs>send(hello) bs>msg(hello) -
+      ba<send(hello) ba<msg(hello) - ba>send(hello) ba>msg(hello)`);
     t('3_nodes_star_wrtc', `
       node(s wss(port:4000)) node(a wrtc) node(b wrtc) -
       as>!connect(wss) as<connected as>findPeers(a) sa>findPeers(s)
@@ -992,8 +1005,9 @@ describe('peer-relay', function(){
       sd>connect(wss) sd<connected bs>fwd(cs>handshake-answer)
       sd>findPeers(s) db>fwd(ds>findPeers(d)) ds>foundPeers(s,d,c,b,a)
       bs>fwd(ds>findPeers(d)) ds>findPeers(d) sd>foundPeers(d,c,s,b,a)
-    `);
+    `); // XXX: missing send/msg test
+    // XXX add tests 1) for ws/wrtc failures 2) that we connect to
+    // close ws if using hopes
   });
-  // XXX: missing send/msg test
 });
 
