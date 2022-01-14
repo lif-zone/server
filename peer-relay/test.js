@@ -1069,6 +1069,7 @@ describe('peer-relay', function(){
     `); // XXX: missing send/msg test
     // XXX add tests 1) for ws/wrtc failures 2) that we connect to
     // close ws if using hopes
+    // XXX: disconnect test
   });
 });
 
