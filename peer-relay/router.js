@@ -83,8 +83,7 @@ export default class Router extends EventEmitter {
     let to = new Buffer(msg.to, 'hex');
     if (to.equals(this.id))
     {
-      // XXX: it's pretty ugly that we change to/from fields and make code
-      // diffiuclt to debug
+      // XXX: ugly: we change to/from fields and make code diffiuclt to debug
       msg.to = to;
       msg.from = new Buffer(msg.from, 'hex');
       debugMsg('RECV', this.id, msg);
