@@ -14,40 +14,33 @@ export default class Client extends EventEmitter {
     super();
     if (!opts)
       opts = {};
-    var self = this;
-    self.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
-    self.pending = {};
-    self.destroyed = false;
-    self.peers = new KBucket({localNodeId: self.id,
+    this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
+    this.pending = {};
+    this.destroyed = false;
+    this.peers = new KBucket({localNodeId: this.id,
       numberOfNodesPerKBucket: 20});
-    self.peers.on('removed', onRemoved);
-    self.canidates = new KBucket({ // TODO expire canidates after period
-      localNodeId: self.id, numberOfNodesPerKBucket: 20});
-    self.router = new Router(self.peers, self.id);
-    self.router.on('message', onMessage);
+    this.peers.on('removed', channel=>channel.destroy());
+    this.canidates = new KBucket({ // TODO expire canidates after period
+      localNodeId: this.id, numberOfNodesPerKBucket: 20});
+    this.router = new Router(this.peers, this.id);
+    this.router.on('message', (msg, from)=>this._onMessage(msg, from));
     if (opts.port)
     {
       console.log('peer-relay: ws listen on %s id %s', opts.port,
-        util.buf_to_str(self.id));
+        util.buf_to_str(this.id));
     }
-    self.wsConnector = new (opts.WsConnector||WsConnector)(
-      self.id, opts.port, opts.host);
-    self.wsConnector.on('connection', onConnection);
-    self.wrtcConnector = new (opts.WrtcConnector||WrtcConnector)(
-      self.id, self.router, opts.wrtc);
-    self.wrtcConnector.on('connection', onConnection);
-    self._debug('Client(%s)', JSON.stringify(opts, ['port', 'bootstrap']));
+    this.wsConnector = new (opts.WsConnector||WsConnector)(
+      this.id, opts.port, opts.host);
+    this.wsConnector.on('connection', channel=>this._onConnection(channel));
+    this.wrtcConnector = new (opts.WrtcConnector||WrtcConnector)(
+      this.id, this.router, opts.wrtc);
+    this.wrtcConnector.on('connection', channel=>this._onConnection(channel));
+    this._debug('Client(%s)', JSON.stringify(opts, ['port', 'bootstrap']));
     // XXX HACK: rm timeout
     setTimeout(()=>{
       for (var uri of opts.bootstrap||[])
-        self.connect_ws(uri);
+        this.connect_ws(uri);
     });
-
-    function onConnection(channel){ self._onConnection(channel); }
-
-    function onMessage(msg, from){ self._onMessage(msg, from); }
-
-    function onRemoved(channel){ channel.destroy(); }
   }
   _onConnection(channel){
     var self = this;
