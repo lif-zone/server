@@ -16,15 +16,15 @@ export default class Client extends EventEmitter {
     super();
     if (!opts)
       opts = {};
+    // XXX: change id to priv/pub keys
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     // XXX: need cleanup for all internal structures
     this.pending = {};
     this.destroyed = false;
-    this.peers = new KBucket({localNodeId: this.id,
-      numberOfNodesPerKBucket: 20});
+    this.peers = new KBucket({localNodeId: this.id});
     this.peers.on('removed', channel=>channel.destroy());
-    this.canidates = new KBucket({ // TODO expire canidates after period
-      localNodeId: this.id, numberOfNodesPerKBucket: 20});
+    // TODO expire canidates after period
+    this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router(this.peers, this.id);
     this.router.on('message', (msg, from)=>this._onMessage(msg, from));
     if (opts.port)
