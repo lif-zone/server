@@ -9,6 +9,8 @@ import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
 const debug = _debug('peer-relay:client');
 
+function ids(id){ return util.buf_to_str(id); }
+
 export default class Client extends EventEmitter {
   constructor(opts){
     super();
@@ -25,10 +27,7 @@ export default class Client extends EventEmitter {
     this.router = new Router(this.peers, this.id);
     this.router.on('message', (msg, from)=>this._onMessage(msg, from));
     if (opts.port)
-    {
-      console.log('peer-relay: ws listen on %s id %s', opts.port,
-        util.buf_to_str(this.id));
-    }
+      console.log('peer-relay: listen on %s id %s', opts.port, ids(this.id));
     this.wsConnector = new (opts.WsConnector||WsConnector)(
       this.id, opts.port, opts.host);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
@@ -58,8 +57,7 @@ export default class Client extends EventEmitter {
     }
     self.peers.add(channel);
     self.emit('connection', channel);
-    self.router.send(channel.id, {type: 'findPeers',
-      data: self.id.toString('hex')});
+    self.router.send(channel.id, {type: 'findPeers', data: ids(self.id)});
     self.emit('peer', channel.id);
 
     function onClose(){
@@ -107,7 +105,7 @@ export default class Client extends EventEmitter {
     var self = this;
     if (self.destroyed)
       return;
-    self.router.send(id, {type: 'findPeers', data: self.id.toString('hex')});
+    self.router.send(id, {type: 'findPeers', data: ids(self.id)});
   }
   _onMessage(msg, from){
     var self = this;
@@ -131,7 +129,7 @@ export default class Client extends EventEmitter {
     var target = new Buffer(msg.data, 'hex');
     var closest = self.canidates.closest(target, 20);
     self.router.send(from, {type: 'foundPeers',
-      data: closest.map(e=>e.id.toString('hex'))});
+      data: closest.map(e=>ids(e.id))});
   }
   _onFoundPeers(msg){
     var self = this;
