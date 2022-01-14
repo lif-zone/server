@@ -8,7 +8,6 @@ import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
 import assert from 'assert';
-const debug = _debug('peer-relay:client');
 
 function ids(id){ return util.buf_to_str(id); }
 
@@ -36,9 +35,7 @@ export default class Client extends EventEmitter {
     this.wrtcConnector = new (opts.WrtcConnector||WrtcConnector)(
       this.id, this.router, opts.wrtc);
     this.wrtcConnector.on('connection', channel=>this._onConnection(channel));
-    this._debug('Client(%s)', JSON.stringify(opts, ['port', 'bootstrap']));
-    // XXX HACK: rm timeout
-    setTimeout(()=>{
+    setTimeout(()=>{ // XXX HACK: rm timeout
       for (var uri of opts.bootstrap||[])
         this.connect_ws(uri);
     });
@@ -51,7 +48,8 @@ export default class Client extends EventEmitter {
     };
     assert(!this.destroyed, 'node already destroyed');
     channel.on('close', onClose);
-    channel.on('error', err=>this._debug('Error', err));
+    // XXX: decide how to handle errors
+    channel.on('error', err=>console.error('Error', err));
     delete this.pending[channel.id];
     this.canidates.add({id: channel.id});
     if (this.peers.get(channel.id))
@@ -78,7 +76,6 @@ export default class Client extends EventEmitter {
     if (id.equals(this.id))
       return;
     this.pending[id] = true;
-    this._debug('Connecting to id=%s', id.toString('hex', 0, 2));
     this.router.send(id, {type: 'handshake-offer'});
   }
   disconnect(id){
@@ -91,7 +88,6 @@ export default class Client extends EventEmitter {
   send = function(id, data){
     if (this.destroyed)
       return;
-    // this._debug('SEND', id.toString('hex', 0, 2), JSON.stringify(data))
     this.router.send(id, {type: 'user', data: data});
   }
   findPeers(id){
@@ -102,8 +98,6 @@ export default class Client extends EventEmitter {
   _onMessage(msg, from){
     if (this.destroyed)
       return;
-    // this._debug('RECV', from.toString('hex', 0, 2),
-    // JSON.stringify(msg.data))
     if (msg.type === 'user')
       this.emit('message', msg.data, from);
     else if (msg.type === 'findPeers')
@@ -167,11 +161,6 @@ export default class Client extends EventEmitter {
         continue;
       this.connect(closest[i].id);
     }
-  }
-  _debug(){
-    var prepend = '[' + this.id.toString('hex', 0, 2) + ']  ';
-    arguments[0] = prepend + arguments[0];
-    debug.apply(null, arguments);
   }
   destroy(cb){
     if (this.destroyed)
