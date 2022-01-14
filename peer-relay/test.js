@@ -598,7 +598,6 @@ const cmd_handshake_answer = (role, c)=>etask(function*(){
       default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  // XXX: support also wss
   fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
   test_pending(c);
   if (!s.t.fake && !c.fwd)
