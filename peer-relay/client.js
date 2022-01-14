@@ -18,6 +18,7 @@ export default class Client extends EventEmitter {
     if (!opts)
       opts = {};
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
+    // XXX: need cleanup for all internal structures
     this.pending = {};
     this.destroyed = false;
     this.peers = new KBucket({localNodeId: this.id,
@@ -68,129 +69,117 @@ export default class Client extends EventEmitter {
   connect_ws(uri){ this.wsConnector.connect(uri); }
   connect_wrtc(uri){ this.wrtcConnector.connect(uri); }
   connect(id){
-    var self = this;
-    if (self.destroyed)
+    if (this.destroyed) // XXX: print error (or assert)
       return;
-    if (id in self.pending)
+    if (id in this.pending)
       return;
-    if (self.peers.get(id))
+    if (this.peers.get(id))
       return;
-    if (id.equals(self.id))
+    if (id.equals(this.id))
       return;
-    self.pending[id] = true;
-    self._debug('Connecting to id=%s', id.toString('hex', 0, 2));
-    self.router.send(id, {type: 'handshake-offer'});
+    this.pending[id] = true;
+    this._debug('Connecting to id=%s', id.toString('hex', 0, 2));
+    this.router.send(id, {type: 'handshake-offer'});
   }
   disconnect(id){
-    var self = this;
-    if (self.destroyed)
+    if (this.destroyed)
       return;
-    if (!self.peers.get(id))
+    if (!this.peers.get(id))
       return;
-    self.peers.get(id).destroy();
+    this.peers.get(id).destroy();
   }
   send = function(id, data){
-    var self = this;
-    if (self.destroyed)
+    if (this.destroyed)
       return;
-    // self._debug('SEND', id.toString('hex', 0, 2), JSON.stringify(data))
-    self.router.send(id, {type: 'user', data: data});
+    // this._debug('SEND', id.toString('hex', 0, 2), JSON.stringify(data))
+    this.router.send(id, {type: 'user', data: data});
   }
   findPeers(id){
-    var self = this;
-    if (self.destroyed)
+    if (this.destroyed)
       return;
-    self.router.send(id, {type: 'findPeers', data: ids(self.id)});
+    this.router.send(id, {type: 'findPeers', data: ids(this.id)});
   }
   _onMessage(msg, from){
-    var self = this;
-    if (self.destroyed)
+    if (this.destroyed)
       return;
-    // self._debug('RECV', from.toString('hex', 0, 2),
+    // this._debug('RECV', from.toString('hex', 0, 2),
     // JSON.stringify(msg.data))
     if (msg.type === 'user')
-      self.emit('message', msg.data, from);
+      this.emit('message', msg.data, from);
     else if (msg.type === 'findPeers')
-      self._onFindPeers(msg, from);
+      this._onFindPeers(msg, from);
     else if (msg.type === 'foundPeers')
-      self._onFoundPeers(msg, from);
+      this._onFoundPeers(msg, from);
     else if (msg.type === 'handshake-offer')
-      self._onHandshakeOffer(msg, from);
+      this._onHandshakeOffer(msg, from);
     else if (msg.type === 'handshake-answer')
-      self._onHandshakeAnswer(msg, from);
+      this._onHandshakeAnswer(msg, from);
   }
   _onFindPeers(msg, from){
-    var self = this;
     var target = new Buffer(msg.data, 'hex');
-    var closest = self.canidates.closest(target, 20);
-    self.router.send(from, {type: 'foundPeers',
+    var closest = this.canidates.closest(target, 20);
+    this.router.send(from, {type: 'foundPeers',
       data: closest.map(e=>ids(e.id))});
   }
   _onFoundPeers(msg){
-    var self = this;
     for (var canidate of msg.data)
-      self.canidates.add({id: new Buffer(canidate, 'hex')});
-    self._populate();
+      this.canidates.add({id: new Buffer(canidate, 'hex')});
+    this._populate();
   }
   _onHandshakeOffer(msg, from){
-    var self = this;
-    if (self.peers.get(from))
+    if (this.peers.get(from))
       return;
-    if (self.pending[from] == null || from.compare(self.id) < 0)
+    if (this.pending[from] == null || from.compare(this.id) < 0)
     {
-      self.pending[from] = true;
-      self.router.send(from, {type: 'handshake-answer',
-        data: {ws: self.wsConnector.url, wrtc: self.wrtcConnector.supported}});
+      this.pending[from] = true;
+      this.router.send(from, {type: 'handshake-answer',
+        data: {ws: this.wsConnector.url, wrtc: this.wrtcConnector.supported}});
     }
   }
   // XXX: change to etask
   async _onHandshakeAnswer(msg, from){
-    var self = this;
-    if (self.peers.get(from))
+    if (this.peers.get(from))
       return;
     if (msg.data == null)
       return;
-    if (msg.data.wrtc && self.wrtcConnector.supported)
+    if (msg.data.wrtc && this.wrtcConnector.supported)
     {
       // XXX HACK: move to connection event
       if (util.test_pause_func)
         await util.test_pause_func('Client._onHandshakeAnswer '+msg.data.type);
-      self.connect_wrtc(from);
+      this.connect_wrtc(from);
     }
     else if (msg.data.ws)
     {
       // XXX HACK: move to connection event
       if (util.test_pause_func)
         await util.test_pause_func('Client._onHandshakeAnswer '+msg.data.type);
-      self.wsConnector.connect(msg.data.ws);
+      this.wsConnector.connect(msg.data.ws);
     }
   }
   _populate(){
-    var self = this;
     var optimal = 15;
-    var closest = self.canidates.closest(self.id, optimal);
+    var closest = this.canidates.closest(this.id, optimal);
     for (var i = 0; i < closest.length &&
-      self.peers.count() + Object.keys(self.pending).length < optimal; i++)
+      this.peers.count() + Object.keys(this.pending).length < optimal; i++)
     {
-      if (self.peers.get(closest[i].id))
+      if (this.peers.get(closest[i].id))
         continue;
-      self.connect(closest[i].id);
+      this.connect(closest[i].id);
     }
   }
   _debug(){
-    var self = this;
-    var prepend = '[' + self.id.toString('hex', 0, 2) + ']  ';
+    var prepend = '[' + this.id.toString('hex', 0, 2) + ']  ';
     arguments[0] = prepend + arguments[0];
     debug.apply(null, arguments);
   }
   destroy(cb){
-    var self = this;
-    if (self.destroyed)
+    if (this.destroyed)
       return;
-    self.destroyed = true;
-    self.wsConnector.destroy(cb);
-    self.wrtcConnector.destroy();
-    var peers = self.peers.toArray();
+    this.destroyed = true;
+    this.wsConnector.destroy(cb);
+    this.wrtcConnector.destroy();
+    var peers = this.peers.toArray();
     for (var i = 0; i < peers.length; i++)
       peers[i].destroy();
   }
