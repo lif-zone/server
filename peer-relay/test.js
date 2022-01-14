@@ -935,9 +935,8 @@ describe('peer-relay', function(){
       bs>!connect(wss) bs<connected bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer) -
-      cs>!connect(wss) cs<connected
-      cs>findPeers(c) sc>findPeers(s) cs<foundPeers(c,s,a,b)
-      sc<foundPeers(s)
+      cs>!connect(wss) cs<connected cs>findPeers(c) sc>findPeers(s)
+      cs<foundPeers(c,s,a,b) sc<foundPeers(s)
       cs>fwd(ca>handshake-offer) cs>fwd(cb>handshake-offer)
       sa>fwd(ca>handshake-offer) sb>fwd(cb>handshake-offer)
       as>fwd(ac>handshake-answer) bs>fwd(bc>handshake-answer)
