@@ -12,8 +12,6 @@ const debug = _debug('peer-relay:client');
 export default class Client extends EventEmitter {
   constructor(opts){
     super();
-    if (!(this instanceof Client))
-      return new Client(opts);
     if (!opts)
       opts = {};
     var self = this;
