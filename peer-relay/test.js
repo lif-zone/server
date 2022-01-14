@@ -176,17 +176,22 @@ class FakeChannel extends EventEmitter {
     });
   }
   send(msg){
-    let s = node_from_id(this.localID), d = node_from_id(this.id);
-    let {type} = msg.data;
-    switch (type)
-    {
-    case 'findPeers':
-    case 'foundPeers':
-    case 'handshake-offer':
-    case 'handshake-answer':
-    case 'user': send_msg(s.t.name, d.t.name, msg); break;
-    default: assert(false, 'unexpected msg '+type);
-    }
+    let _this = this;
+    return etask(function*(){
+      let s = node_from_id(_this.localID), d = node_from_id(_this.id);
+      let {type} = msg.data;
+      if (util.test_pause_func)
+        yield util.test_pause_func('Router._send '+msg.data.type);
+      switch (type)
+      {
+      case 'findPeers':
+      case 'foundPeers':
+      case 'handshake-offer':
+      case 'handshake-answer':
+      case 'user': send_msg(s.t.name, d.t.name, msg); break;
+      default: assert(false, 'unexpected msg '+type);
+      }
+    });
   }
   destroy(){}
 }
@@ -624,6 +629,7 @@ const cmd_setup = c=>etask(function(){
 });
 
 let t_pause = [];
+// XXX: ugly, find better solution
 util.test_pause_func = function(src){
   let wait = etask(function*(){
     console.log('*** pre-wait %s', src);
@@ -724,7 +730,6 @@ describe('peer-relay', function(){
   beforeEach(function(){
     xtest.set(Node, 'WsConnector', FakeWsConnector);
     xtest.set(Node, 'WrtcConnector', FakeWrtcConnector);
-    // XXX TODO: same for overload send on router.js
   });
   this.timeout(2*t_timeout);
   describe('basic', function(){

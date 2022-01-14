@@ -2,7 +2,6 @@
 import {EventEmitter} from 'events';
 import _debug from 'debug';
 import assert from 'assert';
-import util from '../util/util.js';
 import etask from '../util/etask.js';
 const debug = _debug('peer-relay:router');
 const stringify = JSON.stringify;
@@ -61,10 +60,8 @@ export default class Router extends EventEmitter {
       }
       for (var channel of closests)
       {
-        if (util.test_pause_func)
-          yield util.test_pause_func('Router._send '+msg.data.type);
         // TODO BUG Sometimes the WS on closest in not in the ready state
-        channel.send(msg);
+        yield channel.send(msg);
         if (channel.id.toString('hex') ===
           (typeof msg.to==='string' ? msg.to : msg.to.toString('hex')))
         {
