@@ -747,27 +747,6 @@ describe('peer-relay', function(){
       node(b wss(port:4000)) node(a boot(b)) ab>connect(wss) ab<connected
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply)`);
-/* XXX derry:
-  ab>!connect(wss) === ab>!connect(wss |) ab<connected
-  test_connected(){
-    conntedted...
-  }
-  test_connect(){
-    connect....
-    if ('|') noack = 1;
-    if (!noack)
-      test_connected(rev_roles)
-  }
-  test_foundPeers(){
-     foundPeers...
-  }
-  test_findPeers(){
-    findPeers....
-    if ('|') noack = 1;
-    if (!noack)
-      test_foundPeers()
-  }
-*/
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
