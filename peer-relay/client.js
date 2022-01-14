@@ -51,7 +51,7 @@ function Client(opts){
   function onRemoved(channel){ channel.destroy(); }
 }
 
-Client.prototype._onConnection = async function(channel){
+Client.prototype._onConnection = function(channel){
   var self = this;
   if (self.destroyed)
     throw new Error('Cannot setup channel when client is destroyed');
@@ -157,7 +157,7 @@ Client.prototype._onFoundPeers = function(msg){
   self._populate();
 };
 
-Client.prototype._onHandshakeOffer = async function(msg, from){
+Client.prototype._onHandshakeOffer = function(msg, from){
   var self = this;
   if (self.peers.get(from))
     return;
@@ -191,7 +191,7 @@ Client.prototype._onHandshakeAnswer = async function(msg, from){
   }
 };
 
-Client.prototype._populate = async function(){
+Client.prototype._populate = function(){
   var self = this;
   var optimal = 15;
   var closest = self.canidates.closest(self.id, optimal);
