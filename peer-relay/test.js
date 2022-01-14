@@ -395,10 +395,23 @@ function assert_wrtc(val){
   return true;
 }
 
+function assert_bootstrap(val){
+  let bootstrap = [];
+  let a = val.split(' ');
+  a.forEach(name=>{
+    let node = t_nodes[name];
+    assert(node, 'node not found '+name);
+    let url = url_from_node(node);
+    assert(url, 'no url for '+name);
+    bootstrap.push(url);
+  });
+  return bootstrap;
+}
+
 function cmd_node(role, c){
   // XXX: add xtest.test_parse_unique (to avoid multiple args)
   let arg = xtest.test_parse(c.arg);
-  let id, name, wss, wrtc;
+  let id, name, wss, wrtc, bootstrap;
   util.forEach(arg, a=>{
     if (!name)
       return name = assert_name_new(a.cmd);
@@ -406,6 +419,7 @@ function cmd_node(role, c){
     {
     case 'wss': wss = assert_wss(a.arg); break;
     case 'wrtc': wrtc = assert_wrtc(a.arg); break;
+    case 'boot': bootstrap = assert_bootstrap(a.arg); break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
@@ -416,8 +430,8 @@ function cmd_node(role, c){
     assert(!node_from_url(wss.url), wss.url+' already used');
   let fake = is_fake(role, name);
   let node = new (fake ? FakeNode : Node)(assign({id: util.buf_from_str(id),
-    WsConnector: FakeWsConnector, WrtcConnector: wrtc&&FakeWrtcConnector},
-    wss));
+    bootstrap, WsConnector: FakeWsConnector,
+    WrtcConnector: wrtc&&FakeWrtcConnector}, wss));
   assert.equal(id, util.buf_to_str(node.id));
   node.t = {id, name, fake, wss, channels: []};
   t_nodes[name] = node;
@@ -742,6 +756,10 @@ describe('peer-relay', function(){
     // XXX: fix all roles ab> ab<
     t('2_nodes', `
       node(a) node(b wss(port:4000)) - ab>!connect(wss) ab<connected
+      ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
+      ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply)`);
+   t('2_nodes_bootstrap', `
+      node(b wss(port:4000)) node(a boot(b)) ab>connect(wss) ab<connected
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply)`);
 /* XXX derry:

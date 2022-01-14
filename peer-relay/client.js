@@ -41,8 +41,11 @@ function Client(opts){
     self.id, self.router, opts.wrtc);
   self.wrtcConnector.on('connection', onConnection);
   self._debug('Client(%s)', JSON.stringify(opts, ['port', 'bootstrap']));
-  for (var uri of opts.bootstrap||[])
-    self.connect_ws(uri);
+  // XXX HACK: rm timeout
+  setTimeout(()=>{
+    for (var uri of opts.bootstrap||[])
+      self.connect_ws(uri);
+  });
 
   function onConnection(channel){ self._onConnection(channel); }
 
