@@ -72,7 +72,7 @@ Router.prototype._send = async function(msg){
   }
 };
 
-Router.prototype._onMessage = async function(msg){
+Router.prototype._onMessage = function(msg){
   var self = this;
   if (msg.nonce in self._touched)
     return;
