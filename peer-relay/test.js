@@ -128,10 +128,13 @@ class FakeNode extends EventEmitter {
     super();
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new FakeWsConnector(this.id, opts.port, opts.host);
+    this.wrtcConnector = new FakeWrtcConnector(this.id);
     this.wsConnector.on('connection', c=>this.emit('connection', c));
+    this.wrtcConnector.on('connection', c=>this.emit('connection', c));
   }
   destroy(){}
   connect_ws(url){ this.wsConnector.connect(url); }
+  connect_wrtc(id){ this.wrtcConnector.connect(id); }
 }
 
 class FakeChannel extends EventEmitter {
@@ -157,8 +160,12 @@ class FakeChannel extends EventEmitter {
           break;
         case 'handshake-offer': e = from.t.name+to.t.name+'>'+type; break;
         case 'handshake-answer':
-          assert(data && !data.wrtc, 'TODO '+stringify(data)); // XXX: TODO
-          e = from.t.name+to.t.name+'>'+type;
+          a = [];
+          if (data.wss)
+            a.push('wss'); // XXX: asswert correct val of wss
+          if (data.wrtc)
+            a.push('wrtc');
+          e = build_cmd(from.t.name+to.t.name+'>'+type, a.join(' '));
           break;
         case 'user': e = from.t.name+to.t.name+'>msg('+data+')'; break;
         default: assert(false, 'unexpected msg '+type);
@@ -284,6 +291,21 @@ class FakeWsConnector extends EventEmitter {
   destroy(){}
 }
 
+class FakeWrtcConnector extends EventEmitter {
+  constructor(id, router, wrtc){
+    super();
+    this.id = id;
+    this.supported = true;
+  }
+  connect(_d){
+    let d = node_from_id(_d), s = node_from_id(this.id);
+    // XXX: specify it is wrtc channel
+    let channel = new FakeChannel({localID: s.id, id: d.id});
+    s.wrtcConnector.emit('connection', channel);
+  }
+  destroy(){}
+}
+
 function is_fake(role, p){ return role!= 'real' && role!=p; }
 
 // eslint-disable-next-line no-unused-vars
@@ -366,16 +388,22 @@ function assert_wss(val){
   return {host, port, url: 'wss://'+host+':'+port};
 }
 
+function assert_wrtc(val){
+  assert(!val, 'unexpected val for wrtc');
+  return true;
+}
+
 function cmd_node(role, c){
   // XXX: add xtest.test_parse_unique (to avoid multiple args)
   let arg = xtest.test_parse(c.arg);
-  let id, name, wss;
+  let id, name, wss, wrtc;
   util.forEach(arg, a=>{
     if (!name)
       return name = assert_name_new(a.cmd);
     switch (a.cmd)
     {
     case 'wss': wss = assert_wss(a.arg); break;
+    case 'wrtc': wrtc = assert_wrtc(a.arg); break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
@@ -385,8 +413,9 @@ function cmd_node(role, c){
   if (wss)
     assert(!node_from_url(wss.url), wss.url+' already used');
   let fake = is_fake(role, name);
-  let node = new (fake ? FakeNode : Node)(
-    assign({id: util.buf_from_str(id), WsConnector: FakeWsConnector}, wss));
+  let node = new (fake ? FakeNode : Node)(assign({id: util.buf_from_str(id),
+    WsConnector: FakeWsConnector, WrtcConnector: wrtc&&FakeWrtcConnector},
+    wss));
   assert.equal(id, util.buf_to_str(node.id));
   node.t = {id, name, fake, wss, channels: []};
   t_nodes[name] = node;
@@ -401,7 +430,7 @@ function cmd_node(role, c){
 }
 
 const cmd_connect = c=>etask(function*(){
-  let wss, arg = xtest.test_parse(c.arg), auto = c.cmd=='connect';
+  let wss, wrtc, arg = xtest.test_parse(c.arg), auto = c.cmd=='connect';
   util.forEach(arg, a=>{
     switch (a.cmd)
     {
@@ -417,11 +446,17 @@ const cmd_connect = c=>etask(function*(){
       }
       assert(wss, 'dest '+c.d+' has no ws server');
       break;
+    case 'wrtc':
+      assert(auto, 'wrtc connect must be auto');
+      wrtc = true;
+      // XXX: assert destination has wrtc support
+      break;
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
   assert_exist(c.s);
   assert.equal(c.dir, '>');
+  assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   test_pending(c.s+c.d+'>connect');
   let s = t_nodes[c.s], d = t_nodes[c.d];
   if (!auto)
@@ -435,6 +470,8 @@ const cmd_connect = c=>etask(function*(){
   {
     if (wss)
       t_nodes[c.s].connect_ws(wss);
+    else if (wrtc)
+      t_nodes[c.s].connect_wrtc(d.id);
     else
       throw new Error('not implemented yet');
     if (!d.t.fake && !s.t.fake)
@@ -528,9 +565,16 @@ const cmd_handshake_offer = (role, c)=>etask(function*(){
 });
 
 const cmd_handshake_answer = (role, c)=>etask(function*(){
-  let s = t_nodes[c.s];
-  // XXX: check what to assert
-  fake_send_msg(c, {type: 'handshake-answer', data: {}});
+  let s = t_nodes[c.s], wrtc, arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
+    switch (a.cmd)
+    {
+      case 'wrtc': wrtc = assert_wrtc(a.arg); break;
+      default: throw new Error('unknown arg '+a.cmd);
+    }
+  });
+  // XXX: support also wss
+  fake_send_msg(c, {type: 'handshake-answer', data: {wrtc}});
   test_pending(c);
   if (!s.t.fake && !c.fwd)
     yield test_resume();
@@ -769,6 +813,20 @@ describe('peer-relay', function(){
       sb>send(hello) sb>msg(hello) - bs>send(hello) bs>msg(hello) -
       ab>send(hello) as,sb>fwd(ab>msg(hello)) -
       ba>send(hello) bs,sa>fwd(ba>msg(hello))`);
+    // XXX: derry, review >connect(wss) >connect(wrtc)
+    if (0) // XXX WIP
+    t('3_nodes_star_wrtc', `
+      node(s wss(port:4000)) node(a wrtc) node(b wrtc)
+      as>!connect(wss) as<connected
+      as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s)
+     bs>!connect(wss) bs<connected bs>findPeers(b) sb>findPeers(s)
+      bs<foundPeers(b,a,s) sb<foundPeers(s)
+      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(wrtc))
+      ba>connect(wrtc) ba<connected ba>findPeers(b) ba<findPeers(a)
+      ba<foundPeers(b,a,s) ba>foundPeers(a,b,s) -
+      as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
+      sb>send(hello) sb>msg(hello) - bs>send(hello) bs>msg(hello) -
+      ba<send(hello) ba<msg(hello) - ba>send(hello) ba>msg(hello)`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);

@@ -37,7 +37,8 @@ function Client(opts){
   self.wsConnector = new (opts.WsConnector||WsConnector)(
     self.id, opts.port, opts.host);
   self.wsConnector.on('connection', onConnection);
-  self.wrtcConnector = new WrtcConnector(self.id, self.router, opts.wrtc);
+  self.wrtcConnector = new (opts.WrtcConnector||WrtcConnector)(
+    self.id, self.router, opts.wrtc);
   self.wrtcConnector.on('connection', onConnection);
   self._debug('Client(%s)', JSON.stringify(opts, ['port', 'bootstrap']));
   for (var uri of opts.bootstrap||[])
@@ -82,6 +83,8 @@ Client.prototype._onConnection = async function(channel){
 };
 
 Client.prototype.connect_ws = function(uri){ this.wsConnector.connect(uri); };
+Client.prototype.connect_wrtc = function(uri){
+  this.wrtcConnector.connect(uri); };
 
 Client.prototype.connect = function(id){
   var self = this;
@@ -173,7 +176,12 @@ Client.prototype._onHandshakeAnswer = async function(msg, from){
   if (msg.data == null)
     return;
   if (msg.data.wrtc && self.wrtcConnector.supported)
-    self.wrtcConnector.connect(from);
+  {
+    // XXX HACK: move to connection event
+    if (util.test_pause_func)
+      await util.test_pause_func('Client._onHandshakeAnswer '+msg.data.type);
+    self.connect_wrtc(from);
+  }
   else if (msg.data.ws)
   {
     // XXX HACK: move to connection event
