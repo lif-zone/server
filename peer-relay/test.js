@@ -447,7 +447,7 @@ function cmd_node(role, c){
 }
 
 const cmd_connect = c=>etask(function*(){
-  let wss, wrtc, arg = xtest.test_parse(c.arg), auto = c.cmd=='connect';
+  let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
   let r = true;
   util.forEach(arg, a=>{
     switch (a.cmd)
@@ -465,7 +465,7 @@ const cmd_connect = c=>etask(function*(){
       assert(wss, 'dest '+c.d+' has no ws server');
       break;
     case 'wrtc':
-      assert(auto, 'wrtc connect must be auto');
+      assert(!call, 'wrtc only in connect');
       wrtc = true;
       // XXX: assert destination has wrtc support
       break;
@@ -478,7 +478,7 @@ const cmd_connect = c=>etask(function*(){
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   test_pending(c.s+c.d+'>connect');
   let s = t_nodes[c.s], d = t_nodes[c.d];
-  if (!auto)
+  if (call)
   {
     if (wss)
       t_nodes[c.s].wsConnector.connect(wss);
@@ -505,7 +505,7 @@ const cmd_connect = c=>etask(function*(){
       throw new Error('not implemented yet');
   }
   if (r)
-    throw new Error('not implemented yet');
+    push_cmd(xtest.test_parse(c.s+c.d+'<connected'));
 });
 
 const cmd_connected = c=>etask(function(){
@@ -760,12 +760,16 @@ describe('peer-relay', function(){
       xit(name, 'fake', test);
     };
     // XXX: fix all roles ab> ab<
-    t('2_nodes', `
+    t('2_nodes_!r', `
       node(a) node(b wss(port:4000)) - ab>!connect(wss !r) ab<connected
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply)`);
+    t('2_nodes', `
+      node(a) node(b wss(port:4000)) - ab>!connect(wss)
+      ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
+      ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply)`);
    t('2_nodes_bootstrap', `
-      node(b wss(port:4000)) node(a boot(b)) ab>connect(wss !r) ab<connected
+      node(b wss(port:4000)) node(a boot(b)) ab>connect(wss)
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply)`);
     t = (name, test)=>{
@@ -780,9 +784,9 @@ describe('peer-relay', function(){
     // XXX: derry: node(a)
     t('3_nodes_linear', `
       node(a) node(b wss(port:4000)) node(c wss(port:4001))
-      ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<findPeers(b)
+      ab>!connect(wss) ab>findPeers(a) ab<findPeers(b)
       ab<foundPeers(a) ab>foundPeers(b) -
-      bc>!connect(wss !r) bc<connected bc>findPeers(b) bc<findPeers(c)
+      bc>!connect(wss) bc>findPeers(b) bc<findPeers(c)
       bc<foundPeers(b) bc>foundPeers(c,a,b) bc,ab<fwd(ca>handshake-offer)
       ab,bc>fwd(ca<handshake-answer) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
@@ -800,12 +804,12 @@ describe('peer-relay', function(){
     // XXX: wss -> ws
     t('3_nodes_linear_wss', `
       node(a wss(port:4000)) node(b wss(port:4001))
-      node(c wss(port:4002)) ab>!connect(wss !r) ab<connected
+      node(c wss(port:4002)) ab>!connect(wss)
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
-      bc>!connect(wss !r) bc<connected bc>findPeers(b) bc<findPeers(c)
+      bc>!connect(wss) bc>findPeers(b) bc<findPeers(c)
       bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
-      ab,bc>fwd(ca<handshake-answer(ws)) ca>connect(wss !r)
-      ca<connected ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
+      ab,bc>fwd(ca<handshake-answer(ws)) ca>connect(wss)
+      ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
       ca>foundPeers(a,b,c) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
       bc>send(hello) bc>msg(hello) - bc<send(reply) bc<msg(reply) -
@@ -813,12 +817,12 @@ describe('peer-relay', function(){
     // XXX: why not also connect via ws if both wrtc+ws are avail
     t('3_nodes_linear_wrtc', `
       node(a wrtc wss(port:4000)) node(b wss(port:4001))
-      node(c wrtc wss(port:4002)) ab>!connect(wss !r) ab<connected
+      node(c wrtc wss(port:4002)) ab>!connect(wss)
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
-      bc>!connect(wss !r) bc<connected bc>findPeers(b) bc<findPeers(c)
+      bc>!connect(wss) bc>findPeers(b) bc<findPeers(c)
       bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
-      ab,bc>fwd(ca<handshake-answer(ws wrtc)) ca>connect(wss !r)
-      ca<connected ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
+      ab,bc>fwd(ca<handshake-answer(ws wrtc)) ca>connect(wss)
+      ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
       ca>foundPeers(a,b,c) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
       bc>send(hello) bc>msg(hello) - bc<send(reply) bc<msg(reply) -
@@ -832,9 +836,9 @@ describe('peer-relay', function(){
     };
     t('3_nodes_star', `
       node(s wss(port:4000)) node(a) node(b wss(port:4001)) -
-      as>!connect(wss !r) as<connected as>findPeers(a) sa>findPeers(s)
+      as>!connect(wss) as>findPeers(a) sa>findPeers(s)
       as<foundPeers(a) sa<foundPeers(s) -
-      bs>!connect(wss !r) bs<connected bs>findPeers(b) sb>findPeers(s)
+      bs>!connect(wss) bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer)
       as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
@@ -844,24 +848,24 @@ describe('peer-relay', function(){
     // XXX derry: make port automatic
     t('3_nodes_star_wss', `
       node(s wss(port:4000)) node(a wss(port:4001)) node(b) -
-      as>!connect(wss !r) as<connected as>findPeers(a) sa>findPeers(s)
+      as>!connect(wss) as>findPeers(a) sa>findPeers(s)
       as<foundPeers(a) sa<foundPeers(s) -
-      bs>!connect(wss !r) bs<connected bs>findPeers(b) sb>findPeers(s)
+      bs>!connect(wss) bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(ws))
-      ba>connect(wss !r) ba<connected ba>findPeers(b) ba<findPeers(a)
+      ba>connect(wss) ba>findPeers(b) ba<findPeers(a)
       ba<foundPeers(b,a,s) ba>foundPeers(a,b,s) -
       as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
       sb>send(hello) sb>msg(hello) - bs>send(hello) bs>msg(hello) -
       ba<send(hello) ba<msg(hello) - ba>send(hello) ba>msg(hello)`);
     t('3_nodes_star_wrtc', `
       node(s wss(port:4000)) node(a wrtc) node(b wrtc) -
-      as>!connect(wss !r) as<connected as>findPeers(a) sa>findPeers(s)
+      as>!connect(wss) as>findPeers(a) sa>findPeers(s)
       as<foundPeers(a) sa<foundPeers(s) -
-      bs>!connect(wss !r) bs<connected bs>findPeers(b) sb>findPeers(s)
+      bs>!connect(wss) bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(wrtc))
-      ba>connect(wrtc !r) ba<connected ba>findPeers(b) ba<findPeers(a)
+      ba>connect(wrtc) ba>findPeers(b) ba<findPeers(a)
       ba<foundPeers(b,a,s) ba>foundPeers(a,b,s) -
       as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
       sb>send(hello) sb>msg(hello) - bs>send(hello) bs>msg(hello) -
@@ -877,17 +881,17 @@ describe('peer-relay', function(){
     // XXX: verify we don't use same port for different nodes
     t('4_nodes_linear', `
       node(a) node(b wss(port:4000)) node(c wss(port:4001))
-      node(d wss(port:4002)) ab>!connect(wss !r) ab<connected
+      node(d wss(port:4002)) ab>!connect(wss)
       ab>findPeers(a) ba>findPeers(b) ab<foundPeers(a) ba<foundPeers(b) -
-      bc>!connect(wss !r) bc<connected bc>findPeers(b) cb>findPeers(c)
+      bc>!connect(wss) bc>findPeers(b) cb>findPeers(c)
       bc<foundPeers(b) cb<foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
-      ab,bc>fwd(ca<handshake-answer) cd>!connect(wss !r) cd<connected
+      ab,bc>fwd(ca<handshake-answer) cd>!connect(wss)
       cd>findPeers(c) dc>findPeers(d) cd<foundPeers(c) dc<foundPeers(d,c,b,a)
       dc>fwd(db>handshake-offer) dc>fwd(da>handshake-offer)
       cb>fwd(db>handshake-offer) cb>fwd(da>handshake-offer)
       cb<fwd(db<handshake-answer(ws)) ba>fwd(da>handshake-offer)
       dc<fwd(db<handshake-answer(ws)) ba>fwd(db<handshake-answer(ws))
-      ab>fwd(da<handshake-answer) db>connect(wss !r) db<connected
+      ab>fwd(da<handshake-answer) db>connect(wss)
       ba<fwd(db<handshake-answer(ws)) cb<fwd(da<handshake-answer)
       db>findPeers(d) bd>findPeers(b) cd>fwd(da<handshake-answer)
       db<foundPeers(d,c,b,a) bd<foundPeers(b,a,d,c) -
@@ -904,14 +908,14 @@ describe('peer-relay', function(){
     `);
     // XXX derry: ab>msg(hello) - ab<msg(hello-rep) -
     t('4_nodes_2_networks', `
-      node(b wss(port:4000)) node(a) - ab>!connect(wss !r) ab<connected
+      node(b wss(port:4000)) node(a) - ab>!connect(wss)
       ab>findPeers(a) ba>findPeers(b) ab<foundPeers(a) ba<foundPeers(b) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
       node(d wss(port:4001)) node(c) -
-      cd>!connect(wss !r) cd<connected cd>findPeers(c) dc>findPeers(d)
+      cd>!connect(wss) cd>findPeers(c) dc>findPeers(d)
       cd<foundPeers(c) dc<foundPeers(d) -
       cd>send(hello) cd>msg(hello) - cd<send(reply) cd<msg(reply) -
-      bd>!connect(wss !r) bd<connected
+      bd>!connect(wss)
       bd>findPeers(b) db>findPeers(d) bd<foundPeers(b,d,c) db<foundPeers(d,b,a)
       bd>fwd(bc>handshake-offer) db>fwd(da>handshake-offer)
       dc>fwd(bc>handshake-offer) ba>fwd(bc>handshake-offer)
@@ -929,16 +933,16 @@ describe('peer-relay', function(){
       xit(name, 'real', test);
       xit(name, 'fake', test);
     };
-    // XXX BUG: if we just put cs>!connect(wss !r) with no other events,
+    // XXX BUG: if we just put cs>!connect(wss) with no other events,
     // test will not fail. need to fix test to fail on such case
     t('4_nodes_star', `
       node(s wss(port:4000)) node(a) node(b) node(c) -
-      as>!connect(wss !r) as<connected
+      as>!connect(wss)
       as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s) -
-      bs>!connect(wss !r) bs<connected bs>findPeers(b) sb>findPeers(s)
+      bs>!connect(wss) bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer) -
-      cs>!connect(wss !r) cs<connected cs>findPeers(c) sc>findPeers(s)
+      cs>!connect(wss) cs>findPeers(c) sc>findPeers(s)
       cs<foundPeers(c,s,a,b) sc<foundPeers(s)
       cs>fwd(ca>handshake-offer) cs>fwd(cb>handshake-offer)
       sa>fwd(ca>handshake-offer) sb>fwd(cb>handshake-offer)
@@ -961,22 +965,22 @@ describe('peer-relay', function(){
     // !connect = do connect+connect+connected
     t('4_nodes_star_wrtc', `
       node(s wss(port:4000)) node(a wrtc) node(b wrtc) node(c wrtc) -
-      as>!connect(wss !r) as<connected
+      as>!connect(wss)
       as>findPeers(a) sa>findPeers(s) as<foundPeers(a) sa<foundPeers(s) -
-      bs>!connect(wss !r) bs<connected bs>findPeers(b) sb>findPeers(s)
+      bs>!connect(wss) bs>findPeers(b) sb>findPeers(s)
       bs<foundPeers(b,a,s) sb<foundPeers(s)
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(wrtc))
-      ba>connect(wrtc !r) ba<connected ba>findPeers(b) ba<findPeers(a)
+      ba>connect(wrtc) ba>findPeers(b) ba<findPeers(a)
       ba<foundPeers(b,a,s) ba>foundPeers(a,b,s) -
-      cs>!connect(wss !r) cs<connected cs>findPeers(c) sc>findPeers(s)
+      cs>!connect(wss) cs>findPeers(c) sc>findPeers(s)
       cs<foundPeers(c,s,a,b) sc<foundPeers(s)
       cs>fwd(ca>handshake-offer) cs>fwd(cb>handshake-offer)
       sa>fwd(ca>handshake-offer) sb>fwd(cb>handshake-offer)
       as>fwd(ac>handshake-answer(wrtc)) bs>fwd(bc>handshake-answer(wrtc))
       sc>fwd(ac>handshake-answer(wrtc)) ab>fwd(ac>handshake-answer(wrtc))
       sc>fwd(bc>handshake-answer(wrtc)) ba>fwd(bc>handshake-answer(wrtc))
-      ca>connect(wrtc !r) ca<connected bs>fwd(ac>handshake-answer(wrtc))
-      cb>connect(wrtc !r) cb<connected as>fwd(bc>handshake-answer(wrtc))
+      ca>connect(wrtc) bs>fwd(ac>handshake-answer(wrtc))
+      cb>connect(wrtc) as>fwd(bc>handshake-answer(wrtc))
       ca>findPeers(c) ca<findPeers(a) cs>fwd(cb>findPeers(c))
       bc>findPeers(b) ac>foundPeers(c,s,a,b) ca>foundPeers(a,b,s,c)
       sb>fwd(cb>findPeers(c)) cb>findPeers(c) cb>foundPeers(b,a,s,c)
@@ -1000,20 +1004,20 @@ describe('peer-relay', function(){
     // XXX: fix using ab,bc>fwd to simplify all over
     // review all events and make sure it makes sense
     t('5_nodes_2_networks', `
-      node(b wss(port:4000)) node(a) - ab>!connect(wss !r) ab<connected
+      node(b wss(port:4000)) node(a) - ab>!connect(wss)
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
-      node(d wss(port:4001)) node(c) - cd>!connect(wss !r) cd<connected
+      node(d wss(port:4001)) node(c) - cd>!connect(wss)
       cd>findPeers(c) cd<findPeers(d) cd<foundPeers(c) cd>foundPeers(d) -
       cd>send(hello) cd>msg(hello) - cd<send(reply) cd<msg(reply) -
-      bd>!connect(wss !r) bd<connected bd>findPeers(b) bd<findPeers(d)
+      bd>!connect(wss) bd>findPeers(b) bd<findPeers(d)
       bd<foundPeers(b,d,c) bd>foundPeers(d,b,a) bd>fwd(bc>handshake-offer)
       db>fwd(da>handshake-offer) dc>fwd(bc>handshake-offer)
       ba>fwd(bc>handshake-offer) ba>fwd(da>handshake-offer)
       dc>fwd(da>handshake-offer) cd>fwd(cb>handshake-answer)
       ab>fwd(ad>handshake-answer) db>fwd(cb>handshake-answer)
       bd>fwd(ad>handshake-answer) - node(s wss(port(4002))) -
-      bs>!connect(wss !r) bs<connected bs>findPeers(b) bs<findPeers(s)
+      bs>!connect(wss) bs>findPeers(b) bs<findPeers(s)
       bs<foundPeers(b) bs>foundPeers(s,d,c,b,a) sb>fwd(sd>handshake-offer)
       sb>fwd(sc>handshake-offer) sb>fwd(sa>handshake-offer)
       bd>fwd(sd>handshake-offer) bd>fwd(sc>handshake-offer)
@@ -1022,7 +1026,7 @@ describe('peer-relay', function(){
       ab>fwd(as>handshake-answer) db>fwd(ds>handshake-answer(ws))
       cd>fwd(cs>handshake-answer) bs>fwd(as>handshake-answer)
       bs>fwd(ds>handshake-answer(ws)) db>fwd(cs>handshake-answer)
-      sd>connect(wss !r) sd<connected bs>fwd(cs>handshake-answer)
+      sd>connect(wss) bs>fwd(cs>handshake-answer)
       sd>findPeers(s) db>fwd(ds>findPeers(d)) ds>foundPeers(s,d,c,b,a)
       bs>fwd(ds>findPeers(d)) ds>findPeers(d) sd>foundPeers(d,c,s,b,a)
     `); // XXX: missing send/msg test
