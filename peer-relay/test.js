@@ -8,7 +8,6 @@ import util from '../util/util.js';
 import array from '../util/array.js';
 import xurl from '../util/url.js';
 import date from '../util/date.js';
-import ws_util from '../util/ws.js';
 import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
 const xetask = xtest.etask, stringify = JSON.stringify, assign = Object.assign;
@@ -723,23 +722,9 @@ const test_end = ()=>etask(function*(){
   yield test_ensure_no_events();
 });
 
-// XXX: rm
-class FakeWebSocketServer extends EventEmitter {
-  constructor(opts){
-    super();
-    throw new Error('FakeWebSocketServer');
-  }
-  init = ()=>{
-  }
-  close(cb){
-    if (cb)
-      cb();
-  }
-}
-
 describe('peer-relay', function(){
   beforeEach(function(){
-    xtest.set(ws_util, 'WebSocketServer', FakeWebSocketServer);
+    // xtest.set(ws_util, 'WebSocketServer', FakeWebSocketServer);
     // XXX TODO: same for WRTC
     // XXX TODO: same for overload send on router.js
   });
