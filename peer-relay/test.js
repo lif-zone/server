@@ -922,32 +922,6 @@ describe('peer-relay', function(){
       ab>send(hello) ab>msg(hello) -
       ac>send(hello) ab>fwd(ac>msg(hello)) bd,dc>fwd(ac>msg(hello)) -
       ad>send(hello) ab,bd>fwd(ad>msg(hello))`);
-      // XXX: derry
-      // and all other commands with reply
-      // XXX derry: it's difficult to implement reply with fwd...
-      // XXX derry: we cannot implement !r for findPeers. the reply is critical
-      // for the test
-      // bd>findPeers(b) db>foundPeers(b,d,c) ===
-      // bd>findPeers(b r(b,d,c)) == findPeers(b !r) foundPeers(b,d,c)
-      // bd>findPeers(b r()) == findPeers(b !r) foundPeers()
-      // bd>findPeers(b r) == findPeers(b !r) foundPeers()
-      // bd>findPeers(b) == findPeers(b !r) foundPeers()
-      // bd>findPeers(b !r) - no reply
-      // bd>findPeers(b) - no reply
-      /*
-      test_findPeers(){
-        let r = '';
-        case '!r': r = null; break;
-        ...
-        if (r==null)
-          return;
-        test_foundPeers(r);
-      }
-      */
-      // ab>msg(hello) === ab>:hello
-      // ping(!r) pong == ping
-      // handshake-offer handshake-anser == handshake |handshake
-      // findPeers foundPeers === findPeers |findPeers
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
