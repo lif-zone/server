@@ -3457,6 +3457,9 @@ describe('test_lib', ()=>{
       t('open(a) (', {cmd: 'open', arg: 'a'}, 7);
       t('open(a) )', {cmd: 'open', arg: 'a'}, 7);
       t('bc>', {cmd: 'bc>'}, 3);
+      t('bc>d', {cmd: 'bc>d'}, 4);
+      t('bc>!', {cmd: 'bc>!'}, 4);
+      t('bc>!d', {cmd: 'bc>!d'}, 5);
       t('bc>()', {cmd: 'bc>'}, 5);
       t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'}, 12);
       t('bc>d(hc hget)', {cmd: 'bc>d', arg: 'hc hget'}, 13);
@@ -3595,6 +3598,9 @@ describe('test_lib', ()=>{
       t('a>b(c)', {s: 'a', d: '', dir: '>', cmd: 'b(c)'});
       if (0) t('ab,cd>e', {loop: [{s: 'a', d: 'b'}, {s: 'c', d: 'd'}],
         dir: '>', cmd: 'e'});
+      t('a>!b', {s: 'a', d: '', dir: '>', cmd: '!b'});
+      t('ab>!c', {s: 'a', d: 'b', dir: '>', cmd: '!c'});
+      t('ab>!c(d)', {s: 'a', d: 'b', dir: '>', cmd: '!c(d)'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },
@@ -3611,6 +3617,10 @@ describe('test_lib', ()=>{
         xtest.test_parse_rm_meta(xtest.test_parse(test)), exp);
       t('ab>c',
         [{cmd: 'c', s: 'a', d: 'b', dir: '>', orig: 'ab>c', arg: undefined}]);
+      t('ab>c(d)',
+        [{cmd: 'c', s: 'a', d: 'b', dir: '>', orig: 'ab>c(d)', arg: 'd'}]);
+      t('ab>!c(d)',
+        [{cmd: '!c', s: 'a', d: 'b', dir: '>', orig: 'ab>!c(d)', arg: 'd'}]);
     });
   });
 });
