@@ -505,7 +505,7 @@ const cmd_connect = c=>etask(function*(){
       throw new Error('not implemented yet');
   }
   if (r)
-    push_cmd(xtest.test_parse(c.s+c.d+'<connected'));
+    push_cmd(c.s+c.d+'<connected');
 });
 
 const cmd_connected = c=>etask(function(){
@@ -532,7 +532,7 @@ const cmd_find_peers = c=>etask(function*(){
     }
   });
   if (r)
-    push_cmd(xtest.test_parse(rev_cmd(c.orig, 'foundPeers', r)));
+    _push_cmd(rev_cmd(c.orig, 'foundPeers', r));
   let e = build_cmd(c.meta.cmd, peers);
   // XXX: check what to assert
   let s = t_nodes[c.s];
@@ -674,7 +674,7 @@ const run_cmd = (role, c)=>etask(function*(){
         delete a[i].loop;
       }
       a[a.length-1].orig_loop = c.loop;
-      push_cmd(a);
+      _push_cmd(a);
       return;
     }
     // XXX: cleanup
@@ -700,7 +700,8 @@ const run_cmd = (role, c)=>etask(function*(){
     try_send_queue();
 });
 
-function push_cmd(cmd){ t_cmds.splice(t_i+1, 0, ...cmd); }
+function _push_cmd(a){ t_cmds.splice(t_i+1, 0, ...a); }
+function push_cmd(cmd){ _push_cmd(xtest.test_parse(cmd)); }
 
 const test_run = (role, test)=>etask(function*(){
   assert.ok(!t_running, 'test already running');
