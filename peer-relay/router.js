@@ -19,49 +19,43 @@ function debugMsg(verb, localID, msg){
 export default class Router extends EventEmitter {
   constructor(channels, id){
     super();
-    var self = this;
-    self.id = id;
-    self.concurrency = 2;
-    self.maxHops = 20;
-    self._touched = {}; // XXX: memory leak - no cleanup
-    self._channelListeners = {};
-    self._paths = {};
-    self._queue = [];
-    self._channels = channels;
-    self._channels.on('added', onChannelAdded);
-    self._channels.on('removed', onChannelRemoved);
-    for (var c of self._channels.toArray())
-      self._onChannelAdded(c);
-
-    function onChannelAdded(channel){ self._onChannelAdded(channel); }
-
-    function onChannelRemoved(channel){ self._onChannelRemoved(channel); }
+    this.id = id;
+    this.concurrency = 2;
+    this.maxHops = 20;
+    this._touched = {}; // XXX: memory leak - no cleanup
+    this._channelListeners = {};
+    this._paths = {};
+    this._queue = [];
+    this._channels = channels;
+    this._channels.on('added', channel=>this._onChannelAdded(channel));
+    this._channels.on('removed', channel=>this._onChannelRemoved(channel));
+    for (var c of this._channels.toArray())
+      this._onChannelAdded(c);
   }
   send(id, data){
-    var self = this;
-    var msg = {to: id.toString('hex'), from: self.id.toString('hex'),
+    var msg = {to: id.toString('hex'), from: this.id.toString('hex'),
       path: [], nonce: '' + Math.floor(1e15 * Math.random()), data: data};
-    self._touched[msg.nonce] = true;
-    debugMsg('SEND', self.id, msg);
-    self._send(msg);
+    this._touched[msg.nonce] = true;
+    debugMsg('SEND', this.id, msg);
+    this._send(msg);
   }
   _send(msg){
-    var self = this; // XXX: is this the best way to use etask as methods
+    var _this = this; // XXX: is this the best way to use etask as methods
     return etask(function*(){
-      self.emit('send', msg);
-      if (msg.path.length >= self.maxHops)
+      _this.emit('send', msg);
+      if (msg.path.length >= _this.maxHops)
         return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
-      if (self._channels.count()===0)
-        self._queue.push(msg);
-      msg.path.push(self.id.toString('hex'));
+      if (_this._channels.count()===0)
+        _this._queue.push(msg);
+      msg.path.push(_this.id.toString('hex'));
       var target = new Buffer(msg.to, 'hex');
-      var closests = self._channels.closest(target, 20)
+      var closests = _this._channels.closest(target, 20)
         .filter(c=>msg.path.indexOf(c.id.toString('hex'))===-1)
-        .filter((_, index) => index < self.concurrency);
-      if (msg.to in self._paths)
+        .filter((_, index) => index < _this.concurrency);
+      if (msg.to in _this._paths)
       {
-        var preferred = self._channels.closest(
-          new Buffer(self._paths[msg.to], 'hex'), 1)[0];
+        var preferred = _this._channels.closest(
+          new Buffer(_this._paths[msg.to], 'hex'), 1)[0];
         if (preferred != null && closests.indexOf(preferred) === -1)
           closests.unshift(preferred);
       }
@@ -80,44 +74,39 @@ export default class Router extends EventEmitter {
     });
   }
   _onMessage(msg){
-    var self = this;
-    if (msg.nonce in self._touched)
+    if (msg.nonce in this._touched)
       return;
-    self._touched[msg.nonce] = true;
+    this._touched[msg.nonce] = true;
     assert(typeof msg.from=='string',
-      'invalid from self '+self.id.toString('hex')+' '+stringify(msg));
-    self._paths[msg.from] = msg.path[msg.path.length - 1];
+      'invalid from this '+this.id.toString('hex')+' '+stringify(msg));
+    this._paths[msg.from] = msg.path[msg.path.length - 1];
     let to = new Buffer(msg.to, 'hex');
-    if (to.equals(self.id))
+    if (to.equals(this.id))
     {
       // XXX: it's pretty ugly that we change to/from fields and make code
       // diffiuclt to debug
       msg.to = to;
       msg.from = new Buffer(msg.from, 'hex');
-      debugMsg('RECV', self.id, msg);
-      self.emit('debug-message', msg.data, msg.from, msg);
-      self.emit('message', msg.data, msg.from, msg);
+      debugMsg('RECV', this.id, msg);
+      this.emit('debug-message', msg.data, msg.from, msg);
+      this.emit('message', msg.data, msg.from, msg);
     }
     else
     {
-      debugMsg('RELAY', self.id, msg);
-      self.emit('relay', msg);
-      self._send(msg);
+      debugMsg('RELAY', this.id, msg);
+      this.emit('relay', msg);
+      this._send(msg);
     }
   }
   _onChannelAdded(channel){
-    var self = this;
+    const listener = msg=>this._onMessage(msg);
     channel.on('message', listener);
-    self._channelListeners[channel.id] = listener;
-
-    function listener(msg){ self._onMessage(msg); }
-
-    while (self._queue.length > 0)
-      self._send(self._queue.shift());
+    this._channelListeners[channel.id] = listener;
+    while (this._queue.length > 0)
+      this._send(this._queue.shift());
   }
   _onChannelRemoved = function(channel){
-    var self = this;
-    var listener = self._channelListeners[channel.id];
+    var listener = this._channelListeners[channel.id];
     channel.removeListener('message', listener);
   }
 }
