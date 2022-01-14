@@ -132,8 +132,6 @@ class FakeNode extends EventEmitter {
     this.wrtcConnector.on('connection', c=>this.emit('connection', c));
   }
   destroy(){}
-  connect_ws(url){ this.wsConnector.connect(url); }
-  connect_wrtc(id){ this.wrtcConnector.connect(id); }
 }
 
 class FakeChannel extends EventEmitter {
@@ -481,7 +479,7 @@ const cmd_connect = c=>etask(function*(){
   if (!auto)
   {
     if (wss)
-      t_nodes[c.s].connect_ws(wss);
+      t_nodes[c.s].wsConnector.connect(wss);
     else
       throw new Error('not implemented yet');
   }
@@ -490,14 +488,14 @@ const cmd_connect = c=>etask(function*(){
     if (wss)
     {
       if (s.t.fake)
-        t_nodes[c.s].connect_ws(wss);
+        t_nodes[c.s].wsConnector.connect(wss);
       else
         yield test_resume();
     }
     else if (wrtc)
     {
       if (s.t.fake)
-        t_nodes[c.s].connect_wrtc(d.id);
+        t_nodes[c.s].wrtcConnector.connect(d.id);
       else
         yield test_resume();
     }
@@ -730,6 +728,22 @@ describe('peer-relay', function(){
   beforeEach(function(){
     xtest.set(Node, 'WsConnector', FakeWsConnector);
     xtest.set(Node, 'WrtcConnector', FakeWrtcConnector);
+    xtest.set(Node.prototype, 'connect_ws', function(uri){
+      let _this = this;
+      return etask(function*(){
+        if (util.test_pause_func)
+          yield util.test_pause_func('connect_ws '+uri);
+        _this.wsConnector.connect(uri);
+      });
+    });
+    xtest.set(Node.prototype, 'connect_wrtc', function(id){
+      let _this = this;
+      return etask(function*(){
+        if (util.test_pause_func)
+          yield util.test_pause_func('connect_ws '+id);
+        _this.wrtcConnector.connect(id);
+      });
+    });
   });
   this.timeout(2*t_timeout);
   describe('basic', function(){

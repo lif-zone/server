@@ -36,7 +36,7 @@ export default class Client extends EventEmitter {
     this.wrtcConnector.on('connection', channel=>this._onConnection(channel));
     setTimeout(()=>{ // XXX HACK: rm timeout
       for (var uri of opts.bootstrap||[])
-        this.connect_ws(uri);
+        this.wsConnector.connect(uri);
     });
   }
   _onConnection(channel){
@@ -64,7 +64,7 @@ export default class Client extends EventEmitter {
     return channel;
   }
   connect_ws(uri){ this.wsConnector.connect(uri); }
-  connect_wrtc(uri){ this.wrtcConnector.connect(uri); }
+  connect_wrtc(id){ this.wrtcConnector.connect(id); }
   connect(id){
     if (this.destroyed) // XXX: print error (or assert)
       return;
@@ -136,19 +136,9 @@ export default class Client extends EventEmitter {
       if (msg.data == null)
         return;
       if (msg.data.wrtc && _this.wrtcConnector.supported)
-      {
-        // XXX HACK: move to connection event
-        if (util.test_pause_func)
-          yield util.test_pause_func('onHandshakeAnswer '+msg.data.type);
-        _this.connect_wrtc(from);
-      }
+        yield _this.connect_wrtc(from);
       else if (msg.data.ws)
-      {
-        // XXX HACK: move to connection event
-        if (util.test_pause_func)
-          yield util.test_pause_func('onHandshakeAnswer '+msg.data.type);
-        _this.wsConnector.connect(msg.data.ws);
-      }
+        yield _this.connect_ws(msg.data.ws);
     });
   }
   _populate(){
