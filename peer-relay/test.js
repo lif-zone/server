@@ -982,7 +982,6 @@ describe('peer-relay', function(){
     `);
     // XXX: if missing <connected event, the error is not clear.
     // XXX derry: review events
-    if (1) // XXX: fixme
     t('4_nodes_star_wrtc', `
       node(s wss(port:4000)) node(a wrtc) node(b wrtc) node(c wrtc) -
       as>!connect(wss) as<connected
