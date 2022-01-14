@@ -98,16 +98,15 @@ export default class Client extends EventEmitter {
   _onMessage(msg, from){
     if (this.destroyed)
       return;
-    if (msg.type === 'user')
-      this.emit('message', msg.data, from);
-    else if (msg.type === 'findPeers')
-      this._onFindPeers(msg, from);
-    else if (msg.type === 'foundPeers')
-      this._onFoundPeers(msg, from);
-    else if (msg.type === 'handshake-offer')
-      this._onHandshakeOffer(msg, from);
-    else if (msg.type === 'handshake-answer')
-      this._onHandshakeAnswer(msg, from);
+    switch (msg.type)
+    {
+    case 'user': this.emit('message', msg.data, from); break;
+    case 'findPeers': this._onFindPeers(msg, from); break;
+    case 'foundPeers': this._onFoundPeers(msg, from); break;
+    case 'handshake-offer': this._onHandshakeOffer(msg, from); break;
+    case 'handshake-answer': this._onHandshakeAnswer(msg, from); break;
+    default: console.error('unknown msg type %s', msg.type);
+    }
   }
   _onFindPeers(msg, from){
     var target = new Buffer(msg.data, 'hex');
