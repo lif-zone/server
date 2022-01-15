@@ -676,7 +676,6 @@ const run_cmd = (role, c)=>etask(function*(){
     case 'fwd': yield cmd_fwd(role, c); break;
     default: throw new Error('unknown cmd '+c.cmd);
     }
-    try_send_queue();
 });
 
 function _push_cmd(a){ t_cmds.splice(t_i+1, 0, ...a); }
