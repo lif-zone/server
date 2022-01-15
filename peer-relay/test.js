@@ -487,10 +487,9 @@ const cmd_connect = c=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   if (call)
   {
+    assert(wss, 'not implemented yet');
     if (wss)
       t_nodes[c.s].wsConnector.connect(wss);
-    else
-      throw new Error('not implemented yet');
   }
   else
   {
