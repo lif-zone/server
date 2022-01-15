@@ -661,9 +661,7 @@ const run_cmd = (role, c)=>etask(function*(){
     // XXX: cleanup
     switch (c.cmd)
     {
-    case '-':
-      yield test_ensure_no_events();
-      break;
+    case '-': yield test_ensure_no_events(); break;
     case 'setup': yield cmd_setup(c.arg); break;
     case 'node': yield cmd_node(role, c); break;
     case 'connect': yield cmd_connect(c); break;
