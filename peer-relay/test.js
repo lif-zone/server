@@ -228,7 +228,7 @@ function send_msg(s, d, msg){
   }
 }
 
-function fake_send_msg(c, data){
+const fake_send_msg = (c, data)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let fs = c.fwd&&c.fwd[0], fd = c.fwd&&c.fwd[1];
@@ -240,13 +240,17 @@ function fake_send_msg(c, data){
     d = t_nodes[fd];
   }
   if (!s.t.fake)
+  {
+    if (!s.t.fake && !c.fwd)
+      yield test_resume();
     return;
+  }
   var msg = {to, from, path: [s.id.toString('hex')], nonce, data};
   if (c.fwd)
     send_msg(fs, fd, msg);
   else
     send_msg(c.s, c.d, msg);
-}
+});
 
 let t_seq = 0;
 function try_send_queue(c, c2){
@@ -537,9 +541,7 @@ const cmd_find_peers = c=>etask(function*(){
   // XXX: check what to assert
   let s = t_nodes[c.s];
   test_pending(e, c);
-  fake_send_msg(c, {type: 'findPeers', data: util.buf_to_str(s.id)});
-  if (!s.t.fake && !c.fwd)
-    yield test_resume();
+  yield fake_send_msg(c, {type: 'findPeers', data: util.buf_to_str(s.id)});
 });
 
 const cmd_found_peers = (role, c)=>etask(function*(){
@@ -547,23 +549,19 @@ const cmd_found_peers = (role, c)=>etask(function*(){
   // XXX: check what to assert
   let a = array_name_to_id(c.arg.split(','));
   test_pending(c);
-  fake_send_msg(c, {type: 'foundPeers', data: a});
-  if (!s.t.fake && !c.fwd)
-    yield test_resume();
+  yield fake_send_msg(c, {type: 'foundPeers', data: a});
 });
 
 const cmd_msg = c=>etask(function*(){
   let s = t_nodes[c.s];
   // XXX: check what to assert
   test_pending(c);
-  fake_send_msg(c, {type: 'user', data: c.arg});
-  if (!s.t.fake && !c.fwd)
-    yield test_resume();
+  yield fake_send_msg(c, {type: 'user', data: c.arg});
 });
 
 const cmd_send = c=>etask(function(){
   // XXX: check what to assert
-  // XXX use: fake_send_msg (need to handle s.send)
+  // XXX use: yield fake_send_msg (need to handle s.send)
   let s = t_nodes[c.s], d = t_nodes[c.d], data = c.arg;
   test_pending(c);
   test_emit({event: c.orig, fake: s.t.fake});
@@ -588,9 +586,7 @@ const cmd_handshake_offer = (role, c)=>etask(function*(){
   let s = t_nodes[c.s];
   // XXX: check what to assert
   test_pending(e, c);
-  fake_send_msg(c, {type: 'handshake-offer', data: null});
-  if (!s.t.fake && !c.fwd)
-    yield test_resume();
+  yield fake_send_msg(c, {type: 'handshake-offer', data: null});
 });
 
 const cmd_handshake_answer = (role, c)=>etask(function*(){
@@ -605,9 +601,7 @@ const cmd_handshake_answer = (role, c)=>etask(function*(){
     }
   });
   test_pending(c);
-  fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
-  if (!s.t.fake && !c.fwd)
-    yield test_resume();
+  yield fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
 });
 
 const cmd_fwd = (role, c)=>etask(function*(){
