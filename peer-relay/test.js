@@ -587,7 +587,7 @@ const cmd_fwd = (role, c)=>etask(function*(){
   let a = xtest.test_parse(c.arg);
   assert(a.length==1, 'invalid fwd %'+c.arg);
   a[0].fwd = c.s+c.d+'>';
-  yield run_cmd(role, a[0]);
+  yield cmd_run(role, a[0]);
   if (!s.t.fake)
     yield test_resume();
 });
@@ -641,7 +641,7 @@ const test_resume = (role, c)=>etask(function*(){
   yield run_event_loop();
 });
 
-const run_cmd = (role, c)=>etask(function*(){
+const cmd_run = (role, c)=>etask(function*(){
     let fake = is_fake(role, c.s);
     // XXX: remove or use zerr with levels
     console.log('cmd:%s %s%s>%s(%s) orig %s', c.fwd ? 'in fwd '+c.fwd : '',
@@ -692,7 +692,7 @@ const test_run = (role, test)=>etask(function*(){
   t_cmds = xtest.test_parse(test);
   t_nonce = {};
   for (t_i=0; t_i<t_cmds.length; t_i++)
-    yield run_cmd(role, t_cmds[t_i]);
+    yield cmd_run(role, t_cmds[t_i]);
   yield test_end();
   t_running = false;
   t_nonce = t_cmds = t_i = undefined;
