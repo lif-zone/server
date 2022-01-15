@@ -547,22 +547,6 @@ const cmd_found_peers = (role, c)=>etask(function*(){
   yield fake_send_msg(c, {type: 'foundPeers', data: a});
 });
 
-const cmd_msg = c=>etask(function*(){
-  // XXX: check what to assert
-  test_pending(c);
-  yield fake_send_msg(c, {type: 'user', data: c.arg});
-});
-
-const cmd_send = c=>etask(function(){
-  // XXX: check what to assert
-  // XXX use: yield fake_send_msg (need to handle s.send)
-  let s = t_nodes[c.s], d = t_nodes[c.d], data = c.arg;
-  test_pending(c);
-  test_emit({event: c.orig, fake: s.t.fake});
-  if (!s.t.fake && !c.fwd)
-    s.send(d.id, data);
-});
-
 const cmd_handshake_offer = (role, c)=>etask(function*(){
   let r, arg = xtest.test_parse(c.arg);
   assert(!c.loop);
@@ -606,6 +590,22 @@ const cmd_fwd = (role, c)=>etask(function*(){
   yield run_cmd(role, a[0]);
   if (!s.t.fake)
     yield test_resume();
+});
+
+const cmd_msg = c=>etask(function*(){
+  // XXX: check what to assert
+  test_pending(c);
+  yield fake_send_msg(c, {type: 'user', data: c.arg});
+});
+
+const cmd_send = c=>etask(function(){
+  // XXX: check what to assert
+  // XXX use: yield fake_send_msg (need to handle s.send)
+  let s = t_nodes[c.s], d = t_nodes[c.d], data = c.arg;
+  test_pending(c);
+  test_emit({event: c.orig, fake: s.t.fake});
+  if (!s.t.fake && !c.fwd)
+    s.send(d.id, data);
 });
 
 const cmd_setup = c=>etask(function(){
