@@ -45,9 +45,9 @@ function test_emit(o){
   console.log('emit: %s%s', event, fake ? ' fake' : '');
   if (t_debugger_on_events.includes(event)) // eslint-disable-next-line
     debugger;
-  assert.ok(t_running, 'test not running');
-  assert.ok(event, 'invalid event');
-  assert.ok(!t_event, 'got '+event+' but '+t_event+' not eaten');
+  assert(t_running, 'test not running');
+  assert(event, 'invalid event');
+  assert(!t_event, 'got '+event+' but '+t_event+' not eaten');
   t_event = event;
   test_eat_all_events();
 }
@@ -60,11 +60,11 @@ function test_pending(e, c){
   }
   assert(t_running, 'test not running');
   assert(e, 'invalid event');
+  assert(!t_event, 'cannot set new event '+e+' while got already '+t_event);
   assert(!t_expect, 'cannot set new event '+e+' while pending '+t_expect);
   if (c && c.fwd)
     e = c.fwd+'fwd('+normalize(e)+')';
   t_expect = e;
-  test_eat_all_events();
 }
 
 // XXX: add test
