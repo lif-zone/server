@@ -86,7 +86,6 @@ function normalize(e){
 }
 
 function test_eat_all_events(){
-  try_send_queue();
   if (!t_event || !t_expect)
     return;
   assert(normalize(t_event)==normalize(t_expect), 'mismatch\n'+str_status());
