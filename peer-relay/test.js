@@ -444,6 +444,10 @@ function cmd_node(role, c){
   });
 }
 
+/* XXX: derry: connection
+ab>!connect(wss)
+ab>http_get(path(/chat) h(upgrade(websocket)) ab<http_resp(101) ab<b.id ab>a.id
+*/
 const cmd_connect = c=>etask(function*(){
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
   let r = true;
