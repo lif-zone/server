@@ -58,8 +58,9 @@ function test_pending(e, c){
     c = e;
     e = c.orig;
   }
-  assert.ok(t_running, 'test not running');
-  assert.ok(e, 'invalid event');
+  assert(t_running, 'test not running');
+  assert(e, 'invalid event');
+  assert(!t_expect, 'cannot set new event '+e+' while pending '+t_expect);
   if (c && c.fwd)
     e = c.fwd+'fwd('+normalize(e)+')';
   t_expect = e;
