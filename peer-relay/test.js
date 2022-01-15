@@ -163,7 +163,7 @@ class FakeChannel extends EventEmitter {
     return etask(function*(){
       let s = node_from_id(_this.localID), d = node_from_id(_this.id);
       let {type} = msg.data;
-      yield test_pause_func('Router._send '+msg.data.type);
+      yield test_pause('Router._send '+msg.data.type);
       switch (type)
       {
       case 'findPeers':
@@ -277,7 +277,7 @@ class FakeWsConnector extends EventEmitter {
     let d = node_from_url(url), s = node_from_id(this.id);
     let channel = new FakeChannel({localID: s.id, id: d.id});
     s.once('connection', ()=>etask(function*(){
-      yield test_pause_func('connected-wss '+url);
+      yield test_pause('connected-wss '+url);
       let channel2 = new FakeChannel({localID: d.id, id: s.id});
       d.wsConnector.emit('connection', channel2);
     }));
@@ -297,7 +297,7 @@ class FakeWrtcConnector extends EventEmitter {
     // XXX: specify it is wrtc channel
     let channel = new FakeChannel({localID: s.id, id: d.id});
     s.once('connection', ()=>etask(function*(){
-      yield test_pause_func('connected-wrtc '+d.id);
+      yield test_pause('connected-wrtc '+d.id);
       let channel2 = new FakeChannel({localID: d.id, id: s.id});
       d.wsConnector.emit('connection', channel2);
     }));
@@ -612,7 +612,7 @@ const cmd_setup = c=>etask(function(){
 
 let t_pause = [];
 // XXX: ugly, find better solution
-function test_pause_func(src){
+function test_pause(src){
   let wait = etask(function*(){
     console.log('*** pre-wait %s', src);
     yield etask.wait();
@@ -712,14 +712,14 @@ describe('peer-relay', function(){
     xtest.set(Node.prototype, 'connect_ws', function(uri){
       let _this = this;
       return etask(function*(){
-        yield test_pause_func('connect_ws '+uri);
+        yield test_pause('connect_ws '+uri);
         yield _this.wsConnector.connect(uri);
       });
     });
     xtest.set(Node.prototype, 'connect_wrtc', function(id){
       let _this = this;
       return etask(function*(){
-        yield test_pause_func('connect_wrtc '+id);
+        yield test_pause('connect_wrtc '+id);
         yield _this.wrtcConnector.connect(id);
       });
     });
