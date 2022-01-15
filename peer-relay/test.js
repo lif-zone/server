@@ -489,22 +489,16 @@ const cmd_connect = c=>etask(function*(){
   }
   else
   {
-    if (wss)
+    assert(wss||wrtc, 'not implemented yet');
+    if (s.t.fake)
     {
-      if (s.t.fake)
+      if (wss)
         t_nodes[c.s].wsConnector.connect(wss);
-      else
-        yield test_resume();
-    }
-    else if (wrtc)
-    {
-      if (s.t.fake)
+      else if (wrtc)
         t_nodes[c.s].wrtcConnector.connect(d.id);
-      else
-        yield test_resume();
     }
     else
-      throw new Error('not implemented yet');
+      yield test_resume();
   }
   if (r)
     push_cmd(c.s+c.d+'<connected');
