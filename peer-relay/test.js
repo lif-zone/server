@@ -30,7 +30,7 @@ function run_event_loop(){
 }
 
 // XXX: rm t_queue
-let t_nodes = {}, t_event, t_expect, t_queue = [], t_nonce;
+let t_nodes = {}, t_expect, t_queue = [], t_nonce;
 let t_timeout = 2000, t_running, t_cmds, t_i;
 let t_peers = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
@@ -47,9 +47,9 @@ function test_emit(o){
     debugger;
   assert(t_running, 'test not running');
   assert(event, 'invalid event');
-  assert(!t_event, 'got '+event+' but '+t_event+' not eaten');
-  t_event = event;
-  test_eat_all_events();
+  assert(normalize(event)==normalize(t_expect), 'mismatch got '+event+'\n'+
+    str_status());
+  t_expect = undefined;
 }
 
 function test_pending(e, c){
@@ -60,7 +60,6 @@ function test_pending(e, c){
   }
   assert(t_running, 'test not running');
   assert(e, 'invalid event');
-  assert(!t_event, 'cannot set new event '+e+' while got already '+t_event);
   assert(!t_expect, 'cannot set new event '+e+' while pending '+t_expect);
   if (c && c.fwd)
     e = c.fwd+'fwd('+normalize(e)+')';
@@ -85,13 +84,6 @@ function normalize(e){
   return b+a+'>'+e.substr(3);
 }
 
-function test_eat_all_events(){
-  if (!t_event || !t_expect)
-    return;
-  assert(normalize(t_event)==normalize(t_expect), 'mismatch\n'+str_status());
-  t_event = t_expect = undefined;
-}
-
 // XXX: review and rewrite
 const test_ensure_no_events = ()=>etask(function*(){
   for (let t = date.monotonic(); date.monotonic()-t < t_timeout;)
@@ -101,24 +93,17 @@ const test_ensure_no_events = ()=>etask(function*(){
     yield run_event_loop();
     if (t_pause.length)
         continue;
-    if (!t_event && !t_expect)
+    if (!t_expect)
       break;
-    if (!t_event || !t_expect)
-      continue;
-    if (normalize(t_event)==normalize(t_expect))
-      t_event = t_expect = undefined;
-    else
-      assert.equal(t_event, t_expect, 'event mismatch.\n'+str_status());
   }
-  assert.equal(t_event, t_expect, 'event mismatch.\n'+str_status());
+  assert(!t_expect, 'pending event\n'+str_status());
 });
 
 function build_cmd(cmd, arg){ return cmd+(arg ? '('+arg+')' : ''); }
 function rev_cmd(sd, cmd, arg){ return build_cmd(rev(sd)+cmd, arg); }
 
 function str_status(){
-  return 'real: '+t_event+'\n'+
-  'expected: '+t_expect+'\n'+
+  return 'expected: '+t_expect+'\n'+
   'queue: '+stringify(t_queue);
 }
 
@@ -658,7 +643,6 @@ const run_cmd = (role, c)=>etask(function*(){
     console.log('cmd:%s %s%s>%s(%s) orig %s', c.fwd ? 'in fwd '+c.fwd : '',
       c.loop ? 'loop' : c.s, c.d||'',
       c.cmd, c.arg||'', c.orig, fake? ' fake' : '');
-    assert(!t_event, 'event alrady fired '+t_event+'\n'+str_status());
     assert(!t_expect, 'event not recieved '+t_expect+'\n'+str_status());
     if (t_debugger_on_cmd.includes(c.orig)) // eslint-disable-next-line
       debugger;
