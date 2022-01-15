@@ -618,7 +618,6 @@ const cmd_fwd = (role, c)=>etask(function*(){
   assert(a.length==1, 'invalid fwd %'+c.arg);
   a[0].fwd = c.s+c.d+'>';
   yield run_cmd(role, a[0]);
-  test_eat_all_events();
   if (!s.t.fake)
     yield test_resume();
 });
