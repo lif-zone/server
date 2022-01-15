@@ -537,8 +537,8 @@ const cmd_find_peers = c=>etask(function*(){
   let e = build_cmd(c.meta.cmd, peers);
   // XXX: check what to assert
   let s = t_nodes[c.s];
-  fake_send_msg(c, {type: 'findPeers', data: util.buf_to_str(s.id)});
   test_pending(e, c);
+  fake_send_msg(c, {type: 'findPeers', data: util.buf_to_str(s.id)});
   if (!s.t.fake && !c.fwd)
     yield test_resume();
 });
@@ -547,8 +547,8 @@ const cmd_found_peers = (role, c)=>etask(function*(){
   let s = t_nodes[c.s];
   // XXX: check what to assert
   let a = array_name_to_id(c.arg.split(','));
-  fake_send_msg(c, {type: 'foundPeers', data: a});
   test_pending(c);
+  fake_send_msg(c, {type: 'foundPeers', data: a});
   if (!s.t.fake && !c.fwd)
     yield test_resume();
 });
@@ -556,8 +556,8 @@ const cmd_found_peers = (role, c)=>etask(function*(){
 const cmd_msg = c=>etask(function*(){
   let s = t_nodes[c.s];
   // XXX: check what to assert
-  fake_send_msg(c, {type: 'user', data: c.arg});
   test_pending(c);
+  fake_send_msg(c, {type: 'user', data: c.arg});
   if (!s.t.fake && !c.fwd)
     yield test_resume();
 });
@@ -566,8 +566,8 @@ const cmd_send = c=>etask(function(){
   // XXX: check what to assert
   // XXX use: fake_send_msg (need to handle s.send)
   let s = t_nodes[c.s], d = t_nodes[c.d], data = c.arg;
-  test_emit({event: c.orig, fake: s.t.fake});
   test_pending(c);
+  test_emit({event: c.orig, fake: s.t.fake});
   if (!s.t.fake && !c.fwd)
     s.send(d.id, data);
 });
@@ -588,8 +588,8 @@ const cmd_handshake_offer = (role, c)=>etask(function*(){
   let e = build_cmd(c.meta.cmd);
   let s = t_nodes[c.s];
   // XXX: check what to assert
-  fake_send_msg(c, {type: 'handshake-offer', data: null});
   test_pending(e, c);
+  fake_send_msg(c, {type: 'handshake-offer', data: null});
   if (!s.t.fake && !c.fwd)
     yield test_resume();
 });
@@ -605,8 +605,8 @@ const cmd_handshake_answer = (role, c)=>etask(function*(){
       default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
   test_pending(c);
+  fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
   if (!s.t.fake && !c.fwd)
     yield test_resume();
 });
