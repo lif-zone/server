@@ -789,9 +789,8 @@ describe('peer-relay', function(){
       ab>findPeers(a) ab<findPeers(b) ab<foundPeers(a) ab>foundPeers(b) -
       bc>!connect(wss) bc>findPeers(b) bc<findPeers(c)
       bc<foundPeers(b) bc>foundPeers(c,a,b) cb,ba>fwd(ca>handshake-offer)
-      ab,bc>fwd(ca<handshake-answer(ws)) ca>connect(wss !r) ca<connected
-      ca>findPeers(c) ca<findPeers(a) ca<foundPeers(c,a,b)
-      ca>foundPeers(a,b,c) -
+      ab,bc>fwd(ca<handshake-answer(ws)) ca>connect(wss) ca>findPeers(c)
+      ca<findPeers(a) ca<foundPeers(c,a,b) ca>foundPeers(a,b,c) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
       bc>send(hello) bc>msg(hello) - bc<send(reply) bc<msg(reply) -
       ca>send(hello) ca>msg(hello) - ca<send(reply) ca<msg(reply)`);
