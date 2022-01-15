@@ -446,7 +446,12 @@ function cmd_node(role, c){
 
 /* XXX: derry: connection
 ab>!connect(wss)
-ab>http_get(path(/chat) h(upgrade(websocket)) ab<http_resp(101) ab<b.id ab>a.id
+ab>http_get(upgrade(websocket)) ab<http_resp(101)
+ab<tcp_send(b.id) ab>tcp_send(a.id)
+
+once a gets b.id, it emits 'connection' and send ab>findPeers
+once b gets a.id, it emits 'connection' and send ba>findPeers
+the order depends on who gets response first.
 */
 const cmd_connect = c=>etask(function*(){
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
