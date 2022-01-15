@@ -25,7 +25,8 @@ function init(){
         {
           console.log('%s ping %s', date.to_sql_ms(),
             res.alive ? 'SLOW '+res.time+'ms' : 'FAILED');
-          last = date.monotonic();
+          if (!last)
+            last = date.monotonic();
         }
         else if (last)
         {
