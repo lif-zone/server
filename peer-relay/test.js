@@ -52,7 +52,7 @@ function test_emit(o){
   t_expect = undefined;
 }
 
-function test_pending(e, c){
+function test_expect(e, c){
   if (typeof e!='string')
   {
     c = e;
@@ -478,7 +478,7 @@ const cmd_connect = c=>etask(function*(){
   assert_exist(c.s);
   assert.equal(c.dir, '>');
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
-  test_pending(c.s+c.d+'>connect');
+  test_expect(c.s+c.d+'>connect');
   let s = t_nodes[c.s], d = t_nodes[c.d];
   if (call)
   {
@@ -512,7 +512,7 @@ const cmd_connect = c=>etask(function*(){
 
 const cmd_connected = c=>etask(function*(){
   // XXX: check what to assert for events
-  test_pending(c);
+  test_expect(c);
   yield test_resume();
 });
 
@@ -536,14 +536,14 @@ const cmd_find_peers = c=>etask(function*(){
   let e = build_cmd(c.meta.cmd, peers);
   // XXX: check what to assert
   let s = t_nodes[c.s];
-  test_pending(e, c);
+  test_expect(e, c);
   yield fake_send_msg(c, {type: 'findPeers', data: util.buf_to_str(s.id)});
 });
 
 const cmd_found_peers = (role, c)=>etask(function*(){
   // XXX: check what to assert
   let a = array_name_to_id(c.arg.split(','));
-  test_pending(c);
+  test_expect(c);
   yield fake_send_msg(c, {type: 'foundPeers', data: a});
 });
 
@@ -562,7 +562,7 @@ const cmd_handshake_offer = (role, c)=>etask(function*(){
   assert(!r, 'handshake-offer r not implement yet');
   let e = build_cmd(c.meta.cmd);
   // XXX: check what to assert
-  test_pending(e, c);
+  test_expect(e, c);
   yield fake_send_msg(c, {type: 'handshake-offer', data: null});
 });
 
@@ -577,7 +577,7 @@ const cmd_handshake_answer = (role, c)=>etask(function*(){
       default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  test_pending(c);
+  test_expect(c);
   yield fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
 });
 
@@ -594,7 +594,7 @@ const cmd_fwd = (role, c)=>etask(function*(){
 
 const cmd_msg = c=>etask(function*(){
   // XXX: check what to assert
-  test_pending(c);
+  test_expect(c);
   yield fake_send_msg(c, {type: 'user', data: c.arg});
 });
 
@@ -602,7 +602,7 @@ const cmd_send = c=>etask(function(){
   // XXX: check what to assert
   // XXX use: yield fake_send_msg (need to handle s.send)
   let s = t_nodes[c.s], d = t_nodes[c.d], data = c.arg;
-  test_pending(c);
+  test_expect(c);
   test_emit({event: c.orig, fake: s.t.fake});
   if (!s.t.fake && !c.fwd)
     s.send(d.id, data);
