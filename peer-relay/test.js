@@ -379,7 +379,7 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
 });
 
 const cmd_find_peers = opt=>etask(function*cmd_connected(){
-  let {c, event} = opt, s = t_nodes[c.s];
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let r, peers, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     if (a.cmd=='r')
@@ -401,18 +401,18 @@ const cmd_find_peers = opt=>etask(function*cmd_connected(){
     assert_event(event, build_cmd(c.meta.cmd, peers));
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-  if (s.t.fake)
+  if (s.t.fake && !d.t.fake)
     yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
 });
 
 const cmd_found_peers = opt=>etask(function*cmd_connected(){
-  let {c, event} = opt, s = t_nodes[c.s];
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   if (event)
   {
     assert_event(event, c.orig);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-  if (s.t.fake)
+  if (s.t.fake && !d.t.fake)
   {
     let a = array_name_to_id(c.arg.split(','));
     yield fake_send_msg(c, {type: 'foundPeers', data: a});
@@ -478,6 +478,15 @@ describe('peer-relay', function(){
       ab<findPeers(b) ab>foundPeers(b,a)`);
     t('2_nodes_short', `node(a) node(b wss(port:4000)) ab>!connect(wss)
       ab>findPeers(a r(a)) ab<findPeers(b r(b,a))`);
+    t = (name, test)=>{
+      xit(name, 'a', test);
+      xit(name, 'b', test);
+      xit(name, 'c', test);
+    };
+    t('3_nodes_linear', `node(a) node(b wss(port:4000)) node(c wss(port:4001))
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a))
+      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      `);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)
