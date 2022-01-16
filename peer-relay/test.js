@@ -35,7 +35,7 @@ function on_uncaught(err){
   process.exit(-1);
 }
 
-let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role;
+let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_ids = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
   b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
@@ -124,7 +124,9 @@ function assert_wss(val){
     default: 'invalid cmd '+a.cmd;
     }
   });
-  assert(host && port, 'must specify host & port');
+  if (!port)
+    port = t_port++;
+  assert(host , 'must specify host');
   return {host, port, url: 'wss://'+host+':'+port};
 }
 
@@ -479,6 +481,7 @@ const cmd_run = event=>etask(function*cmd_run(){
 const test_run = (role, test)=>etask(function*test_run(){
   this.on('uncaught', on_uncaught);
   assert(!t_cmds && !t_i && !t_role, 'test already running');
+  t_port = 4000;
   t_cmds = xtest.test_parse(test);
   t_role = role;
   for (t_i=0; t_i<t_cmds.length;)
@@ -513,7 +516,7 @@ describe('peer-relay', function(){
     t('2_nodes_long', `node(a) node(b wss(port:4000))
       ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<foundPeers(a)
       ab<findPeers(b) ab>foundPeers(b,a)`);
-    t('2_nodes_short', `node(a) node(b wss(port:4000)) ab>!connect(wss)
+    t('2_nodes_short', `node(a) node(b wss) ab>!connect(wss)
       ab>findPeers(a r(a)) ab<findPeers(b r(b,a))`);
     t = (name, test)=>{
       xit(name, 'a', test);
@@ -521,7 +524,8 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
     };
     // XXX: add '-'
-    t('3_nodes_linear', `node(a) node(b wss(port:4000)) node(c wss(port:4001))
+    // XXX: missing handshake-answer
+    t('3_nodes_linear', `node(a) node(b wss()) node(c wss)
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a))
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
       cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
