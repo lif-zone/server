@@ -358,7 +358,9 @@ const cmd_connect = c=>etask(function*(){
   assert(!wrtc, 'XXX TODO: wrtc');
   assert(call, 'XXX TODO: !call');
   let s = t_nodes[c.s];
-  if (wss)
+  if (r)
+    push_cmd(c.s+c.d+'<connected');
+  if (wss) // XXX: need yield
       t_nodes[c.s].wsConnector.connect(wss);
 });
 
@@ -471,11 +473,11 @@ describe('peer-relay', function(){
       xit(name, 'a', test);
       xit(name, 'b', test);
     };
-    t('2_nodes', `node(a) node(b wss(port:4000))
-      ab>!connect(wss) ab<connected ab>findPeers(a) ab<foundPeers(a)
+    t('2_nodes_long', `node(a) node(b wss(port:4000))
+      ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<foundPeers(a)
       ab<findPeers(b) ab>foundPeers(b,a)`);
     t('2_nodes_short', `node(a) node(b wss(port:4000)) ab>!connect(wss)
-      ab<connected ab>findPeers(a r(a)) ab<findPeers(b r(b,a))`);
+      ab>findPeers(a r(a)) ab<findPeers(b r(b,a))`);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)
