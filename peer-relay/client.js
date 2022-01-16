@@ -39,30 +39,36 @@ export default class Client extends EventEmitter {
         this.wsConnector.connect(uri);
     });
   }
-  _onConnection(channel){
-    const onClose = ()=>{
-      delete this.pending[channel.id];
-      this.canidates.remove(channel.id);
-      this.peers.remove(channel.id);
-    };
-    assert(!this.destroyed, 'node already destroyed');
-    channel.on('close', onClose);
-    // XXX: decide how to handle errors
-    channel.on('error', err=>console.error('Error', err));
-    delete this.pending[channel.id];
-    this.canidates.add({id: channel.id});
-    if (this.peers.get(channel.id))
-    {
-      if (channel.id.compare(this.id) >= 0)
-        channel.destroy();
-      return;
-    }
-    this.peers.add(channel);
-    this.emit('connection', channel);
-    this.router.send(channel.id, {type: 'findPeers', data: ids(this.id)});
-    this.emit('peer', channel.id);
-    return channel;
-  }
+  _onConnection = channel=>{
+    let _this = this;
+    etask(function*_onConnection(){
+      const onClose = ()=>{
+        delete _this.pending[channel.id];
+        _this.canidates.remove(channel.id);
+        _this.peers.remove(channel.id);
+      };
+      assert(!_this.destroyed, 'node already destroyed');
+      channel.on('close', onClose);
+      // XXX: decide how to handle errors
+      channel.on('error', err=>console.error('Error', err));
+      delete _this.pending[channel.id];
+      _this.canidates.add({id: channel.id});
+      if (_this.peers.get(channel.id))
+      {
+        if (channel.id.compare(_this.id) >= 0)
+          channel.destroy();
+        return;
+      }
+      _this.peers.add(channel);
+      _this.emit('connection', channel);
+      debugger;
+      if (util.test_on_connection)
+        yield util.test_on_connection(channel);
+      _this.router.send(channel.id, {type: 'findPeers', data: ids(_this.id)});
+      _this.emit('peer', channel.id);
+      return channel;
+    });
+  };
   connect_ws(uri){ this.wsConnector.connect(uri); }
   connect_wrtc(id){ this.wrtcConnector.connect(id); }
   connect(id){
