@@ -126,7 +126,7 @@ function assert_wss(val){
   });
   if (!port)
     port = t_port++;
-  assert(host , 'must specify host');
+  assert(host, 'must specify host');
   return {host, port, url: 'wss://'+host+':'+port};
 }
 
@@ -221,8 +221,8 @@ class FakeChannel extends EventEmitter {
     this.t = {};
   }
   send = msg=>{
-    let _this = this, p, a, fwd;
-    let {type,data } = msg.data;
+    let p, a, fwd;
+    let {type, data} = msg.data;
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
     let s = node_from_id(this.localID), d = node_from_id(this.id);
     if (s!=from || d!=to)
@@ -260,7 +260,7 @@ class FakeWrtcConnector extends EventEmitter {
     this.id = id;
     this.supported = wrtc;
   }
-  destroy(){};
+  destroy(){}
 }
 
 function array_id_to_name(a){
@@ -340,7 +340,7 @@ function cmd_node(c){
   });
   */
 }
-const cmd_connect = c=>etask(function*(){
+const cmd_connect = c=>etask(function(){
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
   let r = true;
   util.forEach(arg, a=>{
@@ -371,7 +371,6 @@ const cmd_connect = c=>etask(function*(){
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   assert(!wrtc, 'XXX TODO: wrtc');
   assert(call, 'XXX TODO: !call');
-  let s = t_nodes[c.s];
   if (r)
     push_cmd(c.s+c.d+'<connected');
   if (wss) // XXX: need yield
@@ -445,7 +444,7 @@ const cmd_handshake_offer = opt=>etask(function*cmd_connected(){
     yield fake_send_msg(c, {type: 'handshake-offer'});
 });
 
-const cmd_fwd = opt=>etask(function*cmd_connected(){
+const cmd_fwd = opt=>etask(function cmd_connected(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   if (event)
   {
