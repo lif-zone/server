@@ -35,7 +35,7 @@ function on_uncaught(err){
   process.exit(-1);
 }
 
-let t_nodes = {}, t_cmds, t_i, t_role;
+let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role;
 let t_ids = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
   b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
@@ -53,6 +53,8 @@ function normalize(e){
     return e;
   return b+a+'>'+e.substr(3);
 }
+
+function build_cmd(cmd, arg){ return cmd+(arg ? '('+arg+')' : ''); }
 
 function is_fake(p){ return t_role!=p; }
 function url_from_node(node){ return node.t.wss.url; }
@@ -196,12 +198,24 @@ class FakeChannel extends EventEmitter {
     this.t = {};
   }
   send = msg=>{
-    let _this = this;
+    let _this = this, p, a;
+    let {type,data } = msg.data;
+    let from = node_from_id(msg.from);
+    let to = node_from_id(msg.to);
+    console.log('****** send %s', from.t.name+to.t.name+'>'+type);
     return etask(function*send(){
-      return; // XXX TODO
-      let {type} = msg.data;
+      this.on('uncaught', on_uncaught);
       switch (type)
       {
+      case 'findPeers':
+        p = node_from_id(data);
+        yield cmd_run(build_cmd(from.t.name+to.t.name+'>findPeers', p.t.name));
+        break;
+      case 'foundPeers':
+        a = array_id_to_name(data);
+        yield cmd_run(build_cmd(from.t.name+to.t.name+'>foundPeers',
+          a.join(',')));
+        break;
       default: assert(false, 'unexpected msg '+type);
       }
     });
@@ -217,6 +231,44 @@ class FakeWrtcConnector extends EventEmitter {
   }
   destroy(){};
 }
+
+function array_id_to_name(a){
+  let ret = [];
+  a.forEach(id=>ret.push(node_from_id(util.buf_from_str(id)).t.name));
+  return ret;
+}
+
+function array_name_to_id(a){
+  let ret = [];
+  a.forEach(name=>{
+    if (name[2]=='>') // XXX HACK:
+      name = name[4];
+    if (name[1]==')') // XXX HACK:
+      name = name[0];
+    ret.push(util.buf_to_str(t_nodes[name].id));
+  });
+  return ret;
+}
+
+function node_get_channel(_s, _d){
+  let s = t_nodes[_s], d = t_nodes[_d];
+  return d.peers.get(s.id);
+}
+
+function send_msg(s, d, msg){
+  let channel = node_get_channel(s, d);
+  // XXX: change to yield
+  channel.emit('message', msg);
+}
+
+const fake_send_msg = (c, data)=>etask(function*(){
+  let s = t_nodes[c.s], d = t_nodes[c.d];
+  let to = d.id.toString('hex'), from = s.id.toString('hex');
+  let nonce = t_nonce[normalize(c.orig)]||
+    '' + Math.floor(1e15 * Math.random());
+  var msg = {to, from, path: [s.id.toString('hex')], nonce, data};
+  yield send_msg(c.s, c.d, msg);
+});
 
 function cmd_node(c){
   let arg = xtest.test_parse(c.arg);
@@ -237,7 +289,7 @@ function cmd_node(c){
   assert(!wss || !node_from_url(wss.url), wss?.url+' already used');
   let node = new (fake ? FakeNode : Node)(assign(
     {id: _buf(id), bootstrap, wrtc}, wss));
-  node.t = {id, name, fake, wss, channels: []};
+  node.t = {id, name, fake, wss};
   t_nodes[name] = node;
   /*
   let fake = is_fake(role, name);
@@ -302,18 +354,42 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
     assert(d.t.fake, 'dst must be fake');
 });
 
+const cmd_find_peers = opt=>etask(function*cmd_connected(){
+  let {c, event} = opt, s = t_nodes[c.s];
+  if (s.t.fake)
+    yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
+  else
+    assert_event(event, c.orig);
+});
+
+const cmd_found_peers = opt=>etask(function*cmd_connected(){
+  let {c, event} = opt, s = t_nodes[c.s];
+  if (s.t.fake)
+  {
+    let a = array_name_to_id(c.arg.split(','));
+    yield fake_send_msg(c, {type: 'foundPeers', data: a});
+  }
+  else
+    assert_event(event, c.orig);
+});
+
+let depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
   this.on('uncaught', on_uncaught);
+  depth++;
   let c = t_cmds[t_i];
-  console.log('cmd %s: %s', t_i, c.orig);
+  console.log('d%s cmd %s: %s event %s', depth, t_i, c.orig, event);
   t_i++;
   switch (c.cmd)
   {
   case 'node': yield cmd_node(c); break;
   case '!connect': yield cmd_connect(c); break;
   case 'connected': yield cmd_connected({c, event}); break;
+  case 'findPeers': yield cmd_find_peers({c, event}); break;
+  case 'foundPeers': yield cmd_found_peers({c, event}); break;
   default: throw new Error('unknown cmd '+c.cmd);
   }
+  depth--;
 });
 
 const test_run = (role, test)=>etask(function*test_run(){
@@ -351,7 +427,8 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
     };
     t('2_nodes', `node(a) node(b wss(port:4000))
-      ab>!connect(wss) ab<connected`);
+      ab>!connect(wss) ab<connected ab>findPeers(a) ab<foundPeers(a)
+      ab<findPeers(b) ab>foundPeers(b,a)`);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)

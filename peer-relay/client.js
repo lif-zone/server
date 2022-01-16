@@ -61,7 +61,6 @@ export default class Client extends EventEmitter {
       }
       _this.peers.add(channel);
       _this.emit('connection', channel);
-      debugger;
       if (util.test_on_connection)
         yield util.test_on_connection(channel);
       _this.router.send(channel.id, {type: 'findPeers', data: ids(_this.id)});
@@ -100,6 +99,7 @@ export default class Client extends EventEmitter {
       return;
     this.router.send(id, {type: 'findPeers', data: ids(this.id)});
   }
+  // XXX: need to validate all data to make sure we don't crash
   _onMessage(msg, from){
     if (this.destroyed)
       return;
