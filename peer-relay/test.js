@@ -234,6 +234,9 @@ class FakeChannel extends EventEmitter {
         yield cmd_run(build_cmd(from.t.name+to.t.name+'>foundPeers',
           a.join(',')));
         break;
+      case 'handshake-offer':
+        yield cmd_run(from.t.name+to.t.name+'>handshake-offer');
+        break;
       default: assert(false, 'unexpected msg '+type);
       }
     });
@@ -275,6 +278,7 @@ function node_get_channel(_s, _d){
 
 function send_msg(s, d, msg){
   let channel = node_get_channel(s, d);
+  assert(channel, 'no channel '+s+d+'>');
   // XXX: change to yield
   channel.emit('message', msg);
 }
@@ -419,6 +423,18 @@ const cmd_found_peers = opt=>etask(function*cmd_connected(){
   }
 });
 
+const cmd_handshake_offer = opt=>etask(function*cmd_connected(){
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  assert(!c.arg, 'invalid cmd '+c.orig);
+  if (event)
+  {
+    assert_event(event, c.orig);
+    assert(!s.t.fake, 'src must be real for event '+event);
+  }
+  if (s.t.fake && !d.t.fake)
+    yield fake_send_msg(c, {type: 'handshake-offer'});
+});
+
 let depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
   this.on('uncaught', on_uncaught);
@@ -434,6 +450,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   case 'connected': yield cmd_connected({c, event}); break;
   case 'findPeers': yield cmd_find_peers({c, event}); break;
   case 'foundPeers': yield cmd_found_peers({c, event}); break;
+  case 'handshake-offer': yield cmd_handshake_offer({c, event}); break;
   default: throw new Error('unknown cmd '+c.cmd);
   }
   depth--;
@@ -483,9 +500,11 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
       xit(name, 'c', test);
     };
+    // XXX: add '-'
     t('3_nodes_linear', `node(a) node(b wss(port:4000)) node(c wss(port:4001))
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a))
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      ca>handshake-offer
       `);
   });
   // XXX TODO:
