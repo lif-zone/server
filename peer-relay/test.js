@@ -54,7 +54,19 @@ function normalize(e){
   return b+a+'>'+e.substr(3);
 }
 
+// XXX: add test
+function rev(s){
+  let i = s.search(/[<>]/);
+  assert(i>=0 && i<3, 'invalid [<>] '+s);
+  s = s.substr(0, i)+(s[i]=='<' ? '>' : '<');
+  return s;
+}
+
 function build_cmd(cmd, arg){ return cmd+(arg ? '('+arg+')' : ''); }
+function rev_cmd(sd, cmd, arg){ return build_cmd(rev(sd)+cmd, arg); }
+
+function _push_cmd(a){ t_cmds.splice(t_i, 0, ...a); }
+function push_cmd(cmd){ _push_cmd(xtest.test_parse(cmd)); }
 
 function is_fake(p){ return t_role!=p; }
 function url_from_node(node){ return node.t.wss.url; }
@@ -134,6 +146,12 @@ function assert_bootstrap(val){
     bootstrap.push(url);
   });
   return bootstrap;
+}
+
+function assert_peers(peers){
+  let a = peers.split(',');
+  assert(a.length>0, 'no peers specified');
+  a.forEach(name=>assert(t_nodes[name], 'node not found '+name+'/'+peers));
 }
 
 function assert_event(event, exp){
@@ -360,9 +378,25 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
 
 const cmd_find_peers = opt=>etask(function*cmd_connected(){
   let {c, event} = opt, s = t_nodes[c.s];
+  let r, peers, arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
+    if (a.cmd=='r')
+    {
+      assert(!r, 'invalid '+c.orig);
+      r = a.arg||true;
+    }
+    else
+    {
+      assert(!peers, 'invalid '+c.orig);
+      peers = a.cmd;
+      assert_peers(peers);
+    }
+  });
+  if (r)
+    push_cmd(rev_cmd(c.orig, 'foundPeers', r));
   if (event)
   {
-    assert_event(event, c.orig);
+    assert_event(event, build_cmd(c.meta.cmd, peers));
     assert(!s.t.fake, 'src must be real for event '+event);
   }
   if (s.t.fake)
@@ -376,7 +410,6 @@ const cmd_found_peers = opt=>etask(function*cmd_connected(){
     assert_event(event, c.orig);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-
   if (s.t.fake)
   {
     let a = array_name_to_id(c.arg.split(','));
@@ -441,6 +474,8 @@ describe('peer-relay', function(){
     t('2_nodes', `node(a) node(b wss(port:4000))
       ab>!connect(wss) ab<connected ab>findPeers(a) ab<foundPeers(a)
       ab<findPeers(b) ab>foundPeers(b,a)`);
+    t('2_nodes_short', `node(a) node(b wss(port:4000)) ab>!connect(wss)
+      ab<connected ab>findPeers(a r(a)) ab<findPeers(b r(b,a))`);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)
