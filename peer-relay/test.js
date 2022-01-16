@@ -339,6 +339,7 @@ const cmd_connect = c=>etask(function*(){
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   assert(!wrtc, 'XXX TODO: wrtc');
   assert(call, 'XXX TODO: !call');
+  let s = t_nodes[c.s];
   if (wss)
       t_nodes[c.s].wsConnector.connect(wss);
 });
@@ -351,26 +352,36 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
     assert_event(event, c.orig);
   }
   else
+  {
     assert(d.t.fake, 'dst must be fake');
+    yield cmd_run();
+  }
 });
 
 const cmd_find_peers = opt=>etask(function*cmd_connected(){
   let {c, event} = opt, s = t_nodes[c.s];
+  if (event)
+  {
+    assert_event(event, c.orig);
+    assert(!s.t.fake, 'src must be real for event '+event);
+  }
   if (s.t.fake)
     yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
-  else
-    assert_event(event, c.orig);
 });
 
 const cmd_found_peers = opt=>etask(function*cmd_connected(){
   let {c, event} = opt, s = t_nodes[c.s];
+  if (event)
+  {
+    assert_event(event, c.orig);
+    assert(!s.t.fake, 'src must be real for event '+event);
+  }
+
   if (s.t.fake)
   {
     let a = array_name_to_id(c.arg.split(','));
     yield fake_send_msg(c, {type: 'foundPeers', data: a});
   }
-  else
-    assert_event(event, c.orig);
 });
 
 let depth = 0;
@@ -378,6 +389,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   this.on('uncaught', on_uncaught);
   depth++;
   let c = t_cmds[t_i];
+  assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   console.log('d%s cmd %s: %s event %s', depth, t_i, c.orig, event);
   t_i++;
   switch (c.cmd)

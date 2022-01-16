@@ -63,6 +63,7 @@ export default class Client extends EventEmitter {
       _this.emit('connection', channel);
       if (util.test_on_connection)
         yield util.test_on_connection(channel);
+      debugger;
       _this.router.send(channel.id, {type: 'findPeers', data: ids(_this.id)});
       _this.emit('peer', channel.id);
       return channel;
