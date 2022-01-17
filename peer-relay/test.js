@@ -547,7 +547,7 @@ describe('peer-relay', function(){
       ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<foundPeers(a)
       ab<findPeers(b) ab>foundPeers(b,a)`);
     if (0) // XXX: check and fix
-    t('2_nodes_long_order', `node(a) node(b wss(port:4000))
+    t('2_nodes_order', `node(a) node(b wss(port:4000))
       ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<findPeers(b)
       ab>foundPeers(b) ab<foundPeers(b)`);
     t('2_nodes_short', `node(a) node(b wss) ab>!connect(wss)
