@@ -314,6 +314,11 @@ const fake_send_msg = (c, data)=>etask(function*(){
     yield send_msg(fs||c.s, fd||c.d, msg);
 });
 
+const cmd_ensure_no_events = ()=>etask(function*cmd_ensure_no_events(){
+  // XXX TODO: change to tick();
+  yield etask.sleep(0);
+});
+
 function cmd_node(opt){
   let {c} = opt;
   let arg = xtest.test_parse(c.arg);
@@ -483,6 +488,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
   switch (opt.c.cmd)
   {
+  case '-': cmd_ensure_no_events(); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
   case 'connected': yield cmd_connected(opt); break;
@@ -495,13 +501,29 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   }
 });
 
+// XXX: need test
+function extend_loop(c){
+  assert(c.loop);
+  let a = [];
+  for (let i=0; i<c.loop.length; i++)
+  {
+    a.push(assign({}, c, c.loop[i]));
+    delete a[i].loop;
+  }
+  a[a.length-1].orig_loop = c.loop;
+  t_cmds.splice(t_i, 1, ...a);
+  return t_cmds[t_i];
+}
+
 let depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
   this.on('uncaught', on_uncaught);
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
-  console.log('%scmd %s: %s%s', ' '.repeat(depth), t_i, c.orig,
-    event ? ' event '+event : '');
+  if (c.loop)
+    c = extend_loop(c);
+  console.log('%scmd %s: %s%s', ' '.repeat(depth), t_i,
+    build_cmd(c.s+c.d+'>'+c.cmd, c.arg), event ? ' event '+event : '');
   t_i++;
   depth++;
   yield cmd_run_single({c, event});
@@ -520,6 +542,7 @@ const test_run = (role, test)=>etask(function*test_run(){
 });
 
 const test_end = ()=>etask(function*(){
+  yield cmd_ensure_no_events();
   assert(t_cmds, 'test not running');
   assert.equal(t_i, t_cmds.length, 'not all cmds run');
   for (let n in t_nodes)
@@ -543,14 +566,14 @@ describe('peer-relay', function(){
       xit(name, 'a', test);
       xit(name, 'b', test);
     };
-    t('2_nodes_long', `node(a) node(b wss(port:4000))
+    t('2_nodes_long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<foundPeers(a)
       ab<findPeers(b) ab>foundPeers(b,a)`);
     if (0) // XXX: check and fix
-    t('2_nodes_order', `node(a) node(b wss(port:4000))
+    t('2_nodes_order', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<findPeers(b)
       ab>foundPeers(b) ab<foundPeers(b)`);
-    t('2_nodes_short', `node(a) node(b wss) ab>!connect(wss)
+    t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss)
       ab>findPeers(a r(a)) ab<findPeers(b r(b,a))`);
     t = (name, test)=>{
       xit(name, 'a', test);
@@ -558,12 +581,10 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
     };
     // XXX: add '-'
-    // XXX: shorten cb,ba>fwd(...)
-    t('3_nodes_linear', `node(a) node(b wss()) node(c wss)
+    t('3_nodes_linear', `node(a) node(b wss()) node(c wss) -
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a))
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
-      cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
-      ba<fwd(ca<handshake-answer) cb<fwd(ca<handshake-answer)`);
+      cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer)`);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)
