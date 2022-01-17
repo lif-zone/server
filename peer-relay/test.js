@@ -169,7 +169,6 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
   this.on('uncaught', on_uncaught);
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
   let event = channel.t.initiaor ? s.t.name+d.t.name+'<connected' : '';
-  console.log('XXX event %s', event);
   yield cmd_run(event);
 });
 
@@ -247,6 +246,10 @@ class FakeChannel extends EventEmitter {
         yield cmd_run(build_cmd(from.t.name+to.t.name+'>handshake-offer',
           '', fwd));
         break;
+      case 'handshake-answer':
+        yield cmd_run(build_cmd(from.t.name+to.t.name+'>handshake-answer',
+          '', fwd));
+        break;
       default: assert(false, 'unexpected msg '+type);
       }
     });
@@ -294,15 +297,25 @@ function send_msg(s, d, msg){
 }
 
 const fake_send_msg = (c, data)=>etask(function*(){
-  let s = t_nodes[c.s], d = t_nodes[c.d];
+  let s = t_nodes[c.s], d = t_nodes[c.d], fs, fd;
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
   var msg = {to, from, path: [s.id.toString('hex')], nonce, data};
-  yield send_msg(c.s, c.d, msg);
+  if (c.fwd) // XXX: make it generic and fix all
+  {
+    assert.equal(c.fwd[2], '>');
+    s = t_nodes[c.fwd[0]];
+    d = t_nodes[c.fwd[1]];
+    fs = c.fwd[0];
+    fd = c.fwd[1];
+  }
+  if (s.t.fake && !d.t.fake)
+    yield send_msg(fs||c.s, fd||c.d, msg);
 });
 
-function cmd_node(c){
+function cmd_node(opt){
+  let {c} = opt;
   let arg = xtest.test_parse(c.arg);
   let name, wss, wrtc, bootstrap;
   util.forEach(arg, a=>{
@@ -340,7 +353,8 @@ function cmd_node(c){
   });
   */
 }
-const cmd_connect = c=>etask(function(){
+const cmd_connect = opt=>etask(function(){
+  let {c} = opt;
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
   let r = true;
   util.forEach(arg, a=>{
@@ -391,7 +405,7 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
   }
 });
 
-const cmd_find_peers = opt=>etask(function*cmd_connected(){
+const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let r, peers, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
@@ -418,7 +432,7 @@ const cmd_find_peers = opt=>etask(function*cmd_connected(){
     yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
 });
 
-const cmd_found_peers = opt=>etask(function*cmd_connected(){
+const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   if (event)
   {
@@ -432,48 +446,65 @@ const cmd_found_peers = opt=>etask(function*cmd_connected(){
   }
 });
 
-const cmd_handshake_offer = opt=>etask(function*cmd_connected(){
+const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(!c.arg, 'invalid cmd '+c.orig);
   if (event)
   {
-    assert_event(event, c.orig);
+    let expected = c.fwd ? build_cmd(c.fwd+'fwd', c.orig) : c.orig;
+    assert_event(event, expected);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
   if (s.t.fake && !d.t.fake)
     yield fake_send_msg(c, {type: 'handshake-offer'});
 });
 
-const cmd_fwd = opt=>etask(function cmd_connected(){
+const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
-  if (event)
+  assert(!c.arg, 'invalid cmd '+c.orig);
+  if (event) // XXX: copy this logic to all places of assert_event
   {
-    assert_event(event, c.orig);
+    let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
+    assert_event(event, expected);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-//  if (s.t.fake && !d.t.fake)
-//    yield fake_send_msg(c, {type: 'handshake-offer'});
+  if (s.t.fake && !d.t.fake)
+    yield fake_send_msg(c, {type: 'handshake-answer'});
+});
+
+const cmd_fwd = opt=>etask(function*cmd_fwd(){
+  let {c, event} = opt;
+  let a = xtest.test_parse(c.arg);
+  assert(a.length==1, 'invalid fwd '+c.orig);
+  a[0].fwd = c.s+c.d+'>';
+  yield cmd_run_single({c: a[0], event});
+});
+
+const cmd_run_single = opt=>etask(function*cmd_run_single(){
+  switch (opt.c.cmd)
+  {
+  case 'node': yield cmd_node(opt); break;
+  case '!connect': yield cmd_connect(opt); break;
+  case 'connected': yield cmd_connected(opt); break;
+  case 'findPeers': yield cmd_find_peers(opt); break;
+  case 'foundPeers': yield cmd_found_peers(opt); break;
+  case 'handshake-offer': yield cmd_handshake_offer(opt); break;
+  case 'handshake-answer': yield cmd_handshake_answer(opt); break;
+  case 'fwd': yield cmd_fwd(opt); break;
+  default: throw new Error('unknown cmd '+opt.c.cmd);
+  }
 });
 
 let depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
   this.on('uncaught', on_uncaught);
-  depth++;
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
-  console.log('d%s cmd %s: %s event %s', depth, t_i, c.orig, event);
+  console.log('%scmd %s: %s%s', ' '.repeat(depth), t_i, c.orig,
+    event ? ' event'+event : '');
   t_i++;
-  switch (c.cmd)
-  {
-  case 'node': yield cmd_node(c); break;
-  case '!connect': yield cmd_connect(c); break;
-  case 'connected': yield cmd_connected({c, event}); break;
-  case 'findPeers': yield cmd_find_peers({c, event}); break;
-  case 'foundPeers': yield cmd_found_peers({c, event}); break;
-  case 'handshake-offer': yield cmd_handshake_offer({c, event}); break;
-  case 'fwd': yield cmd_fwd({c, event}); break;
-  default: throw new Error('unknown cmd '+c.cmd);
-  }
+  depth++;
+  yield cmd_run_single({c, event});
   depth--;
 });
 
