@@ -563,8 +563,7 @@ describe('peer-relay', function(){
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a))
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
       cb>fwd(ca>handshake-offer) ba>fwd(ca>handshake-offer)
-      ba<fwd(ca<handshake-answer) cb<fwd(ca<handshake-answer)
-      `);
+      ba<fwd(ca<handshake-answer) cb<fwd(ca<handshake-answer)`);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)
