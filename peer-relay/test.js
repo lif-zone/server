@@ -501,7 +501,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   console.log('%scmd %s: %s%s', ' '.repeat(depth), t_i, c.orig,
-    event ? ' event'+event : '');
+    event ? ' event '+event : '');
   t_i++;
   depth++;
   yield cmd_run_single({c, event});
