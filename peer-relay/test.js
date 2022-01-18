@@ -309,6 +309,8 @@ const send_msg = (s, d, msg)=>etask(function send_msg(){
 
 const fake_send_msg = (c, data)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d], fs, fd;
+  if (!s.t.fake || d.t.fake)
+    return;
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
@@ -424,7 +426,7 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
 });
 
 const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s = t_nodes[c.s];
   let r, peers, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     if (a.cmd=='r')
@@ -446,28 +448,24 @@ const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
     assert_event(event, build_cmd(c.meta.cmd, peers));
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-  if (s.t.fake && !d.t.fake)
-    yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
+  yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
   yield cmd_run_if_fake();
 });
 
 const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s = t_nodes[c.s];
   if (event)
   {
     assert_event(event, c.orig);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-  if (s.t.fake && !d.t.fake)
-  {
-    let a = array_name_to_id(c.arg.split(','));
-    yield fake_send_msg(c, {type: 'foundPeers', data: a});
-  }
+  yield fake_send_msg(c, {type: 'foundPeers', data:
+    array_name_to_id(c.arg.split(','))});
   yield cmd_run_if_fake();
 });
 
 const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s = t_nodes[c.s];
   assert(!c.arg, 'invalid cmd '+c.orig);
   if (event)
   {
@@ -475,13 +473,12 @@ const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
     assert_event(event, expected);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-  if (s.t.fake && !d.t.fake)
-    yield fake_send_msg(c, {type: 'handshake-offer'});
+  yield fake_send_msg(c, {type: 'handshake-offer'});
   yield cmd_run_if_fake();
 });
 
 const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], ws, wrtc;
+  let {c, event} = opt, s = t_nodes[c.s], ws, wrtc;
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd)
@@ -498,8 +495,7 @@ const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
     assert_event(event, expected);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-  if (s.t.fake && !d.t.fake)
-    yield fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
+  yield fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
   yield cmd_run_if_fake();
 });
 
