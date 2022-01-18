@@ -659,8 +659,22 @@ describe('peer-relay', function(){
       db>fwd(da>handshake-offer) cb>fwd(da>handshake-offer)
       ba>fwd(da>handshake-offer) ba<fwd(da<handshake-answer)
       cb<fwd(da<handshake-answer) cd>fwd(da<handshake-answer)
-      cd<fwd(da>handshake-offer)
-      `);
+      cd<fwd(da>handshake-offer)`);
+    t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
+      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
+      ca>connect(wss) ca>findPeers(c r(c,a,b)) ac>findPeers(a r(a,b,c))
+      cd>!connect(wss) cd>findPeers(c r(c)) cd<findPeers(d r(d,c,b,a))
+      cd<fwd(db>handshake-offer) cb>fwd(db>handshake-offer)
+      cb<fwd(db<handshake-answer(ws)) ba>fwd(db<handshake-answer(ws))
+      cd>fwd(db<handshake-answer(ws)) db>connect(wss)
+      db<findPeers(b r(b,a,d,c)) db>findPeers(d r(d,c,b,a))
+      db>fwd(da>handshake-offer) cb>fwd(da>handshake-offer)
+      ba>fwd(da>handshake-offer) ca<fwd(da<handshake-answer(ws))
+      cb<fwd(da<handshake-answer(ws)) cd>fwd(da<handshake-answer(ws))
+      da>connect(wss) da>findPeers(d r(d,c,b,a)) da<findPeers(a r(a,b,c,d))
+      cd<fwd(da>handshake-offer) ab>fwd(ad>handshake-answer(ws))`);
       // XXX: check why if we don't add the below, there is no error
       // ba>fwd(da>handshake-offer)
       // XXX: check why no error without db>connect(wss) and findPeers...
