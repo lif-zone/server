@@ -332,8 +332,7 @@ const fake_send_msg = (c, data)=>etask(function*(){
 });
 
 const cmd_ensure_no_events = ()=>etask(function*cmd_ensure_no_events(){
-  // XXX TODO: change to tick();
-  yield etask.sleep(0);
+  yield etask.sleep(0); // XXX TODO: change to tick();
 });
 
 function cmd_node(opt){
