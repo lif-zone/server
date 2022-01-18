@@ -360,10 +360,9 @@ function cmd_node(opt){
   t_nodes[name] = node;
 }
 
-/* XXX derry:
-ab>!connect(wss)
-ab>http_get(upgrade(websocket)) ab<http_resp(101)
-ab<tcp_send(b.id) ab>tcp_send(a.id)
+/* XXX derry: ab>!connect(wss)
+ab>http_get(upgrade(ws)) ab<http_resp(101) ab<tcp_send(b.id) ab>tcp_send(a.id)
+
 once a gets b.id, it emits 'connection' - we emit ab>connect
 once b gets a.id, it emits 'connection' - we emit ab<connected
 */
