@@ -631,12 +631,21 @@ describe('peer-relay', function(){
       xit(name, 'd', test);
     };
     // XXX BUG: missing handshake-answer and connect attempt
+    // XXX derry: ab vs ba
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer)
       cd>!connect(wss) cd>findPeers(c r(c)) cd<findPeers(d r(d,c,b,a))
-      cd<fwd(db>handshake-offer) cd<fwd(da>handshake-offer)`);
+      cd<fwd(db>handshake-offer)
+      cd<fwd(da>handshake-offer)
+      cb>fwd(db>handshake-offer)
+      cb<fwd(db<handshake-answer(ws))
+      ba>fwd(db<handshake-answer(ws))
+      cb>fwd(da>handshake-offer)
+      `);
+      // XXX: check why if we don't add the below, there is no error
+      // ba>fwd(da>handshake-offer)
   });
   // XXX TODO:
   // ab>!msg...
