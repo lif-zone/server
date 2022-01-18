@@ -587,12 +587,11 @@ describe('peer-relay', function(){
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab>connect(wss !r) ab<connected ab>findPeers(a)
       ab<foundPeers(a) ab<findPeers(b) ab>foundPeers(b,a)`);
-    if (0) // XXX: check and fix
-    t('2_nodes_order', `node(a) node(b wss(port:4000)) -
-      ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<findPeers(b)
-      ab>foundPeers(b) ab<foundPeers(b)`);
     t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss)
       ab>findPeers(a r(a)) ab<findPeers(b r(b,a))`);
+    if (0) // XXX: find way to test this sequence of events
+    t('2_nodes_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
+      ab>findPeers(a) ab<findPeers(b) ab>foundPeers(b) ab<foundPeers(b)`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
@@ -605,12 +604,12 @@ describe('peer-relay', function(){
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer)`);
-    if (0) // XXX: TODO
     t('3_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
-      ca>connect(wss !r) ca<connected`);
+      ca>connect(wss !r) ca<connected ca>findPeers(c r(c,a,b))
+      ca<findPeers(a r(a,b,c))`);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)
