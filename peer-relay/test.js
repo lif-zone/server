@@ -139,9 +139,18 @@ function assert_wrtc(val){
   return true;
 }
 
-function assert_wss_url(val){
-  // XXX: TODO
-  return val;
+function assert_wss_url(d, val){
+  let wss;
+  if (!val)
+    wss = t_nodes[d].wsConnector.url;
+  else
+  {
+    assert(!d);
+    wss = val;
+  }
+  assert(wss, 'dest '+d+' has no ws server');
+  // XXX: TODO assert val and wss
+  return wss;
 }
 
 function assert_bootstrap(val){
@@ -370,14 +379,7 @@ const cmd_connect = opt=>etask(function*(){
     case 'wss':
       // XXX: write it in a nicer way
       assert(wss===undefined, 'multiple '+a.cmd);
-      if (!a.arg)
-        wss = assert_wss_url(t_nodes[c.d].wsConnector.url);
-      else
-      {
-        assert(!c.d);
-        wss = assert_wss_url(a.arg);
-      }
-      assert(wss, 'dest '+c.d+' has no ws server');
+      wss = assert_wss_url(c.d, a.arg);
       break;
     case 'wrtc':
       assert(!call, 'wrtc only in connect');
