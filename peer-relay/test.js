@@ -351,6 +351,8 @@ function cmd_node(opt){
   node.t = {id, name, fake, wss};
   t_nodes[name] = node;
 }
+
+// XXX derry: tricky - add explnation and review
 const cmd_connect = opt=>etask(function*(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
