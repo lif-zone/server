@@ -660,6 +660,10 @@ describe('peer-relay', function(){
       db>connect(wss) db<findPeers(b r(b,a,d,c)) db>findPeers(d r(d,c,b,a))
       db>fwd(da>handshake-offer)
       cb>fwd(da>handshake-offer)
+      ba>fwd(da>handshake-offer)
+      ba<fwd(da<handshake-answer)
+      cb<fwd(da<handshake-answer)
+      dc<fwd(da<handshake-answer)
       dc>fwd(da>handshake-offer)
       `);
       // XXX: check why if we don't add the below, there is no error
