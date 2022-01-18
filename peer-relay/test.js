@@ -417,6 +417,7 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
     assert(d.t.fake, 'dst must be fake');
   if (d.t.fake)
     yield cmd_run();
+  yield cmd_run_if_fake();
 });
 
 const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
@@ -443,6 +444,7 @@ const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
     assert(!event, event+' sent by fake node '+c.orig);
   if (s.t.fake && !d.t.fake)
     yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
+  yield cmd_run_if_fake();
 });
 
 const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
@@ -457,6 +459,7 @@ const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
     let a = array_name_to_id(c.arg.split(','));
     yield fake_send_msg(c, {type: 'foundPeers', data: a});
   }
+  yield cmd_run_if_fake();
 });
 
 const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
@@ -470,6 +473,7 @@ const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
   }
   if (s.t.fake && !d.t.fake)
     yield fake_send_msg(c, {type: 'handshake-offer'});
+  yield cmd_run_if_fake();
 });
 
 const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
@@ -492,6 +496,7 @@ const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
   }
   if (s.t.fake && !d.t.fake)
     yield fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
+  yield cmd_run_if_fake();
 });
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
@@ -500,6 +505,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   assert(a.length==1, 'invalid fwd '+c.orig);
   a[0].fwd = c.s+c.d+'>';
   yield cmd_run_single({c: a[0], event});
+  yield cmd_run_if_fake();
 });
 
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
@@ -532,6 +538,14 @@ function extend_loop(c){
   t_cmds.splice(t_i, 1, ...a);
   return t_cmds[t_i];
 }
+
+const cmd_run_if_fake = event=>etask(function*cmd_run_if_fake(){
+  let next_s = util.get(t_cmds[t_i], 's');
+  console.log('XXX next_s %s fake %s', util.get(next_s, 't.name'),
+    next_s && t_nodes[next_s].t.fake);
+  if (next_s && t_nodes[next_s].t.fake)
+    yield cmd_run();
+});
 
 let depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
@@ -639,10 +653,10 @@ describe('peer-relay', function(){
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer)
       cd>!connect(wss) cd>findPeers(c r(c)) cd<findPeers(d r(d,c,b,a))
       cd<fwd(db>handshake-offer)
-      cd<fwd(da>handshake-offer)
       cb>fwd(db>handshake-offer)
       cb<fwd(db<handshake-answer(ws))
       ba>fwd(db<handshake-answer(ws))
+      cd<fwd(da>handshake-offer)
       cb>fwd(da>handshake-offer)
       `);
       // XXX: check why if we don't add the below, there is no error
