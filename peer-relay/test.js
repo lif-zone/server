@@ -609,7 +609,11 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
       xit(name, 'c', test);
     };
-    // XXX: add '-'
+    // XXX: rename:
+    // findPeers -> find
+    // foundPeers -> found
+    // handshake-offer -> offer
+    // handshake-answer -> answer
     // XXX: cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
     // to: ca,ba>fwd(ca>handshake-offer(r(ws)))
     // XXX bug: missing ac>connect(wss) - need to fix and send supported
