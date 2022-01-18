@@ -320,7 +320,7 @@ const fake_send_msg = (c, data)=>etask(function*(){
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
   var msg = {to, from, path: [s.id.toString('hex')], nonce, data};
-  if (c.fwd) // XXX: make it generic and fix all
+  if (c.fwd)
   {
     assert.equal(c.fwd[2], '>');
     s = t_nodes[c.fwd[0]];
