@@ -624,6 +624,19 @@ describe('peer-relay', function(){
       bs>!connect(wss) bs>findPeers(b r(s)) bs<findPeers(s r(s))
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(ws))
       ba>connect(wss) ba>findPeers(b r(b,s)) ba<findPeers(a r(a,b,s))`);
+    t = (name, test)=>{
+      xit(name, 'a', test);
+      xit(name, 'b', test);
+      xit(name, 'c', test);
+      xit(name, 'd', test);
+    };
+    // XXX BUG: missing handshake-answer and connect attempt
+    t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
+      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer)
+      cd>!connect(wss) cd>findPeers(c r(c)) cd<findPeers(d r(d,c,b,a))
+      cd<fwd(db>handshake-offer) cd<fwd(da>handshake-offer)`);
   });
   // XXX TODO:
   // ab>!msg...
