@@ -169,6 +169,7 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
   this.on('uncaught', on_uncaught);
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
   let event = channel.t.initiaor ? s.t.name+d.t.name+'<connected' : '';
+    s.t.name+d.t.name+'>connect';
   yield cmd_run(event);
 });
 
@@ -247,8 +248,13 @@ class FakeChannel extends EventEmitter {
           '', fwd));
         break;
       case 'handshake-answer':
+          a = [];
+          if (data.ws)
+            a.push('ws'); // XXX: asswert correct val of ws
+          if (data.wrtc)
+            a.push('wrtc');
         yield cmd_run(build_cmd(from.t.name+to.t.name+'>handshake-answer',
-          '', fwd));
+          a.join(' '), fwd));
         break;
       default: assert(false, 'unexpected msg '+type);
       }
@@ -465,8 +471,17 @@ const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
 });
 
 const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
-  assert(!c.arg, 'invalid cmd '+c.orig);
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], ws, wrtc;
+  let arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
+    switch (a.cmd)
+    {
+      case 'wrtc': wrtc = assert_wrtc(a.arg); break;
+      // XXX: assert and verify ws is correct url
+      case 'ws': ws = url_from_node(s); break;
+      default: throw new Error('unknown arg '+a.cmd);
+    }
+  });
   if (event) // XXX: copy this logic to all places of assert_event
   {
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
@@ -474,7 +489,7 @@ const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
     assert(!s.t.fake, 'src must be real for event '+event);
   }
   if (s.t.fake && !d.t.fake)
-    yield fake_send_msg(c, {type: 'handshake-answer'});
+    yield fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
 });
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
@@ -566,6 +581,7 @@ describe('peer-relay', function(){
       xit(name, 'a', test);
       xit(name, 'b', test);
     };
+    // XXX, b,a->ba
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<foundPeers(a)
       ab<findPeers(b) ab>foundPeers(b,a)`);
@@ -581,10 +597,18 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
     };
     // XXX: add '-'
-    t('3_nodes_linear', `node(a) node(b wss()) node(c wss) -
-      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a))
+    // XXX: cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
+    // to: ca,ba>fwd(ca>handshake-offer(r(ws)))
+    t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer)`);
+    if (0) // XXX: TODO
+    t('3_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) -
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
+      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
+      ca>connect(wss !r) ca<connected`);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)
