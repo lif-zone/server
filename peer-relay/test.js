@@ -168,9 +168,18 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
   // XXX HACK: rm 'uncaught'. we need because otherwise it doesn't fail assert
   this.on('uncaught', on_uncaught);
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
-  let event = channel.t.initiaor ? s.t.name+d.t.name+'<connected' : '';
-    s.t.name+d.t.name+'>connect';
-  yield cmd_run(event);
+  if (channel.t.initiaor)
+  {
+    assert(!s.t.fake, 'src must be real');
+    yield cmd_run(); // handle fake >connect
+    let event = s.t.name+d.t.name+'<connected';
+    yield cmd_run(event);
+  }
+  else
+  {
+    let event = d.t.name+s.t.name+'<connected';
+    yield cmd_run(event);
+  }
 });
 
 class FakeNode extends EventEmitter {
@@ -198,17 +207,11 @@ class FakeWsConnector extends EventEmitter {
   }
   connect(url){
     let d = node_from_url(url), s = node_from_id(this.id);
-    if (!d.t.fake)
-    {
-      let channel = new FakeChannel({localID: d.id, id: s.id});
-      d.wsConnector.emit('connection', channel);
-    }
-    if (!s.t.fake)
-    {
-      let channel = new FakeChannel({localID: s.id, id: d.id});
-      channel.t.initiaor = true;
-      s.wsConnector.emit('connection', channel);
-    }
+    let channel = new FakeChannel({localID: s.id, id: d.id});
+    channel.wsConnector = this;
+    channel.t.initiaor = true;
+    assert(!s.t.fake, 'src must be real');
+    s.wsConnector.emit('connection', channel);
   }
   destroy(){}
 }
@@ -348,8 +351,8 @@ function cmd_node(opt){
   node.t = {id, name, fake, wss};
   t_nodes[name] = node;
 }
-const cmd_connect = opt=>etask(function(){
-  let {c} = opt;
+const cmd_connect = opt=>etask(function*(){
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
   let r = true;
   util.forEach(arg, a=>{
@@ -379,25 +382,38 @@ const cmd_connect = opt=>etask(function(){
   assert_exist(c.s);
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   assert(!wrtc, 'XXX TODO: wrtc');
-  assert(call, 'XXX TODO: !call');
-  if (r)
-    push_cmd(c.s+c.d+'<connected');
-  if (wss) // XXX: need yield
-      t_nodes[c.s].wsConnector.connect(wss);
+  if (call)
+  {
+    if (r)
+      push_cmd(build_cmd(c.s+c.d+'>connect', wss ? 'wss' : 'wrtc'));
+    assert(!event);
+    if (wss)
+    {
+      if (!s.t.fake)
+        yield s.wsConnector.connect(wss);
+    }
+  }
+  else
+  {
+    if (r)
+      push_cmd(c.s+c.d+'<connected');
+    if (s.t.fake)
+    {
+      let channel = new FakeChannel({localID: d.id, id: s.id});
+      channel.wsConnector = d.wsConnector;
+      d.wsConnector.emit('connection', channel);
+    }
+  }
 });
 
 const cmd_connected = opt=>etask(function*cmd_connected(){
   let {c, event} = opt, d = t_nodes[c.d];
   if (event)
-  {
-    assert(!d.t.fake, 'dst must be real');
     assert_event(event, c.orig);
-  }
   else
-  {
     assert(d.t.fake, 'dst must be fake');
+  if (d.t.fake)
     yield cmd_run();
-  }
 });
 
 const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
@@ -418,11 +434,10 @@ const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
   });
   if (r)
     push_cmd(rev_cmd(c.orig, 'foundPeers', r));
-  if (event)
-  {
+  if (!s.t.fake)
     assert_event(event, build_cmd(c.meta.cmd, peers));
-    assert(!s.t.fake, 'src must be real for event '+event);
-  }
+  else
+    assert(!event, event+' sent by fake node '+c.orig);
   if (s.t.fake && !d.t.fake)
     yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
 });
@@ -490,6 +505,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '-': cmd_ensure_no_events(); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
+  case 'connect': yield cmd_connect(opt); break;
   case 'connected': yield cmd_connected(opt); break;
   case 'findPeers': yield cmd_find_peers(opt); break;
   case 'foundPeers': yield cmd_found_peers(opt); break;
@@ -567,8 +583,8 @@ describe('peer-relay', function(){
     };
     // XXX, b,a->ba
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
-      ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<foundPeers(a)
-      ab<findPeers(b) ab>foundPeers(b,a)`);
+      ab>!connect(wss !r) ab>connect(wss !r) ab<connected ab>findPeers(a)
+      ab<foundPeers(a) ab<findPeers(b) ab>foundPeers(b,a)`);
     if (0) // XXX: check and fix
     t('2_nodes_order', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab<connected ab>findPeers(a) ab<findPeers(b)
