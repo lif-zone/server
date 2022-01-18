@@ -255,7 +255,7 @@ class FakeChannel extends EventEmitter {
       case 'foundPeers':
         a = array_id_to_name(data);
         yield cmd_run(build_cmd(from.t.name+to.t.name+'>foundPeers',
-          a.join(','), fwd));
+          a.join(''), fwd));
         break;
       case 'handshake-offer':
         yield cmd_run(build_cmd(from.t.name+to.t.name+'>handshake-offer',
@@ -458,7 +458,7 @@ const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
     assert(!s.t.fake, 'src must be real for event '+event);
   }
   yield fake_send_msg(c, {type: 'foundPeers', data:
-    array_name_to_id(c.arg.split(','))});
+    array_name_to_id(c.arg.split(''))});
   yield cmd_run_if_next_fake();
 });
 
@@ -595,12 +595,11 @@ describe('peer-relay', function(){
       xit(name, 'a', test);
       xit(name, 'b', test);
     };
-    // XXX: b,a->ba
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab>connect(wss !r) ab<connected ab>findPeers(a)
-      ab<foundPeers(a) ab<findPeers(b) ab>foundPeers(b,a)`);
+      ab<foundPeers(a) ab<findPeers(b) ab>foundPeers(ba)`);
     t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss)
-      ab>findPeers(a r(a)) ab<findPeers(b r(b,a))`);
+      ab>findPeers(a r(a)) ab<findPeers(b r(ba))`);
     if (0) // XXX: find way to test this sequence of events
     t('2_nodes_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>findPeers(a) ab<findPeers(b) ab>foundPeers(b) ab<foundPeers(b)`);
@@ -620,15 +619,15 @@ describe('peer-relay', function(){
     // and send supported connections in handshake-offer so other side can
     // connect directly
     t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
-      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
-      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(ba)) -
+      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(cab))
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer)`);
     t('3_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) -
-      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
-      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(ba)) -
+      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(cab))
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
-      ca>connect(wss !r) ca<connected ca>findPeers(c r(c,a,b))
-      ca<findPeers(a r(a,b,c))`);
+      ca>connect(wss !r) ca<connected ca>findPeers(c r(cab))
+      ca<findPeers(a r(abc))`);
     t('3_nodes_star', `
       node(s wss) node(a) node(b wss) -
       as>!connect(wss) as>findPeers(a r(s)) as<findPeers(a r(s)) -
@@ -639,7 +638,7 @@ describe('peer-relay', function(){
       as>!connect(wss) as>findPeers(a r(s)) as<findPeers(a r(s)) -
       bs>!connect(wss) bs>findPeers(b r(s)) bs<findPeers(s r(s))
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(ws))
-      ba>connect(wss) ba>findPeers(b r(b,s)) ba<findPeers(a r(a,b,s))`);
+      ba>connect(wss) ba>findPeers(b r(bs)) ba<findPeers(a r(abs))`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
@@ -648,33 +647,33 @@ describe('peer-relay', function(){
     };
     // XXX derry: ab vs ba
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
-      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
-      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(ba)) -
+      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(cab))
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer)
-      cd>!connect(wss) cd>findPeers(c r(c)) cd<findPeers(d r(d,c,b,a))
+      cd>!connect(wss) cd>findPeers(c r(c)) cd<findPeers(d r(dcba))
       cd<fwd(db>handshake-offer) cb>fwd(db>handshake-offer)
       cb<fwd(db<handshake-answer(ws)) ba>fwd(db<handshake-answer(ws))
       cd>fwd(db<handshake-answer(ws)) db>connect(wss)
-      db<findPeers(b r(b,a,d,c)) db>findPeers(d r(d,c,b,a))
+      db<findPeers(b r(badc)) db>findPeers(d r(dcba))
       db>fwd(da>handshake-offer) cb>fwd(da>handshake-offer)
       ba>fwd(da>handshake-offer) ba<fwd(da<handshake-answer)
       cb<fwd(da<handshake-answer) cd>fwd(da<handshake-answer)
       cd<fwd(da>handshake-offer)`);
     // XXX: check why ba>fwd(db<handshake-answer(ws)) is sent out of order
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
-      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
-      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
+      ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(ba)) -
+      bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(cab))
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
-      ca>connect(wss) ca>findPeers(c r(c,a,b)) ac>findPeers(a r(a,b,c))
-      cd>!connect(wss) cd>findPeers(c r(c)) cd<findPeers(d r(d,c,b,a))
+      ca>connect(wss) ca>findPeers(c r(cab)) ac>findPeers(a r(abc))
+      cd>!connect(wss) cd>findPeers(c r(c)) cd<findPeers(d r(dcba))
       cd<fwd(db>handshake-offer) cb>fwd(db>handshake-offer)
       cb<fwd(db<handshake-answer(ws)) cd>fwd(db<handshake-answer(ws))
-      db>connect(wss) db<findPeers(b r(b,a,d,c)) db>findPeers(d r(d,c,b,a))
+      db>connect(wss) db<findPeers(b r(badc)) db>findPeers(d r(dcba))
       db>fwd(da>handshake-offer) cb>fwd(da>handshake-offer)
       ba>fwd(db<handshake-answer(ws))
       ba>fwd(da>handshake-offer) ca<fwd(da<handshake-answer(ws))
       cb<fwd(da<handshake-answer(ws)) cd>fwd(da<handshake-answer(ws))
-      da>connect(wss) da>findPeers(d r(d,c,b,a)) da<findPeers(a r(a,b,c,d))
+      da>connect(wss) da>findPeers(d r(dcba)) da<findPeers(a r(abcd))
       cd<fwd(da>handshake-offer) ab>fwd(ad>handshake-answer(ws))`);
   });
   // XXX TODO:
