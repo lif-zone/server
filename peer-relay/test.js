@@ -452,11 +452,10 @@ const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
 
 const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
-  if (event)
-  {
+  if (!s.t.fake)
     assert_event(event, c.orig);
-    assert(!s.t.fake, 'src must be real for event '+event);
-  }
+  else
+    assert(!event, event+' sent by fake node '+c.orig);
   if (s.t.fake && !d.t.fake)
   {
     let a = array_name_to_id(c.arg.split(','));
