@@ -541,7 +541,8 @@ const cmd_run = event=>etask(function*cmd_run(){
   if (c.loop)
     c = extend_loop(c);
   console.log('%scmd %s: %s%s', ' '.repeat(depth), t_i,
-    build_cmd(c.s+c.d+'>'+c.cmd, c.arg), event ? ' event '+event : '');
+    c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
+    event ? ' event '+event : '');
   t_i++;
   depth++;
   yield cmd_run_single({c, event});
