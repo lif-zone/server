@@ -420,7 +420,7 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
     assert_event(event, c.orig);
   else
     assert(d.t.fake, 'dst must be fake');
-  yield cmd_run_if_fake();
+  yield cmd_run_if_next_fake();
 });
 
 const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
@@ -447,7 +447,7 @@ const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
     assert(!s.t.fake, 'src must be real for event '+event);
   }
   yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
-  yield cmd_run_if_fake();
+  yield cmd_run_if_next_fake();
 });
 
 const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
@@ -459,7 +459,7 @@ const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
   }
   yield fake_send_msg(c, {type: 'foundPeers', data:
     array_name_to_id(c.arg.split(','))});
-  yield cmd_run_if_fake();
+  yield cmd_run_if_next_fake();
 });
 
 const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
@@ -472,7 +472,7 @@ const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
     assert(!s.t.fake, 'src must be real for event '+event);
   }
   yield fake_send_msg(c, {type: 'handshake-offer'});
-  yield cmd_run_if_fake();
+  yield cmd_run_if_next_fake();
 });
 
 const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
@@ -494,7 +494,7 @@ const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
     assert(!s.t.fake, 'src must be real for event '+event);
   }
   yield fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
-  yield cmd_run_if_fake();
+  yield cmd_run_if_next_fake();
 });
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
@@ -503,7 +503,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   assert(a.length==1, 'invalid fwd '+c.orig);
   a[0].fwd = c.s+c.d+'>';
   yield cmd_run_single({c: a[0], event});
-  yield cmd_run_if_fake();
+  yield cmd_run_if_next_fake();
 });
 
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
@@ -537,7 +537,7 @@ function extend_loop(c){
   return t_cmds[t_i];
 }
 
-const cmd_run_if_fake = event=>etask(function*cmd_run_if_fake(){
+const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
   let next_s = util.get(t_cmds[t_i], 's');
   if (next_s && t_nodes[next_s].t.fake)
     yield cmd_run();
