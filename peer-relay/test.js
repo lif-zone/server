@@ -611,9 +611,9 @@ describe('peer-relay', function(){
     };
     // XXX: rename:
     // findPeers -> find
-    // foundPeers -> found
-    // handshake-offer -> offer
-    // handshake-answer -> answer
+    // foundPeers -> find_r
+    // handshake-offer -> conn_info
+    // handshake-answer -> conn_info_r
     // XXX: cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
     // to: ca,ba>fwd(ca>handshake-offer(r(ws)))
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
