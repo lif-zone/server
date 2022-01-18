@@ -11,6 +11,12 @@ import etask from '../util/etask.js';
 
 function ids(id){ return util.buf_to_str(id); }
 
+// XXX HACK: proper handle etask error
+function on_uncaught(err){
+  console.error('%o', err);
+  process.exit(-1);
+}
+
 export default class Client extends EventEmitter {
   constructor(opts){
     super();
@@ -42,6 +48,7 @@ export default class Client extends EventEmitter {
   _onConnection = channel=>{
     let _this = this;
     etask(function*_onConnection(){
+      this.on('uncaught', on_uncaught);
       const onClose = ()=>{
         delete _this.pending[channel.id];
         _this.canidates.remove(channel.id);
@@ -136,6 +143,7 @@ export default class Client extends EventEmitter {
   _onHandshakeAnswer(msg, from){
     let _this = this;
     return etask(function*(){
+      this.on('uncaught', on_uncaught);
       if (_this.peers.get(from))
         return;
       if (msg.data == null)

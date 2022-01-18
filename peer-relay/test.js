@@ -301,12 +301,12 @@ function node_get_channel(_s, _d){
   return d.peers.get(s.id);
 }
 
-function send_msg(s, d, msg){
+const send_msg = (s, d, msg)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   assert(channel, 'no channel '+s+d+'>');
   // XXX: change to yield
   channel.emit('message', msg);
-}
+});
 
 const fake_send_msg = (c, data)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d], fs, fd;
@@ -650,7 +650,7 @@ describe('peer-relay', function(){
       xit(name, 'd', test);
     };
     // XXX derry: ab vs ba
-    if (1)
+    if (0)
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
