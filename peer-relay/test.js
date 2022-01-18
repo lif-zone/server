@@ -274,7 +274,7 @@ class FakeChannel extends EventEmitter {
       }
     });
   };
-  destroy(){} // XXX: rm from t.channel
+  destroy(){}
 }
 
 class FakeWrtcConnector extends EventEmitter {
@@ -364,7 +364,13 @@ function cmd_node(opt){
   t_nodes[name] = node;
 }
 
-// XXX derry: tricky - add explnation and review
+/* XXX derry: tricky
+ab>!connect(wss)
+ab>http_get(upgrade(websocket)) ab<http_resp(101)
+ab<tcp_send(b.id) ab>tcp_send(a.id)
+once a gets b.id, it emits 'connection'
+once b gets a.id, it emits 'connection'
+*/
 const cmd_connect = opt=>etask(function*(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
