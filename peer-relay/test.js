@@ -616,8 +616,9 @@ describe('peer-relay', function(){
     // handshake-answer -> answer
     // XXX: cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
     // to: ca,ba>fwd(ca>handshake-offer(r(ws)))
-    // XXX bug: missing ac>connect(wss) - need to fix and send supported
-    // connections in handshake-offer so other side can connect directly
+    // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
+    // and send supported connections in handshake-offer so other side can
+    // connect directly
     t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
