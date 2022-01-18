@@ -545,20 +545,20 @@ const cmd_run_if_fake = event=>etask(function*cmd_run_if_fake(){
     yield cmd_run();
 });
 
-let depth = 0;
+let t_depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
   this.on('uncaught', on_uncaught);
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   if (c.loop)
     c = extend_loop(c);
-  console.log('%scmd %s: %s%s', ' '.repeat(depth), t_i,
+  console.log('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '');
   t_i++;
-  depth++;
+  t_depth++;
   yield cmd_run_single({c, event});
-  depth--;
+  t_depth--;
 });
 
 const test_run = (role, test)=>etask(function*test_run(){
