@@ -360,12 +360,12 @@ function cmd_node(opt){
   t_nodes[name] = node;
 }
 
-/* XXX derry: tricky
+/* XXX derry:
 ab>!connect(wss)
 ab>http_get(upgrade(websocket)) ab<http_resp(101)
 ab<tcp_send(b.id) ab>tcp_send(a.id)
-once a gets b.id, it emits 'connection'
-once b gets a.id, it emits 'connection'
+once a gets b.id, it emits 'connection' - we emit ab>connect
+once b gets a.id, it emits 'connection' - we emit ab<connected
 */
 const cmd_connect = opt=>etask(function*(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
