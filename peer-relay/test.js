@@ -375,14 +375,12 @@ const cmd_connect = opt=>etask(function*(){
     switch (a.cmd)
     {
     case 'wss':
-      // XXX: write it in a nicer way
       assert(wss===undefined, 'multiple '+a.cmd);
       wss = assert_wss_url(c.d, a.arg);
       break;
     case 'wrtc':
       assert(!call, 'wrtc only in connect');
-      wrtc = true;
-      // XXX: assert destination has wrtc support
+      wrtc = true; // XXX: assert destination has wrtc support
       break;
     case '!r': r = false; break;
     default: throw new Error('unknown arg '+a.cmd);
