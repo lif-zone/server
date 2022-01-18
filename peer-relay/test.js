@@ -30,7 +30,7 @@ zerr.set_exception_handler('test', (prefix, o, err)=>{
   process.exit(-1);
 });
 
-// XXX HACK: need to fix by default for etask
+  // XXX HACK: rm 'uncaught'. we need because otherwise it doesn't fail assert
 function on_uncaught(err){
   console.error('%o', err);
   process.exit(-1);
@@ -178,7 +178,6 @@ function assert_event(event, exp){
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
-  // XXX HACK: rm 'uncaught'. we need because otherwise it doesn't fail assert
   this.on('uncaught', on_uncaught);
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
   if (channel.t.initiaor)
