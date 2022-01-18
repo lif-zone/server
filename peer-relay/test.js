@@ -347,22 +347,6 @@ function cmd_node(opt){
     {id: _buf(id), bootstrap, wrtc}, wss));
   node.t = {id, name, fake, wss};
   t_nodes[name] = node;
-  /*
-  let fake = is_fake(role, name);
-  let node = new (fake ? FakeNode : Node)(assign({id: util.buf_from_str(id),
-    bootstrap, wrtc}, wss));
-  assert.equal(id, util.buf_to_str(node.id));
-  node.t = {id, name, fake, wss, channels: []};
-  t_nodes[name] = node;
-  node.on('connection', channel=>{
-    let s = node_from_id(channel.localID), d = node_from_id(channel.id);
-    node.t.channels.push(channel);
-    if (node_get_channel(d.t.name, s.t.name))
-      test_emit({event: s.t.name+d.t.name+'>connected', fake: s.t.fake});
-    else
-      test_emit({event: s.t.name+d.t.name+'>connect', fake: s.t.fake});
-  });
-  */
 }
 const cmd_connect = opt=>etask(function(){
   let {c} = opt;
