@@ -295,10 +295,6 @@ function array_id_to_name(a){
 function array_name_to_id(a){
   let ret = [];
   a.forEach(name=>{
-    if (name[2]=='>') // XXX HACK:
-      name = name[4];
-    if (name[1]==')') // XXX HACK:
-      name = name[0];
     assert_exist(name);
     ret.push(util.buf_to_str(t_nodes[name].id));
   });
