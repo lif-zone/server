@@ -301,11 +301,10 @@ function node_get_channel(_s, _d){
   return d.peers.get(s.id);
 }
 
-const send_msg = (s, d, msg)=>etask(function*send_msg(){
+const send_msg = (s, d, msg)=>etask(function send_msg(){
   let channel = node_get_channel(s, d);
   assert(channel, 'no channel '+s+d+'>');
-  // XXX: change to yield
-  channel.emit('message', msg);
+  channel.emit('message', msg); // XXX: change to yield
 });
 
 const fake_send_msg = (c, data)=>etask(function*(){
@@ -421,8 +420,6 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
     assert_event(event, c.orig);
   else
     assert(d.t.fake, 'dst must be fake');
-  if (d.t.fake)
-    yield cmd_run();
   yield cmd_run_if_fake();
 });
 
@@ -650,7 +647,6 @@ describe('peer-relay', function(){
       xit(name, 'd', test);
     };
     // XXX derry: ab vs ba
-    if (0)
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
@@ -661,7 +657,7 @@ describe('peer-relay', function(){
       cb<fwd(db<handshake-answer(ws))
       ba>fwd(db<handshake-answer(ws))
       cd>fwd(db<handshake-answer(ws))
-      db>connect(wss) db<findPeers(b r(b,a,d,c)) db>findPeers(d r(a))
+      db>connect(wss) db<findPeers(b r(b,a,d,c)) db>findPeers(d r(d,c,b,a))
       db>fwd(da>handshake-offer)
       cb>fwd(da>handshake-offer)
       dc>fwd(da>handshake-offer)
