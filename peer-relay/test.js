@@ -288,6 +288,7 @@ function array_name_to_id(a){
       name = name[4];
     if (name[1]==')') // XXX HACK:
       name = name[0];
+    assert_exist(name);
     ret.push(util.buf_to_str(t_nodes[name].id));
   });
   return ret;
@@ -600,6 +601,8 @@ describe('peer-relay', function(){
     // XXX: add '-'
     // XXX: cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
     // to: ca,ba>fwd(ca>handshake-offer(r(ws)))
+    // XXX bug: missing ac>connect(wss) - need to fix and send supported
+    // connections in handshake-offer so other side can connect directly
     t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
@@ -610,6 +613,11 @@ describe('peer-relay', function(){
       cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
       ca>connect(wss !r) ca<connected ca>findPeers(c r(c,a,b))
       ca<findPeers(a r(a,b,c))`);
+    t('3_nodes_star', `
+      node(s wss) node(a) node(b wss) -
+      as>!connect(wss) as>findPeers(a r(s)) as<findPeers(a r(s)) -
+      bs>!connect(wss) bs>findPeers(b r(s)) bs<findPeers(s r(s))
+      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer)`);
   });
   // XXX TODO:
   // node(b wss(port:4000)) -> node(b wss)
