@@ -190,10 +190,7 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
     yield cmd_run(event);
   }
   else
-  {
-    let event = d.t.name+s.t.name+'<connected';
-    yield cmd_run(event);
-  }
+    yield cmd_run(d.t.name+s.t.name+'<connected');
 });
 
 class FakeNode extends EventEmitter {
