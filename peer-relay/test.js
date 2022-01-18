@@ -391,8 +391,8 @@ const cmd_connect = opt=>etask(function*(){
     }
   });
   assert_exist(c.s);
-  assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   assert(!wrtc, 'XXX TODO: wrtc');
+  assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   if (call)
   {
     if (r)
