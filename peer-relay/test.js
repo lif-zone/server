@@ -452,6 +452,7 @@ const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
 
 const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
   let {c, event} = opt, s = t_nodes[c.s];
+  // XXX: assert c.arg
   if (event)
   {
     assert_event(event, c.orig);
