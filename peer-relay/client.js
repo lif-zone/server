@@ -68,7 +68,6 @@ export default class Client extends EventEmitter {
       return channel;
     });
   };
-  connect_ws(uri){ this.wsConnector.connect(uri); }
   connect_wrtc(id){ this.wrtcConnector.connect(id); }
   connect(id){
     if (this.destroyed) // XXX: print error (or assert)
@@ -144,7 +143,7 @@ export default class Client extends EventEmitter {
       if (msg.data.wrtc && _this.wrtcConnector.supported)
         yield _this.connect_wrtc(from);
       else if (msg.data.ws)
-        yield _this.connect_ws(msg.data.ws);
+        yield _this.wsConnector.connect(msg.data.ws);
     });
   }
   _populate(){

@@ -189,8 +189,6 @@ class FakeNode extends EventEmitter {
     this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
     this.wsConnector = new FakeWsConnector(this.id, opts.port, opts.host);
     this.wrtcConnector = new FakeWrtcConnector(this.id);
-    this.wsConnector.on('connection', c=>this.emit('connection', c));
-    this.wrtcConnector.on('connection', c=>this.emit('connection', c));
   }
   destroy(){}
 }
@@ -206,13 +204,16 @@ class FakeWsConnector extends EventEmitter {
       this.url = 'wss://'+host+':'+port;
     }
   }
-  connect(url){
-    let d = node_from_url(url), s = node_from_id(this.id);
-    let channel = new FakeChannel({localID: s.id, id: d.id});
-    channel.wsConnector = this;
-    channel.t.initiaor = true;
-    assert(!s.t.fake, 'src must be real');
-    s.wsConnector.emit('connection', channel);
+  connect = url=>{
+    let _this = this;
+    return etask(function*connect(){
+      let d = node_from_url(url), s = node_from_id(_this.id);
+      let channel = new FakeChannel({localID: s.id, id: d.id});
+      channel.wsConnector = _this;
+      channel.t.initiaor = true;
+      assert(!s.t.fake, 'src must be real');
+      yield s._onConnection(channel);
+    });
   }
   destroy(){}
 }
@@ -401,12 +402,13 @@ const cmd_connect = opt=>etask(function*(){
   {
     if (r)
       push_cmd(c.s+c.d+'<connected');
+    if (s.t.fake && d.t.fake)
+      return;
     if (s.t.fake)
     {
       let channel = new FakeChannel({localID: d.id, id: s.id});
       channel.wsConnector = d.wsConnector;
-      // XXX: change to yield (grep all emit)
-      d.wsConnector.emit('connection', channel);
+      yield d._onConnection(channel);
     }
     else // XXX: review
       assert_event(event, build_cmd(c.s+c.d+'>connect', wss ? 'wss' : 'wrtc'));
@@ -648,7 +650,7 @@ describe('peer-relay', function(){
       xit(name, 'd', test);
     };
     // XXX derry: ab vs ba
-    if (0)
+    if (1)
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>findPeers(a r(a)) ab<findPeers(b r(b,a)) -
       bc>!connect(wss) bc>findPeers(b r(b)) bc<findPeers(c r(c,a,b))
