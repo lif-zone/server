@@ -30,6 +30,7 @@ zerr.set_exception_handler('test', (prefix, o, err)=>{
   process.exit(-1);
 });
 
+// XXX HACK: need to fix by default for etask
 function on_uncaught(err){
   console.error('%o', err);
   process.exit(-1);
@@ -69,10 +70,13 @@ function build_cmd(cmd, arg, fwd){
 function rev_cmd(sd, cmd, arg){ return build_cmd(rev(sd)+cmd, arg); }
 
 function _push_cmd(a){ t_cmds.splice(t_i, 0, ...a); }
+
 function push_cmd(cmd){ _push_cmd(xtest.test_parse(cmd)); }
 
 function is_fake(p){ return t_role!=p; }
+
 function url_from_node(node){ return node.t.wss.url; }
+
 function node_from_url(url){
   for (let name in t_nodes)
   {
