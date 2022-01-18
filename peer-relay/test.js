@@ -595,7 +595,7 @@ describe('peer-relay', function(){
       xit(name, 'a', test);
       xit(name, 'b', test);
     };
-    // XXX, b,a->ba
+    // XXX: b,a->ba
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab>connect(wss !r) ab<connected ab>findPeers(a)
       ab<foundPeers(a) ab<findPeers(b) ab>foundPeers(b,a)`);
