@@ -441,10 +441,11 @@ const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
   });
   if (r)
     push_cmd(rev_cmd(c.orig, 'foundPeers', r));
-  if (!s.t.fake)
+  if (event)
+  {
     assert_event(event, build_cmd(c.meta.cmd, peers));
-  else
-    assert(!event, event+' sent by fake node '+c.orig);
+    assert(!s.t.fake, 'src must be real for event '+event);
+  }
   if (s.t.fake && !d.t.fake)
     yield fake_send_msg(c, {type: 'findPeers', data: _str(s.id)});
   yield cmd_run_if_fake();
@@ -452,10 +453,11 @@ const cmd_find_peers = opt=>etask(function*cmd_find_peers(){
 
 const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
-  if (!s.t.fake)
+  if (event)
+  {
     assert_event(event, c.orig);
-  else
-    assert(!event, event+' sent by fake node '+c.orig);
+    assert(!s.t.fake, 'src must be real for event '+event);
+  }
   if (s.t.fake && !d.t.fake)
   {
     let a = array_name_to_id(c.arg.split(','));
