@@ -618,8 +618,15 @@ describe('peer-relay', function(){
       as>!connect(wss) as>findPeers(a r(s)) as<findPeers(a r(s)) -
       bs>!connect(wss) bs>findPeers(b r(s)) bs<findPeers(s r(s))
       bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer)`);
+    t('3_nodes_star_wss', `
+      node(s wss) node(a wss) node(b wss) -
+      as>!connect(wss) as>findPeers(a r(s)) as<findPeers(a r(s)) -
+      bs>!connect(wss) bs>findPeers(b r(s)) bs<findPeers(s r(s))
+      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(ws))
+      ba>connect(wss) ba>findPeers(b r(b,s)) ba<findPeers(a r(a,b,s))`);
   });
   // XXX TODO:
-  // node(b wss(port:4000)) -> node(b wss)
+  // ab>!msg...
+  // wrtc
 });
 
