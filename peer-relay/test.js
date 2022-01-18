@@ -394,11 +394,8 @@ const cmd_connect = opt=>etask(function*(){
     if (r)
       push_cmd(build_cmd(c.s+c.d+'>connect', wss ? 'wss' : 'wrtc'));
     assert(!event);
-    if (wss)
-    {
-      if (!s.t.fake)
-        yield s.wsConnector.connect(wss);
-    }
+    if (!s.t.fake)
+      yield s.wsConnector.connect(wss);
   }
   else
   {
