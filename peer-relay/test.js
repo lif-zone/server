@@ -560,8 +560,15 @@ function extend_loop_rev(loop, cmd){
 }
 
 const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
-  let next_s = util.get(t_cmds[t_i], 's');
-  if (next_s && t_nodes[next_s].t.fake)
+  let next = t_cmds[t_i];
+  if (!next)
+    return;
+  let next_s = next.s;
+  if (next.loop)
+    next_s = next.loop[0].s;
+  if (!next_s)
+    return;
+  if (t_nodes[next_s].t.fake)
     yield cmd_run();
 });
 
