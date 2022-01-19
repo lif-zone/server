@@ -36,7 +36,8 @@ function on_uncaught(err){
   process.exit(-1);
 }
 
-let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
+let t_nodes = {}, t_nonce = {}, t_cmds, t_cmds_done, t_i, t_role, t_port=4000;
+let t_pre_process;
 let t_ids = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
   b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
@@ -394,7 +395,7 @@ const cmd_connect = opt=>etask(function*(){
   assert(find ? r : true, 'find must be used together with find');
   if (call)
   {
-    if (r)
+    if (r && t_pre_process)
     {
       push_cmd(build_cmd(c.s+c.d+'>connect', (wss ? 'wss' : 'wrtc')+
         (find ? ' '+build_cmd('find', find.join(' ')) : '')));
@@ -405,12 +406,12 @@ const cmd_connect = opt=>etask(function*(){
   }
   else
   {
-    if (r)
+    if (r && t_pre_process)
     {
       // XXX: need api to build expressions
       push_cmd(c.s+c.d+'<connected'+(find ? ' '+
         build_cmd(c.s+c.d+'>find', c.s+' '+build_cmd('r', find[0]))+' '+
-        build_cmd(c.s+c.d+'>find', c.d+' '+build_cmd('r', find[1])) : ''));
+        build_cmd(c.s+c.d+'<find', c.d+' '+build_cmd('r', find[1])) : ''));
     }
     if (s.t.fake && d.t.fake)
       return;
@@ -450,7 +451,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
       assert_peers(peers);
     }
   });
-  if (r)
+  if (r && t_pre_process)
     push_cmd(rev_cmd(c.orig, 'find_r', r));
   if (event)
   {
@@ -487,7 +488,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
       default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  if (c.orig_loop && typeof r!=='undefined')
+  if (c.orig_loop && typeof r!=='undefined' && t_pre_process)
     _push_cmd(extend_loop_rev(c.orig_loop, rev_cmd(c.orig, 'conn_info_r', r)));
   if (event)
   {
@@ -593,22 +594,33 @@ const cmd_run = event=>etask(function*cmd_run(){
   console.log('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '');
+  t_cmds_done.push(assign({}, c));
   t_i++;
   t_depth++;
   yield cmd_run_single({c, event});
   t_depth--;
 });
 
-const test_run = (role, test)=>etask(function*test_run(){
+const _test_run = (role, cmds)=>etask(function*_test_run(){
   this.on('uncaught', on_uncaught);
   assert(!t_cmds && !t_i && !t_role, 'test already running');
   t_port = 4000;
-  t_cmds = xtest.test_parse(test);
+  t_cmds = cmds;
+  t_cmds_done = [];
   t_role = role;
   t_nonce = {};
   for (t_i=0; t_i<t_cmds.length;)
     yield cmd_run();
   yield test_end();
+});
+
+const test_run = (role, test)=>etask(function*test_run(){
+  t_pre_process = true;
+  console.log('pre_process run');
+  yield _test_run('fake', xtest.test_parse(test));
+  console.log('real run');
+  t_pre_process = false;
+  yield _test_run(role, t_cmds_done);
 });
 
 const test_end = ()=>etask(function*(){
@@ -640,11 +652,7 @@ describe('peer-relay', function(){
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab>connect(wss !r) ab<connected ab>find(a)
       ab<find_r(a) ab<find(b) ab>find_r(ba)`);
-    if (0) // XXX: fixme
     t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
-    // XXX: rm
-    t('2_nodes_xxx', `node(a) node(b wss) - ab>!connect(wss)
-      ab>find(a r(a)) ab<find(b r(ba))`);
     if (0) // XXX: find way to test this sequence of events
     t('2_nodes_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
@@ -654,34 +662,27 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
       xit(name, 'c', test);
     };
-    // XXX derry: replace
-    // ab>!connect(wss) ab>find(a r(ax)) ab<find(b r(byz))
-    // with
-    // ab>!connect(wss find(ax byz))
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
     t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
-      ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
-      bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info(r))`);
+      ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
+      bc,ab<fwd(ca>conn_info(r))`);
+    // XXX: why order of find events is differnt
     t('3_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) -
-      ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
+      ab>!connect(wss find(a ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
       cb,ba>fwd(ca>conn_info(r(ws)))
       ca>connect(wss !r) ca<connected ca>find(c r(cab))
       ca<find(a r(abc))`);
+    // XXX: why find return s and s
     t('3_nodes_star', `
-      node(s wss) node(a) node(b wss) -
-      as>!connect(wss) as>find(a r(s)) as<find(a r(s)) -
-      bs>!connect(wss) bs>find(b r(s)) bs<find(s r(s))
-      bs,sa>fwd(ba>conn_info(r))`);
+      node(s wss) node(a) node(b wss) - as>!connect(wss find(s s)) -
+      bs>!connect(wss find(s s)) bs,sa>fwd(ba>conn_info(r))`);
     t('3_nodes_star_wss', `
-      node(s wss) node(a wss) node(b wss) -
-      as>!connect(wss) as>find(a r(s)) as<find(a r(s)) -
-      bs>!connect(wss) bs>find(b r(s)) bs<find(s r(s))
-      bs,sa>fwd(ba>conn_info(r(ws))) ba>connect(wss) ba>find(b r(bs))
-      ba<find(a r(abs))`);
+      node(s wss) node(a wss) node(b wss) - as>!connect(wss find(s s)) -
+      bs>!connect(wss find(s s)) bs,sa>fwd(ba>conn_info(r(ws)))
+      ba>connect(wss find(bs abs))`);
     t = (name, test)=>{
       xit(name, 'fake', test);
       xit(name, 'a', test);
@@ -689,24 +690,23 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
       xit(name, 'd', test);
     };
+    // XXX: why order of find events is differnt
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
-      ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
-      bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info(r)) cd>!connect(wss) cd>find(c r(c))
-      cd<find(d r(dcba)) cd,cb<fwd(db>conn_info(r(ws)))
+      ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
+      cb,ba>fwd(ca>conn_info(r)) cd>!connect(wss find(c dcba))
+      cd,cb<fwd(db>conn_info(r(ws)))
       db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
       db,dc,cb,ba>fwd(da>conn_info(r))
       `);
+    // XXX: why order of find events is differnt
     // XXX: check why ba>fwd(db<conn_info_r(ws)) is sent out of order
     // XXX fix bug that the test will fail if I replace
     // dc>fwd(da>conn_info) dc<fwd(da<conn_info_r(ws))
     // with dc>fwd(da>conn_info(r(ws)))
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
-      bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info(r(ws)))
-      ca>connect(wss) ca>find(c r(cab)) ac>find(a r(abc))
-      cd>!connect(wss) cd>find(c r(c)) cd<find(d r(dcba))
+      bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
+      ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
       cd,cb<fwd(db>conn_info(r(ws)))
       db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
       db,cb,ba>fwd(da>conn_info)
