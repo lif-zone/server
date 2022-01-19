@@ -666,9 +666,8 @@ describe('peer-relay', function(){
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info(r))
-      cd>!connect(wss) cd>find(c r(c)) cd<find(d r(dcba))
-      cd,cb<fwd(db>conn_info) cb<fwd(db<conn_info_r(ws))
+      cb,ba>fwd(ca>conn_info(r)) cd>!connect(wss) cd>find(c r(c))
+      cd<find(d r(dcba)) cd,cb<fwd(db>conn_info) cb<fwd(db<conn_info_r(ws))
       ba>fwd(db<conn_info_r(ws)) cd>fwd(db<conn_info_r(ws)) db>connect(wss)
       db<find(b r(badc)) db>find(d r(dcba))
       db,cb,ba>fwd(da>conn_info)
