@@ -669,10 +669,8 @@ describe('peer-relay', function(){
     t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       bc,ab<fwd(ca>conn_info(r))`);
-    // XXX: why order of find events is differnt
     t('3_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) -
-      ab>!connect(wss find(a ba)) -
-      bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
+      ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
     // XXX: check why xxx_bug doesn't fail (s s is wrong)
     t('xxx_bug', `node(s wss) node(a) - as>!connect(wss find(s s)) -`);
