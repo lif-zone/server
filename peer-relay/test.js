@@ -633,6 +633,7 @@ describe('peer-relay', function(){
     const xit = (name, role, test)=>it(name+'_'+role,
       ()=>xetask(()=>test_run(role, test)));
     let t = (name, test)=>{
+      xit(name, 'fake', test);
       xit(name, 'a', test);
       xit(name, 'b', test);
     };
@@ -648,6 +649,7 @@ describe('peer-relay', function(){
     t('2_nodes_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
     t = (name, test)=>{
+      xit(name, 'fake', test);
       xit(name, 'a', test);
       xit(name, 'b', test);
       xit(name, 'c', test);
@@ -681,6 +683,7 @@ describe('peer-relay', function(){
       bs,sa>fwd(ba>conn_info(r(ws))) ba>connect(wss) ba>find(b r(bs))
       ba<find(a r(abs))`);
     t = (name, test)=>{
+      xit(name, 'fake', test);
       xit(name, 'a', test);
       xit(name, 'b', test);
       xit(name, 'c', test);
