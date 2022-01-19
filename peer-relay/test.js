@@ -717,9 +717,17 @@ describe('peer-relay', function(){
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
     t('xxx_s', `node(s wss) node(a) - as>!connect(wss find(a sa)) -`);
     t('xxx_b', `node(b wss) node(a) - ab>!connect(wss find(a ba)) -`);
+    if (xxx_bug)
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
       bs>!connect(wss find(bas sba)) bs,sa>fwd(ba>conn_info(r))`);
+    else
+    t('star_xxx', `
+      node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
+      bs>!connect(wss) bs>find(b r(bas)) bs>fwd(ba>conn_info)
+      bs<find(s r(sba)) sa>fwd(ba>conn_info) sa<fwd(ba<conn_info_r)
+      bs<fwd(ba<conn_info_r)`);
+    if (xxx_bug)
     t('star_wss', `
       node(s wss) node(a wss) node(b wss) - as>!connect(wss find(a sa)) -
       bs>!connect(wss find(bas sba)) bs,sa>fwd(ba>conn_info(r(ws)))
