@@ -632,8 +632,6 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
       xit(name, 'c', test);
     };
-    // XXX: cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r(ws))
-    // to: ca,ba>fwd(ca>conn_info(r(ws)))
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
