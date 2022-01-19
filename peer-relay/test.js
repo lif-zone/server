@@ -680,12 +680,12 @@ describe('peer-relay', function(){
     t('xxx_s', `node(s wss) node(a) - as>!connect(wss find(a sa)) -`);
     t('xxx_b', `node(b wss) node(a) - ab>!connect(wss find(a ba)) -`);
     t('3_nodes_star', `
-      node(s wss) node(a) node(b wss) - as>!connect(wss find(s s)) -
-      bs>!connect(wss find(s s)) bs,sa>fwd(ba>conn_info(r))`);
+      node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
+      bs>!connect(wss find(b sb)) bs,sa>fwd(ba>conn_info(r))`);
     t('3_nodes_star_wss', `
-      node(s wss) node(a wss) node(b wss) - as>!connect(wss find(s s)) -
-      bs>!connect(wss find(s s)) bs,sa>fwd(ba>conn_info(r(ws)))
-      ba>connect(wss find(bs abs))`);
+      node(s wss) node(a wss) node(b wss) - as>!connect(wss find(a sa)) -
+      bs>!connect(wss find(b sb)) bs,sa>fwd(ba>conn_info(r(ws)))
+      ba>connect(wss find(bas abs))`);
     t = (name, test)=>{
       xit(name, 'fake', test);
       xit(name, 'a', test);
