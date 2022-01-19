@@ -670,13 +670,13 @@ describe('peer-relay', function(){
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
       cb,ba>fwd(ca>conn_info(r))
       cd>!connect(wss) cd>find(c r(c)) cd<find(d r(dcba))
-      cd<fwd(db>conn_info) cb>fwd(db>conn_info)
-      cb<fwd(db<conn_info_r(ws)) ba>fwd(db<conn_info_r(ws))
-      cd>fwd(db<conn_info_r(ws)) db>connect(wss)
+      cd,cb<fwd(db>conn_info) cb<fwd(db<conn_info_r(ws))
+      ba>fwd(db<conn_info_r(ws)) cd>fwd(db<conn_info_r(ws)) db>connect(wss)
       db<find(b r(badc)) db>find(d r(dcba))
-      db>fwd(da>conn_info) cb>fwd(da>conn_info)
-      ba>fwd(da>conn_info) ba<fwd(da<conn_info_r)
-      cb<fwd(da<conn_info_r) cd>fwd(da<conn_info_r)
+      db,cb,ba>fwd(da>conn_info)
+      ba<fwd(da<conn_info_r)
+      cb<fwd(da<conn_info_r)
+      cd>fwd(da<conn_info_r)
       cd<fwd(da>conn_info)`);
     // XXX: check why ba>fwd(db<conn_info_r(ws)) is sent out of order
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
