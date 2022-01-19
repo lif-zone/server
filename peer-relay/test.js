@@ -751,7 +751,7 @@ describe('peer-relay', function(){
       da>connect(wss find(dcba abcd))
       ba<fwd(da<conn_info_r(ws))
       `);
-    if (0)
+    if (0) // XXX: arik: it fails due dc>fwd(da>conn_info(r(ws)))
     t('4_nodes_linear_xxx', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
