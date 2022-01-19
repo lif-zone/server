@@ -731,8 +731,7 @@ describe('peer-relay', function(){
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
-      db,dc,cb,ba>fwd(da>conn_info(r))
-      `);
+      db,dc,cb,ba>fwd(da>conn_info(r))`);
     // XXX: check if we can send before da>connect
     // dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
@@ -741,8 +740,7 @@ describe('peer-relay', function(){
       ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,ba,ca>fwd(da>conn_info(r(ws))) da>connect(wss find(dcba abcd))
-      dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))
-      `);
+      dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))`);
   });
   // XXX TODO:
   // ab>!msg...
