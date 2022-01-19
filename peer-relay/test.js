@@ -714,7 +714,7 @@ describe('peer-relay', function(){
       cb<fwd(da<conn_info_r(ws))
       dc>fwd(da>conn_info)
       dc<fwd(da<conn_info_r(ws))
-      da>connect(wss) da>find(d r(dcba)) da<find(a r(abcd))
+      da>connect(wss find(dcba abcd))
       ba<fwd(da<conn_info_r(ws))
       `);
   });
