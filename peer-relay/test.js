@@ -715,8 +715,6 @@ describe('peer-relay', function(){
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
-    t('xxx_s', `node(s wss) node(a) - as>!connect(wss find(a sa)) -`);
-    t('xxx_b', `node(b wss) node(a) - ab>!connect(wss find(a ba)) -`);
     if (xxx_bug)
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
