@@ -489,8 +489,16 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
       default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  if (c.orig_loop && typeof r!=='undefined' && t_pre_process)
-    _push_cmd(extend_loop_rev(c.orig_loop, rev_cmd(c.orig, 'conn_info_r', r)));
+  if (typeof r!=='undefined' && t_pre_process)
+  {
+    if (c.orig_loop)
+    {
+      _push_cmd(extend_loop_rev(c.orig_loop,
+        rev_cmd(c.orig, 'conn_info_r', r)));
+    }
+    else if (false) // XXX: need to properly handle loop parsing
+      push_cmd(build_cmd(rev(c.fwd)+'fwd', rev_cmd(c.orig, 'conn_info_r', r)));
+  }
   if (event)
   {
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', c.meta.cmd) : c.meta.cmd;
@@ -651,10 +659,24 @@ describe('peer-relay', function(){
     it('pre_process', ()=>xetask(function*(){
       let t = function*(test, exp){
         let cmds = yield test_pre_process(test);
+        cmds = xtest.test_parse_rm_meta_orig(cmds);
+        console.log('%s', JSON.stringify(cmds, null, ' '));
         assert.deepEqual(cmds, exp);
       };
-      yield t('node(a) node(b)', [{arg: 'a', cmd: 'node', orig: 'node(a)'},
-        {arg: 'b', cmd: 'node', orig: 'node(b)'}]);
+      let ab = [{arg: 'a', cmd: 'node'}, {arg: 'b', cmd: 'node'}];
+      yield t('node(a) node(b)', ab);
+      if (0) // XXX: support reply without loop for conn_info
+      yield t('node(a) node(b) ab>fwd(ab>conn_info(r))', ab.concat([
+        {s: 'a', d: 'b', dir: '>', cmd: 'fwd', arg: 'ab>conn_info(r)'},
+        {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
+      ]));
+      yield t('node(a) node(b) ab,ba>fwd(ab>conn_info(r))', ab.concat([
+        {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'a', d: 'b', dir: '>'},
+        {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'b', d: 'a', dir: '>',
+        orig_loop: [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
+        {s: 'a', d: 'b', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
+        {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'}
+      ]));
     }));
   });
   describe('basic', function(){
