@@ -261,7 +261,7 @@ class FakeChannel extends EventEmitter {
       case 'conn_info_r':
           a = [];
           if (data.ws)
-            a.push('ws'); // XXX: asswert correct val of ws
+            a.push('ws'); // XXX: assert correct val of ws
           if (data.wrtc)
             a.push('wrtc');
         cmd = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
