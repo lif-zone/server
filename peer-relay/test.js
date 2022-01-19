@@ -463,11 +463,23 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
 });
 
 const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
-  let {c, event} = opt, s = t_nodes[c.s];
-  assert(!c.arg, 'invalid cmd '+c.orig);
+  let {c, event} = opt, s = t_nodes[c.s], r;
+  let arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
+    switch (a.cmd)
+    {
+      case 'r':
+        assert(!r, 'invalid '+c.orig);
+        r = a.arg||'';
+        break;
+      default: throw new Error('unknown arg '+a.cmd);
+    }
+  });
+  if (c.orig_loop && typeof r!=='undefined')
+    _push_cmd(extend_loop_rev(c.orig_loop, rev_cmd(c.orig, 'conn_info_r', r)));
   if (event)
   {
-    let expected = c.fwd ? build_cmd(c.fwd+'fwd', c.orig) : c.orig;
+    let expected = c.fwd ? build_cmd(c.fwd+'fwd', c.meta.cmd) : c.meta.cmd;
     assert_event(event, expected);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
@@ -502,6 +514,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let a = xtest.test_parse(c.arg);
   assert(a.length==1, 'invalid fwd '+c.orig);
   a[0].fwd = c.s+c.d+'>';
+  a[0].orig_loop = c.orig_loop;
   yield cmd_run_single({c: a[0], event});
   yield cmd_run_if_next_fake();
 });
@@ -535,6 +548,17 @@ function extend_loop(c){
   a[a.length-1].orig_loop = c.loop;
   t_cmds.splice(t_i, 1, ...a);
   return t_cmds[t_i];
+}
+
+function extend_loop_rev(loop, cmd){
+  let a = [];
+  loop = Array.from(loop).reverse();
+  for (let i=0; i<loop.length; i++)
+  {
+    let o = loop[i];
+    a.push(xtest.test_parse(build_cmd(o.s+o.d+'<fwd', cmd))[0]);
+  }
+  return a;
 }
 
 const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
@@ -616,18 +640,18 @@ describe('peer-relay', function(){
     t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r)`);
+      cb,ba>fwd(ca>conn_info(r))`);
     t('3_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r(ws))
+      cb,ba>fwd(ca>conn_info(r(ws)))
       ca>connect(wss !r) ca<connected ca>find(c r(cab))
       ca<find(a r(abc))`);
     t('3_nodes_star', `
       node(s wss) node(a) node(b wss) -
       as>!connect(wss) as>find(a r(s)) as<find(a r(s)) -
       bs>!connect(wss) bs>find(b r(s)) bs<find(s r(s))
-      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<conn_info_r)`);
+      bs,sa>fwd(ba>conn_info(r))`);
     t('3_nodes_star_wss', `
       node(s wss) node(a wss) node(b wss) -
       as>!connect(wss) as>find(a r(s)) as<find(a r(s)) -
@@ -644,7 +668,7 @@ describe('peer-relay', function(){
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r)
+      cb,ba>fwd(ca>conn_info(r))
       cd>!connect(wss) cd>find(c r(c)) cd<find(d r(dcba))
       cd<fwd(db>conn_info) cb>fwd(db>conn_info)
       cb<fwd(db<conn_info_r(ws)) ba>fwd(db<conn_info_r(ws))
