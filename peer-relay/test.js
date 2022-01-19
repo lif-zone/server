@@ -708,8 +708,7 @@ describe('peer-relay', function(){
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
       ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
-      cd,cb<fwd(db>conn_info(r(ws)))
-      db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
+      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,cb,ba>fwd(da>conn_info)
       ca<fwd(da<conn_info_r(ws))
       cb<fwd(da<conn_info_r(ws))
