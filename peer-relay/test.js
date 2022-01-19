@@ -36,6 +36,8 @@ function on_uncaught(err){
   process.exit(-1);
 }
 
+let xxx_bug = false; // review with derry
+
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
 let t_ids = {
@@ -270,7 +272,8 @@ class FakeChannel extends EventEmitter {
       default: assert(false, 'unexpected msg '+type);
       }
       t_nonce[normalize(cmd)] = msg.nonce;
-      yield cmd_run_if_next_fake();
+      if (xxx_bug)
+        yield cmd_run_if_next_fake();
       yield cmd_run(build_cmd(cmd, '', fwd));
     });
   };
@@ -727,13 +730,22 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
       xit(name, 'd', test);
     };
+    if (xxx_bug) // XXX: review with derry
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,dc,cb,ba>fwd(da>conn_info(r))`);
+    else
+    t('4_nodes_linear_xxx', `node(a) node(b wss) node(c wss) node(d wss) -
+      ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
+      cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
+      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss) db>find(d r(dcba))
+      db>fwd(da>conn_info) db<find(b r(badc)) dc,cb,ba>fwd(da>conn_info(r))
+      db<fwd(da<conn_info_r)`);
     // XXX: check if we can send before da>connect
     // dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))
+    if (xxx_bug) // XXX: review with derry
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
@@ -741,6 +753,17 @@ describe('peer-relay', function(){
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,ba,ca>fwd(da>conn_info(r(ws))) da>connect(wss find(dcba abcd))
       dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))`);
+    else
+    t('4_nodes_linear_wss_xxx', `node(a wss) node(b wss) node(c wss)
+      node(d wss) - ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
+      bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
+      ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
+      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss) db>find(d r(dcba))
+      db>fwd(da>conn_info) db<find(b r(badc)) ba>fwd(da>conn_info)
+      ca<fwd(da<conn_info_r(ws)) ca>fwd(da>conn_info)
+      ba<fwd(da<conn_info_r(ws)) db<fwd(da<conn_info_r(ws))
+      da>connect(wss find(dcba abcd)) dc>fwd(da>conn_info)
+      dc<fwd(da>conn_info_r(ws))`);
   });
   // XXX TODO:
   // ab>!msg...
