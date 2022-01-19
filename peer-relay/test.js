@@ -678,13 +678,14 @@ describe('peer-relay', function(){
       cd>!connect(wss) cd>find(c r(c)) cd<find(d r(dcba))
       cd,cb<fwd(db>conn_info(r(ws)))
       db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
-      db,cb,ba>fwd(da>conn_info)
+      db,cb,cb,ba>fwd(da>conn_info)
       ca<fwd(da<conn_info_r(ws))
       cb<fwd(da<conn_info_r(ws))
+      cd<fwd(da>conn_info)
       cd>fwd(da<conn_info_r(ws))
       da>connect(wss) da>find(d r(dcba)) da<find(a r(abcd))
-      cd<fwd(da>conn_info)
-      ab>fwd(da<conn_info_r(ws))`);
+      ab>fwd(da<conn_info_r(ws))
+      `);
   });
   // XXX TODO:
   // ab>!msg...
