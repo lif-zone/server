@@ -733,36 +733,14 @@ describe('peer-relay', function(){
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,dc,cb,ba>fwd(da>conn_info(r))
       `);
-    // XXX: why order of find events is differnt
-    // XXX: check why ba>fwd(db<conn_info_r(ws)) is sent out of order
-    // XXX fix bug that the test will fail if I replace
-    // dc>fwd(da>conn_info) dc<fwd(da<conn_info_r(ws))
-    // with dc>fwd(da>conn_info(r(ws)))
+    // XXX: check why we get dc>fwd(da>conn_info) at the end
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
       ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
-      db,cb,ba>fwd(da>conn_info)
-      ca<fwd(da<conn_info_r(ws))
-      cb<fwd(da<conn_info_r(ws))
+      db,ba,ca>fwd(da>conn_info(r(ws))) da>connect(wss find(dcba abcd))
       dc>fwd(da>conn_info)
-      dc<fwd(da<conn_info_r(ws))
-      da>connect(wss find(dcba abcd))
-      ba<fwd(da<conn_info_r(ws))
-      `);
-    if (0) // XXX: arik: it fails due dc>fwd(da>conn_info(r(ws)))
-    t('4_nodes_linear_xxx', `node(a wss) node(b wss) node(c wss) node(d wss) -
-      ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
-      bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
-      ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
-      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
-      db,cb,ba>fwd(da>conn_info)
-      ca<fwd(da<conn_info_r(ws))
-      cb<fwd(da<conn_info_r(ws))
-      dc>fwd(da>conn_info(r(ws)))
-      da>connect(wss find(dcba abcd))
-      ba<fwd(da<conn_info_r(ws))
       `);
   });
   // XXX TODO:
