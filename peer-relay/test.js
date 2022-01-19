@@ -661,7 +661,6 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
       xit(name, 'd', test);
     };
-    // XXX: check extra cd<fwd(da>conn_info) cd>fwd(da<conn_info_r)
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
@@ -677,15 +676,18 @@ describe('peer-relay', function(){
       cb,ba>fwd(ca>conn_info(r(ws)))
       ca>connect(wss) ca>find(c r(cab)) ac>find(a r(abc))
       cd>!connect(wss) cd>find(c r(c)) cd<find(d r(dcba))
-      cd<fwd(db>conn_info) cb>fwd(db>conn_info)
-      cb<fwd(db<conn_info_r(ws)) cd>fwd(db<conn_info_r(ws))
+      cd,cb<fwd(db>conn_info(r(ws)))
       db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
-      db>fwd(da>conn_info) cb>fwd(da>conn_info)
+      db>fwd(da>conn_info)
+      cb>fwd(da>conn_info)
       ba>fwd(db<conn_info_r(ws))
-      ba>fwd(da>conn_info) ca<fwd(da<conn_info_r(ws))
-      cb<fwd(da<conn_info_r(ws)) cd>fwd(da<conn_info_r(ws))
+      ba>fwd(da>conn_info)
+      ca<fwd(da<conn_info_r(ws))
+      cb<fwd(da<conn_info_r(ws))
+      cd>fwd(da<conn_info_r(ws))
       da>connect(wss) da>find(d r(dcba)) da<find(a r(abcd))
-      cd<fwd(da>conn_info) ab>fwd(ad>conn_info_r(ws))`);
+      cd<fwd(da>conn_info)
+      ab>fwd(ad>conn_info_r(ws))`);
   });
   // XXX TODO:
   // ab>!msg...
