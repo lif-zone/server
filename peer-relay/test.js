@@ -656,7 +656,7 @@ describe('peer-relay', function(){
       node(s wss) node(a wss) node(b wss) -
       as>!connect(wss) as>find(a r(s)) as<find(a r(s)) -
       bs>!connect(wss) bs>find(b r(s)) bs<find(s r(s))
-      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<conn_info_r(ws))
+      bs,sa>fwd(ba>conn_info(r(ws)))
       ba>connect(wss) ba>find(b r(bs)) ba<find(a r(abs))`);
     t = (name, test)=>{
       xit(name, 'a', test);
