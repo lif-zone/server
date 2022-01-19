@@ -668,8 +668,7 @@ describe('peer-relay', function(){
       cb,ba>fwd(ca>conn_info(r)) cd>!connect(wss) cd>find(c r(c))
       cd<find(d r(dcba)) cd,cb<fwd(db>conn_info(r(ws)))
       db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
-      db,cb,ba>fwd(da>conn_info(r))
-      cd<fwd(da>conn_info) cd>fwd(da<conn_info_r)
+      db,dc,cb,ba>fwd(da>conn_info(r))
       `);
     // XXX: check why ba>fwd(db<conn_info_r(ws)) is sent out of order
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
