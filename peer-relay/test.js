@@ -261,13 +261,13 @@ class FakeChannel extends EventEmitter {
         yield cmd_run(build_cmd(from.t.name+to.t.name+'>conn_info',
           '', fwd));
         break;
-      case 'handshake-answer':
+      case 'conn_info_r':
           a = [];
           if (data.ws)
             a.push('ws'); // XXX: asswert correct val of ws
           if (data.wrtc)
             a.push('wrtc');
-        yield cmd_run(build_cmd(from.t.name+to.t.name+'>handshake-answer',
+        yield cmd_run(build_cmd(from.t.name+to.t.name+'>conn_info_r',
           a.join(' '), fwd));
         break;
       default: assert(false, 'unexpected msg '+type);
@@ -462,7 +462,7 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
   yield cmd_run_if_next_fake();
 });
 
-const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
+const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   let {c, event} = opt, s = t_nodes[c.s];
   assert(!c.arg, 'invalid cmd '+c.orig);
   if (event)
@@ -475,7 +475,7 @@ const cmd_handshake_offer = opt=>etask(function*cmd_handshake_offer(){
   yield cmd_run_if_next_fake();
 });
 
-const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
+const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   let {c, event} = opt, s = t_nodes[c.s], ws, wrtc;
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
@@ -493,7 +493,7 @@ const cmd_handshake_answer = opt=>etask(function*cmd_handshake_answer(){
     assert_event(event, expected);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-  yield fake_send_msg(c, {type: 'handshake-answer', data: {ws, wrtc}});
+  yield fake_send_msg(c, {type: 'conn_info_r', data: {ws, wrtc}});
   yield cmd_run_if_next_fake();
 });
 
@@ -516,8 +516,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'connected': yield cmd_connected(opt); break;
   case 'find': yield cmd_find(opt); break;
   case 'find_r': yield cmd_find_r(opt); break;
-  case 'conn_info': yield cmd_handshake_offer(opt); break;
-  case 'handshake-answer': yield cmd_handshake_answer(opt); break;
+  case 'conn_info': yield cmd_conn_info(opt); break;
+  case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   default: throw new Error('unknown cmd '+opt.c.cmd);
   }
@@ -608,10 +608,7 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
       xit(name, 'c', test);
     };
-    // XXX: rename:
-    // conn_info -> conn_info
-    // handshake-answer -> conn_info_r
-    // XXX: cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<handshake-answer(ws))
+    // XXX: cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r(ws))
     // to: ca,ba>fwd(ca>conn_info(r(ws)))
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
@@ -619,23 +616,23 @@ describe('peer-relay', function(){
     t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<handshake-answer)`);
+      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r)`);
     t('3_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<handshake-answer(ws))
+      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r(ws))
       ca>connect(wss !r) ca<connected ca>find(c r(cab))
       ca<find(a r(abc))`);
     t('3_nodes_star', `
       node(s wss) node(a) node(b wss) -
       as>!connect(wss) as>find(a r(s)) as<find(a r(s)) -
       bs>!connect(wss) bs>find(b r(s)) bs<find(s r(s))
-      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<handshake-answer)`);
+      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<conn_info_r)`);
     t('3_nodes_star_wss', `
       node(s wss) node(a wss) node(b wss) -
       as>!connect(wss) as>find(a r(s)) as<find(a r(s)) -
       bs>!connect(wss) bs>find(b r(s)) bs<find(s r(s))
-      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<handshake-answer(ws))
+      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<conn_info_r(ws))
       ba>connect(wss) ba>find(b r(bs)) ba<find(a r(abs))`);
     t = (name, test)=>{
       xit(name, 'a', test);
@@ -647,32 +644,32 @@ describe('peer-relay', function(){
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<handshake-answer)
+      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r)
       cd>!connect(wss) cd>find(c r(c)) cd<find(d r(dcba))
       cd<fwd(db>conn_info) cb>fwd(db>conn_info)
-      cb<fwd(db<handshake-answer(ws)) ba>fwd(db<handshake-answer(ws))
-      cd>fwd(db<handshake-answer(ws)) db>connect(wss)
+      cb<fwd(db<conn_info_r(ws)) ba>fwd(db<conn_info_r(ws))
+      cd>fwd(db<conn_info_r(ws)) db>connect(wss)
       db<find(b r(badc)) db>find(d r(dcba))
       db>fwd(da>conn_info) cb>fwd(da>conn_info)
-      ba>fwd(da>conn_info) ba<fwd(da<handshake-answer)
-      cb<fwd(da<handshake-answer) cd>fwd(da<handshake-answer)
+      ba>fwd(da>conn_info) ba<fwd(da<conn_info_r)
+      cb<fwd(da<conn_info_r) cd>fwd(da<conn_info_r)
       cd<fwd(da>conn_info)`);
-    // XXX: check why ba>fwd(db<handshake-answer(ws)) is sent out of order
+    // XXX: check why ba>fwd(db<conn_info_r(ws)) is sent out of order
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
-      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<handshake-answer(ws))
+      cb,ba>fwd(ca>conn_info) ba,cb<fwd(ca<conn_info_r(ws))
       ca>connect(wss) ca>find(c r(cab)) ac>find(a r(abc))
       cd>!connect(wss) cd>find(c r(c)) cd<find(d r(dcba))
       cd<fwd(db>conn_info) cb>fwd(db>conn_info)
-      cb<fwd(db<handshake-answer(ws)) cd>fwd(db<handshake-answer(ws))
+      cb<fwd(db<conn_info_r(ws)) cd>fwd(db<conn_info_r(ws))
       db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
       db>fwd(da>conn_info) cb>fwd(da>conn_info)
-      ba>fwd(db<handshake-answer(ws))
-      ba>fwd(da>conn_info) ca<fwd(da<handshake-answer(ws))
-      cb<fwd(da<handshake-answer(ws)) cd>fwd(da<handshake-answer(ws))
+      ba>fwd(db<conn_info_r(ws))
+      ba>fwd(da>conn_info) ca<fwd(da<conn_info_r(ws))
+      cb<fwd(da<conn_info_r(ws)) cd>fwd(da<conn_info_r(ws))
       da>connect(wss) da>find(d r(dcba)) da<find(a r(abcd))
-      cd<fwd(da>conn_info) ab>fwd(ad>handshake-answer(ws))`);
+      cd<fwd(da>conn_info) ab>fwd(ad>conn_info_r(ws))`);
   });
   // XXX TODO:
   // ab>!msg...

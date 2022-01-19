@@ -115,7 +115,7 @@ export default class Client extends EventEmitter {
     case 'find': this._on_find(msg, from); break;
     case 'find_r': this._on_find_r(msg, from); break;
     case 'conn_info': this._on_conn_info(msg, from); break;
-    case 'handshake-answer': this._onHandshakeAnswer(msg, from); break;
+    case 'conn_info_r': this._on_conn_info_r(msg, from); break;
     default: console.error('unknown msg type %s', msg.type);
     }
   }
@@ -135,11 +135,11 @@ export default class Client extends EventEmitter {
     if (this.pending[from] == null || from.compare(this.id) < 0)
     {
       this.pending[from] = true;
-      this.router.send(from, {type: 'handshake-answer',
+      this.router.send(from, {type: 'conn_info_r',
         data: {ws: this.wsConnector.url, wrtc: this.wrtcConnector.supported}});
     }
   }
-  _onHandshakeAnswer(msg, from){
+  _on_conn_info_r(msg, from){
     let _this = this;
     return etask(function*(){
       this.on('uncaught', on_uncaught);
