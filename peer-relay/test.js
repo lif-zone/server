@@ -563,12 +563,9 @@ const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
   let next = t_cmds[t_i];
   if (!next)
     return;
-  let next_s = next.s;
-  if (next.loop)
-    next_s = next.loop[0].s;
-  if (!next_s)
+  if (!next.s)
     return;
-  if (t_nodes[next_s].t.fake)
+  if (t_nodes[next.s].t.fake)
     yield cmd_run();
 });
 
@@ -691,7 +688,7 @@ describe('peer-relay', function(){
       dc>fwd(da>conn_info)
       dc<fwd(da<conn_info_r(ws))
       da>connect(wss) da>find(d r(dcba)) da<find(a r(abcd))
-      ab>fwd(da<conn_info_r(ws))
+      ba<fwd(da<conn_info_r(ws))
       `);
   });
   // XXX TODO:
