@@ -270,6 +270,7 @@ class FakeChannel extends EventEmitter {
       default: assert(false, 'unexpected msg '+type);
       }
       t_nonce[normalize(cmd)] = msg.nonce;
+      yield cmd_run_if_next_fake();
       yield cmd_run(build_cmd(cmd, '', fwd));
     });
   };
@@ -650,8 +651,8 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
     };
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
-      ab>!connect(wss !r) ab>connect(wss !r) ab<connected ab>find(a)
-      ab<find_r(a) ab<find(b) ab>find_r(ba)`);
+      ab>!connect(wss !r) ab>connect(wss !r) ab<connected
+      ab>find(a) ab<find_r(a) ab<find(b) ab>find_r(ba)`);
     t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
     if (0) // XXX: find way to test this sequence of events
     t('2_nodes_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
@@ -692,12 +693,10 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
       xit(name, 'd', test);
     };
-    // XXX: why order of find events is differnt
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
-      cb,ba>fwd(ca>conn_info(r)) cd>!connect(wss find(c dcba))
-      cd,cb<fwd(db>conn_info(r(ws)))
-      db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
+      cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
+      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,dc,cb,ba>fwd(da>conn_info(r))
       `);
     // XXX: why order of find events is differnt

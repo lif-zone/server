@@ -115,6 +115,7 @@ export default class Router extends EventEmitter {
     const listener = msg=>this._onMessage(msg);
     channel.on('message', listener);
     this._channelListeners[channel.id] = listener;
+    // XXX: check if this can happen during test and add yield
     while (this._queue.length > 0)
       this._send(this._queue.shift());
   }

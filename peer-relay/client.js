@@ -70,23 +70,26 @@ export default class Client extends EventEmitter {
       _this.emit('connection', channel);
       if (util.test_on_connection)
         yield util.test_on_connection(channel);
-      _this.router.send(channel.id, {type: 'find', data: ids(_this.id)});
+      yield _this.router.send(channel.id, {type: 'find', data: ids(_this.id)});
       _this.emit('peer', channel.id);
       return channel;
     });
   };
-  connect_wrtc(id){ this.wrtcConnector.connect(id); }
-  connect(id){
-    if (this.destroyed) // XXX: print error (or assert)
-      return;
-    if (id in this.pending)
-      return;
-    if (this.peers.get(id))
-      return;
-    if (id.equals(this.id))
-      return;
-    this.pending[id] = true;
-    this.router.send(id, {type: 'conn_info'});
+  connect_wrtc(id){ return this.wrtcConnector.connect(id); }
+  connect = id=>{
+    let _this = this;
+    return etask(function*connect(){
+      if (_this.destroyed) // XXX: print error (or assert)
+        return;
+      if (id in _this.pending)
+        return;
+      if (_this.peers.get(id))
+        return;
+      if (id.equals(_this.id))
+        return;
+      _this.pending[id] = true;
+      yield _this.router.send(id, {type: 'conn_info'});
+    });
   }
   disconnect(id){
     if (this.destroyed)
@@ -98,12 +101,12 @@ export default class Client extends EventEmitter {
   send = function(id, data){
     if (this.destroyed)
       return;
-    this.router.send(id, {type: 'user', data: data});
+    return this.router.send(id, {type: 'user', data: data});
   }
   find(id){
     if (this.destroyed)
       return;
-    this.router.send(id, {type: 'find', data: ids(this.id)});
+    return this.router.send(id, {type: 'find', data: ids(this.id)});
   }
   // XXX: need to validate all data to make sure we don't crash
   on_message = (msg, from)=>{
