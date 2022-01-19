@@ -36,7 +36,7 @@ function on_uncaught(err){
   process.exit(-1);
 }
 
-let xxx_bug = true; // review with derry
+let xxx_good_order = true; // review with derry
 
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
@@ -272,7 +272,7 @@ class FakeChannel extends EventEmitter {
       default: assert(false, 'unexpected msg '+type);
       }
       t_nonce[normalize(cmd)] = msg.nonce;
-      if (xxx_bug)
+      if (xxx_good_order)
         yield cmd_run_if_next_fake();
       yield cmd_run(build_cmd(cmd, '', fwd));
     });
@@ -715,7 +715,7 @@ describe('peer-relay', function(){
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
-    if (xxx_bug)
+    if (xxx_good_order)
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
       bs>!connect(wss find(bas sba)) bs,sa>fwd(ba>conn_info(r))`);
@@ -725,7 +725,7 @@ describe('peer-relay', function(){
       bs>!connect(wss) bs>find(b r(bas)) bs>fwd(ba>conn_info)
       bs<find(s r(sba)) sa>fwd(ba>conn_info) sa<fwd(ba<conn_info_r)
       bs<fwd(ba<conn_info_r)`);
-    if (xxx_bug)
+    if (xxx_good_order)
     t('star_wss', `
       node(s wss) node(a wss) node(b wss) - as>!connect(wss find(a sa)) -
       bs>!connect(wss find(bas sba)) bs,sa>fwd(ba>conn_info(r(ws)))
@@ -739,7 +739,7 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
       xit(name, 'd', test);
     };
-    if (xxx_bug) // XXX: review with derry
+    if (xxx_good_order) // XXX: review with derry
     t('linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
@@ -754,7 +754,7 @@ describe('peer-relay', function(){
       db<fwd(da<conn_info_r)`);
     // XXX: check if we can send before da>connect
     // dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))
-    if (xxx_bug) // XXX: review with derry
+    if (xxx_good_order) // XXX: review with derry
     t('linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
