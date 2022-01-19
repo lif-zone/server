@@ -36,7 +36,7 @@ export default class Router extends EventEmitter {
       path: [], nonce: '' + Math.floor(1e15 * Math.random()), data: data};
     this._touched[msg.nonce] = true;
     debugMsg('SEND', this.id, msg);
-    this._send(msg);
+    return this._send(msg);
   }
   _send(msg){
     var _this = this; // XXX: is this the best way to use etask as methods
@@ -70,30 +70,46 @@ export default class Router extends EventEmitter {
       }
     });
   }
-  _onMessage(msg){
-    if (msg.nonce in this._touched)
-      return;
-    this._touched[msg.nonce] = true;
-    assert(typeof msg.from=='string',
-      'invalid from this '+this.id.toString('hex')+' '+stringify(msg));
-    this._paths[msg.from] = msg.path[msg.path.length - 1];
-    let to = new Buffer(msg.to, 'hex');
-    if (to.equals(this.id))
-    {
-      // XXX: ugly: we change to/from fields and make code diffiuclt to debug
-      msg.to = to;
-      msg.from = new Buffer(msg.from, 'hex');
-      debugMsg('RECV', this.id, msg);
-      this.emit('debug-message', msg.data, msg.from, msg);
-      this.emit('message', msg.data, msg.from, msg);
-    }
-    else
-    {
-      debugMsg('RELAY', this.id, msg);
-      this.emit('relay', msg);
-      this._send(msg);
-    }
+  _onMessage = msg=>{
+    let _this = this;
+    return etask(function*_onMessage(){
+      if (msg.nonce in _this._touched)
+        return;
+      _this._touched[msg.nonce] = true;
+      assert(typeof msg.from=='string',
+        'invalid from _this '+_this.id.toString('hex')+' '+stringify(msg));
+      _this._paths[msg.from] = msg.path[msg.path.length - 1];
+      let to = new Buffer(msg.to, 'hex');
+      if (to.equals(_this.id))
+      {
+        // XXX: ugly: we change to/from fields and make code diffiuclt to debug
+        msg.to = to;
+        msg.from = new Buffer(msg.from, 'hex');
+        debugMsg('RECV', _this.id, msg);
+        yield _this.emit_message(msg.data, msg.from, msg);
+      }
+      else
+      {
+        debugMsg('RELAY', _this.id, msg);
+        _this.emit('relay', msg);
+        yield _this._send(msg);
+      }
+    });
+  };
+  set_on_message = function(cb){
+    if (!cb)
+      return this.on_message_cb = cb;
+    assert(!this.on_message_cb);
+    this.on_message_cb = cb;
   }
+  emit_message = (data, from, msg)=>{
+    let _this = this;
+    return etask(function*emit_message(){
+      if (_this.on_message_cb)
+        yield _this.on_message_cb(data, from, msg);
+      _this.emit('message', data, from, msg);
+    });
+  };
   _onChannelAdded(channel){
     const listener = msg=>this._onMessage(msg);
     channel.on('message', listener);

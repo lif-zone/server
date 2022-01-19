@@ -304,10 +304,10 @@ function node_get_channel(_s, _d){
   return d.peers.get(s.id);
 }
 
-const send_msg = (s, d, msg)=>etask(function send_msg(){
+const send_msg = (s, d, msg)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   assert(channel, 'no channel '+s+d+'>');
-  channel.emit('message', msg); // XXX: change to yield
+  yield t_nodes[d].router._onMessage(msg);
 });
 
 const fake_send_msg = (c, data)=>etask(function*(){
@@ -666,9 +666,8 @@ describe('peer-relay', function(){
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
       cb,ba>fwd(ca>conn_info(r)) cd>!connect(wss) cd>find(c r(c))
-      cd<find(d r(dcba)) cd,cb<fwd(db>conn_info) cb<fwd(db<conn_info_r(ws))
-      ba>fwd(db<conn_info_r(ws)) cd>fwd(db<conn_info_r(ws)) db>connect(wss)
-      db<find(b r(badc)) db>find(d r(dcba))
+      cd<find(d r(dcba)) cd,cb<fwd(db>conn_info(r(ws)))
+      db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
       db,cb,ba>fwd(da>conn_info)
       ba<fwd(da<conn_info_r)
       cb<fwd(da<conn_info_r)

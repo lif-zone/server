@@ -32,7 +32,7 @@ export default class Client extends EventEmitter {
     // TODO expire canidates after period
     this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router(this.peers, this.id);
-    this.router.on('message', (msg, from)=>this._onMessage(msg, from));
+    this.router.set_on_message((msg, from)=>this.on_message(msg, from));
     if (opts.port)
       console.log('peer-relay: listen on %s id %s', opts.port, ids(this.id));
     this.wsConnector = new Client.WsConnector(this.id, opts.port, opts.host);
@@ -106,39 +106,49 @@ export default class Client extends EventEmitter {
     this.router.send(id, {type: 'find', data: ids(this.id)});
   }
   // XXX: need to validate all data to make sure we don't crash
-  _onMessage(msg, from){
-    if (this.destroyed)
-      return;
-    switch (msg.type)
-    {
-    case 'user': this.emit('message', msg.data, from); break;
-    case 'find': this._on_find(msg, from); break;
-    case 'find_r': this._on_find_r(msg, from); break;
-    case 'conn_info': this._on_conn_info(msg, from); break;
-    case 'conn_info_r': this._on_conn_info_r(msg, from); break;
-    default: console.error('unknown msg type %s', msg.type);
-    }
-  }
-  _on_find(msg, from){
-    var target = new Buffer(msg.data, 'hex');
-    var closest = this.canidates.closest(target, 20);
-    this.router.send(from, {type: 'find_r', data: closest.map(e=>ids(e.id))});
-  }
+  on_message = (msg, from)=>{
+    let _this = this;
+    return etask(function*on_message(){
+      if (_this.destroyed)
+        return;
+      switch (msg.type)
+      {
+      case 'user': _this.emit('message', msg.data, from); break;
+      case 'find': yield _this._on_find(msg, from); break;
+      case 'find_r': yield _this._on_find_r(msg, from); break;
+      case 'conn_info': yield _this._on_conn_info(msg, from); break;
+      case 'conn_info_r': yield _this._on_conn_info_r(msg, from); break;
+      default: console.error('unknown msg type %s', msg.type);
+      }
+    });
+  };
+  _on_find = (msg, from)=>{
+    let _this = this;
+    return etask(function*_on_find(){
+      var target = new Buffer(msg.data, 'hex');
+      var closest = _this.canidates.closest(target, 20);
+      yield _this.router.send(from,
+        {type: 'find_r', data: closest.map(e=>ids(e.id))});
+    });
+  };
   _on_find_r(msg){
     for (var canidate of msg.data)
       this.canidates.add({id: new Buffer(canidate, 'hex')});
-    this._populate();
+    return this._populate();
   }
-  _on_conn_info(msg, from){
-    if (this.peers.get(from))
-      return;
-    if (this.pending[from] == null || from.compare(this.id) < 0)
-    {
-      this.pending[from] = true;
-      this.router.send(from, {type: 'conn_info_r',
-        data: {ws: this.wsConnector.url, wrtc: this.wrtcConnector.supported}});
-    }
-  }
+  _on_conn_info = (msg, from)=>{
+    let _this = this;
+    return etask(function*_on_conn_info(){
+      if (_this.peers.get(from))
+        return;
+      if (_this.pending[from] == null || from.compare(_this.id) < 0)
+      {
+        _this.pending[from] = true;
+        yield _this.router.send(from, {type: 'conn_info_r', data:
+          {ws: _this.wsConnector.url, wrtc: _this.wrtcConnector.supported}});
+      }
+    });
+  };
   _on_conn_info_r(msg, from){
     let _this = this;
     return etask(function*(){
@@ -153,16 +163,19 @@ export default class Client extends EventEmitter {
         yield _this.wsConnector.connect(msg.data.ws);
     });
   }
-  _populate(){
-    var optimal = 15;
-    var closest = this.canidates.closest(this.id, optimal);
-    for (var i = 0; i < closest.length &&
-      this.peers.count() + Object.keys(this.pending).length < optimal; i++)
-    {
-      if (this.peers.get(closest[i].id))
-        continue;
-      this.connect(closest[i].id);
-    }
+  _populate = ()=>{
+    let _this = this;
+    return etask(function*_populate(){
+      var optimal = 15;
+      var closest = _this.canidates.closest(_this.id, optimal);
+      for (var i = 0; i < closest.length &&
+        _this.peers.count() + Object.keys(_this.pending).length < optimal; i++)
+      {
+        if (_this.peers.get(closest[i].id))
+          continue;
+        yield _this.connect(closest[i].id);
+      }
+    });
   }
   destroy(cb){
     if (this.destroyed)
