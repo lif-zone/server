@@ -365,7 +365,7 @@ once a gets b.id, it emits 'connection' - we emit ab>connect
 once b gets a.id, it emits 'connection' - we emit ab<connected
 */
 const cmd_connect = opt=>etask(function*(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], find;
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
   let r = true;
   util.forEach(arg, a=>{
@@ -379,6 +379,11 @@ const cmd_connect = opt=>etask(function*(){
       assert(!call, 'wrtc only in connect');
       wrtc = true; // XXX: assert destination has wrtc support
       break;
+    case 'find':
+      find = a.arg.split(' ');
+      // XXX: need full validation
+      assert(find.length==2, 'invalid find '+a.arg);
+      break;
     case '!r': r = false; break;
     default: throw new Error('unknown arg '+a.cmd);
     }
@@ -386,10 +391,14 @@ const cmd_connect = opt=>etask(function*(){
   assert_exist(c.s);
   assert(!wrtc, 'XXX TODO: wrtc');
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
+  assert(find ? r : true, 'find must be used together with find');
   if (call)
   {
     if (r)
-      push_cmd(build_cmd(c.s+c.d+'>connect', wss ? 'wss' : 'wrtc'));
+    {
+      push_cmd(build_cmd(c.s+c.d+'>connect', (wss ? 'wss' : 'wrtc')+
+        (find ? ' '+build_cmd('find', find.join(' ')) : '')));
+    }
     assert(!event);
     if (!s.t.fake)
       yield s.wsConnector.connect(wss);
@@ -397,7 +406,12 @@ const cmd_connect = opt=>etask(function*(){
   else
   {
     if (r)
-      push_cmd(c.s+c.d+'<connected');
+    {
+      // XXX: need api to build expressions
+      push_cmd(c.s+c.d+'<connected'+(find ? ' '+
+        build_cmd(c.s+c.d+'>find', c.s+' '+build_cmd('r', find[0]))+' '+
+        build_cmd(c.s+c.d+'>find', c.d+' '+build_cmd('r', find[1])) : ''));
+    }
     if (s.t.fake && d.t.fake)
       return;
     if (s.t.fake)
@@ -625,7 +639,10 @@ describe('peer-relay', function(){
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab>connect(wss !r) ab<connected ab>find(a)
       ab<find_r(a) ab<find(b) ab>find_r(ba)`);
-    t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss)
+    if (0) // XXX: fixme
+    t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
+    // XXX: rm
+    t('2_nodes_xxx', `node(a) node(b wss) - ab>!connect(wss)
       ab>find(a r(a)) ab<find(b r(ba))`);
     if (0) // XXX: find way to test this sequence of events
     t('2_nodes_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
