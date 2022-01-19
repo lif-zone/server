@@ -673,8 +673,7 @@ describe('peer-relay', function(){
       ab>!connect(wss find(a ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
       cb,ba>fwd(ca>conn_info(r(ws)))
-      ca>connect(wss !r) ca<connected ca>find(c r(cab))
-      ca<find(a r(abc))`);
+      ca>connect(wss) ca>find(c r(cab)) ca<find(a r(abc))`);
     // XXX: why this doesn't fail (s s)
     t('xxx_bug', `node(s wss) node(a) - as>!connect(wss find(s s)) -`);
     t('xxx_s', `node(s wss) node(a) - as>!connect(wss find(a sa)) -`);
