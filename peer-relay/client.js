@@ -70,7 +70,7 @@ export default class Client extends EventEmitter {
       _this.emit('connection', channel);
       if (util.test_on_connection)
         yield util.test_on_connection(channel);
-      _this.router.send(channel.id, {type: 'findPeers', data: ids(_this.id)});
+      _this.router.send(channel.id, {type: 'find', data: ids(_this.id)});
       _this.emit('peer', channel.id);
       return channel;
     });
@@ -100,10 +100,10 @@ export default class Client extends EventEmitter {
       return;
     this.router.send(id, {type: 'user', data: data});
   }
-  findPeers(id){
+  find(id){
     if (this.destroyed)
       return;
-    this.router.send(id, {type: 'findPeers', data: ids(this.id)});
+    this.router.send(id, {type: 'find', data: ids(this.id)});
   }
   // XXX: need to validate all data to make sure we don't crash
   _onMessage(msg, from){
@@ -112,14 +112,14 @@ export default class Client extends EventEmitter {
     switch (msg.type)
     {
     case 'user': this.emit('message', msg.data, from); break;
-    case 'findPeers': this._onFindPeers(msg, from); break;
+    case 'find': this._on_find(msg, from); break;
     case 'foundPeers': this._onFoundPeers(msg, from); break;
     case 'handshake-offer': this._onHandshakeOffer(msg, from); break;
     case 'handshake-answer': this._onHandshakeAnswer(msg, from); break;
     default: console.error('unknown msg type %s', msg.type);
     }
   }
-  _onFindPeers(msg, from){
+  _on_find(msg, from){
     var target = new Buffer(msg.data, 'hex');
     var closest = this.canidates.closest(target, 20);
     this.router.send(from, {type: 'foundPeers',
