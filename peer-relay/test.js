@@ -36,7 +36,7 @@ function on_uncaught(err){
   process.exit(-1);
 }
 
-let xxx_bug = false; // review with derry
+let xxx_bug = true; // review with derry
 
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
@@ -682,48 +682,51 @@ describe('peer-relay', function(){
       ]));
     }));
   });
-  describe('basic', function(){
-    const xit = (name, role, test)=>it(name+'_'+role,
-      ()=>xetask(()=>test_run(role, test)));
-    let t = (name, test)=>{
+  const xit = (name, role, test)=>it(name+'_'+role,
+    ()=>xetask(()=>test_run(role, test)));
+  describe('2_nodes', function(){
+    const t = (name, test)=>{
       xit(name, 'fake', test);
       xit(name, 'a', test);
       xit(name, 'b', test);
     };
-    t('2_nodes_long', `node(a) node(b wss(port:4000)) -
+    t('long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab>connect(wss !r) ab<connected
       ab>find(a) ab<find_r(a) ab<find(b) ab>find_r(ba)`);
-    t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
+    t('short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
     if (0) // XXX: find way to test this sequence of events
-    t('2_nodes_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
+    t('order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
-    t = (name, test)=>{
+  });
+  describe('3_nodes', function(){
+    const t = (name, test)=>{
       xit(name, 'fake', test);
       xit(name, 'a', test);
       xit(name, 'b', test);
       xit(name, 'c', test);
+      xit(name, 's', test);
     };
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
-    t('3_nodes_linear', `node(a) node(b wss) node(c wss) -
+    t('linear', `node(a) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       bc,ab<fwd(ca>conn_info(r))`);
-    t('3_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) -
+    t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
-    // XXX: check why xxx_bug doesn't fail (s s is wrong)
-    t('xxx_bug', `node(s wss) node(a) - as>!connect(wss find(s s)) -`);
     t('xxx_s', `node(s wss) node(a) - as>!connect(wss find(a sa)) -`);
     t('xxx_b', `node(b wss) node(a) - ab>!connect(wss find(a ba)) -`);
-    t('3_nodes_star', `
+    t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
-      bs>!connect(wss find(b sb)) bs,sa>fwd(ba>conn_info(r))`);
-    t('3_nodes_star_wss', `
+      bs>!connect(wss find(bas sba)) bs,sa>fwd(ba>conn_info(r))`);
+    t('star_wss', `
       node(s wss) node(a wss) node(b wss) - as>!connect(wss find(a sa)) -
-      bs>!connect(wss find(b sb)) bs,sa>fwd(ba>conn_info(r(ws)))
+      bs>!connect(wss find(bas sba)) bs,sa>fwd(ba>conn_info(r(ws)))
       ba>connect(wss find(bas abs))`);
-    t = (name, test)=>{
+  });
+  describe('4_nodes', function(){
+    const t = (name, test)=>{
       xit(name, 'fake', test);
       xit(name, 'a', test);
       xit(name, 'b', test);
@@ -731,13 +734,13 @@ describe('peer-relay', function(){
       xit(name, 'd', test);
     };
     if (xxx_bug) // XXX: review with derry
-    t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
+    t('linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,dc,cb,ba>fwd(da>conn_info(r))`);
     else
-    t('4_nodes_linear_xxx', `node(a) node(b wss) node(c wss) node(d wss) -
+    t('linear_xxx', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss) db>find(d r(dcba))
@@ -746,7 +749,7 @@ describe('peer-relay', function(){
     // XXX: check if we can send before da>connect
     // dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))
     if (xxx_bug) // XXX: review with derry
-    t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
+    t('linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
       ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
@@ -754,7 +757,7 @@ describe('peer-relay', function(){
       db,ba,ca>fwd(da>conn_info(r(ws))) da>connect(wss find(dcba abcd))
       dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))`);
     else
-    t('4_nodes_linear_wss_xxx', `node(a wss) node(b wss) node(c wss)
+    t('linear_wss_xxx', `node(a wss) node(b wss) node(c wss)
       node(d wss) - ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
       ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
