@@ -661,18 +661,16 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
       xit(name, 'd', test);
     };
-    // XXX derry: ab vs ba
+    // XXX: check extra cd<fwd(da>conn_info) cd>fwd(da<conn_info_r)
     t('4_nodes_linear', `node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss) bc>find(b r(b)) bc<find(c r(cab))
       cb,ba>fwd(ca>conn_info(r)) cd>!connect(wss) cd>find(c r(c))
       cd<find(d r(dcba)) cd,cb<fwd(db>conn_info(r(ws)))
       db>connect(wss) db<find(b r(badc)) db>find(d r(dcba))
-      db,cb,ba>fwd(da>conn_info)
-      ba<fwd(da<conn_info_r)
-      cb<fwd(da<conn_info_r)
-      cd>fwd(da<conn_info_r)
-      cd<fwd(da>conn_info)`);
+      db,cb,ba>fwd(da>conn_info(r))
+      cd<fwd(da>conn_info) cd>fwd(da<conn_info_r)
+      `);
     // XXX: check why ba>fwd(db<conn_info_r(ws)) is sent out of order
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
