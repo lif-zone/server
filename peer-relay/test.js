@@ -733,7 +733,8 @@ describe('peer-relay', function(){
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,dc,cb,ba>fwd(da>conn_info(r))
       `);
-    // XXX: check why we get dc>fwd(da>conn_info) at the end
+    // XXX: check if we can send before da>connect
+    // dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))
     t('4_nodes_linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
       ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
       bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
