@@ -235,7 +235,7 @@ class FakeChannel extends EventEmitter {
     this.t = {};
   }
   send = msg=>{
-    let p, a, fwd;
+    let p, a, fwd, cmd;
     let {type, data} = msg.data;
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
     let s = node_from_id(this.localID), d = node_from_id(this.id);
@@ -249,17 +249,14 @@ class FakeChannel extends EventEmitter {
       {
       case 'find':
         p = node_from_id(data);
-        yield cmd_run(build_cmd(from.t.name+to.t.name+'>find', p.t.name,
-          fwd));
+        cmd = build_cmd(from.t.name+to.t.name+'>find', p.t.name);
         break;
       case 'find_r':
         a = array_id_to_name(data);
-        yield cmd_run(build_cmd(from.t.name+to.t.name+'>find_r',
-          a.join(''), fwd));
+        cmd = build_cmd(from.t.name+to.t.name+'>find_r', a.join(''));
         break;
       case 'conn_info':
-        yield cmd_run(build_cmd(from.t.name+to.t.name+'>conn_info',
-          '', fwd));
+        cmd = build_cmd(from.t.name+to.t.name+'>conn_info', '');
         break;
       case 'conn_info_r':
           a = [];
@@ -267,11 +264,12 @@ class FakeChannel extends EventEmitter {
             a.push('ws'); // XXX: asswert correct val of ws
           if (data.wrtc)
             a.push('wrtc');
-        yield cmd_run(build_cmd(from.t.name+to.t.name+'>conn_info_r',
-          a.join(' '), fwd));
+        cmd = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
         break;
       default: assert(false, 'unexpected msg '+type);
       }
+      t_nonce[normalize(cmd)] = msg.nonce;
+      yield cmd_run(build_cmd(cmd, '', fwd));
     });
   };
   destroy(){}
@@ -589,6 +587,7 @@ const test_run = (role, test)=>etask(function*test_run(){
   t_port = 4000;
   t_cmds = xtest.test_parse(test);
   t_role = role;
+  t_nonce = {};
   for (t_i=0; t_i<t_cmds.length;)
     yield cmd_run();
   yield test_end();
