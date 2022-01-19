@@ -740,8 +740,7 @@ describe('peer-relay', function(){
       ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
       db,ba,ca>fwd(da>conn_info(r(ws))) da>connect(wss find(dcba abcd))
-      dc>fwd(da>conn_info)
-      `);
+      dc>fwd(da>conn_info)`);
   });
   // XXX TODO:
   // ab>!msg...
