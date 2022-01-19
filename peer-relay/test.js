@@ -36,8 +36,8 @@ function on_uncaught(err){
   process.exit(-1);
 }
 
-let t_nodes = {}, t_nonce = {}, t_cmds, t_cmds_done, t_i, t_role, t_port=4000;
-let t_pre_process;
+let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
+let t_pre_process, t_cmds_processed;
 let t_ids = {
   a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
   b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
@@ -595,7 +595,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   console.log('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '');
-  t_cmds_done.push(assign({}, c));
+  t_cmds_processed.push(assign({}, c));
   t_i++;
   t_depth++;
   yield cmd_run_single({c, event});
@@ -607,7 +607,7 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   assert(!t_cmds && !t_i && !t_role, 'test already running');
   t_port = 4000;
   t_cmds = cmds;
-  t_cmds_done = [];
+  t_cmds_processed = [];
   t_role = role;
   t_nonce = {};
   for (t_i=0; t_i<t_cmds.length;)
@@ -615,13 +615,18 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   yield test_end();
 });
 
-const test_run = (role, test)=>etask(function*test_run(){
+const test_pre_process = test=>etask(function*test_preprocess(){
   t_pre_process = true;
-  console.log('pre_process run');
   yield _test_run('fake', xtest.test_parse(test));
-  console.log('real run');
   t_pre_process = false;
-  yield _test_run(role, t_cmds_done);
+  return t_cmds_processed;
+});
+
+const test_run = (role, test)=>etask(function*test_run(){
+  console.log('pre_process run');
+  let cmds = yield test_pre_process(test);
+  console.log('real run');
+  yield _test_run(role, cmds);
 });
 
 const test_end = ()=>etask(function*(){
@@ -641,6 +646,16 @@ describe('peer-relay', function(){
     xtest.set(Node, 'WsConnector', FakeWsConnector);
     xtest.set(Node, 'WrtcConnector', FakeWrtcConnector);
     xtest.set(util, 'test_on_connection', test_on_connection);
+  });
+  describe('test_api', function(){
+    it('pre_process', ()=>xetask(function*(){
+      let t = function*(test, exp){
+        let cmds = yield test_pre_process(test);
+        assert.deepEqual(cmds, exp);
+      };
+      yield t('node(a) node(b)', [{arg: 'a', cmd: 'node', orig: 'node(a)'},
+        {arg: 'b', cmd: 'node', orig: 'node(b)'}]);
+    }));
   });
   describe('basic', function(){
     const xit = (name, role, test)=>it(name+'_'+role,
@@ -711,6 +726,19 @@ describe('peer-relay', function(){
       cb<fwd(da<conn_info_r(ws))
       dc>fwd(da>conn_info)
       dc<fwd(da<conn_info_r(ws))
+      da>connect(wss find(dcba abcd))
+      ba<fwd(da<conn_info_r(ws))
+      `);
+    if (0)
+    t('4_nodes_linear_xxx', `node(a wss) node(b wss) node(c wss) node(d wss) -
+      ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
+      bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
+      ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
+      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
+      db,cb,ba>fwd(da>conn_info)
+      ca<fwd(da<conn_info_r(ws))
+      cb<fwd(da<conn_info_r(ws))
+      dc>fwd(da>conn_info(r(ws)))
       da>connect(wss find(dcba abcd))
       ba<fwd(da<conn_info_r(ws))
       `);
