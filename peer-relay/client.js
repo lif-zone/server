@@ -113,7 +113,7 @@ export default class Client extends EventEmitter {
     {
     case 'user': this.emit('message', msg.data, from); break;
     case 'find': this._on_find(msg, from); break;
-    case 'foundPeers': this._onFoundPeers(msg, from); break;
+    case 'find_r': this._on_find_r(msg, from); break;
     case 'handshake-offer': this._onHandshakeOffer(msg, from); break;
     case 'handshake-answer': this._onHandshakeAnswer(msg, from); break;
     default: console.error('unknown msg type %s', msg.type);
@@ -122,10 +122,9 @@ export default class Client extends EventEmitter {
   _on_find(msg, from){
     var target = new Buffer(msg.data, 'hex');
     var closest = this.canidates.closest(target, 20);
-    this.router.send(from, {type: 'foundPeers',
-      data: closest.map(e=>ids(e.id))});
+    this.router.send(from, {type: 'find_r', data: closest.map(e=>ids(e.id))});
   }
-  _onFoundPeers(msg){
+  _on_find_r(msg){
     for (var canidate of msg.data)
       this.canidates.add({id: new Buffer(canidate, 'hex')});
     this._populate();

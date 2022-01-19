@@ -252,9 +252,9 @@ class FakeChannel extends EventEmitter {
         yield cmd_run(build_cmd(from.t.name+to.t.name+'>find', p.t.name,
           fwd));
         break;
-      case 'foundPeers':
+      case 'find_r':
         a = array_id_to_name(data);
-        yield cmd_run(build_cmd(from.t.name+to.t.name+'>foundPeers',
+        yield cmd_run(build_cmd(from.t.name+to.t.name+'>find_r',
           a.join(''), fwd));
         break;
       case 'handshake-offer':
@@ -439,7 +439,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
     }
   });
   if (r)
-    push_cmd(rev_cmd(c.orig, 'foundPeers', r));
+    push_cmd(rev_cmd(c.orig, 'find_r', r));
   if (event)
   {
     assert_event(event, build_cmd(c.meta.cmd, peers));
@@ -449,7 +449,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
   yield cmd_run_if_next_fake();
 });
 
-const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
+const cmd_find_r = opt=>etask(function*cmd_find_r(){
   let {c, event} = opt, s = t_nodes[c.s];
   // XXX: assert c.arg
   if (event)
@@ -457,7 +457,7 @@ const cmd_found_peers = opt=>etask(function*cmd_found_peers(){
     assert_event(event, c.orig);
     assert(!s.t.fake, 'src must be real for event '+event);
   }
-  yield fake_send_msg(c, {type: 'foundPeers', data:
+  yield fake_send_msg(c, {type: 'find_r', data:
     array_name_to_id(c.arg.split(''))});
   yield cmd_run_if_next_fake();
 });
@@ -515,7 +515,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'connect': yield cmd_connect(opt); break;
   case 'connected': yield cmd_connected(opt); break;
   case 'find': yield cmd_find(opt); break;
-  case 'foundPeers': yield cmd_found_peers(opt); break;
+  case 'find_r': yield cmd_find_r(opt); break;
   case 'handshake-offer': yield cmd_handshake_offer(opt); break;
   case 'handshake-answer': yield cmd_handshake_answer(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
@@ -597,20 +597,18 @@ describe('peer-relay', function(){
     };
     t('2_nodes_long', `node(a) node(b wss(port:4000)) -
       ab>!connect(wss !r) ab>connect(wss !r) ab<connected ab>find(a)
-      ab<foundPeers(a) ab<find(b) ab>foundPeers(ba)`);
+      ab<find_r(a) ab<find(b) ab>find_r(ba)`);
     t('2_nodes_short', `node(a) node(b wss) - ab>!connect(wss)
       ab>find(a r(a)) ab<find(b r(ba))`);
     if (0) // XXX: find way to test this sequence of events
     t('2_nodes_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
-      ab>find(a) ab<find(b) ab>foundPeers(b) ab<foundPeers(b)`);
+      ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
     t = (name, test)=>{
       xit(name, 'a', test);
       xit(name, 'b', test);
       xit(name, 'c', test);
     };
     // XXX: rename:
-    // find -> find
-    // foundPeers -> find_r
     // handshake-offer -> conn_info
     // handshake-answer -> conn_info_r
     // XXX: cb,ba>fwd(ca>handshake-offer) ba,cb<fwd(ca<handshake-answer(ws))
