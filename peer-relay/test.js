@@ -635,6 +635,10 @@ describe('peer-relay', function(){
       xit(name, 'b', test);
       xit(name, 'c', test);
     };
+    // XXX derry: replace
+    // ab>!connect(wss) ab>find(a r(ax)) ab<find(b r(byz))
+    // with
+    // ab>!connect(wss find(ax byz))
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
