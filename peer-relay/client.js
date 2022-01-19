@@ -86,7 +86,7 @@ export default class Client extends EventEmitter {
     if (id.equals(this.id))
       return;
     this.pending[id] = true;
-    this.router.send(id, {type: 'handshake-offer'});
+    this.router.send(id, {type: 'conn_info'});
   }
   disconnect(id){
     if (this.destroyed)
@@ -114,7 +114,7 @@ export default class Client extends EventEmitter {
     case 'user': this.emit('message', msg.data, from); break;
     case 'find': this._on_find(msg, from); break;
     case 'find_r': this._on_find_r(msg, from); break;
-    case 'handshake-offer': this._onHandshakeOffer(msg, from); break;
+    case 'conn_info': this._on_conn_info(msg, from); break;
     case 'handshake-answer': this._onHandshakeAnswer(msg, from); break;
     default: console.error('unknown msg type %s', msg.type);
     }
@@ -129,7 +129,7 @@ export default class Client extends EventEmitter {
       this.canidates.add({id: new Buffer(canidate, 'hex')});
     this._populate();
   }
-  _onHandshakeOffer(msg, from){
+  _on_conn_info(msg, from){
     if (this.peers.get(from))
       return;
     if (this.pending[from] == null || from.compare(this.id) < 0)

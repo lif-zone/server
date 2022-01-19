@@ -141,7 +141,7 @@ class FakeChannel extends EventEmitter {
           a = array_id_to_name(data);
           e = from.t.name+to.t.name+'>'+type+'('+a.join(',')+')';
           break;
-        case 'handshake-offer': e = from.t.name+to.t.name+'>'+type; break;
+        case 'conn_info': e = from.t.name+to.t.name+'>'+type; break;
         case 'handshake-answer':
           a = [];
           if (data.ws)
@@ -169,7 +169,7 @@ class FakeChannel extends EventEmitter {
       {
       case 'find':
       case 'find_r':
-      case 'handshake-offer':
+      case 'conn_info':
       case 'handshake-answer':
       case 'user': send_msg(s.t.name, d.t.name, msg); break;
       default: assert(false, 'unexpected msg '+type);
@@ -558,11 +558,11 @@ const cmd_handshake_offer = (role, c)=>etask(function*(){
     else
       throw new Error('unsupported yet');
   });
-  assert(!r, 'handshake-offer r not implement yet');
+  assert(!r, 'conn_info r not implement yet');
   let e = build_cmd(c.meta.cmd);
   // XXX: check what to assert
   test_expect(e, c);
-  yield fake_send_msg(c, {type: 'handshake-offer', data: null});
+  yield fake_send_msg(c, {type: 'conn_info', data: null});
 });
 
 const cmd_handshake_answer = (role, c)=>etask(function*(){
@@ -674,7 +674,7 @@ const cmd_run = (role, c)=>etask(function*(){
     case 'find_r': yield cmd_found_peers(role, c); break;
     case 'send': yield cmd_send(c); break;
     case 'msg': yield cmd_msg(c); break;
-    case 'handshake-offer': yield cmd_handshake_offer(role, c); break;
+    case 'conn_info': yield cmd_handshake_offer(role, c); break;
     case 'handshake-answer': yield cmd_handshake_answer(role, c); break;
     case 'fwd': yield cmd_fwd(role, c); break;
     default: throw new Error('unknown cmd '+c.cmd);
@@ -767,7 +767,7 @@ describe('peer-relay', function(){
       ab>!connect(wss) ab>find(a) ab<find(b)
       ab<find_r(a) ab>find_r(b) -
       bc>!connect(wss) bc>find(b) bc<find(c)
-      bc<find_r(b) bc>find_r(c,a,b) bc,ab<fwd(ca>handshake-offer)
+      bc<find_r(b) bc>find_r(c,a,b) bc,ab<fwd(ca>conn_info)
       ab,bc>fwd(ca<handshake-answer) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
       bc>send(hello) bc>msg(hello) - bc<send(reply) bc<msg(reply) -
@@ -787,7 +787,7 @@ describe('peer-relay', function(){
       node(c wss(port:4002)) ab>!connect(wss)
       ab>find(a) ab<find(b) ab<find_r(a) ab>find_r(b) -
       bc>!connect(wss) bc>find(b) bc<find(c)
-      bc<find_r(b) bc>find_r(c,a,b) cb,ba>fwd(ca>handshake-offer)
+      bc<find_r(b) bc>find_r(c,a,b) cb,ba>fwd(ca>conn_info)
       ab,bc>fwd(ca<handshake-answer(ws)) ca>connect(wss) ca>find(c)
       ca<find(a) ca<find_r(c,a,b) ca>find_r(a,b,c) -
       ab>send(hello) ab>msg(hello) - ab<send(reply) ab<msg(reply) -
@@ -799,7 +799,7 @@ describe('peer-relay', function(){
       node(c wrtc wss(port:4002)) ab>!connect(wss)
       ab>find(a) ab<find(b) ab<find_r(a) ab>find_r(b) -
       bc>!connect(wss) bc>find(b) bc<find(c)
-      bc<find_r(b) bc>find_r(c,a,b) cb,ba>fwd(ca>handshake-offer)
+      bc<find_r(b) bc>find_r(c,a,b) cb,ba>fwd(ca>conn_info)
       ab,bc>fwd(ca<handshake-answer(ws wrtc)) ca>connect(wss)
       ca>find(c) ca<find(a) ca<find_r(c,a,b)
       ca>find_r(a,b,c) -
@@ -819,7 +819,7 @@ describe('peer-relay', function(){
       as<find_r(a) sa<find_r(s) -
       bs>!connect(wss) bs>find(b) sb>find(s)
       bs<find_r(b,a,s) sb<find_r(s)
-      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer)
+      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<handshake-answer)
       as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
       sb>send(hello) sb>msg(hello) - bs>send(hello) bs>msg(hello) -
       ab>send(hello) as,sb>fwd(ab>msg(hello)) -
@@ -831,7 +831,7 @@ describe('peer-relay', function(){
       as<find_r(a) sa<find_r(s) -
       bs>!connect(wss) bs>find(b) sb>find(s)
       bs<find_r(b,a,s) sb<find_r(s)
-      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(ws))
+      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<handshake-answer(ws))
       ba>connect(wss) ba>find(b) ba<find(a)
       ba<find_r(b,a,s) ba>find_r(a,b,s) -
       as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
@@ -843,7 +843,7 @@ describe('peer-relay', function(){
       as<find_r(a) sa<find_r(s) -
       bs>!connect(wss) bs>find(b) sb>find(s)
       bs<find_r(b,a,s) sb<find_r(s)
-      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(wrtc))
+      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<handshake-answer(wrtc))
       ba>connect(wrtc) ba>find(b) ba<find(a)
       ba<find_r(b,a,s) ba>find_r(a,b,s) -
       as>send(hello) as>msg(hello) - sa>send(hello) sa>msg(hello) -
@@ -864,12 +864,12 @@ describe('peer-relay', function(){
       node(d wss(port:4002)) ab>!connect(wss)
       ab>find(a) ba>find(b) ab<find_r(a) ba<find_r(b) -
       bc>!connect(wss) bc>find(b) cb>find(c)
-      bc<find_r(b) cb<find_r(c,a,b) cb,ba>fwd(ca>handshake-offer)
+      bc<find_r(b) cb<find_r(c,a,b) cb,ba>fwd(ca>conn_info)
       ab,bc>fwd(ca<handshake-answer) cd>!connect(wss)
       cd>find(c) dc>find(d) cd<find_r(c) dc<find_r(d,c,b,a)
-      dc>fwd(db>handshake-offer) dc>fwd(da>handshake-offer)
-      cb>fwd(db>handshake-offer) cb>fwd(da>handshake-offer)
-      cb<fwd(db<handshake-answer(ws)) ba>fwd(da>handshake-offer)
+      dc>fwd(db>conn_info) dc>fwd(da>conn_info)
+      cb>fwd(db>conn_info) cb>fwd(da>conn_info)
+      cb<fwd(db<handshake-answer(ws)) ba>fwd(da>conn_info)
       dc<fwd(db<handshake-answer(ws)) ba>fwd(db<handshake-answer(ws))
       ab>fwd(da<handshake-answer) db>connect(wss !r)
       ba<fwd(db<handshake-answer(ws)) cb<fwd(da<handshake-answer)
@@ -897,9 +897,9 @@ describe('peer-relay', function(){
       cd>send(hello) cd>msg(hello) - cd<send(reply) cd<msg(reply) -
       bd>!connect(wss)
       bd>find(b) db>find(d) bd<find_r(b,d,c) db<find_r(d,b,a)
-      bd>fwd(bc>handshake-offer) db>fwd(da>handshake-offer)
-      dc>fwd(bc>handshake-offer) ba>fwd(bc>handshake-offer)
-      ba>fwd(da>handshake-offer) dc>fwd(da>handshake-offer)
+      bd>fwd(bc>conn_info) db>fwd(da>conn_info)
+      dc>fwd(bc>conn_info) ba>fwd(bc>conn_info)
+      ba>fwd(da>conn_info) dc>fwd(da>conn_info)
       cd>fwd(cb>handshake-answer) ab>fwd(ad>handshake-answer)
       db>fwd(cb>handshake-answer) bd>fwd(ad>handshake-answer) -
       ab>send(hello) ab>msg(hello) -
@@ -919,11 +919,11 @@ describe('peer-relay', function(){
       as>find(a) sa>find(s) as<find_r(a) sa<find_r(s) -
       bs>!connect(wss) bs>find(b) sb>find(s)
       bs<find_r(b,a,s) sb<find_r(s)
-      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer) -
+      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<handshake-answer) -
       cs>!connect(wss) cs>find(c) sc>find(s)
       cs<find_r(c,s,a,b) sc<find_r(s)
-      cs>fwd(ca>handshake-offer) cs>fwd(cb>handshake-offer)
-      sa>fwd(ca>handshake-offer) sb>fwd(cb>handshake-offer)
+      cs>fwd(ca>conn_info) cs>fwd(cb>conn_info)
+      sa>fwd(ca>conn_info) sb>fwd(cb>conn_info)
       as>fwd(ac>handshake-answer) bs>fwd(bc>handshake-answer)
       sc>fwd(ac>handshake-answer) sc>fwd(bc>handshake-answer)
       as>send(hello) as>msg(hello) -
@@ -949,13 +949,13 @@ describe('peer-relay', function(){
       as>find(a) sa>find(s) as<find_r(a) sa<find_r(s) -
       bs>!connect(wss) bs>find(b) sb>find(s)
       bs<find_r(b,a,s) sb<find_r(s)
-      bs,sa>fwd(ba>handshake-offer) sa,bs<fwd(ba<handshake-answer(wrtc))
+      bs,sa>fwd(ba>conn_info) sa,bs<fwd(ba<handshake-answer(wrtc))
       ba>connect(wrtc) ba>find(b) ba<find(a)
       ba<find_r(b,a,s) ba>find_r(a,b,s) -
       cs>!connect(wss) cs>find(c) sc>find(s)
       cs<find_r(c,s,a,b) sc<find_r(s)
-      cs>fwd(ca>handshake-offer) cs>fwd(cb>handshake-offer)
-      sa>fwd(ca>handshake-offer) sb>fwd(cb>handshake-offer)
+      cs>fwd(ca>conn_info) cs>fwd(cb>conn_info)
+      sa>fwd(ca>conn_info) sb>fwd(cb>conn_info)
       as>fwd(ac>handshake-answer(wrtc)) bs>fwd(bc>handshake-answer(wrtc))
       sc>fwd(ac>handshake-answer(wrtc)) ab>fwd(ac>handshake-answer(wrtc))
       sc>fwd(bc>handshake-answer(wrtc)) ba>fwd(bc>handshake-answer(wrtc))
@@ -991,18 +991,18 @@ describe('peer-relay', function(){
       cd>find(c) cd<find(d) cd<find_r(c) cd>find_r(d) -
       cd>send(hello) cd>msg(hello) - cd<send(reply) cd<msg(reply) -
       bd>!connect(wss) bd>find(b) bd<find(d)
-      bd<find_r(b,d,c) bd>find_r(d,b,a) bd>fwd(bc>handshake-offer)
-      db>fwd(da>handshake-offer) dc>fwd(bc>handshake-offer)
-      ba>fwd(bc>handshake-offer) ba>fwd(da>handshake-offer)
-      dc>fwd(da>handshake-offer) cd>fwd(cb>handshake-answer)
+      bd<find_r(b,d,c) bd>find_r(d,b,a) bd>fwd(bc>conn_info)
+      db>fwd(da>conn_info) dc>fwd(bc>conn_info)
+      ba>fwd(bc>conn_info) ba>fwd(da>conn_info)
+      dc>fwd(da>conn_info) cd>fwd(cb>handshake-answer)
       ab>fwd(ad>handshake-answer) db>fwd(cb>handshake-answer)
       bd>fwd(ad>handshake-answer) - node(s wss(port(4002))) -
       bs>!connect(wss) bs>find(b) bs<find(s)
-      bs<find_r(b) bs>find_r(s,d,c,b,a) sb>fwd(sd>handshake-offer)
-      sb>fwd(sc>handshake-offer) sb>fwd(sa>handshake-offer)
-      bd>fwd(sd>handshake-offer) bd>fwd(sc>handshake-offer)
-      ba>fwd(sa>handshake-offer) dc>fwd(ds>handshake-answer(ws))
-      dc>fwd(sc>handshake-offer) ba>fwd(sc>handshake-offer)
+      bs<find_r(b) bs>find_r(s,d,c,b,a) sb>fwd(sd>conn_info)
+      sb>fwd(sc>conn_info) sb>fwd(sa>conn_info)
+      bd>fwd(sd>conn_info) bd>fwd(sc>conn_info)
+      ba>fwd(sa>conn_info) dc>fwd(ds>handshake-answer(ws))
+      dc>fwd(sc>conn_info) ba>fwd(sc>conn_info)
       ab>fwd(as>handshake-answer) db>fwd(ds>handshake-answer(ws))
       cd>fwd(cs>handshake-answer) bs>fwd(as>handshake-answer)
       bs>fwd(ds>handshake-answer(ws)) db>fwd(cs>handshake-answer)
