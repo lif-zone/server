@@ -43,7 +43,7 @@ let t_ids = {
   b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
   c: 'cc2e8094373a85cb0e28399f6909ed02080367dc',
   d: 'dd3a9094373a85cb0e28399f6909ed02080363a0',
-  s: 'ffe32c1c6ffdc91bbfa7684c67e58f3f36174a59'
+  s: 'ffe32c1c6ffdc91bbfa7684c67e58f3f36174a59',
 };
 
 // XXX: add test
@@ -675,7 +675,10 @@ describe('peer-relay', function(){
       cb,ba>fwd(ca>conn_info(r(ws)))
       ca>connect(wss !r) ca<connected ca>find(c r(cab))
       ca<find(a r(abc))`);
-    // XXX: why find return s and s
+    // XXX: why this doesn't fail (s s)
+    t('xxx_bug', `node(s wss) node(a) - as>!connect(wss find(s s)) -`);
+    t('xxx_s', `node(s wss) node(a) - as>!connect(wss find(a sa)) -`);
+    t('xxx_b', `node(b wss) node(a) - ab>!connect(wss find(a ba)) -`);
     t('3_nodes_star', `
       node(s wss) node(a) node(b wss) - as>!connect(wss find(s s)) -
       bs>!connect(wss find(s s)) bs,sa>fwd(ba>conn_info(r))`);

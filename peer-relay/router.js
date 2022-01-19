@@ -65,6 +65,7 @@ export default class Router extends EventEmitter {
         if (channel.id.toString('hex') ===
           (typeof msg.to==='string' ? msg.to : msg.to.toString('hex')))
         {
+          // XXX: why do we break?
           break;
         }
       }
