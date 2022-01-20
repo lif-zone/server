@@ -269,6 +269,7 @@ class FakeChannel extends EventEmitter {
             a.push('wrtc');
         cmd = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
         break;
+      case 'user': cmd = build_cmd(from.t.name+to.t.name+'>msg', data); break;
       default: assert(false, 'unexpected msg '+type);
       }
       t_nonce[normalize(cmd)] = msg.nonce;
@@ -534,6 +535,27 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   yield cmd_run_if_next_fake();
 });
 
+const cmd_msg = opt=>etask(function*cmd_msg(){
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let data = c.arg, call = c.cmd=='!msg';
+  if (event) // XXX: copy this logic to all places of assert_event
+  {
+    let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
+    assert_event(event, expected);
+    assert(!s.t.fake, 'src must be real for event '+event);
+  }
+  if (call)
+  {
+    if (!s.t.fake)
+      yield s.send(d.id, data);
+  }
+  else
+  {
+    yield fake_send_msg(c, {type: 'user', data});
+    yield cmd_run_if_next_fake();
+  }
+});
+
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
   let a = xtest.test_parse(c.arg);
@@ -557,6 +579,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'find_r': yield cmd_find_r(opt); break;
   case 'conn_info': yield cmd_conn_info(opt); break;
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
+  case '!msg': yield cmd_msg(opt); break;
+  case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   default: throw new Error('unknown cmd '+opt.c.cmd);
   }
@@ -697,8 +721,10 @@ describe('peer-relay', function(){
       ab>find_r(ba)`);
     t('short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
     if (0) // XXX: find way to test this sequence of events
-    t('order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
+    t('events_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
+    t('msg', `node(a) node(b wss) - ab>!connect(wss find(a ba)) -
+      ab>!msg(hello) ab>msg(hello)`);
   });
   describe('3_nodes', function(){
     const t = (name, test)=>{
