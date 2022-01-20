@@ -499,7 +499,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
       _push_cmd(extend_loop_rev(c.orig_loop,
         rev_cmd(c.orig, 'conn_info_r', r)));
     }
-    else if (false) // XXX: need to properly handle loop parsing
+    else if (!c.had_loop)
       push_cmd(build_cmd(rev(c.fwd)+'fwd', rev_cmd(c.orig, 'conn_info_r', r)));
   }
   if (event)
@@ -540,6 +540,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   assert(a.length==1, 'invalid fwd '+c.orig);
   a[0].fwd = c.s+c.d+'>';
   a[0].orig_loop = c.orig_loop;
+  a[0].had_loop = c.had_loop;
   yield cmd_run_single({c: a[0], event});
   yield cmd_run_if_next_fake();
 });
@@ -569,6 +570,7 @@ function extend_loop(c){
   {
     a.push(assign({}, c, c.loop[i]));
     delete a[i].loop;
+    a[i].had_loop = true;
   }
   a[a.length-1].orig_loop = c.loop;
   t_cmds.splice(t_i, 1, ...a);
@@ -663,20 +665,20 @@ describe('peer-relay', function(){
       let t = function*(test, exp){
         let cmds = yield test_pre_process(test);
         cmds = xtest.test_parse_rm_meta_orig(cmds);
-        console.log('%s', JSON.stringify(cmds, null, ' '));
         assert.deepEqual(cmds, exp);
       };
       let ab = [{arg: 'a', cmd: 'node'}, {arg: 'b', cmd: 'node'}];
       yield t('node(a) node(b)', ab);
-      if (0) // XXX: support reply without loop for conn_info
       yield t('node(a) node(b) ab>fwd(ab>conn_info(r))', ab.concat([
         {s: 'a', d: 'b', dir: '>', cmd: 'fwd', arg: 'ab>conn_info(r)'},
         {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
       ]));
       yield t('node(a) node(b) ab,ba>fwd(ab>conn_info(r))', ab.concat([
-        {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'a', d: 'b', dir: '>'},
+        {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'a', d: 'b', dir: '>',
+          had_loop: true},
         {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'b', d: 'a', dir: '>',
-        orig_loop: [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
+        had_loop: true, orig_loop:
+        [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
         {s: 'a', d: 'b', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
         {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'}
       ]));
@@ -723,8 +725,7 @@ describe('peer-relay', function(){
     t('star_xxx', `
       node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
       bs>!connect(wss) bs>find(b r(bas)) bs>fwd(ba>conn_info)
-      bs<find(s r(sba)) sa>fwd(ba>conn_info) sa<fwd(ba<conn_info_r)
-      bs<fwd(ba<conn_info_r)`);
+      bs<find(s r(sba)) sa>fwd(ba>conn_info(r)) bs<fwd(ba<conn_info_r)`);
     if (xxx_good_order)
     t('star_wss', `
       node(s wss) node(a wss) node(b wss) - as>!connect(wss find(a sa)) -
@@ -771,8 +772,7 @@ describe('peer-relay', function(){
       db>fwd(da>conn_info) db<find(b r(badc)) ba>fwd(da>conn_info)
       ca<fwd(da<conn_info_r(ws)) ca>fwd(da>conn_info)
       ba<fwd(da<conn_info_r(ws)) db<fwd(da<conn_info_r(ws))
-      da>connect(wss find(dcba abcd)) dc>fwd(da>conn_info)
-      dc<fwd(da>conn_info_r(ws))`);
+      da>connect(wss find(dcba abcd)) dc>fwd(da>conn_info(r(ws)))`);
   });
   // XXX TODO:
   // ab>!msg...
