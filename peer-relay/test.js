@@ -340,6 +340,21 @@ const cmd_ensure_no_events = ()=>etask(function*cmd_ensure_no_events(){
   yield etask.sleep(0); // XXX TODO: change to tick();
 });
 
+function cmd_setup(opt){
+  let {c, event} = opt, m = c.arg, M = push_cmd;
+  assert(!event);
+  if (!t_pre_process)
+    return;
+  // XXX: proper assert setup params
+  switch(m)
+  {
+    case '2_nodes':
+      M(`node(a) node(b wss) - ab>!connect(wss find(a ba))`);
+      break;
+    default: assert(false, 'unknown macro '+m);
+  }
+}
+
 function cmd_node(opt){
   let {c} = opt;
   let arg = xtest.test_parse(c.arg);
@@ -571,6 +586,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   switch (opt.c.cmd)
   {
   case '-': cmd_ensure_no_events(); break;
+  case 'setup': yield cmd_setup(opt); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
   case 'connect': yield cmd_connect(opt); break;
@@ -723,8 +739,9 @@ describe('peer-relay', function(){
     if (0) // XXX: find way to test this sequence of events
     t('events_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
-    t('msg', `node(a) node(b wss) - ab>!connect(wss find(a ba)) -
+    t('xxx', `node(a) node(b wss) - ab>!connect(wss find(a ba)) -
       ab>!msg(hello) ab>msg(hello)`);
+    t('msg', `setup(2_nodes) ab>!msg(hello) ab>msg(hello)`);
   });
   describe('3_nodes', function(){
     const t = (name, test)=>{
