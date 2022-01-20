@@ -341,15 +341,20 @@ const cmd_ensure_no_events = ()=>etask(function*cmd_ensure_no_events(){
 });
 
 function cmd_setup(opt){
-  let {c, event} = opt, m = c.arg, M = push_cmd;
+  let {c, event} = opt, m = c.arg;
+  let M = s=>push_cmd(s+' - ');
   assert(!event);
   if (!t_pre_process)
     return;
   // XXX: proper assert setup params
-  switch(m)
+  switch (m)
   {
     case '2_nodes':
       M(`node(a) node(b wss) - ab>!connect(wss find(a ba))`);
+      break;
+    case '3_nodes_linear':
+      M(`node(a) node(b wss) node(c wss) - ab>!connect(wss find(a ba)) -
+      bc>!connect(wss find(b cab)) bc,ab<fwd(ca>conn_info(r))`);
       break;
     default: assert(false, 'unknown macro '+m);
   }
@@ -739,8 +744,6 @@ describe('peer-relay', function(){
     if (0) // XXX: find way to test this sequence of events
     t('events_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
-    t('xxx', `node(a) node(b wss) - ab>!connect(wss find(a ba)) -
-      ab>!msg(hello) ab>msg(hello)`);
     t('msg', `setup(2_nodes) ab>!msg(hello) ab>msg(hello)`);
   });
   describe('3_nodes', function(){
@@ -757,6 +760,12 @@ describe('peer-relay', function(){
     t('linear', `node(a) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       bc,ab<fwd(ca>conn_info(r))`);
+    t('linear_msg', `setup(3_nodes_linear)
+      ab>!msg(hello) ab>msg(hello) - ab<!msg(hello) ab<msg(hello) -
+      ac>!msg(hello) ab,bc>fwd(ac>msg(hello)) -
+      ac<!msg(hello) bc,ab<fwd(ac<msg(hello)) -
+      bc>!msg(hello) bc>msg(hello) - bc<!msg(hello) bc<msg(hello) -
+    `);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
