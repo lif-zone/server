@@ -13,7 +13,7 @@ process.on('unhandledRejection', e=>{
 });
 
 function init(){
-  let host = 'google.com', timeout=500, slow=150, interval=1000, last;
+  let host = 'google.com', timeout=500, slow=200, interval=1000, last;
   console.log('%s ping %s timeout %sms slow %sms interval %sms',
     date.to_sql_sec(), host, timeout, slow, interval);
   etask(function*(){
