@@ -737,6 +737,7 @@ describe('peer-relay', function(){
   // - etask uncaught
   // - test.js code cleaup
   // - process init/unchaught handling
+  // - log - use zerr?
   // - random id -> priv/pub key (copy hypercore)
   //   - do we want to add cksm and sign it on each message
   // - ack on each message
@@ -750,10 +751,10 @@ describe('peer-relay', function(){
       ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
       ab>find_r(ba)`);
     t('short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
-    if (0) // XXX: find way to test this sequence of events
+    t('msg', `setup(2_nodes) ab>!msg(hello) ab>msg(hello)`);
+    if (0) // XXX TODO: find way to test this sequence of events
     t('events_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
-    t('msg', `setup(2_nodes) ab>!msg(hello) ab>msg(hello)`);
   });
   describe('3_nodes', function(){
     const t = (name, test)=>{
