@@ -354,7 +354,14 @@ function cmd_setup(opt){
       break;
     case '3_nodes_linear':
       M(`node(a) node(b wss) node(c wss) - ab>!connect(wss find(a ba)) -
-      bc>!connect(wss find(b cab)) bc,ab<fwd(ca>conn_info(r))`);
+        bc>!connect(wss find(b cab)) bc,ab<fwd(ca>conn_info(r))`);
+      break;
+    case '4_nodes_linear':
+      M(`node(a) node(b wss) node(c wss) node(d wss) -
+        ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
+        cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
+        cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
+        db,dc,cb,ba>fwd(da>conn_info(r))`);
       break;
     default: assert(false, 'unknown macro '+m);
   }
@@ -751,7 +758,7 @@ describe('peer-relay', function(){
       ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
       ab>find_r(ba)`);
     t('short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
-    t('msg', `setup(2_nodes) ab>!msg(hello) ab>msg(hello)`);
+    t('msg', `setup(2_nodes) ab>!msg(hi) ab>msg(hi)`);
     if (0) // XXX TODO: find way to test this sequence of events
     t('events_order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
@@ -771,10 +778,9 @@ describe('peer-relay', function(){
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       bc,ab<fwd(ca>conn_info(r))`);
     t('linear_msg', `setup(3_nodes_linear)
-      ab>!msg(hello) ab>msg(hello) - ab<!msg(hello) ab<msg(hello) -
-      ac>!msg(hello) ab,bc>fwd(ac>msg(hello)) -
-      ac<!msg(hello) bc,ab<fwd(ac<msg(hello)) -
-      bc>!msg(hello) bc>msg(hello) - bc<!msg(hello) bc<msg(hello) -
+      ab>!msg(hi) ab>msg(hi) - ab<!msg(hi) ab<msg(hi) -
+      ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) - ac<!msg(hi) bc,ab<fwd(ac<msg(hi)) -
+      bc>!msg(hi) bc>msg(hi) - bc<!msg(hi) bc<msg(hi) -
     `);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
@@ -815,6 +821,14 @@ describe('peer-relay', function(){
       cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss) db>find(d r(dcba))
       db>fwd(da>conn_info) db<find(b r(badc)) dc,cb,ba>fwd(da>conn_info(r))
       db<fwd(da<conn_info_r)`);
+    // XXX check why doesn't fail missing bc>fwd(ac>msg(hi))
+    t('linear_msg', `setup(4_nodes_linear) ac>!msg(hi) ab>fwd(ac>msg(hi)) -`);
+    if (xxx_good_order)
+    t('linear_msg', `setup(4_nodes_linear)
+      ab>!msg(hi) ab>msg(hi) -
+      ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) -
+      ad>!msg(hi) ab,bc,cd>fwd(ad>msg(hi)) -
+    `); // XXX: finish test (add all possible send)
     // XXX: check if we can send before da>connect
     // dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))
     if (xxx_good_order) // XXX: review with derry
