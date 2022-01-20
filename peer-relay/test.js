@@ -544,12 +544,13 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   let {c, event} = opt, s = t_nodes[c.s], ws, wrtc;
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
+    // XXX: fix all switch indent
     switch (a.cmd)
     {
-      case 'wrtc': wrtc = assert_wrtc(a.arg); break;
-      // XXX: assert and verify ws is correct url
-      case 'ws': ws = url_from_node(s); break;
-      default: throw new Error('unknown arg '+a.cmd);
+    case 'wrtc': wrtc = assert_wrtc(a.arg); break;
+    // XXX: assert and verify ws is correct url
+    case 'ws': ws = url_from_node(s); break;
+    default: throw new Error('unknown arg '+a.cmd);
     }
   });
   if (event) // XXX: copy this logic to all places of assert_event
@@ -732,7 +733,7 @@ describe('peer-relay', function(){
         had_loop: true, orig_loop:
         [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
         {s: 'a', d: 'b', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
-        {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'}
+        {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
       ]));
     }));
   });
@@ -740,11 +741,13 @@ describe('peer-relay', function(){
     ()=>xetask(()=>test_run(role, test)));
   // XXX TODO:
   // - more send tests
+  // - impement new connect auto wss/wrtc shortcut
   // - wrtc tests
   // - etask uncaught
   // - test.js code cleaup
   // - process init/unchaught handling
   // - log - use zerr?
+  //   xerr - lightweight version of zerr
   // - random id -> priv/pub key (copy hypercore)
   //   - do we want to add cksm and sign it on each message
   // - ack on each message
@@ -782,6 +785,8 @@ describe('peer-relay', function(){
       ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) - ac<!msg(hi) bc,ab<fwd(ac<msg(hi)) -
       bc>!msg(hi) bc>msg(hi) - bc<!msg(hi) bc<msg(hi) -
     `);
+    // XXX: arik: add auto connection (rm wss or wrtc if obvious. ie there
+    // only one way to connect
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
@@ -822,7 +827,7 @@ describe('peer-relay', function(){
       db>fwd(da>conn_info) db<find(b r(badc)) dc,cb,ba>fwd(da>conn_info(r))
       db<fwd(da<conn_info_r)`);
     // XXX check why doesn't fail missing bc>fwd(ac>msg(hi))
-    t('linear_msg', `setup(4_nodes_linear) ac>!msg(hi) ab>fwd(ac>msg(hi)) -`);
+    t('msg_xxx', `setup(4_nodes_linear) ac>!msg(hi) ab>fwd(ac>msg(hi)) -`);
     if (xxx_good_order)
     t('linear_msg', `setup(4_nodes_linear)
       ab>!msg(hi) ab>msg(hi) -
