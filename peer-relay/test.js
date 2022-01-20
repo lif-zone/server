@@ -731,6 +731,15 @@ describe('peer-relay', function(){
   });
   const xit = (name, role, test)=>it(name+'_'+role,
     ()=>xetask(()=>test_run(role, test)));
+  // XXX TODO:
+  // - more send tests
+  // - wrtc tests
+  // - etask uncaught
+  // - test.js code cleaup
+  // - process init/unchaught handling
+  // - random id -> priv/pub key (copy hypercore)
+  //   - do we want to add cksm and sign it on each message
+  // - ack on each message
   describe('2_nodes', function(){
     const t = (name, test)=>{
       xit(name, 'fake', test);
