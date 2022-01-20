@@ -692,9 +692,9 @@ describe('peer-relay', function(){
       xit(name, 'a', test);
       xit(name, 'b', test);
     };
-    t('long', `node(a) node(b wss(port:4000)) -
-      ab>!connect(wss !r) ab>connect(wss !r) ab<connected
-      ab>find(a) ab<find_r(a) ab<find(b) ab>find_r(ba)`);
+    t('long', `node(a) node(b wss(port:4000)) - ab>!connect(wss !r)
+      ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
+      ab>find_r(ba)`);
     t('short', `node(a) node(b wss) - ab>!connect(wss find(a ba))`);
     if (0) // XXX: find way to test this sequence of events
     t('order', `node(a) node(b wss(port:4000)) - ab>!connect(wss)
