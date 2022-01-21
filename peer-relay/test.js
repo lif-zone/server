@@ -36,8 +36,6 @@ function on_uncaught(err){
   process.exit(-1);
 }
 
-let xxx_good_order = true; // review with derry
-
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
 let t_ids = {
@@ -273,8 +271,7 @@ class FakeChannel extends EventEmitter {
       default: assert(false, 'unexpected msg '+type);
       }
       t_nonce[normalize(cmd)] = msg.nonce;
-      if (xxx_good_order)
-        yield cmd_run_if_next_fake();
+      yield cmd_run_if_next_fake();
       yield cmd_run(build_cmd(cmd, '', fwd));
     });
   };
@@ -317,9 +314,7 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
 });
 
 const fake_send_msg = (c, data)=>etask(function*(){
-  let s = t_nodes[c.s], d = t_nodes[c.d], fs, fd;
-  if (!s.t.fake || d.t.fake)
-    return;
+  let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
@@ -329,14 +324,15 @@ const fake_send_msg = (c, data)=>etask(function*(){
     assert.equal(c.fwd[2], '>');
     s = t_nodes[c.fwd[0]];
     d = t_nodes[c.fwd[1]];
-    fs = c.fwd[0];
-    fd = c.fwd[1];
   }
   if (s.t.fake && !d.t.fake)
-    yield send_msg(fs||c.s, fd||c.d, msg);
+    yield send_msg(s.t.name, d.t.name, msg);
 });
 
-const cmd_ensure_no_events = ()=>etask(function*cmd_ensure_no_events(){
+const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
+  this.on('uncaught', on_uncaught);
+  let event = util.get(opt, 'event');
+  assert(!event, 'unexpected event '+event);
   yield etask.sleep(0); // XXX TODO: change to tick();
 });
 
@@ -349,21 +345,27 @@ function cmd_setup(opt){
   // XXX: proper assert setup params
   switch (m)
   {
-    case '2_nodes':
-      M(`node(a) node(b wss) - ab>!connect(wss find(a ba))`);
-      break;
-    case '3_nodes_linear':
-      M(`node(a) node(b wss) node(c wss) - ab>!connect(wss find(a ba)) -
-        bc>!connect(wss find(b cab)) bc,ab<fwd(ca>conn_info(r))`);
-      break;
-    case '4_nodes_linear':
-      M(`node(a) node(b wss) node(c wss) node(d wss) -
-        ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
-        cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
-        cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
-        db,dc,cb,ba>fwd(da>conn_info(r))`);
-      break;
-    default: assert(false, 'unknown macro '+m);
+  case '2_nodes':
+    M(`node(a) node(b wss) - ab>!connect(wss find(a ba))`);
+    break;
+  case '3_nodes_linear':
+    M(`node(a) node(b wss) node(c wss) - ab>!connect(wss find(a ba)) -
+      bc>!connect(wss find(b cab)) bc,ab<fwd(ca>conn_info(r))`);
+    break;
+  case '3_nodes_wss':
+     M(`node(a wss) node(b wss) node(c wss) -
+      ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
+      cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
+     break;
+  case '4_nodes_linear':
+    M(`node(a) node(b wss) node(c wss) node(d wss) -
+      ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
+      cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
+      dc,cb>fwd(bd<conn_info(r(ws))) db>connect(wss find(dcba badc))
+      ba>fwd(bd>conn_info_r(ws)) db,ba>fwd(ad<conn_info(r))
+      dc,cb>fwd(ad<conn_info)`);
+    break;
+  default: assert(false, 'unknown macro '+m);
   }
 }
 
@@ -508,7 +510,7 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
 });
 
 const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
-  let {c, event} = opt, s = t_nodes[c.s], r;
+  let {c, event} = opt, r;
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd)
@@ -532,9 +534,10 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   }
   if (event)
   {
-    let expected = c.fwd ? build_cmd(c.fwd+'fwd', c.meta.cmd) : c.meta.cmd;
+    let cmd = normalize(c.meta.cmd);
+    let expected = c.fwd ? build_cmd(c.fwd+'fwd', cmd) : cmd;
     assert_event(event, expected);
-    assert(!s.t.fake, 'src must be real for event '+event);
+    //assert(!s.t.fake, 'src must be real for event '+event);
   }
   yield fake_send_msg(c, {type: 'conn_info'});
   yield cmd_run_if_next_fake();
@@ -557,7 +560,7 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   {
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
-    assert(!s.t.fake, 'src must be real for event '+event);
+    //assert(!s.t.fake, 'src must be real for event '+event);
   }
   yield fake_send_msg(c, {type: 'conn_info_r', data: {ws, wrtc}});
   yield cmd_run_if_next_fake();
@@ -570,7 +573,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   {
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
-    assert(!s.t.fake, 'src must be real for event '+event);
+    //assert(!s.t.fake, 'src must be real for event '+event);
   }
   if (call)
   {
@@ -596,9 +599,10 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
 });
 
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
+  this.on('uncaught', on_uncaught);
   switch (opt.c.cmd)
   {
-  case '-': cmd_ensure_no_events(); break;
+  case '-': cmd_ensure_no_events(opt); break;
   case 'setup': yield cmd_setup(opt); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
@@ -740,10 +744,11 @@ describe('peer-relay', function(){
   const xit = (name, role, test)=>it(name+'_'+role,
     ()=>xetask(()=>test_run(role, test)));
   // XXX TODO:
-  // - more send tests
+  // - more send tests + test sending twice same messag (nonce issue)
   // - impement new connect auto wss/wrtc shortcut
   // - wrtc tests
   // - etask uncaught
+  //   - add test for failures (missing events, event mismatch etc)
   // - test.js code cleaup
   // - process init/unchaught handling
   // - log - use zerr?
@@ -790,16 +795,9 @@ describe('peer-relay', function(){
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(wss find(cab abc))`);
-    if (xxx_good_order)
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
       bs>!connect(wss find(bas sba)) bs,sa>fwd(ba>conn_info(r))`);
-    else
-    t('star_xxx', `
-      node(s wss) node(a) node(b wss) - as>!connect(wss find(a sa)) -
-      bs>!connect(wss) bs>find(b r(bas)) bs>fwd(ba>conn_info)
-      bs<find(s r(sba)) sa>fwd(ba>conn_info(r)) bs<fwd(ba<conn_info_r)`);
-    if (xxx_good_order)
     t('star_wss', `
       node(s wss) node(a wss) node(b wss) - as>!connect(wss find(a sa)) -
       bs>!connect(wss find(bas sba)) bs,sa>fwd(ba>conn_info(r(ws)))
@@ -813,47 +811,19 @@ describe('peer-relay', function(){
       xit(name, 'c', test);
       xit(name, 'd', test);
     };
-    if (xxx_good_order) // XXX: review with derry
-    t('linear', `node(a) node(b wss) node(c wss) node(d wss) -
-      ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
-      cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
-      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
-      db,dc,cb,ba>fwd(da>conn_info(r))`);
-    else
-    t('linear_xxx', `node(a) node(b wss) node(c wss) node(d wss) -
-      ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
-      cb,ba>fwd(ca>conn_info(r)) - cd>!connect(wss find(c dcba))
-      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss) db>find(d r(dcba))
-      db>fwd(da>conn_info) db<find(b r(badc)) dc,cb,ba>fwd(da>conn_info(r))
-      db<fwd(da<conn_info_r)`);
-    // XXX check why doesn't fail missing bc>fwd(ac>msg(hi))
-    t('msg_xxx', `setup(4_nodes_linear) ac>!msg(hi) ab>fwd(ac>msg(hi)) -`);
-    if (xxx_good_order)
-    t('linear_msg', `setup(4_nodes_linear)
-      ab>!msg(hi) ab>msg(hi) -
+    t('linear', `setup(3_nodes_linear) node(d wss) -
+      cd>!connect(wss find(c dcba)) dc,cb>fwd(bd<conn_info(r(ws)))
+      db>connect(wss find(dcba badc)) ba>fwd(bd>conn_info_r(ws))
+      db,ba>fwd(ad<conn_info(r)) dc,cb>fwd(ad<conn_info)`);
+    t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) ab>msg(hi) -
       ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) -
-      ad>!msg(hi) ab,bc,cd>fwd(ad>msg(hi)) -
+      ad>!msg(hi3) ab,bd,bc,cd>fwd(ad>msg(hi3)) -
     `); // XXX: finish test (add all possible send)
-    // XXX: check if we can send before da>connect
-    // dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))
-    if (xxx_good_order) // XXX: review with derry
-    t('linear_wss', `node(a wss) node(b wss) node(c wss) node(d wss) -
-      ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
-      bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
-      ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
-      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss find(dcba badc))
-      db,ba,ca>fwd(da>conn_info(r(ws))) da>connect(wss find(dcba abcd))
-      dc>fwd(da>conn_info) dc<fwd(da>conn_info_r(ws))`);
-    else
-    t('linear_wss_xxx', `node(a wss) node(b wss) node(c wss)
-      node(d wss) - ab>!connect(wss) ab>find(a r(a)) ab<find(b r(ba)) -
-      bc>!connect(wss find(b cab)) cb,ba>fwd(ca>conn_info(r(ws)))
-      ca>connect(wss find(cab abc)) - cd>!connect(wss find(c dcba))
-      cd,cb<fwd(db>conn_info(r(ws))) db>connect(wss) db>find(d r(dcba))
-      db>fwd(da>conn_info) db<find(b r(badc)) ba>fwd(da>conn_info)
-      ca<fwd(da<conn_info_r(ws)) ca>fwd(da>conn_info)
-      ba<fwd(da<conn_info_r(ws)) db<fwd(da<conn_info_r(ws))
-      da>connect(wss find(dcba abcd)) dc>fwd(da>conn_info(r(ws)))`);
+    t('linear_wss', `setup(3_nodes_wss) node(d wss) -
+      cd>!connect(wss find(c dcba)) dc,cb>fwd(db>conn_info(r(ws)))
+      db>connect(wss find(dcba badc)) db,ba>fwd(da>conn_info)
+      dc,ca>fwd(da>conn_info(r(ws))) da>connect(wss find(dcba abcd))
+      ab,bd>fwd(da<conn_info_r(ws)) ba,ad,ac>fwd(bd>conn_info_r(ws))`);
   });
   // XXX TODO:
   // ab>!msg...
