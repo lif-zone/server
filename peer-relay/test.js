@@ -786,8 +786,6 @@ describe('peer-relay', function(){
       ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) - ac<!msg(hi) bc,ab<fwd(ac<msg(hi)) -
       bc>!msg(hi) bc>msg(hi) - bc<!msg(hi) bc<msg(hi) -
     `);
-    // XXX: arik: add auto connection (rm wss or wrtc if obvious. ie there
-    // only one way to connect
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
