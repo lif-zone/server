@@ -812,7 +812,7 @@ describe('peer-relay', function(){
       ca>!msg(hi) cb>fwd(ca>msg(hi)) ba>fwd(ca>msg(hi)) cd>fwd(ca>msg(hi))
       db>fwd(ca>msg(hi)) -
       da>!msg(hi) db>fwd(da>msg(hi)) ba>fwd(da>msg(hi)) dc>fwd(da>msg(hi))
-      cb>fwd(da>msg(hi)) -`);
+      cb>fwd(da>msg(hi)) - db>!msg(hi) db>msg(hi) - dc>!msg(hi) dc>msg(hi)`);
     t('linear_wss', `setup(3_nodes_wss) node(d wss) -
       cd>!connect(find(c dcba)) dc,cb>fwd(db>conn_info(r(ws)))
       db>connect(find(dcba badc)) db,ba>fwd(da>conn_info)
@@ -820,6 +820,8 @@ describe('peer-relay', function(){
       ab,bd>fwd(da<conn_info_r(ws)) ba,ad,ac>fwd(bd>conn_info_r(ws))`);
     // XXX: linear_wss_msg (add all possible send)
   });
+  // BUG: if ac>connected and connection is broken, send will not try to send
+  // messages through other peers if connections is broken
   // XXX TODO:
   // ab>!msg...
   // wrtc
