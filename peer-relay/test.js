@@ -747,8 +747,6 @@ describe('peer-relay', function(){
   const xit = (name, role, test)=>it(name+'_'+role,
     ()=>xetask(()=>test_run(role, test)));
   // XXX TODO:
-  // - more send tests + test sending twice same messag (nonce issue)
-  // - impement new connect auto wss/wrtc shortcut
   // - wrtc tests
   // - etask uncaught
   //   - add test for failures (missing events, event mismatch etc)
