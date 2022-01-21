@@ -758,12 +758,13 @@ describe('peer-relay', function(){
   // - random id -> priv/pub key (copy hypercore)
   //   - do we want to add cksm and sign it on each message
   // - ack on each message
+  const t_roles = (name, roles, test)=>{
+    xit(name, 'fake', test);
+    for (let i=0; i<roles.length; i++)
+      xit(name, roles[i], test);
+  };
   describe('2_nodes', function(){
-    const t = (name, test)=>{
-      xit(name, 'fake', test);
-      xit(name, 'a', test);
-      xit(name, 'b', test);
-    };
+    const t = (name, test)=>t_roles(name, 'ab', test);
     t('long', `node(a) node(b wss(port:4000)) - ab>!connect(wss !r)
       ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
       ab>find_r(ba)`);
@@ -774,13 +775,7 @@ describe('peer-relay', function(){
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
   });
   describe('3_nodes', function(){
-    const t = (name, test)=>{
-      xit(name, 'fake', test);
-      xit(name, 'a', test);
-      xit(name, 'b', test);
-      xit(name, 'c', test);
-      xit(name, 's', test);
-    };
+    const t = (name, test)=>t_roles(name, 'abcs', test);
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
@@ -805,13 +800,7 @@ describe('peer-relay', function(){
       ba>connect(find(bas abs))`);
   });
   describe('4_nodes', function(){
-    const t = (name, test)=>{
-      xit(name, 'fake', test);
-      xit(name, 'a', test);
-      xit(name, 'b', test);
-      xit(name, 'c', test);
-      xit(name, 'd', test);
-    };
+    const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup(3_nodes_linear) node(d wss) - cd>!connect(find(c dcba))
       dc,cb>fwd(bd<conn_info(r(ws))) db>connect(find(dcba badc))
       ba>fwd(bd>conn_info_r(ws)) db,ba>fwd(ad<conn_info(r))
