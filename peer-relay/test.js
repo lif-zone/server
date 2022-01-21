@@ -571,6 +571,7 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
 
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  assert(s && d, 'invalid event '+c.orig);
   let data = c.arg, call = c.cmd=='!msg';
   if (event) // XXX: copy this logic to all places of assert_event
   {
@@ -805,13 +806,19 @@ describe('peer-relay', function(){
       dc,cb>fwd(ad<conn_info)`);
     t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) ab>msg(hi) -
       ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) -
-      ad>!msg(hi3) ab,bd,bc,cd>fwd(ad>msg(hi3)) -
-    `); // XXX: finish test (add all possible send)
+      ad>!msg(hi) ab,bd,bc,cd>fwd(ad>msg(hi)) -
+      ba>!msg(hi) ba>msg(hi) - ba>!msg(hi) ba>msg(hi) -
+      bc>!msg(hi) bc>msg(hi) - bd>!msg(hi) bd>msg(hi) -
+      ca>!msg(hi) cb>fwd(ca>msg(hi)) ba>fwd(ca>msg(hi)) cd>fwd(ca>msg(hi))
+      db>fwd(ca>msg(hi)) -
+      da>!msg(hi) db>fwd(da>msg(hi)) ba>fwd(da>msg(hi)) dc>fwd(da>msg(hi))
+      cb>fwd(da>msg(hi)) -`);
     t('linear_wss', `setup(3_nodes_wss) node(d wss) -
       cd>!connect(find(c dcba)) dc,cb>fwd(db>conn_info(r(ws)))
       db>connect(find(dcba badc)) db,ba>fwd(da>conn_info)
       dc,ca>fwd(da>conn_info(r(ws))) da>connect(find(dcba abcd))
       ab,bd>fwd(da<conn_info_r(ws)) ba,ad,ac>fwd(bd>conn_info_r(ws))`);
+    // XXX: linear_wss_msg (add all possible send)
   });
   // XXX TODO:
   // ab>!msg...
