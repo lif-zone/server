@@ -542,7 +542,6 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
     let cmd = normalize(c.meta.cmd);
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', cmd) : cmd;
     assert_event(event, expected);
-    //assert(!s.t.fake, 'src must be real for event '+event);
   }
   yield fake_send_msg(c, {type: 'conn_info'});
   yield cmd_run_if_next_fake();
@@ -565,7 +564,6 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   {
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
-    //assert(!s.t.fake, 'src must be real for event '+event);
   }
   yield fake_send_msg(c, {type: 'conn_info_r', data: {ws, wrtc}});
   yield cmd_run_if_next_fake();
@@ -578,7 +576,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   {
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
-    //assert(!s.t.fake, 'src must be real for event '+event);
   }
   if (call)
   {
