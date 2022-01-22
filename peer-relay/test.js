@@ -24,7 +24,6 @@ process.on('unhandledRejection', e=>{
   console.error('unhandledRejection %o', e);
   process.exit(-1);
 });
-
 // XXX derry: review set_exception_capture_all
 zerr.set_exception_capture_all(true);
 zerr.set_exception_handler('test', (prefix, o, err)=>{
@@ -757,12 +756,11 @@ describe('peer-relay', function(){
     ()=>xetask(()=>test_run(role, test)));
   // XXX TODO:
   // - wrtc tests
-  // - etask uncaught
-  //   - add test for failures (missing events, event mismatch etc)
+  // - add test for failures (missing events, event mismatch etc)
   // - test.js code cleaup
   // - process init/unchaught handling
   // - log - use zerr?
-  //   xerr - lightweight version of zerr
+  //   - xerr - lightweight version of zerr
   // - random id -> priv/pub key (copy hypercore)
   //   - do we want to add cksm and sign it on each message
   // - ack on each message
