@@ -7,6 +7,7 @@ import Router from './router.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
+import zerr from '../util/zerr.js';
 import etask from '../util/etask.js';
 
 function ids(id){ return util.buf_to_str(id); }
@@ -28,7 +29,7 @@ export default class Client extends EventEmitter {
     this.router = new Router(this.peers, this.id);
     this.router.set_on_message((msg, from)=>this.on_message(msg, from));
     if (opts.port)
-      console.log('peer-relay: listen on %s id %s', opts.port, ids(this.id));
+      zerr.notice('peer-relay: listen on %s id %s', opts.port, ids(this.id));
     this.wsConnector = new Client.WsConnector(this.id, opts.port, opts.host);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
     this.wrtcConnector = new Client.WrtcConnector(this.id, this.router,

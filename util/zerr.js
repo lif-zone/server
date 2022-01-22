@@ -5,6 +5,7 @@ import sprintf from './sprintf.js';
 import xescape from './escape.js';
 import rate_limit from './rate_limit.js';
 import cluster from 'cluster';
+import log_buffer from 'log-buffer';
 const is_node = typeof window==='undefined';
 let version = '0.0.1'; // XXX HACK
 let _process = is_node ? process : {env: {}};
@@ -204,14 +205,14 @@ E.set_log_buffer = function(on){
         }
         return;
     }
-    E.log_buffer = require('log-buffer');
+    E.log_buffer = log_buffer;
     E.log_buffer(32*1024);
     E.flush = function(){ E.log_buffer.flush(); };
     setInterval(E.flush, 1000).unref();
 };
 var node_init = function(){
     if (xutil.is_mocha())
-        E.level = L.WARN;
+        E.level = L.NOTICE;
     else
         E.prefix = !cluster.isMaster ? 'C'+cluster.worker.id+' ' : '';
 };

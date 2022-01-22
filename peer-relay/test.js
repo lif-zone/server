@@ -13,11 +13,10 @@ const xetask = xtest.etask;
 const assign = Object.assign;
 const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
-// XXX: replace console with zerr or 'debug'
 
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
-  console.log('uncaughtException %o', e);
+  zerr('uncaughtException %o', e);
   process.exit(-1);
 });
 process.on('unhandledRejection', e=>{
@@ -259,7 +258,7 @@ class FakeChannel extends EventEmitter {
     let s = node_from_id(this.localID), d = node_from_id(this.id);
     if (s!=from || d!=to)
       fwd = s.t.name+d.t.name+'>';
-    console.log('****** send%s msg %s', fwd ? ' '+fwd : '',
+    zerr.debug('****** send%s msg %s', fwd ? ' '+fwd : '',
       from.t.name+to.t.name+'>'+type);
     return etask(function*send(){
       switch (type)
@@ -674,7 +673,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   if (c.loop)
     c = extend_loop(c);
-  console.log('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
+  zerr.notice('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '');
   t_cmds_processed.push(assign({}, c));
@@ -704,9 +703,9 @@ const test_pre_process = test=>etask(function*test_preprocess(){
 });
 
 const test_run = (role, test)=>etask(function*test_run(){
-  console.log('pre_process run');
+  zerr.notice('pre_process run');
   let cmds = yield test_pre_process(test);
-  console.log('real run');
+  zerr.notice('real run');
   yield _test_run(role, cmds);
 });
 
@@ -755,6 +754,8 @@ describe('peer-relay', function(){
   const xit = (name, role, test)=>it(name+'_'+role,
     ()=>xetask(()=>test_run(role, test)));
   // XXX TODO:
+  // - check generic assert code that derry wrote
+  // - check etask error handling of unchaught errors
   // - wrtc tests
   // - add test for failures (missing events, event mismatch etc)
   // - test.js code cleaup
