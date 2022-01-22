@@ -187,7 +187,8 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
   {
     assert(!s.t.fake, 'src must be real');
     // XXX: review. why we send event?
-    yield cmd_run(build_cmd(s.t.name+d.t.name+'>connect', 'wss'));
+    yield cmd_run(build_cmd(s.t.name+d.t.name+'>connect',
+      channel.wsConnector ? 'wss' : 'wrtc'));
     let event = s.t.name+d.t.name+'<connected';
     yield cmd_run(event);
   }
@@ -222,6 +223,26 @@ class FakeWsConnector extends EventEmitter {
       let d = node_from_url(url), s = node_from_id(_this.id);
       let channel = new FakeChannel({localID: s.id, id: d.id});
       channel.wsConnector = _this;
+      channel.t.initiaor = true;
+      assert(!s.t.fake, 'src must be real');
+      yield s._onConnection(channel);
+    });
+  }
+  destroy(){}
+}
+
+class FakeWrtcConnector extends EventEmitter {
+  constructor(id, router, wrtc){
+    super();
+    this.id = id;
+    this.supported = wrtc;
+  }
+  connect = _d=>{
+    let _this = this;
+    return etask(function*connect(){
+      let d = node_from_id(_d), s = node_from_id(_this.id);
+      let channel = new FakeChannel({localID: s.id, id: d.id});
+      channel.wrtcConnector = _this;
       channel.t.initiaor = true;
       assert(!s.t.fake, 'src must be real');
       yield s._onConnection(channel);
@@ -277,15 +298,6 @@ class FakeChannel extends EventEmitter {
       yield cmd_run(build_cmd(cmd, '', fwd));
     });
   };
-  destroy(){}
-}
-
-class FakeWrtcConnector extends EventEmitter {
-  constructor(id, router, wrtc){
-    super();
-    this.id = id;
-    this.supported = wrtc;
-  }
   destroy(){}
 }
 
@@ -429,7 +441,6 @@ const cmd_connect = opt=>etask(function*(){
     wrtc = support_wrtc(d.t.name);
   }
   assert_exist(c.s);
-  assert(!wrtc, 'XXX TODO: wrtc');
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   assert(find ? r : true, 'find must be used together with find');
   if (call)
@@ -441,7 +452,12 @@ const cmd_connect = opt=>etask(function*(){
     }
     assert(!event);
     if (!s.t.fake)
-      yield s.wsConnector.connect(wss);
+    {
+      if (wss)
+        yield s.wsConnector.connect(wss);
+      else if (wrtc)
+        yield s.wrtcConnector.connect(d.id);
+    }
   }
   else
   {
@@ -457,7 +473,10 @@ const cmd_connect = opt=>etask(function*(){
     if (s.t.fake)
     {
       let channel = new FakeChannel({localID: d.id, id: s.id});
-      channel.wsConnector = d.wsConnector;
+      if (wss)
+        channel.wsConnector = d.wsConnector;
+      else
+        channel.wrtcConnector = d.wrtcConnector;
       yield d._onConnection(channel);
     }
     else // XXX: review
@@ -772,6 +791,7 @@ describe('peer-relay', function(){
     if (0) // XXX TODO: find way to test this sequence of events
     t('events_order', `node(a) node(b wss(port:4000)) - ab>!connect
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
+    t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
   });
   describe('3_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcs', test);
@@ -785,6 +805,9 @@ describe('peer-relay', function(){
       ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) - ac<!msg(hi) bc,ab<fwd(ac<msg(hi)) -
       bc>!msg(hi) bc>msg(hi) - bc<!msg(hi) bc<msg(hi) -
     `);
+    t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
+      ab>!connect(find(a ba)) - bc>!connect(find(b cab))
+      bc,ab<fwd(ca>conn_info(r(wrtc))) ca>connect(wrtc find(cab abc))`);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
