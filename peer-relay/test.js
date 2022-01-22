@@ -25,16 +25,12 @@ process.on('unhandledRejection', e=>{
   process.exit(-1);
 });
 
+// XXX derry: review set_exception_capture_all
+zerr.set_exception_capture_all(true);
 zerr.set_exception_handler('test', (prefix, o, err)=>{
   console.error(prefix+' %o', err);
   process.exit(-1);
 });
-
-  // XXX HACK: rm 'uncaught'. we need because otherwise it doesn't fail assert
-function on_uncaught(err){
-  console.error('%o', err);
-  process.exit(-1);
-}
 
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
@@ -181,7 +177,6 @@ function assert_event(event, exp){
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
-  this.on('uncaught', on_uncaught);
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
   if (channel.t.initiaor)
   {
@@ -268,7 +263,6 @@ class FakeChannel extends EventEmitter {
     console.log('****** send%s msg %s', fwd ? ' '+fwd : '',
       from.t.name+to.t.name+'>'+type);
     return etask(function*send(){
-      this.on('uncaught', on_uncaught);
       switch (type)
       {
       case 'find':
@@ -344,7 +338,6 @@ const fake_send_msg = (c, data)=>etask(function*(){
 });
 
 const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
-  this.on('uncaught', on_uncaught);
   let event = util.get(opt, 'event');
   assert(!event, 'unexpected event '+event);
   yield etask.sleep(0); // XXX TODO: change to tick();
@@ -621,7 +614,6 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
 });
 
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
-  this.on('uncaught', on_uncaught);
   switch (opt.c.cmd)
   {
   case '-': cmd_ensure_no_events(opt); break;
@@ -679,7 +671,6 @@ const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
 
 let t_depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
-  this.on('uncaught', on_uncaught);
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   if (c.loop)
@@ -695,7 +686,6 @@ const cmd_run = event=>etask(function*cmd_run(){
 });
 
 const _test_run = (role, cmds)=>etask(function*_test_run(){
-  this.on('uncaught', on_uncaught);
   assert(!t_cmds && !t_i && !t_role, 'test already running');
   t_port = 4000;
   t_cmds = cmds;

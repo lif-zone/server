@@ -114,11 +114,15 @@ E.e2s = function(err){
 };
 
 E.on_exception = undefined;
+E.exception_capture_all = false;
 var in_exception;
+
+E.set_exception_capture_all = function(all){ E.exception_capture_all = all; };
+
 E.set_exception_handler = function(prefix, err_func){
     E.on_exception = function(err){
-        if (!(err instanceof TypeError || err instanceof ReferenceError) ||
-            err.sent_perr)
+        if (!E.exception_capture_all && (!(err instanceof TypeError ||
+          err instanceof ReferenceError) || err.sent_perr))
         {
             return;
         }
