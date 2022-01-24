@@ -1,9 +1,9 @@
 'use strict'; /*jslint node:true, browser:true*/
 import KBucket from 'k-bucket';
-import crypto from 'crypto';
 import {EventEmitter} from 'events';
 import assert from 'assert';
 import Router from './router.js';
+import Wallet from './wallet.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
@@ -13,12 +13,13 @@ import etask from '../util/etask.js';
 function ids(id){ return util.buf_to_str(id); }
 
 export default class Client extends EventEmitter {
-  constructor(opts){
+  constructor(opt){
     super();
-    if (!opts)
-      opts = {};
+    if (!opt)
+      opt = {};
     // XXX: change id to priv/pub keys
-    this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
+    this.wallet = new Wallet({keys: opt.keys});
+    this.id = this.wallet.keys.pub;
     // XXX: need cleanup for all internal structures
     this.pending = {};
     this.destroyed = false;
@@ -28,15 +29,15 @@ export default class Client extends EventEmitter {
     this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router(this.peers, this.id);
     this.router.set_on_message((msg, from)=>this.on_message(msg, from));
-    if (opts.port)
-      xerr.notice('peer-relay: listen on %s id %s', opts.port, ids(this.id));
-    this.wsConnector = new Client.WsConnector(this.id, opts.port, opts.host);
+    if (opt.port)
+      xerr.notice('peer-relay: listen on %s id %s', opt.port, ids(this.id));
+    this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
     this.wrtcConnector = new Client.WrtcConnector(this.id, this.router,
-      opts.wrtc);
+      opt.wrtc);
     this.wrtcConnector.on('connection', channel=>this._onConnection(channel));
     setTimeout(()=>{ // XXX HACK: rm timeout
-      for (var uri of opts.bootstrap||[])
+      for (var uri of opt.bootstrap||[])
         this.wsConnector.connect(uri);
     });
   }

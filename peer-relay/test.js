@@ -14,9 +14,6 @@ const assign = Object.assign;
 const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
-xerr.no_console = true;
-xerr.log_max_size = 1000;
-
 function on_error(desc, err){
   xerr.flush();
   xerr.no_console = false;
@@ -33,12 +30,28 @@ xerr.set_exception_handler('test', (prefix, o, err)=>on_error(prefix, err));
 
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
-let t_ids = {
-  a: 'aab88a27669ed361313b2292067b37b4e301ca8b',
-  b: 'bb3ce1af8bdc100ecf98ed8ace28be7417f0acd1',
-  c: 'cc2e8094373a85cb0e28399f6909ed02080367dc',
-  d: 'dd3a9094373a85cb0e28399f6909ed02080363a0',
-  s: 'ffe32c1c6ffdc91bbfa7684c67e58f3f36174a59',
+let t_keys = {
+  a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
+    priv: 'ba186102e13ec32e5273a30df6da2b6c9428258b4ea83ac88df7322e7645b864a'+
+    'aec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb'},
+  b: {pub: 'bb97c645664b3a769da624d007e88aab94c99ca95d1e3ec1439e4cceec9c556d',
+    priv: 'd42435303d37a60bd567be5ddeabee520b718b2757d8a2239ad947cacd326721b'+
+    'b97c645664b3a769da624d007e88aab94c99ca95d1e3ec1439e4cceec9c556d'},
+  c: {pub: 'cc64ca3852f2eeb932151da8ec86d8b9634544a4a32c34a6007610691f4e712c',
+    priv: '4f2e8f115cdd2252628ab6bf849ea7740ea7bd2c67d18c7c743a15fec0675283c'+
+    'c64ca3852f2eeb932151da8ec86d8b9634544a4a32c34a6007610691f4e712c'},
+  d: {pub: 'dd1edbb8c0c9cd82ed6e1dbbc246f5e22756663c300f0384b26cafc28f02600d',
+    priv: 'd5ff0f8f6f81f2a8cabdd708fce205a24e0ec8dea3cb5ef3982b9c03d5f6fcafd'+
+    'd1edbb8c0c9cd82ed6e1dbbc246f5e22756663c300f0384b26cafc28f02600d'},
+  e: {pub: 'ee8f3975ae17ee6a248f425e35987140980c7ce05a1c60b7f30aa2de9ef9427e',
+    priv: '01efd722ae652fb8a17a767b025e79059322706bc1380fe3d798d7ce65857186e'+
+    'e8f3975ae17ee6a248f425e35987140980c7ce05a1c60b7f30aa2de9ef9427e'},
+  f: {pub: 'ffb1d7cbee327956bb0205a948324c3623f2a8a65d3f5445c5ccc8c9d228cdca',
+    priv: '72e90338a9c2e16da7baf9c87a22e2f286966878cf23214d3dea74435b19c2dbf'+
+      'fb1d7cbee327956bb0205a948324c3623f2a8a65d3f5445c5ccc8c9d228cdca'},
+  s: {pub: '00d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014',
+    priv: '9596a63459b52771446435d15eb5950651893ae169100451fdcddf1c58d98d180'+
+      '0d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014'},
 };
 
 // XXX: add test
@@ -193,7 +206,7 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
 class FakeNode extends EventEmitter {
   constructor(opts){
     super();
-    this.id = opts.id ? util.buf_from_str(opts.id) : crypto.randomBytes(20);
+    this.id = opts.keys.pub;
     this.wsConnector = new FakeWsConnector(this.id, opts.port, opts.host);
     this.wrtcConnector = new FakeWrtcConnector(this.id);
   }
@@ -215,6 +228,7 @@ class FakeWsConnector extends EventEmitter {
     let _this = this;
     return etask(function*connect(){
       let d = node_from_url(url), s = node_from_id(_this.id);
+      assert(d, 'node not found '+url);
       let channel = new FakeChannel({localID: s.id, id: d.id});
       channel.wsConnector = _this;
       channel.t.initiaor = true;
@@ -390,12 +404,13 @@ function cmd_node(opt){
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  let id = t_ids[name], fake = is_fake(name);
-  assert(t_ids[name], 'id not founnd '+name);
+  let key = t_keys[name], fake = is_fake(name);
+  assert(t_keys[name], 'key not founnd '+name);
   assert(!wss || !node_from_url(wss.url), wss?.url+' already used');
   let node = new (fake ? FakeNode : Node)(assign(
-    {id: _buf(id), bootstrap, wrtc}, wss));
-  node.t = {id, name, fake, wss};
+    {keys: {priv: _buf(key.priv), pub: _buf(key.pub)}, bootstrap, wrtc},
+    wss));
+  node.t = {id: _str(node.id), name, fake, wss};
   t_nodes[name] = node;
 }
 
@@ -724,11 +739,14 @@ const test_end = ()=>etask(function*(){
 
 describe('peer-relay', function(){
   beforeEach(function(){
+    xerr.no_console = true;
+    xerr.log_max_size = 1000;
     xtest.set(Node, 'WsConnector', FakeWsConnector);
     xtest.set(Node, 'WrtcConnector', FakeWrtcConnector);
     xtest.set(util, 'test_on_connection', test_on_connection);
   });
   afterEach(function(){
+    xerr.no_console = false;
     xerr.clear();
   });
   describe('test_api', function(){
@@ -804,10 +822,10 @@ describe('peer-relay', function(){
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(find(a sa)) -
-      bs>!connect(find(bas sba)) bs,sa>fwd(ba>conn_info(r))`);
+      bs>!connect(find(bas sab)) bs,sa>fwd(ba>conn_info(r))`);
     t('star_wss', `
       node(s wss) node(a wss) node(b wss) - as>!connect(find(a sa)) -
-      bs>!connect(find(bas sba)) bs,sa>fwd(ba>conn_info(r(ws)))
+      bs>!connect(find(bas sab)) bs,sa>fwd(ba>conn_info(r(ws)))
       ba>connect(find(bas abs))`);
   });
   describe('4_nodes', function(){
