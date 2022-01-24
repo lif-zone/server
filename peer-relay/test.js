@@ -14,16 +14,11 @@ const assign = Object.assign;
 const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
-function on_error(desc, err){
-  xerr.zexit(err);
-  process.exit(-1);
-}
-
 // XXX: make it automatic for all node/browser
 xerr.set_exception_catch_all(true);
-process.on('uncaughtException', err=>on_error(err));
-process.on('unhandledRejection', err=>on_error(err));
-xerr.set_exception_handler('test', (prefix, o, err)=>on_error(prefix, err));
+process.on('uncaughtException', err=>xerr.zexit(err));
+process.on('unhandledRejection', err=>xerr.zexit(err));
+xerr.set_exception_handler('test', (prefix, o, err)=>xerr.zexit(err));
 
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
