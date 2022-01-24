@@ -18,5 +18,9 @@ export default class Wallet {
       this.keys = {priv: secretKey, pub: publicKey};
     }
   }
+  hash_obj(o){
+    return crypto.data(Uint8Array.from(typeof o=='string' ? o :
+      JSON.stringify(o)));
+  }
 }
 
