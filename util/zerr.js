@@ -121,16 +121,15 @@ E.set_exception_capture_all = function(all){ E.exception_capture_all = all; };
 
 E.set_exception_handler = function(prefix, err_func){
     E.on_exception = function(err){
-        if (!E.exception_capture_all && (!(err instanceof TypeError ||
-          err instanceof ReferenceError) || err.sent_perr))
-        {
-            return;
-        }
         if (in_exception)
             return;
+        let typeerror = err instanceof TypeError ||
+          err instanceof ReferenceError;
+        if (!typeerror && !E.exception_capture_all)
+            return;
         in_exception = 1;
-        err.sent_perr = true;
-        err_func((prefix ? prefix+'_' : '')+'etask_typeerror', null, err);
+        err_func((prefix ? prefix+'_' : '')+
+            (typeerror ? 'etask_typeerror' : 'etask_exception'), null, err);
         in_exception = 0;
     };
 };
@@ -177,22 +176,24 @@ E.get_stack_trace = function(opt){
 };
 
 E.log = [];
-E.log.max_size = 200;
-E.log.no_console = false;
+E.log_max_size = 200;
+E.no_console = false;
 E.clear = function(){ E.log = []; };
+
 E.flush = function(){
   if (!E.log.length)
     return;
   console.error(E.log.join('\n'));
   E.clear();
-}
+};
+
 E.log_tail = function(size){
     return (E.log||[]).join('\n').substr(-(size||4096)); };
 
 function log_tail_push(msg){
     E.log.push(msg);
-    if (E.log.length>E.log.max_size)
-        E.log.splice(0, E.log.length - E.log.max_size/2);
+    if (E.log.length>E.log_max_size)
+        E.log.splice(0, E.log.length - E.log_max_size/2);
 }
 
 if (is_node)
@@ -291,8 +292,8 @@ var chrome;
 E.log = [];
 var L_STR = E.L_STR = ['EMERGENCY', 'ALERT', 'CRITICAL', 'ERROR', 'WARNING',
     'NOTICE', 'INFO', 'DEBUG'];
-E.log.max_size = 200;
-E.log.no_console = false;
+E.log_max_size = 200;
+E.no_console = false;
 chrome = self.chrome;
 E.conf = self.conf;
 E.level = self.is_tpopup ? L.CRITICAL : E.conf && E.conf.zerr_level ?

@@ -15,7 +15,7 @@ const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
 zerr.no_console = true;
-zerr.log.max_size = 1000;
+zerr.log_max_size = 1000;
 
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
@@ -30,12 +30,11 @@ process.on('unhandledRejection', e=>{
   zerr('unhandledRejection %o', e);
   process.exit(-1);
 });
-// XXX derry: review set_exception_capture_all
 zerr.set_exception_capture_all(true);
 zerr.set_exception_handler('test', (prefix, o, err)=>{
   zerr.flush();
   zerr.no_console = false;
-  zerr(prefix+' %o', err);
+  zerr('excetion %s %s', prefix, err.stack);
   process.exit(-1);
 });
 
