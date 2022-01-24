@@ -2,7 +2,7 @@
 import {inherits} from 'util';
 import {EventEmitter} from 'events';
 import _debug from 'debug';
-import zerr from '../util/zerr.js';
+import xerr from '../util/xerr.js';
 import ws_util from '../util/ws.js';
 import fs from 'fs';
 import https from 'https';
@@ -88,7 +88,7 @@ WsConnector.prototype._onConnection = function(ws){
   }
 
   function onError(err){
-    zerr('ws.js error %s %o', err.message, err);
+    xerr('ws.js error %s %o', err.message, err);
     self._debug(err, err.stack);
   }
 };

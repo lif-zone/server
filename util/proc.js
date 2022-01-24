@@ -1,13 +1,13 @@
 'use strict'; /*jslint node:true*/
-import zerr from './zerr.js';
+import xerr from './xerr.js';
 import xutil from './util.js';
 import assert from 'assert';
 const E = {}, env = process.env;
 export default E;
 
 E.zexit_init = ()=>{
-    function zexit_on_err(err){ zerr.zexit(err); }
-    zerr.on_exception = function(err){
+    function zexit_on_err(err){ xerr.zexit(err); }
+    xerr.on_exception = function(err){
         if (!(err instanceof TypeError || err instanceof ReferenceError
             || err instanceof assert.AssertionError))
         {

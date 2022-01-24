@@ -7,28 +7,28 @@ import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import util from '../util/util.js';
-import zerr from '../util/zerr.js';
+import xerr from '../util/xerr.js';
 import {EventEmitter} from 'events';
 const xetask = xtest.etask;
 const assign = Object.assign;
 const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
-zerr.no_console = true;
-zerr.log_max_size = 1000;
+xerr.no_console = true;
+xerr.log_max_size = 1000;
 
 function on_error(desc, err){
-  zerr.flush();
-  zerr.no_console = false;
-  zerr('%s %s', desc, err.stack);
+  xerr.flush();
+  xerr.no_console = false;
+  xerr('%s %s', desc, err.stack);
   process.exit(-1);
 }
 
 // XXX: make it automatic for all node/browser
-zerr.set_exception_capture_all(true);
+xerr.set_exception_capture_all(true);
 process.on('uncaughtException', err=>on_error(err));
 process.on('unhandledRejection', err=>on_error(err));
-zerr.set_exception_handler('test', (prefix, o, err)=>on_error(prefix, err));
+xerr.set_exception_handler('test', (prefix, o, err)=>on_error(prefix, err));
 
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
@@ -258,7 +258,7 @@ class FakeChannel extends EventEmitter {
     let s = node_from_id(this.localID), d = node_from_id(this.id);
     if (s!=from || d!=to)
       fwd = s.t.name+d.t.name+'>';
-    zerr.debug('****** send%s msg %s', fwd ? ' '+fwd : '',
+    xerr.debug('****** send%s msg %s', fwd ? ' '+fwd : '',
       from.t.name+to.t.name+'>'+type);
     return etask(function*send(){
       switch (type)
@@ -673,7 +673,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   if (c.loop)
     c = extend_loop(c);
-  zerr.notice('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
+  xerr.notice('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '');
   t_cmds_processed.push(assign({}, c));
@@ -703,9 +703,9 @@ const test_pre_process = test=>etask(function*test_preprocess(){
 });
 
 const test_run = (role, test)=>etask(function*test_run(){
-  zerr.notice('pre_process run');
+  xerr.notice('pre_process run');
   let cmds = yield test_pre_process(test);
-  zerr.notice('real run');
+  xerr.notice('real run');
   yield _test_run(role, cmds);
 });
 
@@ -728,7 +728,7 @@ describe('peer-relay', function(){
     xtest.set(util, 'test_on_connection', test_on_connection);
   });
   afterEach(function(){
-    zerr.clear();
+    xerr.clear();
   });
   describe('test_api', function(){
     it('pre_process', ()=>xetask(function*(){
@@ -763,8 +763,8 @@ describe('peer-relay', function(){
   // - add test for failures (missing events, event mismatch etc)
   // - test.js code cleaup
   // - process init/unchaught handling
-  // - log - use zerr?
-  //   - xerr - lightweight version of zerr
+  // - log - use xerr?
+  //   - xerr - lightweight version of xerr
   // - random id -> priv/pub key (copy hypercore)
   //   - do we want to add cksm and sign it on each message
   // - ack on each message

@@ -8,12 +8,12 @@ import cluster from 'cluster';
 const is_node = typeof window==='undefined';
 let version = '0.0.1'; // XXX HACK
 let _process = is_node ? process : {env: {}};
-var _zerr;
+var _xerr;
 var env = _process.env;
-var zerr = function(msg){ _zerr(L.ERR, arguments); };
-var E = zerr;
-export default zerr;
-E.zerr = zerr;
+var xerr = function(msg){ _xerr(L.ERR, arguments); };
+var E = xerr;
+export default xerr;
+E.xerr = xerr;
 var L = E.L = {
     EMERG: 0,
     ALERT: 1,
@@ -32,12 +32,12 @@ for (var k in L)
 
 ['debug', 'info', 'notice', 'warn', 'err', 'crit'].forEach(function(l){
     var level = L[l.toUpperCase()];
-    E[l] = function(){ return _zerr(level, arguments); };
+    E[l] = function(){ return _xerr(level, arguments); };
 });
 
 E.assert = function(exp, msg){
     if (!exp)
-        zerr.crit(msg);
+        xerr.crit(msg);
 };
 
 E.json = function(o, replacer, space){
@@ -53,7 +53,7 @@ E.is = function(level){ return level<=E.level; };
 
 /* perr is a stub overridden by upper layers */
 E.perr = function(id, info, opt){
-    E._zerr(!opt || opt.level===undefined ? L.ERR : opt.level,
+    E._xerr(!opt || opt.level===undefined ? L.ERR : opt.level,
         ['perr '+id+' '+E.json(info)]);
     if (perr_pending && perr_pending.length<100)
         perr_pending.push(Array.from(arguments));
@@ -92,8 +92,8 @@ function wrap_perr(perr_fn){
         }
         perr_dropped[id] = (perr_dropped[id]||0)+1;
         if (info && typeof info!='string')
-            info = zerr.json(info);
-        zerr('perr %s %s rate too high %s %d %d', id, info, zerr.json(rl), ms,
+            info = xerr.json(info);
+        xerr('perr %s %s rate too high %s %d %d', id, info, xerr.json(rl), ms,
             count);
     };
 }
@@ -163,7 +163,7 @@ E.get_stack_trace = function(opt){
     var old_stack_limit = Error.stackTraceLimit;
     if (opt.limit)
         Error.stackTraceLimit = opt.limit;
-    var stack = zerr.e2s(new Error());
+    var stack = xerr.e2s(new Error());
     if (opt.limit)
         Error.stackTraceLimit = old_stack_limit;
     if (opt.short)
@@ -197,7 +197,7 @@ function log_tail_push(msg){
 }
 
 if (is_node)
-{ // zerr-node
+{ // xerr-node
 E.ZEXIT_LOG_DIR = env.ZEXIT_LOG_DIR||'/tmp/zexit_logs';
 E.prefix = '';
 
@@ -216,57 +216,57 @@ var init = function(){
 };
 init();
 
-var zerr_format = function(args){
+var xerr_format = function(args){
     return args.length<=1 ? args[0] : sprintf.apply(null, args); };
-var __zerr = function(level, args){
-    var msg = zerr_format(args);
+var __xerr = function(level, args){
+    var msg = xerr_format(args);
     var k = Object.keys(L);
     var prefix = E.hide_timestamp ? '' : E.prefix+date.to_sql_ms()+' ';
     if (env.CURRENT_SYSTEMD_UNIT_NAME)
         prefix = '<'+level+'>'+prefix;
     var res = prefix+k[level]+': '+msg;
-    if (!zerr.no_console)
+    if (!xerr.no_console)
       console.error(res);
     log_tail_push(res);
 };
 
 E.set_logger = function(logger){
-    __zerr = function(level, args){
-        var msg = zerr_format(args);
+    __xerr = function(level, args){
+        var msg = xerr_format(args);
         logger(level, msg);
         log_tail_push(E.prefix+date.to_sql_ms()+': '+msg);
     };
 };
 
-_zerr = function(level, args){
+_xerr = function(level, args){
     if (level>E.level)
         return;
-    __zerr(level, args);
+    __xerr(level, args);
 };
-E._zerr = _zerr;
+E._xerr = _xerr;
 
 E.zexit = function(args){
     var stack;
     if (err_has_stack(args))
     {
         stack = args.stack;
-        __zerr(L.CRIT, [E.e2s(args)]);
+        __xerr(L.CRIT, [E.e2s(args)]);
     }
     else
     {
         var e = new Error();
         stack = e.stack;
-        __zerr(L.CRIT, arguments);
+        __xerr(L.CRIT, arguments);
     }
     if ((args&&args.code)!='ERR_ASSERTION')
-        console.error('zerr.zexit was called', new Error().stack);
+        console.error('xerr.zexit was called', new Error().stack);
     E.flush();
     if (env.NODE_ENV=='production')
     {
         var conf = require('./conf.js');
         var zcounter_file = require('./zcounter_file.js');
         zcounter_file.inc('server_zexit');
-        args = zerr_format(arguments);
+        args = xerr_format(arguments);
         write_zexit_log({id: 'lerr_server_zexit', info: ''+args,
             ts: date.to_sql(), backtrace: stack, version: version,
             app: conf.app});
@@ -283,11 +283,11 @@ var write_zexit_log = function(json){
         file.mkdirp(E.ZEXIT_LOG_DIR);
         file.write_atomic_e(E.ZEXIT_LOG_DIR+'/'+date.to_log_file()+'_zexit_'+
             _process.pid+'.log', E.json(json));
-    } catch(e){ E.zerr(E.e2s(e)); }
+    } catch(e){ E.xerr(E.e2s(e)); }
 };
 }
 else
-{ // browser-zerr
+{ // browser-xerr
 var chrome;
 E.log = [];
 var L_STR = E.L_STR = ['EMERGENCY', 'ALERT', 'CRITICAL', 'ERROR', 'WARNING',
@@ -296,15 +296,15 @@ E.log_max_size = 200;
 E.no_console = false;
 chrome = self.chrome;
 E.conf = self.conf;
-E.level = self.is_tpopup ? L.CRITICAL : E.conf && E.conf.zerr_level ?
-    L[self.conf.zerr_level] : L.WARN;
+E.level = self.is_tpopup ? L.CRITICAL : E.conf && E.conf.xerr_level ?
+    L[self.conf.xerr_level] : L.WARN;
 
 var console_method = function(l){
     return l<=L.ERR ? 'error' : !chrome ? 'log' : l===L.WARN ? 'warn' :
         l<=L.INFO ? 'info' : 'debug';
 };
 
-_zerr = function(l, args){
+_xerr = function(l, args){
     var s;
     try {
         var fmt = ''+args[0];
@@ -315,7 +315,7 @@ _zerr = function(l, args){
         +L_STR[l]+': ';
         if (E.is(l))
         {
-            if (!zerr.no_console)
+            if (!xerr.no_console)
             {
                 Function.prototype.apply.bind(console[console_method(l)],
                     console)([prefix+fmt].concat(fmt_args));
@@ -323,13 +323,13 @@ _zerr = function(l, args){
         }
         log_tail_push(prefix+s);
     } catch(err){
-        try { console.error('ERROR in zerr '+(err.stack||err), arguments); }
+        try { console.error('ERROR in xerr '+(err.stack||err), arguments); }
         catch(e){}
     }
     if (l<=L.CRIT)
         throw new Error(s);
 };
-E._zerr = _zerr;
+E._xerr = _xerr;
 
 var post = function(url, data){
     var req = new XMLHttpRequest();
@@ -347,14 +347,14 @@ var perr_transport = function(id, info, opt){
     var qs = opt.qs||{}, data = opt.data||{};
     data.is_json = 1;
     if (info && typeof info!='string')
-        info = zerr.json(info);
+        info = xerr.json(info);
     if (opt.err && !info)
-        info = ''+(opt.err.message||zerr.json(opt.err));
+        info = ''+(opt.err.message||xerr.json(opt.err));
     data.info = info;
     qs.id = id;
-    if (!opt.no_zerr)
+    if (!opt.no_xerr)
     {
-        zerr._zerr(opt.level, ['perr '+id+(info ? ' info: '+info : '')+
+        xerr._xerr(opt.level, ['perr '+id+(info ? ' info: '+info : '')+
             (opt.bt ? '\n'+opt.bt : '')]);
     }
     return post(xescape.uri(E.conf.url_perr+'/perr', qs), data);
@@ -363,10 +363,10 @@ var perr_transport = function(id, info, opt){
 var perr = function(perr_orig, pending){
     while (pending.length)
         perr_transport.apply(null, pending.shift());
-    // set the zerr.perr stub to send to the clog server
+    // set the xerr.perr stub to send to the clog server
     return perr_transport;
 };
 E.perr_install(perr);
 
-} // end of browser-zerr}
+} // end of browser-xerr}
 

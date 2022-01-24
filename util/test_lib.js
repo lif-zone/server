@@ -4,7 +4,7 @@
 import proc from './proc.js';
 import etask from './etask.js';
 import xutil from './util.js';
-import zerr from './zerr.js';
+import xerr from './xerr.js';
 import string from '../util/string.js';
 import date from './date.js';
 import sprintf from './sprintf.js';
@@ -77,7 +77,7 @@ E.hook_assert = ()=>{
 E.hook_assert();
 
 if (xutil.is_mocha())
-    zerr.on_unhandled_exception = err=>assert(false, err);
+    xerr.on_unhandled_exception = err=>assert(false, err);
 
 E.db_conn_str = 'host=127.0.0.1; db=zserver_test';
 E.test = (app, test_func, hooks)=>{
@@ -342,7 +342,7 @@ E.get_free_port = ()=>etask(function*get_free_port(){
     let server = net.createServer();
     server.on('error', err=>{
         server.close();
-        zerr.zexit(err);
+        xerr.zexit(err);
     });
     server.on('close', ()=>wait.return());
     server.listen(0, ()=>{

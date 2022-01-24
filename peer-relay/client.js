@@ -7,7 +7,7 @@ import Router from './router.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
-import zerr from '../util/zerr.js';
+import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
 
 function ids(id){ return util.buf_to_str(id); }
@@ -29,7 +29,7 @@ export default class Client extends EventEmitter {
     this.router = new Router(this.peers, this.id);
     this.router.set_on_message((msg, from)=>this.on_message(msg, from));
     if (opts.port)
-      zerr.notice('peer-relay: listen on %s id %s', opts.port, ids(this.id));
+      xerr.notice('peer-relay: listen on %s id %s', opts.port, ids(this.id));
     this.wsConnector = new Client.WsConnector(this.id, opts.port, opts.host);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
     this.wrtcConnector = new Client.WrtcConnector(this.id, this.router,
@@ -51,7 +51,7 @@ export default class Client extends EventEmitter {
       assert(!_this.destroyed, 'node already destroyed');
       channel.on('close', onClose);
       // XXX: decide how to handle errors
-      channel.on('error', err=>zerr('Error', err));
+      channel.on('error', err=>xerr('Error', err));
       delete _this.pending[channel.id];
       _this.canidates.add({id: channel.id});
       if (_this.peers.get(channel.id))
@@ -115,7 +115,7 @@ export default class Client extends EventEmitter {
       case 'find_r': yield _this._on_find_r(msg, from); break;
       case 'conn_info': yield _this._on_conn_info(msg, from); break;
       case 'conn_info_r': yield _this._on_conn_info_r(msg, from); break;
-      default: zerr('unknown msg type %s', msg.type);
+      default: xerr('unknown msg type %s', msg.type);
       }
     });
   };

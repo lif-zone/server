@@ -5,7 +5,7 @@ import date from './date.js';
 import xutil from './util.js';
 import array from './array.js';
 import xtest from './test_lib.js';
-import zerr from './zerr.js';
+import xerr from './xerr.js';
 import xurl from './url.js';
 import url from 'url';
 import sprintf from './sprintf.js';
@@ -3625,12 +3625,12 @@ describe('test_lib', ()=>{
   });
 });
 
-describe('zerr', ()=>{
+describe('xerr', ()=>{
     describe('catch_unhandled_exception', ()=>{
         it('no_exception', ()=>{
             let stub = sinon.stub().returns(3), obj = {};
             assert.strictEqual(
-                zerr.catch_unhandled_exception(stub, obj)(1, 2), 3);
+                xerr.catch_unhandled_exception(stub, obj)(1, 2), 3);
             assert(stub.calledOn(obj));
             assert(stub.calledWithExactly(1, 2));
         });
@@ -5201,9 +5201,9 @@ describe('etask', function(){
         return et;
     });
     describe('TypeError', ()=>{
-        xtest.r_push_pop_prop(zerr, {on_exception: undefined});
+        xtest.r_push_pop_prop(xerr, {on_exception: undefined});
         let t = (name, fn)=>it(name, done=>{
-            zerr.on_exception = ()=>done();
+            xerr.on_exception = ()=>done();
             fn();
         });
         t('basic', ()=>void etask([function(){ null.x = 1; }]));

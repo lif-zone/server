@@ -3,8 +3,8 @@ import assert from 'assert';
 import xutil from './util.js';
 import events from './events.js';
 import array from './array.js';
-import __zerr from './zerr.js';
-let zerr = __zerr;
+import __xerr from './xerr.js';
+let xerr = __xerr;
 const is_node = typeof window==='undefined';
 var _process;
 if (!is_node)
@@ -26,8 +26,8 @@ E.use_bt = +env.ETASK_BT;
 E.root = [];
 E.assert_extra = +env.ETASK_ASSERT_EXTRA; // to debug internal etask bugs
 E.nextTick = _process.nextTick;
-// XXX: hack, rm set_zerr, get zerzerrusing require
-E.set_zerr = function(_zerr){ zerr = _zerr; };
+// XXX: hack, rm set_xerr, get zerxerrusing require
+E.set_xerr = function(_xerr){ xerr = _xerr; };
 E.events = new events();
 var cb_pre, cb_post, cb_ctx, longcb_ms, perf_enable;
 E.perf_stat = {};
@@ -37,7 +37,7 @@ function _cb_post(et, ctx){
     var ms = Date.now()-ctx.start;
     if (longcb_ms && ms>longcb_ms)
     {
-        zerr('long cb '+ms+'ms: '+et.get_name()+', '
+        xerr('long cb '+ms+'ms: '+et.get_name()+', '
             +et.run_state.f.toString().slice(0, 128));
     }
     if (perf_enable)
@@ -233,8 +233,8 @@ E.prototype._call_safe = function(state_fn){
     catch(e){ this._call_err(e); }
 };
 E.prototype._complete = function(){
-    if (zerr.is(zerr.L.DEBUG))
-        zerr.debug(this._name+': close');
+    if (xerr.is(xerr.L.DEBUG))
+        xerr.debug(this._name+': close');
     this.tm_completed = Date.now();
     this.parent_type = this.up ? 'call' : 'spawn';
     if (this.error)
@@ -278,8 +278,8 @@ E.prototype._next = function(rv){
     this.error = rv.err;
     if (rv.err!==undefined)
     {
-        if (zerr.on_exception)
-            zerr.on_exception(rv.err);
+        if (xerr.on_exception)
+            xerr.on_exception(rv.err);
         if (this.run_state.try_catch)
         {
             this.use_retval = true;
@@ -391,8 +391,8 @@ E.prototype._run = function(){
         this.running = true;
         rv.ret = rv.err = undefined;
         E.in_run.push(this);
-        if (zerr.is(zerr.L.DEBUG))
-            zerr.debug(this._name+':S'+this.cur_state+': running');
+        if (xerr.is(xerr.L.DEBUG))
+            xerr.debug(this._name+':S'+this.cur_state+': running');
         if (cb_pre)
             cb_ctx = cb_pre(this);
         try { rv.ret = this.run_state.f.call(this, arg); }
@@ -1005,7 +1005,7 @@ E.prototype.ps = function(flags){
     return this._ps('', '', flags);
 };
 E._longname_root = function(){
-    return (zerr.prefix ? zerr.prefix+'pid '+_process.pid+' ' : '')+'root'; };
+    return (xerr.prefix ? xerr.prefix+'pid '+_process.pid+' ' : '')+'root'; };
 E.ps = function(flags){
     var i, s = '', task_trail;
     flags = assign({STACK: 1, RECURSIVE: 1, LIMIT: 10000000, TIME: 1,
@@ -1436,8 +1436,8 @@ E._generator = function(gen, ctor, opt){
     }]);
 };
 E.ef = function(err){ // error filter
-    if (zerr.on_exception)
-        zerr.on_exception(err);
+    if (xerr.on_exception)
+        xerr.on_exception(err);
     return err;
 };
 // similar to setInterval
@@ -1507,7 +1507,7 @@ E.shutdown = function(){
         if (e==prev)
         {
             assert(e.tm_completed);
-            zerr.zexit('etask root not removed after return - '+
+            xerr.zexit('etask root not removed after return - '+
                 'fix non-cancelable child etask');
         }
         prev = e;

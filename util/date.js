@@ -229,7 +229,7 @@ E.from_log_file = function(d){
         return;
     return new Date(Date.UTC(m[1], m[2]-1, m[3], m[4], m[5], m[6]));
 };
-// zerr compatible timestamp format
+// xerr compatible timestamp format
 E.to_log_ms = function(d){ return E.to_sql_ms(d).replace(/-/g, '.'); };
 E.from_rcs = function(d){
     var m = d.match(/^(\d{4})\.(\d{2})\.(\d{2})\.(\d{2})\.(\d{2})\.(\d{2})$/);

@@ -642,7 +642,7 @@ const test_resume = (role, c)=>etask(function*(){
 
 const cmd_run = (role, c)=>etask(function*(){
     let fake = is_fake(role, c.s);
-    // XXX: remove or use zerr with levels
+    // XXX: remove or use xerr with levels
     console.log('cmd:%s %s%s>%s(%s) orig %s', c.fwd ? 'in fwd '+c.fwd : '',
       c.loop ? 'loop' : c.s, c.d||'',
       c.cmd, c.arg||'', c.orig, fake? ' fake' : '');
