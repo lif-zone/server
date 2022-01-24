@@ -8,6 +8,7 @@ import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
+import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
 const xetask = xtest.etask;
 const assign = Object.assign;
@@ -204,10 +205,11 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
 });
 
 class FakeNode extends EventEmitter {
-  constructor(opts){
+  constructor(opt){
     super();
-    this.id = opts.keys.pub;
-    this.wsConnector = new FakeWsConnector(this.id, opts.port, opts.host);
+    this.wallet = new Wallet({keys: opt.keys});
+    this.id = opt.keys.pub;
+    this.wsConnector = new FakeWsConnector(this.id, opt.port, opt.host);
     this.wrtcConnector = new FakeWrtcConnector(this.id);
   }
   destroy(){}
@@ -260,10 +262,10 @@ class FakeWrtcConnector extends EventEmitter {
 }
 
 class FakeChannel extends EventEmitter {
-  constructor(opts){
+  constructor(opt){
     super();
-    this.id = opts.id;
-    this.localID = opts.localID;
+    this.id = opt.id;
+    this.localID = opt.localID;
     this.t = {};
   }
   send = msg=>{
@@ -339,7 +341,8 @@ const fake_send_msg = (c, data)=>etask(function*(){
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
-  var msg = {to, from, path: [s.id.toString('hex')], nonce, data};
+  var msg = {to, from, nonce, data, __meta__: {path: [s.id.toString('hex')]}};
+  util.set(msg, '__meta__.sign', s.wallet.sign(msg));
   if (c.fwd)
   {
     assert.equal(c.fwd[2], '>');
@@ -737,17 +740,21 @@ const test_end = ()=>etask(function*(){
   t_cmds = t_role = t_i = undefined;
 });
 
+beforeEach(function(){
+  xerr.no_console = true;
+  xerr.log_max_size = 1000;
+});
+
+afterEach(function(){
+  xerr.no_console = false;
+  xerr.clear();
+});
+
 describe('peer-relay', function(){
   beforeEach(function(){
-    xerr.no_console = true;
-    xerr.log_max_size = 1000;
     xtest.set(Node, 'WsConnector', FakeWsConnector);
     xtest.set(Node, 'WrtcConnector', FakeWrtcConnector);
     xtest.set(util, 'test_on_connection', test_on_connection);
-  });
-  afterEach(function(){
-    xerr.no_console = false;
-    xerr.clear();
   });
   describe('test_api', function(){
     it('pre_process', ()=>xetask(function*(){
@@ -783,6 +790,7 @@ describe('peer-relay', function(){
   // - process init/unchaught handling
   // - random id -> priv/pub key (copy hypercore)
   //   - do we want to add cksm and sign it on each message
+  //   - need to verify idendity of each other when direct connection created
   // - ack on each message
   // - add beep sound to ping script
   const t_roles = (name, roles, test)=>{

@@ -27,7 +27,8 @@ export default class Client extends EventEmitter {
     this.peers.on('removed', channel=>channel.destroy());
     // TODO expire canidates after period
     this.canidates = new KBucket({localNodeId: this.id});
-    this.router = new Router(this.peers, this.id);
+    this.router = new Router({channels: this.peers, id: this.id,
+      wallet: this.wallet});
     this.router.set_on_message((msg, from)=>this.on_message(msg, from));
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, ids(this.id));

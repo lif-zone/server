@@ -1,6 +1,7 @@
 'use strict'; /*jslint node:true, browser:true*/
-import crypto from 'hypercore-crypto';
+import hcrypto from 'hypercore-crypto';
 import assert from 'assert';
+import hash from 'object-hash';
 
 export default class Wallet {
   constructor(opt){
@@ -14,13 +15,21 @@ export default class Wallet {
     }
     else
     {
-      let {publicKey, secretKey} = crypto.keyPair();
+      let {publicKey, secretKey} = hcrypto.keyPair();
       this.keys = {priv: secretKey, pub: publicKey};
     }
   }
   hash_obj(o){
-    return crypto.data(Uint8Array.from(typeof o=='string' ? o :
-      JSON.stringify(o)));
+    return Uint8Array.from(hash(o,
+      {respectType: false, excludeKeys: key=>key=='__meta__'}));
+  }
+  sign(o){
+    // XXX: we use sha1 algorithm. need to find a more secured one (blake?)
+    return hcrypto.sign(this.hash_obj(o), this.keys.priv);
+  }
+  verify(o, sign, pub){
+    pub = pub || this.pub;
+    return hcrypto.verify(this.hash_obj(o), sign, pub);
   }
 }
 

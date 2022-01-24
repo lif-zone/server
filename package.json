@@ -41,7 +41,8 @@
     "assertion": "1.2.18",
     "big-object-diff": "0.7.0",
     "log-buffer": "0.0.3",
-    "hypercore-crypto": "3.1.1"
+    "hypercore-crypto": "3.1.1",
+    "object-hash": "2.2.0"
   },
   "devDependencies": {
     "ping": "0.4.1",

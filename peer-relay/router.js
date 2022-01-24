@@ -3,6 +3,8 @@ import {EventEmitter} from 'events';
 import _debug from 'debug';
 import assert from 'assert';
 import etask from '../util/etask.js';
+import xerr from '../util/xerr.js';
+import util from '../util/util.js';
 const debug = _debug('peer-relay:router');
 const stringify = JSON.stringify;
 
@@ -16,8 +18,10 @@ function debugMsg(verb, localID, msg){
 }
 
 export default class Router extends EventEmitter {
-  constructor(channels, id){
+  constructor(opt){
     super();
+    let {channels, id, wallet} = opt;
+    this.wallet = wallet;
     this.id = id;
     this.concurrency = 2;
     this.maxHops = 20;
@@ -33,8 +37,10 @@ export default class Router extends EventEmitter {
   }
   send(id, data){
     var msg = {to: id.toString('hex'), from: this.id.toString('hex'),
-      path: [], nonce: '' + Math.floor(1e15 * Math.random()), data: data};
+      nonce: '' + Math.floor(1e15 * Math.random()), data: data,
+      __meta__: {path: []}};
     this._touched[msg.nonce] = true;
+    util.set(msg, '__meta__.sign', this.wallet.sign(msg));
     debugMsg('SEND', this.id, msg);
     return this._send(msg);
   }
@@ -42,14 +48,14 @@ export default class Router extends EventEmitter {
     var _this = this; // XXX: is this the best way to use etask as methods
     return etask(function*(){
       _this.emit('send', msg);
-      if (msg.path.length >= _this.maxHops)
+      if (msg.__meta__.path.length >= _this.maxHops)
         return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
       if (_this._channels.count()===0)
         _this._queue.push(msg);
-      msg.path.push(_this.id.toString('hex'));
+      msg.__meta__.path.push(_this.id.toString('hex'));
       var target = new Buffer(msg.to, 'hex');
       var closests = _this._channels.closest(target, 20)
-        .filter(c=>msg.path.indexOf(c.id.toString('hex'))===-1)
+        .filter(c=>msg.__meta__.path.indexOf(c.id.toString('hex'))===-1)
         .filter((_, index) => index < _this.concurrency);
       if (msg.to in _this._paths)
       {
@@ -76,16 +82,18 @@ export default class Router extends EventEmitter {
     return etask(function*_onMessage(){
       if (msg.nonce in _this._touched)
         return;
+      let from = new Buffer(msg.from, 'hex'), to = new Buffer(msg.to, 'hex');
+      if (!_this.wallet.verify(msg, msg.__meta__.sign, from))
+        return xerr('invalid message signature');
       _this._touched[msg.nonce] = true;
       assert(typeof msg.from=='string',
         'invalid from _this '+_this.id.toString('hex')+' '+stringify(msg));
-      _this._paths[msg.from] = msg.path[msg.path.length - 1];
-      let to = new Buffer(msg.to, 'hex');
+      _this._paths[msg.from] = msg.__meta__.path[msg.__meta__.path.length - 1];
       if (to.equals(_this.id))
       {
         // XXX: ugly: we change to/from fields and make code diffiuclt to debug
         msg.to = to;
-        msg.from = new Buffer(msg.from, 'hex');
+        msg.from = from;
         debugMsg('RECV', _this.id, msg);
         yield _this.emit_message(msg.data, msg.from, msg);
       }
@@ -124,3 +132,4 @@ export default class Router extends EventEmitter {
     channel.removeListener('message', listener);
   }
 }
+
