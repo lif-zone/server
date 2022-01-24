@@ -17,26 +17,18 @@ function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 zerr.no_console = true;
 zerr.log_max_size = 1000;
 
+function on_error(desc, err){
+  zerr.flush();
+  zerr.no_console = false;
+  zerr('%s %s', desc, err.stack);
+  process.exit(-1);
+}
+
 // XXX: make it automatic for all node/browser
-process.on('uncaughtException', e=>{
-  zerr.flush();
-  zerr.no_console = false;
-  zerr('uncaughtException %o', e);
-  process.exit(-1);
-});
-process.on('unhandledRejection', e=>{
-  zerr.flush();
-  zerr.no_console = false;
-  zerr('unhandledRejection %o', e);
-  process.exit(-1);
-});
 zerr.set_exception_capture_all(true);
-zerr.set_exception_handler('test', (prefix, o, err)=>{
-  zerr.flush();
-  zerr.no_console = false;
-  zerr('excetion %s %s', prefix, err.stack);
-  process.exit(-1);
-});
+process.on('uncaughtException', err=>on_error(err));
+process.on('unhandledRejection', err=>on_error(err));
+zerr.set_exception_handler('test', (prefix, o, err)=>on_error(prefix, err));
 
 let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
