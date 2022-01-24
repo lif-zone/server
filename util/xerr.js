@@ -180,6 +180,24 @@ E.log_max_size = 200;
 E.buffered = false;
 E.clear = function(){ E.log = []; };
 
+E.set_buffered = function(on, max_size){
+  if (on)
+  {
+    E.buffered = on;
+    E.log_max_size = max_size||E.log_max_size;
+    E.clear();
+    if (is_node)
+      process.on('exit', E.flush);
+  }
+  else
+  {
+    E.flush();
+    E.buffered = on;
+    if (is_node)
+      process.off('exit', E.flush);
+  }
+};
+
 E.flush = function(){
   if (!E.log.length)
     return;

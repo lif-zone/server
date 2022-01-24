@@ -16,14 +16,13 @@ function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
 function on_error(desc, err){
   xerr.flush();
-  xerr.buffered = false;
+  xerr.set_buffered(false);
   xerr('%s %s', desc, err.stack);
   process.exit(-1);
 }
 
 // XXX: make it automatic for all node/browser
 xerr.set_exception_catch_all(true);
-process.on('exit', xerr.flush);
 process.on('uncaughtException', err=>on_error(err));
 process.on('unhandledRejection', err=>on_error(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>on_error(prefix, err));
@@ -739,14 +738,11 @@ const test_end = ()=>etask(function*(){
   t_cmds = t_role = t_i = undefined;
 });
 
-beforeEach(function(){
-  xerr.buffered = true;
-  xerr.log_max_size = 1000;
-});
+beforeEach(function(){ xerr.set_buffered(true, 1000); });
 
 afterEach(function(){
-  xerr.buffered = false;
   xerr.clear();
+  xerr.set_buffered(false);
 });
 
 describe('peer-relay', function(){
