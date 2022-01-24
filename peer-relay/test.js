@@ -15,9 +15,7 @@ const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
 function on_error(desc, err){
-  xerr.flush();
-  xerr.set_buffered(false);
-  xerr('%s %s', desc, err.stack);
+  xerr.zexit(err);
   process.exit(-1);
 }
 
