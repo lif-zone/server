@@ -177,7 +177,7 @@ E.get_stack_trace = function(opt){
 
 E.log = [];
 E.log_max_size = 200;
-E.no_console = false;
+E.buffered = false;
 E.clear = function(){ E.log = []; };
 
 E.flush = function(){
@@ -225,7 +225,7 @@ var __xerr = function(level, args){
     if (env.CURRENT_SYSTEMD_UNIT_NAME)
         prefix = '<'+level+'>'+prefix;
     var res = prefix+k[level]+': '+msg;
-    if (!xerr.no_console)
+    if (!xerr.buffered)
       console.error(res);
     log_tail_push(res);
 };
@@ -293,7 +293,7 @@ E.log = [];
 var L_STR = E.L_STR = ['EMERGENCY', 'ALERT', 'CRITICAL', 'ERROR', 'WARNING',
     'NOTICE', 'INFO', 'DEBUG'];
 E.log_max_size = 200;
-E.no_console = false;
+E.buffered = false;
 chrome = self.chrome;
 E.conf = self.conf;
 E.level = self.is_tpopup ? L.CRITICAL : E.conf && E.conf.xerr_level ?
@@ -315,7 +315,7 @@ _xerr = function(l, args){
         +L_STR[l]+': ';
         if (E.is(l))
         {
-            if (!xerr.no_console)
+            if (!xerr.buffered)
             {
                 Function.prototype.apply.bind(console[console_method(l)],
                     console)([prefix+fmt].concat(fmt_args));

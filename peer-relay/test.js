@@ -16,7 +16,7 @@ function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
 function on_error(desc, err){
   xerr.flush();
-  xerr.no_console = false;
+  xerr.buffered = false;
   xerr('%s %s', desc, err.stack);
   process.exit(-1);
 }
@@ -740,12 +740,12 @@ const test_end = ()=>etask(function*(){
 });
 
 beforeEach(function(){
-  xerr.no_console = true;
+  xerr.buffered = true;
   xerr.log_max_size = 1000;
 });
 
 afterEach(function(){
-  xerr.no_console = false;
+  xerr.buffered = false;
   xerr.clear();
 });
 
