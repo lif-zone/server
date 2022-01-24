@@ -15,6 +15,7 @@ const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
 zerr.no_console = true;
+E.log.max_size = 1000;
 
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
