@@ -1,5 +1,5 @@
 // XXX: obsolete - rm
-'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach*/
+'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
 // XXX: need jslint mocha: true
 import assert from 'assert';
 import Node from './client.js';
@@ -14,18 +14,26 @@ const assign = Object.assign;
 const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
+zerr.no_console = true;
+
 // XXX: make it automatic for all node/browser
 process.on('uncaughtException', e=>{
+  zerr.flush();
+  zerr.no_console = false;
   zerr('uncaughtException %o', e);
   process.exit(-1);
 });
 process.on('unhandledRejection', e=>{
+  zerr.flush();
+  zerr.no_console = false;
   console.error('unhandledRejection %o', e);
   process.exit(-1);
 });
 // XXX derry: review set_exception_capture_all
 zerr.set_exception_capture_all(true);
 zerr.set_exception_handler('test', (prefix, o, err)=>{
+  zerr.flush();
+  zerr.no_console = false;
   console.error(prefix+' %o', err);
   process.exit(-1);
 });
@@ -727,6 +735,9 @@ describe('peer-relay', function(){
     xtest.set(Node, 'WrtcConnector', FakeWrtcConnector);
     xtest.set(util, 'test_on_connection', test_on_connection);
   });
+  afterEach(function(){
+    zerr.clear();
+  });
   describe('test_api', function(){
     it('pre_process', ()=>xetask(function*(){
       let t = function*(test, exp){
@@ -765,6 +776,7 @@ describe('peer-relay', function(){
   // - random id -> priv/pub key (copy hypercore)
   //   - do we want to add cksm and sign it on each message
   // - ack on each message
+  // - add beep sound to ping script
   const t_roles = (name, roles, test)=>{
     xit(name, 'fake', test);
     for (let i=0; i<roles.length; i++)

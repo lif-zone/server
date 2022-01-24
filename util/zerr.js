@@ -5,7 +5,6 @@ import sprintf from './sprintf.js';
 import xescape from './escape.js';
 import rate_limit from './rate_limit.js';
 import cluster from 'cluster';
-import log_buffer from 'log-buffer';
 const is_node = typeof window==='undefined';
 let version = '0.0.1'; // XXX HACK
 let _process = is_node ? process : {env: {}};
@@ -179,6 +178,14 @@ E.get_stack_trace = function(opt){
 
 E.log = [];
 E.log.max_size = 200;
+E.log.no_console = false;
+E.clear = function(){ E.log = []; };
+E.flush = function(){
+  if (!E.log.length)
+    return;
+  console.error(E.log.join('\n'));
+  E.clear();
+}
 E.log_tail = function(size){
     return (E.log||[]).join('\n').substr(-(size||4096)); };
 
@@ -194,22 +201,6 @@ E.ZEXIT_LOG_DIR = env.ZEXIT_LOG_DIR||'/tmp/zexit_logs';
 E.prefix = '';
 
 E.level = L.NOTICE;
-E.flush = function(){};
-E.set_log_buffer = function(on){
-    if (!on)
-    {
-        if (E.log_buffer)
-        {
-            E.flush();
-            E.log_buffer(0);
-        }
-        return;
-    }
-    E.log_buffer = log_buffer;
-    E.log_buffer(32*1024);
-    E.flush = function(){ E.log_buffer.flush(); };
-    setInterval(E.flush, 1000).unref();
-};
 var node_init = function(){
     if (xutil.is_mocha())
         E.level = L.NOTICE;
@@ -233,7 +224,8 @@ var __zerr = function(level, args){
     if (env.CURRENT_SYSTEMD_UNIT_NAME)
         prefix = '<'+level+'>'+prefix;
     var res = prefix+k[level]+': '+msg;
-    console.error(res);
+    if (!zerr.no_console)
+      console.error(res);
     log_tail_push(res);
 };
 
@@ -300,6 +292,7 @@ E.log = [];
 var L_STR = E.L_STR = ['EMERGENCY', 'ALERT', 'CRITICAL', 'ERROR', 'WARNING',
     'NOTICE', 'INFO', 'DEBUG'];
 E.log.max_size = 200;
+E.log.no_console = false;
 chrome = self.chrome;
 E.conf = self.conf;
 E.level = self.is_tpopup ? L.CRITICAL : E.conf && E.conf.zerr_level ?
@@ -321,8 +314,11 @@ _zerr = function(l, args){
         +L_STR[l]+': ';
         if (E.is(l))
         {
-            Function.prototype.apply.bind(console[console_method(l)],
-                console)([prefix+fmt].concat(fmt_args));
+            if (!zerr.no_console)
+            {
+                Function.prototype.apply.bind(console[console_method(l)],
+                    console)([prefix+fmt].concat(fmt_args));
+            }
         }
         log_tail_push(prefix+s);
     } catch(err){
