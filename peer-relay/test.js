@@ -10,7 +10,6 @@ import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
-const xetask = xtest.etask;
 const assign = Object.assign;
 const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
@@ -757,7 +756,7 @@ describe('peer-relay', function(){
     xtest.set(util, 'test_on_connection', test_on_connection);
   });
   describe('test_api', function(){
-    it('pre_process', ()=>xetask(function*(){
+    it('pre_process', ()=>etask(function*(){
       let t = function*(test, exp){
         let cmds = yield test_pre_process(test);
         cmds = xtest.test_parse_rm_meta_orig(cmds);
@@ -780,8 +779,7 @@ describe('peer-relay', function(){
       ]));
     }));
   });
-  const xit = (name, role, test)=>it(name+'_'+role,
-    ()=>xetask(()=>test_run(role, test)));
+  const xit = (name, role, test)=>it(name+'_'+role, ()=>test_run(role, test));
   // XXX TODO:
   // - check generic assert code that derry wrote
   // - check etask error handling of unchaught errors
