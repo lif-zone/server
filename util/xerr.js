@@ -114,10 +114,10 @@ E.e2s = function(err){
 };
 
 E.on_exception = undefined;
-E.exception_capture_all = false;
+E.exception_catch_all = false;
 var in_exception;
 
-E.set_exception_capture_all = function(all){ E.exception_capture_all = all; };
+E.set_exception_catch_all = function(all){ E.exception_catch_all = all; };
 
 E.set_exception_handler = function(prefix, err_func){
     E.on_exception = function(err){
@@ -125,7 +125,7 @@ E.set_exception_handler = function(prefix, err_func){
             return;
         let typeerror = err instanceof TypeError ||
           err instanceof ReferenceError;
-        if (!typeerror && !E.exception_capture_all)
+        if (!typeerror && !E.exception_catch_all)
             return;
         in_exception = 1;
         err_func((prefix ? prefix+'_' : '')+

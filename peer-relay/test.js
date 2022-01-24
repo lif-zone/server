@@ -22,7 +22,7 @@ function on_error(desc, err){
 }
 
 // XXX: make it automatic for all node/browser
-xerr.set_exception_capture_all(true);
+xerr.set_exception_catch_all(true);
 process.on('exit', xerr.flush);
 process.on('uncaughtException', err=>on_error(err));
 process.on('unhandledRejection', err=>on_error(err));
