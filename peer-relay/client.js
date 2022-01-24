@@ -51,7 +51,7 @@ export default class Client extends EventEmitter {
       assert(!_this.destroyed, 'node already destroyed');
       channel.on('close', onClose);
       // XXX: decide how to handle errors
-      channel.on('error', err=>console.error('Error', err));
+      channel.on('error', err=>zerr('Error', err));
       delete _this.pending[channel.id];
       _this.canidates.add({id: channel.id});
       if (_this.peers.get(channel.id))
@@ -115,7 +115,7 @@ export default class Client extends EventEmitter {
       case 'find_r': yield _this._on_find_r(msg, from); break;
       case 'conn_info': yield _this._on_conn_info(msg, from); break;
       case 'conn_info_r': yield _this._on_conn_info_r(msg, from); break;
-      default: console.error('unknown msg type %s', msg.type);
+      default: zerr('unknown msg type %s', msg.type);
       }
     });
   };
