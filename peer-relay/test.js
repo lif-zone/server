@@ -759,12 +759,9 @@ describe('peer-relay', function(){
   // XXX TODO:
   // - check generic assert code that derry wrote
   // - check etask error handling of unchaught errors
-  // - wrtc tests
   // - add test for failures (missing events, event mismatch etc)
   // - test.js code cleaup
   // - process init/unchaught handling
-  // - log - use xerr?
-  //   - xerr - lightweight version of xerr
   // - random id -> priv/pub key (copy hypercore)
   //   - do we want to add cksm and sign it on each message
   // - ack on each message
