@@ -55,7 +55,7 @@ function normalize(e){
   return b+a+'>'+e.substr(3);
 }
 
-function rev(s){
+function rev_trim(s){
   let i = s.search(/[<>]/);
   assert(i>=0 && i<3, 'invalid [<>] '+s);
   s = s.substr(0, i)+(s[i]=='<' ? '>' : '<');
@@ -66,7 +66,7 @@ function build_cmd(cmd, arg, fwd){
   let ret = cmd+(arg ? '('+arg+')' : '');
   return fwd ? fwd+'fwd('+ret+')' : ret;
 }
-function rev_cmd(sd, cmd, arg){ return build_cmd(rev(sd)+cmd, arg); }
+function rev_cmd(sd, cmd, arg){ return build_cmd(rev_trim(sd)+cmd, arg); }
 
 function _push_cmd(a){ t_cmds.splice(t_i, 0, ...a); }
 
@@ -553,7 +553,10 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
         rev_cmd(c.orig, 'conn_info_r', r)));
     }
     else if (!c.had_loop)
-      push_cmd(build_cmd(rev(c.fwd)+'fwd', rev_cmd(c.orig, 'conn_info_r', r)));
+    {
+      push_cmd(build_cmd(rev_trim(c.fwd)+'fwd',
+        rev_cmd(c.orig, 'conn_info_r', r)));
+    }
   }
   if (event)
   {
@@ -747,8 +750,8 @@ describe('api', function(){
     t('ab<c', 'ba>c');
     t('ab<c(d)', 'ba>c(d)');
   });
-  it('rev', ()=>{
-    let t = (cmd, exp)=>assert.equal(rev(cmd), exp);
+  it('rev_trim', ()=>{
+    let t = (cmd, exp)=>assert.equal(rev_trim(cmd), exp);
     t('a>', 'a<');
     t('a<', 'a>');
     t('ab>', 'ab<');
