@@ -55,7 +55,6 @@ function normalize(e){
   return b+a+'>'+e.substr(3);
 }
 
-// XXX: add test
 function rev(s){
   let i = s.search(/[<>]/);
   assert(i>=0 && i<3, 'invalid [<>] '+s);
@@ -747,6 +746,15 @@ describe('api', function(){
     t('ab>c', 'ab>c');
     t('ab<c', 'ba>c');
     t('ab<c(d)', 'ba>c(d)');
+  });
+  it('rev', ()=>{
+    let t = (cmd, exp)=>assert.equal(rev(cmd), exp);
+    t('a>', 'a<');
+    t('a<', 'a>');
+    t('ab>', 'ab<');
+    t('ab<', 'ab>');
+    t('a>c(d)', 'a<');
+    t('ab>c(d)', 'ab<');
   });
 });
 
