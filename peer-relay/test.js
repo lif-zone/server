@@ -844,7 +844,6 @@ describe('peer-relay', function(){
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       cba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
-    // XXX: TODO: cba>fwd(conn_info(r(ws)))
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(find(a sa)) -
       bs>!connect(find(bas sab)) bsa>fwd(ba>conn_info(r))`);
