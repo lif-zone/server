@@ -276,9 +276,9 @@ E.zexit = function(args){
         stack = e.stack;
         __xerr(L.CRIT, arguments);
     }
+    E.flush();
     if ((args&&args.code)!='ERR_ASSERTION')
         console.error('xerr.zexit was called', new Error().stack);
-    E.flush();
     if (env.NODE_ENV=='production')
     {
         var conf = require('./conf.js');
@@ -288,7 +288,6 @@ E.zexit = function(args){
         write_zexit_log({id: 'lerr_server_zexit', info: ''+args,
             ts: date.to_sql(), backtrace: stack, version: version,
             app: conf.app});
-        E.flush();
     }
     // eslint-disable-next-line no-debugger
     debugger;

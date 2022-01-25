@@ -837,28 +837,47 @@ E.parse_cmd_dir = function(s){
   let _d = s.search(/[<>]/);
   if (_d==-1)
     return {cmd: s};
-  let loop = [], dir = s[_d], a='', b='';
+  let loop = [], dir = s[_d], a='', b='', comma, no_comma;
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
     assert_invalid(/[a-z,<>]/i.test(ch), s, i);
     if (/[<>,]/.test(ch))
     {
+      if (ch==',')
+      {
+        assert_invalid(!no_comma, s, i);
+        comma = true;
+      }
       assert_invalid(a||b, s, i);
+      if (loop.length)
+      {
+        assert_invalid(a&&b, s, i);
+        assert_invalid(loop[loop.length-1].s && loop[loop.length-1].d, s, i);
+      }
       let sd = dir=='>' ? {s: a, d: b, dir} : {s: b, d: a, dir};
       loop.push({...sd});
-      assert_invalid(loop[0].d && sd.d || !loop[0].d && !sd.d, s, i);
       a = b = '';
+    }
+    else if (a && b)
+    {
+      assert_invalid(!comma, s, i);
+      no_comma = true;
+      let sd = dir=='>' ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      loop.push({...sd});
+      a = b;
+      b = ch;
     }
     else if (!a)
       a = ch;
-    else
-    {
-      assert_invalid(!b, s, i);
+    else if (!b)
       b = ch;
-    }
+    else
+      assert(false);
   }
   assert_invalid(loop.length, _d);
+  if (dir=='<' && no_comma && loop.length>1)
+    loop.reverse();
   return assign(loop.length>1 ? {loop} : loop[0], {cmd: s.substr(_d+1),
     meta: {cmd: s}});
 };

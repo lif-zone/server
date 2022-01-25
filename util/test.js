@@ -3465,6 +3465,9 @@ describe('test_lib', ()=>{
       t('bc>d(hc hget)', {cmd: 'bc>d', arg: 'hc hget'}, 13);
       t('ab,cd>e', {cmd: 'ab,cd>e'}, 7);
       t('ab,cd>e(f)', {cmd: 'ab,cd>e', arg: 'f'}, 10);
+      t('abc>', {cmd: 'abc>'}, 4);
+      t('abc>d', {cmd: 'abc>d'}, 5);
+      t('abc>d(f)', {cmd: 'abc>d', arg: 'f'}, 8);
     });
     it('cmd_single_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
@@ -3596,19 +3599,36 @@ describe('test_lib', ()=>{
       t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
       t('a>b(c)', {s: 'a', d: '', dir: '>', cmd: 'b(c)'});
-      if (0) t('ab,cd>e', {loop: [{s: 'a', d: 'b'}, {s: 'c', d: 'd'}],
-        dir: '>', cmd: 'e'});
       t('a>!b', {s: 'a', d: '', dir: '>', cmd: '!b'});
       t('ab>!c', {s: 'a', d: 'b', dir: '>', cmd: '!c'});
       t('ab>!c(d)', {s: 'a', d: 'b', dir: '>', cmd: '!c(d)'});
+      t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
+      t('ab,bc>d', {loop: [{s: 'a', d: 'b', dir: '>'},
+        {s: 'b', d: 'c', dir: '>'}], cmd: 'd'});
+      t('bc,ab<d', {loop: [{s: 'c', d: 'b', dir: '<'},
+        {s: 'b', d: 'a', dir: '<'}], cmd: 'd'});
+      t('ab,bc,cd>e', {loop: [{s: 'a', d: 'b', dir: '>'},
+        {s: 'b', d: 'c', dir: '>'}, {s: 'c', d: 'd', dir: '>'}], cmd: 'e'});
+      t('cd,bc,ab<e', {loop: [{s: 'd', d: 'c', dir: '<'},
+        {s: 'c', d: 'b', dir: '<'}, {s: 'b', d: 'a', dir: '<'}], cmd: 'e'});
+      t('abc>e', {loop: [{s: 'a', d: 'b', dir: '>'},
+        {s: 'b', d: 'c', dir: '>'}], cmd: 'e'});
+      t('abc<d', {loop: [{s: 'c', d: 'b', dir: '<'},
+        {s: 'b', d: 'a', dir: '<'}], cmd: 'd'});
+      t('abcd>e', {loop: [{s: 'a', d: 'b', dir: '>'},
+        {s: 'b', d: 'c', dir: '>'}, {s: 'c', d: 'd', dir: '>'}], cmd: 'e'});
+      t('abcd<e', {loop: [{s: 'd', d: 'c', dir: '<'},
+        {s: 'c', d: 'b', dir: '<'}, {s: 'b', d: 'a', dir: '<'}], cmd: 'e'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },
         {message: exp}); };
-      t('abc>', 'invalid ab^^^c>');
       t('>', 'invalid ^^^>');
       t(',a>e', 'invalid ^^^,a>e');
       t('ab,c>e', 'invalid ab,c^^^>e');
+      t('ab,cde>f', 'invalid ab,cd^^^e>f');
+      t('abc,de>f', 'invalid abc^^^,de>f');
+      t('abc,d>e', 'invalid abc^^^,d>e');
       t('a,cd>e', 'invalid a,cd^^^>e');
       t('ab,cd,e>f', 'invalid ab,cd,e^^^>f');
     });
