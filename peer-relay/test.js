@@ -63,6 +63,7 @@ function rev_trim(s){
   return s;
 }
 
+// XXX: need test
 function build_cmd(cmd, arg, fwd){
   let ret = cmd+(arg ? '('+arg+')' : '');
   return fwd ? fwd+'fwd('+ret+')' : ret;
