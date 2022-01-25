@@ -13,7 +13,6 @@ import assertion from 'assertion';
 import net from 'net';
 import _ from 'lodash';
 import big_object_diff from 'big-object-diff';
-import errors from 'internal/errors';
 const assign = Object.assign;
 
 const E = {};
@@ -45,9 +44,18 @@ let stringify_dates = obj=>_.each(obj, (val, key)=>{
 });
 
 E.hook_assert = ()=>{
+    let AssertionError;
+    // avoid forcing running mocha/node with --expose-internals and avoid
+    // import AssertionError from 'internal/assert/assertion_error';
+    try { assert(false); }
+    catch(err){ AssertionError = err.constructor; }
     const print = err=>{
+        xerr.flush();
         const stack = new Error().stack;
         let msg = '\n', diff = '';
+        msg += stack+'\n';
+        if (etask.root.length)
+            msg += '\netask '+etask.ps()+'\n';
         if (xutil.is_mocha())
             msg += '*** test '+E.currentTest_title()+' FAILED:\n';
         if (err.message)
@@ -61,16 +69,17 @@ E.hook_assert = ()=>{
         msg = sprintf(
             '%s\nexpected: %O\n\nactual:   %O\n%soperator: %s\n',
             msg, err.expected, err.actual, diff, err.operator);
-        msg += '\n'+stack+'\n';
-        if (etask.root.length)
-            msg += '\netask '+etask.ps();
         console.log(msg);
     };
-    errors.AssertionError = function(err){
-        try { print(err); }
-        catch(e){ console.trace('unknown assert error'); }
-        process.exit(1);
-    };
+    Object.defineProperty(AssertionError.prototype, 'operator', {
+      get: function(){ return this._operator; },
+      set: function(x){
+          this._operator = x;
+          try { print(this); }
+          catch(e){ console.trace('unknown assert error'); }
+          process.exit(1);
+      },
+    });
 };
 E.hook_assert();
 

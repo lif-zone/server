@@ -14,6 +14,7 @@ const assign = Object.assign;
 const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
+
 // XXX: make it automatic for all node/browser
 xerr.set_exception_catch_all(true);
 process.on('uncaughtException', err=>xerr.zexit(err));
@@ -174,9 +175,7 @@ function assert_peers(peers){
 }
 
 function assert_event(event, exp){
-  assert.equal(normalize(event), normalize(exp), 'event mismatch got '+event+
-    ' expected '+exp);
-}
+  assert.equal(normalize(event), normalize(exp)); }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
