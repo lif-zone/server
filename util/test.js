@@ -3605,12 +3605,12 @@ describe('test_lib', ()=>{
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
       t('ab,bc>d', {loop: [{s: 'a', d: 'b', dir: '>'},
         {s: 'b', d: 'c', dir: '>'}], cmd: 'd'});
-      t('bc,ab<d', {loop: [{s: 'c', d: 'b', dir: '<'},
-        {s: 'b', d: 'a', dir: '<'}], cmd: 'd'});
+      t('bc,ab<d', {loop: [{s: 'b', d: 'a', dir: '<'},
+        {s: 'c', d: 'b', dir: '<'}], cmd: 'd'});
       t('ab,bc,cd>e', {loop: [{s: 'a', d: 'b', dir: '>'},
         {s: 'b', d: 'c', dir: '>'}, {s: 'c', d: 'd', dir: '>'}], cmd: 'e'});
-      t('cd,bc,ab<e', {loop: [{s: 'd', d: 'c', dir: '<'},
-        {s: 'c', d: 'b', dir: '<'}, {s: 'b', d: 'a', dir: '<'}], cmd: 'e'});
+      t('cd,bc,ab<e', {loop: [{s: 'b', d: 'a', dir: '<'},
+        {s: 'c', d: 'b', dir: '<'}, {s: 'd', d: 'c', dir: '<'}], cmd: 'e'});
       t('abc>e', {loop: [{s: 'a', d: 'b', dir: '>'},
         {s: 'b', d: 'c', dir: '>'}], cmd: 'e'});
       t('abc<d', {loop: [{s: 'c', d: 'b', dir: '<'},

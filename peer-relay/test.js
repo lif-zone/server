@@ -362,20 +362,20 @@ function cmd_setup(opt){
     break;
   case '3_nodes_linear':
     M(`node(a) node(b wss) node(c wss) - ab>!connect(find(a ba)) -
-      bc>!connect(find(b cab)) bc,ab<fwd(ca>conn_info(r))`);
+      bc>!connect(find(b cab)) abc<fwd(ca>conn_info(r))`);
     break;
   case '3_nodes_wss':
      M(`node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-      cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
+      cba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
      break;
   case '4_nodes_linear':
     M(`node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-      cb,ba>fwd(ca>conn_info(r)) - cd>!connect(find(c dcba))
-      dc,cb>fwd(bd<conn_info(r(ws))) db>connect(find(dcba badc))
-      ba>fwd(bd>conn_info_r(ws)) db,ba>fwd(ad<conn_info(r))
-      dc,cb>fwd(ad<conn_info)`);
+      cba>fwd(ca>conn_info(r)) - cd>!connect(find(c dcba))
+      dcb>fwd(bd<conn_info(r(ws))) db>connect(find(dcba badc))
+      ba>fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
+      dcb>fwd(ad<conn_info)`);
     break;
   default: assert(false, 'unknown macro '+m);
   }

@@ -876,7 +876,7 @@ E.parse_cmd_dir = function(s){
       assert(false);
   }
   assert_invalid(loop.length, _d);
-  if (dir=='<' && no_comma && loop.length>1)
+  if (dir=='<')
     loop.reverse();
   return assign(loop.length>1 ? {loop} : loop[0], {cmd: s.substr(_d+1),
     meta: {cmd: s}});
