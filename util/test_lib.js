@@ -13,7 +13,7 @@ import assertion from 'assertion';
 import net from 'net';
 import _ from 'lodash';
 import big_object_diff from 'big-object-diff';
-const errors = undefined; // XXX failed to import internal/errors
+import errors from 'internal/errors';
 const assign = Object.assign;
 
 const E = {};
@@ -45,8 +45,6 @@ let stringify_dates = obj=>_.each(obj, (val, key)=>{
 });
 
 E.hook_assert = ()=>{
-    if (!errors)
-        return;
     const print = err=>{
         const stack = new Error().stack;
         let msg = '\n', diff = '';

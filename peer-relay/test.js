@@ -46,7 +46,6 @@ let t_keys = {
       '0d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014'},
 };
 
-// XXX: add test
 function normalize(e){
   if (!e)
     return e;
@@ -737,6 +736,20 @@ afterEach(function(){
   xerr.set_buffered(false);
 });
 
+describe('api', function(){
+  it('normalize', ()=>{
+    let t = (cmd, exp)=>assert.equal(normalize(cmd), exp);
+    t('ab>', 'ab>');
+    t('ab<', 'ba>');
+    t('a>', 'a>');
+    t('a<', 'a<');
+    t('a', 'a');
+    t('ab>c', 'ab>c');
+    t('ab<c', 'ba>c');
+    t('ab<c(d)', 'ba>c(d)');
+  });
+});
+
 describe('peer-relay', function(){
   beforeEach(function(){
     xtest.set(Node, 'WsConnector', FakeWsConnector);
@@ -808,12 +821,19 @@ describe('peer-relay', function(){
       ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) - ac<!msg(hi) bc,ab<fwd(ac<msg(hi)) -
       bc>!msg(hi) bc>msg(hi) - bc<!msg(hi) bc<msg(hi) -
     `);
+    if (0) // XXX: TODO: ac>!msg(hi) ac>msg(hi fwd(abc>))
+    t('linear_msg_simple', `setup(3_nodes_linear)
+      ab>!msg(hi msg) - ab<!msg(hi msg) -
+      abc>!msg(hi msg) - abc<!msg(hi fwd(abc<)) -
+      bc>!msg(hi msg) - bc<!msg(hi msg) -
+    `);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       bc,ab<fwd(ca>conn_info(r(wrtc))) ca>connect(wrtc find(cab abc))`);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
+    // XXX: TODO: cba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(find(a sa)) -
       bs>!connect(find(bas sab)) bs,sa>fwd(ba>conn_info(r))`);
