@@ -829,7 +829,7 @@ describe('peer-relay', function(){
       bc>!connect(find(b cab)) abc<fwd(ca>conn_info(r))`);
     t('linear_msg', `setup(3_nodes_linear)
       ab>!msg(hi) ab>msg(hi) - ab<!msg(hi) ab<msg(hi) -
-      ac>!msg(hi) ab,bc>fwd(ac>msg(hi)) - ac<!msg(hi) bc,ab<fwd(ac<msg(hi)) -
+      ac>!msg(hi) abc>fwd(ac>msg(hi)) - ac<!msg(hi) abc<fwd(ac<msg(hi)) -
       bc>!msg(hi) bc>msg(hi) - bc<!msg(hi) bc<msg(hi) -
     `);
     if (0) // XXX: TODO: ac>!msg(hi) ac>msg(hi fwd(abc>))
@@ -840,7 +840,7 @@ describe('peer-relay', function(){
     `);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-      bc,ab<fwd(ca>conn_info(r(wrtc))) ca>connect(wrtc find(cab abc))`);
+      abc<fwd(ca>conn_info(r(wrtc))) ca>connect(wrtc find(cab abc))`);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       cb,ba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
