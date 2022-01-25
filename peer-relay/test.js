@@ -3,10 +3,10 @@
 // XXX: need jslint mocha: true
 import assert from 'assert';
 import Node from './client.js';
-import xtest from '../util/test_lib.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import util from '../util/util.js';
+import xtest from '../util/test_lib.js';
 import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
@@ -540,11 +540,11 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   util.forEach(arg, a=>{
     switch (a.cmd)
     {
-      case 'r':
-        assert(!r, 'invalid '+c.orig);
-        r = a.arg||'';
-        break;
-      default: throw new Error('unknown arg '+a.cmd);
+    case 'r':
+      assert(!r, 'invalid '+c.orig);
+      r = a.arg||'';
+      break;
+    default: throw new Error('unknown arg '+a.cmd);
     }
   });
   if (typeof r!=='undefined' && t_pre_process)
@@ -571,7 +571,6 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   let {c, event} = opt, s = t_nodes[c.s], ws, wrtc;
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
-    // XXX: fix all switch indent
     switch (a.cmd)
     {
     case 'wrtc': wrtc = assert_wrtc(a.arg); break;
@@ -843,12 +842,8 @@ describe('peer-relay', function(){
       db>connect(find(dcba badc)) db,ba>fwd(da>conn_info)
       dc,ca>fwd(da>conn_info(r(ws))) da>connect(find(dcba abcd))
       ab,bd>fwd(da<conn_info_r(ws)) ba,ad,ac>fwd(bd>conn_info_r(ws))`);
-    // XXX: linear_wss_msg (add all possible send)
   });
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
-  // XXX TODO:
-  // ab>!msg...
-  // wrtc
 });
 
