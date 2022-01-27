@@ -911,6 +911,8 @@ describe('peer-relay', function(){
         t('abc<fwd(ac>find(a))', `bc<fwd(ac>find(a)) ab<fwd(ac>find(a))`);
         t('abcd<fwd(ad>find(a))', `cd<fwd(ad>find(a)) bc<fwd(ad>find(a))
           ab<fwd(ad>find(a))`);
+        if (0) // XXX TODO:
+        t('abc>find(a)', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
         t('ab>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           ab<fwd(ac<conn_info_r(ws))`);
         t('ab,bc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
@@ -921,6 +923,21 @@ describe('peer-relay', function(){
           ab<fwd(ac<conn_info_r(ws))`);
         t('ab>!msg(hi)', `ab>!msg(hi)`);
         t('ab>!msg(hi msg)', `ab>!msg(hi) ab>msg(hi)`);
+        /* XXX derry: REVIEW
+        abc>!msg(hi msg) == abc>!msg(hi msg(fwd(abc>))) ==
+        ac>!msg(hi) ab>fwd(ac>msg(hi)) bc>fwd(ac>msg(hi))
+        ** default msg is fwd(abc>)
+
+        But:
+        ab>!msg(hi msg) == ab>!msg(hi) ab>msg(hi)
+
+        Why not make default msg (default depends if ab> or abc>) and then
+        ab>!msg(hi) == ab>!msg(hi !msg) ab>msg(hi)
+
+        Fwd:
+        abc>fwd(ac>find(a)) == abc>find(a)
+
+        */
       });
     });
   });
