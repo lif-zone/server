@@ -718,13 +718,20 @@ function extend_loop(c){
   let a = [];
   for (let i=0; i<c.loop.length; i++)
   {
-    let _c = assign({}, c, c.loop[i]);
-    a.push(_c);
-    delete _c.loop;
-    xerr('before %s', JSON.stringify(_c));
-    set_orig(_c, _build_cmd(_c.arg,
-      (_c.dir=='>' ? _c.s+_c.d : _c.d+_c.s)+_c.dir));
-    _c.had_loop = true;
+    let o = assign({}, c, c.loop[i]);
+    a.push(o);
+    delete o.loop;
+    if (o.cmd!='fwd')
+    {
+      o.arg = build_cmd((o.dir=='>' ?
+      c.loop[0].s+c.loop[c.loop.length-1].d+o.dir :
+      c.loop[c.loop.length-1].d+c.loop[0].s+o.dir)+o.cmd, o.arg);
+      o.cmd = 'fwd';
+    }
+    assert.equal(o.cmd, 'fwd');
+    // XXX: need api to build dir correctly + grep everywhere
+    set_orig(o, _build_cmd(o.arg, (o.dir=='>' ? o.s+o.d : o.d+o.s)+o.dir));
+    o.had_loop = true;
   }
   a[a.length-1].orig_loop = c.loop;
   t_cmds.splice(t_i, 1, ...a);
@@ -903,16 +910,18 @@ describe('peer-relay', function(){
         t('ab>find(a)', `ab>find(a)`);
         t('ab>find(a r(c))', `ab>find(a) ab<find_r(c)`);
         t('ab>fwd(ab>find(a))', `ab>fwd(ab>find(a))`);
-        t('ab,bc>fwd(ab>find(a))', `ab>fwd(ab>find(a)) bc>fwd(ab>find(a))`);
-        t('ab,bc<fwd(ac>find(a))', `bc<fwd(ac>find(a)) ab<fwd(ac>find(a))`);
+        t('ab,bc>fwd(ac>find(a))', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
+        t('ab,bc<fwd(ac<find(a))', `bc<fwd(ac<find(a)) ab<fwd(ac<find(a))`);
+        t('ab,bc>find(a)', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
+        t('ab,bc<find(a)', `bc<fwd(ac<find(a)) ab<fwd(ac<find(a))`);
         t('abc>fwd(ac>find(a))', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
         t('abcd>fwd(ad>find(a))', `ab>fwd(ad>find(a)) bc>fwd(ad>find(a))
           cd>fwd(ad>find(a))`);
         t('abc<fwd(ac>find(a))', `bc<fwd(ac>find(a)) ab<fwd(ac>find(a))`);
         t('abcd<fwd(ad>find(a))', `cd<fwd(ad>find(a)) bc<fwd(ad>find(a))
           ab<fwd(ad>find(a))`);
-        if (0) // XXX TODO:
         t('abc>find(a)', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
+        t('abc<find(a)', `bc<fwd(ac<find(a)) ab<fwd(ac<find(a))`);
         t('ab>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           ab<fwd(ac<conn_info_r(ws))`);
         t('ab,bc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
@@ -979,12 +988,12 @@ describe('peer-relay', function(){
       bc>!connect(find(b cab)) abc<fwd(ca>conn_info(r))`);
     t('linear_msg_long', `setup(3_nodes_linear)
       ab>!msg(hi msg)  - ab<!msg(hi msg) -
-      ac>!msg(hi) abc>fwd(ac>msg(hi)) - ac<!msg(hi) abc<fwd(ac<msg(hi)) -
+      ac>!msg(hi) abc>msg(hi) - ac<!msg(hi) abc<msg(hi) -
       bc>!msg(hi msg) - bc<!msg(hi msg) -
     `);
     t('linear_msg_short', `setup(3_nodes_linear)
       ab>!msg(hi msg) - ab<!msg(hi msg) -
-      ac>!msg(hi) abc>fwd(ac>msg(hi)) - ac<!msg(hi) abc<fwd(ac<msg(hi)) -
+      ac>!msg(hi) abc>msg(hi) - ac<!msg(hi) abc<msg(hi) -
       bc>!msg(hi msg) - bc<!msg(hi msg) -
     `);
     // XXX: TODO: abc>!msg(hi msg) - abc<!msg(hi fwd(abc<)) -
@@ -993,27 +1002,26 @@ describe('peer-relay', function(){
       abc<fwd(ca>conn_info(r(wrtc))) ca>connect(wrtc find(cab abc))`);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-      cba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
+      cba>conn_info(r(ws)) ca>connect(find(cab abc))`);
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(find(a sa)) -
-      bs>!connect(find(bas sab)) bsa>fwd(ba>conn_info(r))`);
+      bs>!connect(find(bas sab)) bsa>conn_info(r)`);
     t('star_wss', `
       node(s wss) node(a wss) node(b wss) - as>!connect(find(a sa)) -
-      bs>!connect(find(bas sab)) bsa>fwd(ba>conn_info(r(ws)))
+      bs>!connect(find(bas sab)) bsa>conn_info(r(ws))
       ba>connect(find(bas abs))`);
   });
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup(3_nodes_linear) node(d wss) - cd>!connect(find(c dcba))
-      dcb>fwd(bd<conn_info(r(ws))) db>connect(find(dcba badc))
-      ba>fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
-      dcb>fwd(ad<conn_info)`);
+      dcb>conn_info(r(ws)) db>connect(find(dcba badc))
+      ba>fwd(bd>conn_info_r(ws)) dba>conn_info(r) dcb>fwd(ad<conn_info)`);
     // XXX: support abc>fwd(ac>msg(hi)) --> abc>fwd(msg(hi))
     // XXX: add test to preprocess for all loops/expansions (ie, for all
     // push_cmd)
     t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi msg) -
-      ac>!msg(hi) abc>fwd(ac>msg(hi)) -
-      ad>!msg(hi) ab,bd,bc,cd>fwd(ad>msg(hi)) -
+      ac>!msg(hi) abc>msg(hi) -
+      ad>!msg(hi) ab,bd,bc,cd>msg(hi) -
       ba>!msg(hi msg) - ba>!msg(hi msg) -
       bc>!msg(hi msg) - bd>!msg(hi msg) -
       ca>!msg(hi) cb>fwd(ca>msg(hi)) ba>fwd(ca>msg(hi)) cd>fwd(ca>msg(hi))
@@ -1021,10 +1029,10 @@ describe('peer-relay', function(){
       da>!msg(hi) db>fwd(da>msg(hi)) ba>fwd(da>msg(hi)) dc>fwd(da>msg(hi))
       cb>fwd(da>msg(hi)) - db>!msg(hi msg) - dc>!msg(hi msg)`);
     t('linear_wss', `setup(3_nodes_wss) node(d wss) -
-      cd>!connect(find(c dcba)) dcb>fwd(db>conn_info(r(ws)))
-      db>connect(find(dcba badc)) dba>fwd(da>conn_info)
-      dca>fwd(da>conn_info(r(ws))) da>connect(find(dcba abcd))
-      abd>fwd(da<conn_info_r(ws)) ba,ad,ac>fwd(bd>conn_info_r(ws))`);
+      cd>!connect(find(c dcba)) dcb>conn_info(r(ws))
+      db>connect(find(dcba badc)) dba>conn_info
+      dca>conn_info(r(ws)) da>connect(find(dcba abcd))
+      abd>conn_info_r(ws) ba,ad,ac>fwd(bd>conn_info_r(ws))`);
   });
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
