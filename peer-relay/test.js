@@ -907,16 +907,16 @@ describe('peer-relay', function(){
         yield t('ab>fwd(ab>find(a))', `ab>fwd(ab>find(a))`);
         yield t('ab,bc>fwd(ab>find(a))', `ab>fwd(ab>find(a))
           bc>fwd(ab>find(a))`);
-        yield t('ab,bc<fwd(ab>find(a))', `bc<fwd(ab>find(a))
-          ab<fwd(ab>find(a))`);
-        yield t('abc>fwd(ab>find(a))', `ab>fwd(ab>find(a))
-          bc>fwd(ab>find(a))`);
-        yield t('abcd>fwd(ab>find(a))', `ab>fwd(ab>find(a))
-          bc>fwd(ab>find(a)) cd>fwd(ab>find(a))`);
-        yield t('abc<fwd(ab>find(a))', `bc<fwd(ab>find(a))
-          ab<fwd(ab>find(a))`);
-        yield t('abcd<fwd(ab>find(a))', `cd<fwd(ab>find(a)) bc<fwd(ab>find(a))
-          ab<fwd(ab>find(a))`);
+        yield t('ab,bc<fwd(ac>find(a))', `bc<fwd(ac>find(a))
+          ab<fwd(ac>find(a))`);
+        yield t('abc>fwd(ac>find(a))', `ab>fwd(ac>find(a))
+          bc>fwd(ac>find(a))`);
+        yield t('abcd>fwd(ad>find(a))', `ab>fwd(ad>find(a))
+          bc>fwd(ad>find(a)) cd>fwd(ad>find(a))`);
+        yield t('abc<fwd(ac>find(a))', `bc<fwd(ac>find(a))
+          ab<fwd(ac>find(a))`);
+        yield t('abcd<fwd(ad>find(a))', `cd<fwd(ad>find(a)) bc<fwd(ad>find(a))
+          ab<fwd(ad>find(a))`);
         yield t('ab>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           ab<fwd(ac<conn_info_r(ws))`);
         yield t('ab,bc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
