@@ -652,15 +652,16 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
   }
+  if (t_pre_process)
+  {
+    if (!call)
+      return;
+    if (msg)
+      push_cmd(build_cmd(c.s+c.d+'>msg', data));
+    set_orig(c, build_cmd(c.meta.cmd, data));
+  }
   if (call)
   {
-    if (t_pre_process)
-    {
-      if (msg)
-        push_cmd(build_cmd(c.s+c.d+'>msg', data));
-      set_orig(c, build_cmd(c.meta.cmd, data));
-      return;
-    }
     if (!s.t.fake)
       yield s.send(d.id, data);
   }
