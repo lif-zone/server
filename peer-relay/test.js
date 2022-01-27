@@ -15,7 +15,6 @@ const assign = Object.assign;
 const _buf = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
-
 // XXX: make it automatic for all node/browser
 xerr.set_exception_catch_all(true);
 process.on('uncaughtException', err=>xerr.zexit(err));
@@ -910,12 +909,12 @@ describe('peer-relay', function(){
           ab<fwd(ab>find(a))`);
         yield t(`ab>fwd(ac>conn_info(r(ws)))`, `ab>fwd(ac>conn_info)
           ab<fwd(ac<conn_info_r(ws))`);
-        if (0){ // XXX: WIP
         yield t(`ab,bc>fwd(ac>conn_info(r(ws)))`, `ab>fwd(ac>conn_info)
           bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
           ab<fwd(ac<conn_info_r(ws))`);
-        yield t(`abc>conn_info(r(ws))`, ``);
-        }
+        yield t(`abc>fwd(ac>conn_info(r(ws)))`, `ab>fwd(ac>conn_info)
+          bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
+          ab<fwd(ac<conn_info_r(ws))`);
       }));
     });
   });
