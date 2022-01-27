@@ -881,37 +881,37 @@ describe('peer-relay', function(){
             string.split_ws(exp).join(' '));
         });
         // XXX: add wrtc
-        yield t(`ab>connect(wss !r)`, `ab>connect(wss !r)`);
-        yield t(`ab>connect(!r)`, `ab>connect(wss !r)`);
-        yield t(`ab>connect`, `ab>connect(wss !r) ab<connected`);
-        yield t(`ab>!connect(wss !r)`, `ab>!connect(wss !r)`);
-        yield t(`ab>!connect(!r)`, `ab>!connect(wss !r)`);
-        yield t(`ab>!connect`, `ab>!connect(wss !r) ab>connect(wss !r)
+        yield t('ab>connect(wss !r)', `ab>connect(wss !r)`);
+        yield t('ab>connect(!r)', `ab>connect(wss !r)`);
+        yield t('ab>connect', `ab>connect(wss !r) ab<connected`);
+        yield t('ab>!connect(wss !r)', `ab>!connect(wss !r)`);
+        yield t('ab>!connect(!r)', `ab>!connect(wss !r)`);
+        yield t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
-        yield t(`ab>!connect(find(c d))`, `ab>!connect(wss !r)
+        yield t('ab>!connect(find(c d))', `ab>!connect(wss !r)
           ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(c) ab<find(b)
           ab>find_r(d)`);
-        yield t(`ab>find(a)`, `ab>find(a)`);
-        yield t(`ab>find(a r(c))`, `ab>find(a) ab<find_r(c)`);
-        yield t(`ab>fwd(ab>find(a))`, `ab>fwd(ab>find(a))`);
-        yield t(`ab,bc>fwd(ab>find(a))`, `ab>fwd(ab>find(a))
+        yield t('ab>find(a)', `ab>find(a)`);
+        yield t('ab>find(a r(c))', `ab>find(a) ab<find_r(c)`);
+        yield t('ab>fwd(ab>find(a))', `ab>fwd(ab>find(a))`);
+        yield t('ab,bc>fwd(ab>find(a))', `ab>fwd(ab>find(a))
           bc>fwd(ab>find(a))`);
-        yield t(`ab,bc<fwd(ab>find(a))`, `bc<fwd(ab>find(a))
+        yield t('ab,bc<fwd(ab>find(a))', `bc<fwd(ab>find(a))
           ab<fwd(ab>find(a))`);
-        yield t(`abc>fwd(ab>find(a))`, `ab>fwd(ab>find(a))
+        yield t('abc>fwd(ab>find(a))', `ab>fwd(ab>find(a))
           bc>fwd(ab>find(a))`);
-        yield t(`abcd>fwd(ab>find(a))`, `ab>fwd(ab>find(a))
+        yield t('abcd>fwd(ab>find(a))', `ab>fwd(ab>find(a))
           bc>fwd(ab>find(a)) cd>fwd(ab>find(a))`);
-        yield t(`abc<fwd(ab>find(a))`, `bc<fwd(ab>find(a))
+        yield t('abc<fwd(ab>find(a))', `bc<fwd(ab>find(a))
           ab<fwd(ab>find(a))`);
-        yield t(`abcd<fwd(ab>find(a))`, `cd<fwd(ab>find(a)) bc<fwd(ab>find(a))
+        yield t('abcd<fwd(ab>find(a))', `cd<fwd(ab>find(a)) bc<fwd(ab>find(a))
           ab<fwd(ab>find(a))`);
-        yield t(`ab>fwd(ac>conn_info(r(ws)))`, `ab>fwd(ac>conn_info)
+        yield t('ab>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           ab<fwd(ac<conn_info_r(ws))`);
-        yield t(`ab,bc>fwd(ac>conn_info(r(ws)))`, `ab>fwd(ac>conn_info)
+        yield t('ab,bc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
           ab<fwd(ac<conn_info_r(ws))`);
-        yield t(`abc>fwd(ac>conn_info(r(ws)))`, `ab>fwd(ac>conn_info)
+        yield t('abc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
           ab<fwd(ac<conn_info_r(ws))`);
       }));
