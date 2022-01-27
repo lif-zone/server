@@ -884,7 +884,6 @@ describe('peer-relay', function(){
       }));
       describe('expand', ()=>{
         const t = (test, exp)=>it(test, ()=>etask(function*(){
-          // XXX: add setup
           let setup = 'node(a) node(b wss) node(c) node(d)';
           let res = yield test_pre_process(setup+' '+test);
           // XXX: fix replace (need to escape regex and use /^.../
@@ -899,22 +898,17 @@ describe('peer-relay', function(){
         t('ab>!connect(!r)', `ab>!connect(wss !r)`);
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
-        t('ab>!connect(find(c d))', `ab>!connect(wss !r)
-          ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(c) ab<find(b)
-          ab>find_r(d)`);
+        t('ab>!connect(find(c d))', `ab>!connect(wss !r) ab>connect(wss !r)
+          ab<connected ab>find(a) ab<find_r(c) ab<find(b) ab>find_r(d)`);
         t('ab>find(a)', `ab>find(a)`);
         t('ab>find(a r(c))', `ab>find(a) ab<find_r(c)`);
         t('ab>fwd(ab>find(a))', `ab>fwd(ab>find(a))`);
-        t('ab,bc>fwd(ab>find(a))', `ab>fwd(ab>find(a))
-          bc>fwd(ab>find(a))`);
-        t('ab,bc<fwd(ac>find(a))', `bc<fwd(ac>find(a))
-          ab<fwd(ac>find(a))`);
-        t('abc>fwd(ac>find(a))', `ab>fwd(ac>find(a))
-          bc>fwd(ac>find(a))`);
-        t('abcd>fwd(ad>find(a))', `ab>fwd(ad>find(a))
-          bc>fwd(ad>find(a)) cd>fwd(ad>find(a))`);
-        t('abc<fwd(ac>find(a))', `bc<fwd(ac>find(a))
-          ab<fwd(ac>find(a))`);
+        t('ab,bc>fwd(ab>find(a))', `ab>fwd(ab>find(a)) bc>fwd(ab>find(a))`);
+        t('ab,bc<fwd(ac>find(a))', `bc<fwd(ac>find(a)) ab<fwd(ac>find(a))`);
+        t('abc>fwd(ac>find(a))', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
+        t('abcd>fwd(ad>find(a))', `ab>fwd(ad>find(a)) bc>fwd(ad>find(a))
+          cd>fwd(ad>find(a))`);
+        t('abc<fwd(ac>find(a))', `bc<fwd(ac>find(a)) ab<fwd(ac>find(a))`);
         t('abcd<fwd(ad>find(a))', `cd<fwd(ad>find(a)) bc<fwd(ad>find(a))
           ab<fwd(ad>find(a))`);
         t('ab>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
