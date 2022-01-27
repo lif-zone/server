@@ -693,9 +693,13 @@ function extend_loop(c){
   let a = [];
   for (let i=0; i<c.loop.length; i++)
   {
-    a.push(assign({}, c, c.loop[i]));
-    delete a[i].loop;
-    a[i].had_loop = true;
+    let _c = assign({}, c, c.loop[i]);
+    a.push(_c);
+    delete _c.loop;
+    xerr('before %s', JSON.stringify(_c));
+    set_orig(_c, _build_cmd(_c.arg,
+      (_c.dir=='>' ? _c.s+_c.d : _c.d+_c.s)+_c.dir));
+    _c.had_loop = true;
   }
   a[a.length-1].orig_loop = c.loop;
   t_cmds.splice(t_i, 1, ...a);
@@ -737,7 +741,6 @@ const cmd_run = event=>etask(function*cmd_run(){
   t_i++;
   t_depth++;
   yield cmd_run_single({c, event});
-  xerr.notice('XXX push '+JSON.stringify(c, null, '\t'));
   t_cmds_processed.push(assign({}, c));
   t_depth--;
 });
@@ -871,6 +874,11 @@ describe('peer-relay', function(){
           ab>find_r(d)`);
         yield t(`ab>find(a)`, `ab>find(a)`);
         yield t(`ab>find(a r(c))`, `ab>find(a) ab<find_r(c)`);
+        yield t(`ab>fwd(ab>find(a))`, `ab>fwd(ab>find(a))`);
+        yield t(`ab,bc>fwd(ab>find(a))`, `ab>fwd(ab>find(a))
+          bc>fwd(ab>find(a))`);
+        yield t(`ab,bc<fwd(ab>find(a))`, `bc<fwd(ab>find(a))
+          ab<fwd(ab>find(a))`);
       }));
     });
   });
