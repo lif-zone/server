@@ -860,7 +860,6 @@ describe('peer-relay', function(){
   });
   describe('test_api', function(){
     describe('pre_process', function(){
-      if (0) // XXX: fix/remove
       it('low_level', ()=>etask(function*(){
         let t = function*(test, exp){
           let cmds = yield test_pre_process(test);
