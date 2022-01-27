@@ -464,9 +464,9 @@ const cmd_connect = opt=>etask(function*(){
   assert_exist(c.s);
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   assert(find ? r : true, 'find must be used together with find');
-  if (call)
+  if (t_pre_process)
   {
-    if (t_pre_process)
+    if (call)
     {
       if (r)
       {
@@ -474,8 +474,21 @@ const cmd_connect = opt=>etask(function*(){
           find&&build_cmd('find', find.join(' '))));
       }
       set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
-      return;
     }
+    else
+    {
+      if (r)
+      {
+        push_cmd(c.s+c.d+'<connected'+(find ? ' '+
+          build_cmd(c.s+c.d+'>find', c.s+' '+build_cmd('r', find[0]))+' '+
+          build_cmd(c.s+c.d+'<find', c.d+' '+build_cmd('r', find[1])) : ''));
+      }
+      set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
+    }
+    return;
+  }
+  if (call)
+  {
     assert(!event);
     if (!s.t.fake)
     {
@@ -487,17 +500,6 @@ const cmd_connect = opt=>etask(function*(){
   }
   else
   {
-    if (t_pre_process)
-    {
-      if (r)
-      {
-        push_cmd(c.s+c.d+'<connected'+(find ? ' '+
-          build_cmd(c.s+c.d+'>find', c.s+' '+build_cmd('r', find[0]))+' '+
-          build_cmd(c.s+c.d+'<find', c.d+' '+build_cmd('r', find[1])) : ''));
-      }
-      set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
-      return;
-    }
     if (s.t.fake && d.t.fake)
       return;
     if (s.t.fake)
