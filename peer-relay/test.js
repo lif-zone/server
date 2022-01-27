@@ -872,6 +872,9 @@ describe('peer-relay', function(){
       dcb>fwd(bd<conn_info(r(ws))) db>connect(find(dcba badc))
       ba>fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
       dcb>fwd(ad<conn_info)`);
+    // XXX: support abc>fwd(ac>msg(hi)) --> abc>fwd(msg(hi))
+    // XXX: add test to preprocess for all loops/expansions (ie, for all
+    // push_cmd)
     t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi msg) -
       ac>!msg(hi) abc>fwd(ac>msg(hi)) -
       ad>!msg(hi) ab,bd,bc,cd>fwd(ad>msg(hi)) -
