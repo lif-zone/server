@@ -636,11 +636,16 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
-  let arg = xtest.test_parse(c.arg), call = c.cmd=='!msg', data, msg;
+  let arg = xtest.test_parse(c.arg), call = c.cmd=='!msg', data;
+  let msg = call ? true : false;
   util.forEach(arg, a=>{
     switch (a.cmd)
     {
-    case 'msg': msg = true; break;
+    case '!msg': msg = false; break;
+    case 'msg':
+      assert(!a.arg);
+      msg = true;
+      break;
     default:
       assert(!data, 'invalid arg '+a.cmd);
       data = a.cmd;
@@ -661,7 +666,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
     else
       assert(!msg);
-    set_orig(c, build_cmd(c.meta.cmd, data));
+    set_orig(c, build_cmd(c.meta.cmd, data, call ? '!msg' : ''));
   }
   if (call)
   {
@@ -930,8 +935,9 @@ describe('peer-relay', function(){
         t('abc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
           ab<fwd(ac<conn_info_r(ws))`);
-        t('ab>!msg(hi)', `ab>!msg(hi)`);
-        t('ab>!msg(hi msg)', `ab>!msg(hi) ab>msg(hi)`);
+        t('ab>!msg(hi !msg)', `ab>!msg(hi !msg)`);
+        t('ab>!msg(hi)', `ab>!msg(hi !msg) ab>msg(hi)`);
+        t('ab>!msg(hi msg)', `ab>!msg(hi !msg) ab>msg(hi)`);
         /* XXX derry: REVIEW
         abc>!msg(hi msg) == abc>!msg(hi msg(fwd(abc>))) ==
         ac>!msg(hi) ab>fwd(ac>msg(hi)) bc>fwd(ac>msg(hi))
@@ -969,7 +975,7 @@ describe('peer-relay', function(){
       ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
       ab>find_r(ba)`);
     t('short', `node(a) node(b wss) - ab>!connect(find(a ba))`);
-    t('msg', `setup(2_nodes) ab>!msg(hi msg) ab<!msg(hi msg)`);
+    t('msg', `setup(2_nodes) ab>!msg(hi) ab<!msg(hi)`);
     if (0) // XXX TODO: find way to test this sequence of events
     t('events_order', `node(a) node(b wss(port:4000)) - ab>!connect
       ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
@@ -982,15 +988,10 @@ describe('peer-relay', function(){
     // connect directly
     t('linear', `node(a) node(b wss) node(c wss) - ab>!connect(find(a ba)) -
       bc>!connect(find(b cab)) abc<fwd(ca>conn_info(r))`);
-    t('linear_msg_long', `setup(3_nodes_linear)
-      ab>!msg(hi msg)  - ab<!msg(hi msg) -
-      ac>!msg(hi) abc>msg(hi) - ac<!msg(hi) abc<msg(hi) -
-      bc>!msg(hi msg) - bc<!msg(hi msg) -
-    `);
-    t('linear_msg_short', `setup(3_nodes_linear)
-      ab>!msg(hi msg) - ab<!msg(hi msg) -
-      ac>!msg(hi) abc>msg(hi) - ac<!msg(hi) abc<msg(hi) -
-      bc>!msg(hi msg) - bc<!msg(hi msg) -
+    t('linear_msg', `setup(3_nodes_linear)
+      ab>!msg(hi) - ab<!msg(hi) -
+      ac>!msg(hi !msg) abc>msg(hi) - ac<!msg(hi !msg) abc<msg(hi) -
+      bc>!msg(hi) - bc<!msg(hi) -
     `);
     // XXX: TODO: abc>!msg(hi msg) - abc<!msg(hi fwd(abc<)) -
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
@@ -1015,15 +1016,15 @@ describe('peer-relay', function(){
     // XXX: support abc>fwd(ac>msg(hi)) --> abc>fwd(msg(hi))
     // XXX: add test to preprocess for all loops/expansions (ie, for all
     // push_cmd)
-    t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi msg) -
-      ac>!msg(hi) abc>msg(hi) -
-      ad>!msg(hi) ab,bd,bc,cd>msg(hi) -
-      ba>!msg(hi msg) - ba>!msg(hi msg) -
-      bc>!msg(hi msg) - bd>!msg(hi msg) -
-      ca>!msg(hi) cb>fwd(ca>msg(hi)) ba>fwd(ca>msg(hi)) cd>fwd(ca>msg(hi))
+    t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) -
+      ac>!msg(hi !msg) abc>msg(hi) -
+      ad>!msg(hi !msg) ab,bd,bc,cd>msg(hi) -
+      ba>!msg(hi) - ba>!msg(hi) -
+      bc>!msg(hi) - bd>!msg(hi) -
+      ca>!msg(hi !msg) cb>fwd(ca>msg(hi)) ba>fwd(ca>msg(hi)) cd>fwd(ca>msg(hi))
       db>fwd(ca>msg(hi)) -
-      da>!msg(hi) db>fwd(da>msg(hi)) ba>fwd(da>msg(hi)) dc>fwd(da>msg(hi))
-      cb>fwd(da>msg(hi)) - db>!msg(hi msg) - dc>!msg(hi msg)`);
+      da>!msg(hi !msg) db>fwd(da>msg(hi)) ba>fwd(da>msg(hi)) dc>fwd(da>msg(hi))
+      cb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
     t('linear_wss', `setup(3_nodes_wss) node(d wss) -
       cd>!connect(find(c dcba)) dcb>conn_info(r(ws))
       db>connect(find(dcba badc)) dba>conn_info
