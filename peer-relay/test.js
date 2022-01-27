@@ -894,7 +894,7 @@ describe('peer-relay', function(){
           {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
         ]));
       }));
-      describe('expand', ()=>{
+      describe('shortcut', ()=>{
         const t = (test, exp)=>it(test, ()=>etask(function*(){
           let setup = 'node(a) node(b wss) node(c) node(d)';
           let res = yield test_pre_process(setup+' '+test);
