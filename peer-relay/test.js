@@ -6,6 +6,7 @@ import Node from './client.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import util from '../util/util.js';
+import string from '../util/string.js';
 import xtest from '../util/test_lib.js';
 import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
@@ -818,15 +819,18 @@ describe('peer-relay', function(){
       it('expansion', ()=>etask(function*(){
         const t = (test, exp)=>etask(function*(){
           // XXX: add setup
-          let setup = 'node(a) node(b wss)';
-          let setup_exp = 'node(a) node(b wss)';
+          let setup = 'node(a) node(b wss) node(c) node(d)';
           let res = yield test_pre_process(setup+' '+test);
           // XXX: fix replace (need to escape regex and use /^.../
-          assert.equal(test_to_str(res).replace(setup_exp+' ', ''), exp);
+          assert.equal(test_to_str(res).replace(setup+' ', ''),
+            string.split_ws(exp).join(' '));
         });
-        yield t('ab>connect(!r)', 'ab>connect(!r)');
-        yield t('ab>connect', 'ab>connect ab<connected');
-        yield t('ab>!connect', 'ab>!connect ab>connect(wss) ab<connected');
+        yield t(`ab>connect`, `ab>connect ab<connected`);
+        yield t(`ab>connect(!r)`, `ab>connect(!r)`);
+        yield t(`ab>!connect`, `ab>!connect ab>connect(wss) ab<connected`);
+        yield t(`ab>!connect(!r)`, `ab>!connect(!r)`);
+        yield t(`ab>connect(find(c d))`, `ab>connect(find(c d)) ab<connected
+          ab>find(a r(c)) ab<find_r(c) ab<find(b r(d)) ab>find_r(d)`);
       }));
     });
   });
