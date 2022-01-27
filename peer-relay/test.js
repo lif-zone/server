@@ -538,8 +538,12 @@ const cmd_find = opt=>etask(function*cmd_find(){
       assert_peers(peers);
     }
   });
-  if (r && t_pre_process)
-    push_cmd(rev_cmd(c.orig, 'find_r', r));
+  if (t_pre_process)
+  {
+    if (r)
+      push_cmd(rev_cmd(c.orig, 'find_r', r));
+    set_orig(c, build_cmd(c.meta.cmd, peers));
+  }
   if (event)
   {
     assert_event(event, build_cmd(c.meta.cmd, peers));
@@ -862,10 +866,11 @@ describe('peer-relay', function(){
         yield t(`ab>!connect(!r)`, `ab>!connect(wss !r)`);
         yield t(`ab>!connect`, `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
-        if (true) return; // XXX: TODO
         yield t(`ab>!connect(find(c d))`, `ab>!connect(wss !r)
-          ab>connect(wss !r) ab<connected ab>find(a)
-          ab<find_r(c) ab<find(b) ab>find_r(d)`);
+          ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(c) ab<find(b)
+          ab>find_r(d)`);
+        yield t(`ab>find(a)`, `ab>find(a)`);
+        yield t(`ab>find(a r(c))`, `ab>find(a) ab<find_r(c)`);
       }));
     });
   });
