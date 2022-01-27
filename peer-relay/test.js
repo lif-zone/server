@@ -893,7 +893,6 @@ describe('peer-relay', function(){
           ab>find_r(d)`);
         yield t(`ab>find(a)`, `ab>find(a)`);
         yield t(`ab>find(a r(c))`, `ab>find(a) ab<find_r(c)`);
-        // XXX: ab>fwd -> cd>fwd
         yield t(`ab>fwd(ab>find(a))`, `ab>fwd(ab>find(a))`);
         yield t(`ab,bc>fwd(ab>find(a))`, `ab>fwd(ab>find(a))
           bc>fwd(ab>find(a))`);
