@@ -76,7 +76,7 @@ function push_cmd(cmd){ _push_cmd(xtest.test_parse(cmd)); }
 
 function is_fake(p){ return t_role!=p; }
 
-function wss_from_node(node){ return node.t.wss.url; }
+function wss_from_node(node){ return util.get(node, 't.wss.url'); }
 
 function node_from_url(url){
   for (let name in t_nodes)
@@ -434,6 +434,7 @@ const cmd_connect = opt=>etask(function*(){
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
+  assert(d, 'not node found '+c.d);
   if (!wss && !wrtc && util.xor(wss_from_node(d), support_wrtc(d.t.name)))
   {
     wss = wss_from_node(d);
@@ -719,6 +720,15 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   yield test_end();
 });
 
+// XXX: need test
+const test_to_str = cmds=>{
+  let a = [];
+  cmds.forEach(cmd=>{
+    a.push(cmd.orig);
+  });
+  return a.join(' ');
+};
+
 const test_pre_process = test=>etask(function*test_preprocess(){
   t_pre_process = true;
   yield _test_run('fake', xtest.test_parse(test));
@@ -782,28 +792,43 @@ describe('peer-relay', function(){
     xtest.set(util, 'test_on_connection', test_on_connection);
   });
   describe('test_api', function(){
-    it('pre_process', ()=>etask(function*(){
-      let t = function*(test, exp){
-        let cmds = yield test_pre_process(test);
-        cmds = xtest.test_parse_rm_meta_orig(cmds);
-        assert.deepEqual(cmds, exp);
-      };
-      let ab = [{arg: 'a', cmd: 'node'}, {arg: 'b', cmd: 'node'}];
-      yield t('node(a) node(b)', ab);
-      yield t('node(a) node(b) ab>fwd(ab>conn_info(r))', ab.concat([
-        {s: 'a', d: 'b', dir: '>', cmd: 'fwd', arg: 'ab>conn_info(r)'},
-        {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
-      ]));
-      yield t('node(a) node(b) ab,ba>fwd(ab>conn_info(r))', ab.concat([
-        {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'a', d: 'b', dir: '>',
-          had_loop: true},
-        {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'b', d: 'a', dir: '>',
-        had_loop: true, orig_loop:
-        [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
-        {s: 'a', d: 'b', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
-        {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
-      ]));
-    }));
+    describe('pre_process', function(){
+      it('low_level', ()=>etask(function*(){
+        let t = function*(test, exp){
+          let cmds = yield test_pre_process(test);
+          cmds = xtest.test_parse_rm_meta_orig(cmds);
+          assert.deepEqual(cmds, exp);
+        };
+        let ab = [{arg: 'a', cmd: 'node'}, {arg: 'b', cmd: 'node'}];
+        yield t('node(a) node(b)', ab);
+        yield t('node(a) node(b) ab>fwd(ab>conn_info(r))', ab.concat([
+          {s: 'a', d: 'b', dir: '>', cmd: 'fwd', arg: 'ab>conn_info(r)'},
+          {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
+        ]));
+        yield t('node(a) node(b) ab,ba>fwd(ab>conn_info(r))', ab.concat([
+          {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'a', d: 'b', dir: '>',
+            had_loop: true},
+          {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'b', d: 'a', dir: '>',
+          had_loop: true, orig_loop:
+          [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
+          {s: 'a', d: 'b', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
+          {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<conn_info_r'},
+        ]));
+      }));
+      it('expansion', ()=>etask(function*(){
+        const t = (test, exp)=>etask(function*(){
+          // XXX: add setup
+          let setup = 'node(a) node(b wss)';
+          let setup_exp = 'node(a) node(b wss)';
+          let res = yield test_pre_process(setup+' '+test);
+          // XXX: fix replace (need to escape regex and use /^.../
+          assert.equal(test_to_str(res).replace(setup_exp+' ', ''), exp);
+        });
+        yield t('ab>connect(!r)', 'ab>connect(!r)');
+        yield t('ab>connect', 'ab>connect ab<connected');
+        yield t('ab>!connect', 'ab>!connect ab>connect(wss) ab<connected');
+      }));
+    });
   });
   const xit = (name, role, test)=>it(name+'_'+role, ()=>test_run(role, test));
   // XXX TODO:
