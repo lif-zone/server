@@ -942,10 +942,6 @@ describe('peer-relay', function(){
 
         Why not make default msg (default depends if ab> or abc>) and then
         ab>!msg(hi) == ab>!msg(hi !msg) ab>msg(hi)
-
-        Fwd:
-        abc>fwd(ac>find(a)) == abc>find(a)
-
         */
       });
     });
