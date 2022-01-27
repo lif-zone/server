@@ -652,13 +652,19 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   if (call)
   {
-    if (msg)
-      push_cmd(build_cmd(c.s+c.d+'>msg', data));
+    if (t_pre_process)
+    {
+      if (msg)
+        push_cmd(build_cmd(c.s+c.d+'>msg', data));
+      set_orig(c, build_cmd(c.meta.cmd, data));
+      return;
+    }
     if (!s.t.fake)
       yield s.send(d.id, data);
   }
   else
   {
+    assert(!msg);
     yield fake_send_msg(c, {type: 'user', data});
     yield cmd_run_if_next_fake();
   }
@@ -914,6 +920,8 @@ describe('peer-relay', function(){
         yield t('abc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
           ab<fwd(ac<conn_info_r(ws))`);
+        yield t('ab>!msg(hi)', `ab>!msg(hi)`);
+        yield t('ab>!msg(hi msg)', `ab>!msg(hi) ab>msg(hi)`);
       }));
     });
   });
