@@ -544,7 +544,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
   {
     if (r)
       push_cmd(rev_cmd(c.orig, 'find_r', r));
-    set_orig(c, _build_cmd(c.meta.cmd, c.fwd, peers));
+    set_orig(c, build_cmd(c.meta.cmd, peers));
     return;
   }
   if (event)
@@ -597,6 +597,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
           rev_cmd(c.orig, 'conn_info_r', r)));
       }
     }
+    set_orig(c, build_cmd(c.meta.cmd));
     return;
   }
   if (event)
@@ -675,6 +676,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
     a[0].had_loop = c.had_loop;
   }
   yield cmd_run_single({c: a[0], event});
+  if (t_pre_process)
+    return set_orig(c, _build_cmd(a[0].orig, a[0].fwd));
   yield cmd_run_if_next_fake();
 });
 
@@ -730,7 +733,7 @@ function extend_loop_rev(loop, cmd){
 }
 
 const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
-  if (t_role=='fake')
+  if (t_role=='fake') // assert !t_pre_process
     return;
   let next = t_cmds[t_i];
   if (!next)
@@ -905,9 +908,9 @@ describe('peer-relay', function(){
           ab<fwd(ab>find(a))`);
         yield t(`abcd<fwd(ab>find(a))`, `cd<fwd(ab>find(a)) bc<fwd(ab>find(a))
           ab<fwd(ab>find(a))`);
-        if (0){ // XXX: WIP
         yield t(`ab>fwd(ac>conn_info(r(ws)))`, `ab>fwd(ac>conn_info)
           ab<fwd(ac<conn_info_r(ws))`);
+        if (0){ // XXX: WIP
         yield t(`ab,bc>fwd(ac>conn_info(r(ws)))`, `ab>fwd(ac>conn_info)
           bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
           ab<fwd(ac<conn_info_r(ws))`);
