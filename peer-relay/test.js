@@ -654,10 +654,13 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   if (t_pre_process)
   {
-    if (!call)
-      return;
-    if (msg)
-      push_cmd(build_cmd(c.s+c.d+'>msg', data));
+    if (call)
+    {
+      if (msg)
+        push_cmd(build_cmd(c.s+c.d+'>msg', data));
+    }
+    else
+      assert(!msg);
     set_orig(c, build_cmd(c.meta.cmd, data));
   }
   if (call)
@@ -667,7 +670,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   else
   {
-    assert(!msg);
     yield fake_send_msg(c, {type: 'user', data});
     yield cmd_run_if_next_fake();
   }
