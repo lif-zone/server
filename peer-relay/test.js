@@ -450,6 +450,8 @@ const cmd_connect = opt=>etask(function*(){
     {
       push_cmd(build_cmd(c.s+c.d+'>connect', (wss ? 'wss' : 'wrtc')+
         (find ? ' '+build_cmd('find', find.join(' ')) : '')));
+      c.meta.orig = c.orig;
+      c.orig = c.meta.cmd;
     }
     assert(!event);
     if (!s.t.fake)
@@ -702,10 +704,11 @@ const cmd_run = event=>etask(function*cmd_run(){
   xerr.notice('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '');
-  t_cmds_processed.push(assign({}, c));
   t_i++;
   t_depth++;
   yield cmd_run_single({c, event});
+  xerr.notice('XXX push '+JSON.stringify(c, null, '\t'));
+  t_cmds_processed.push(assign({}, c));
   t_depth--;
 });
 
@@ -829,8 +832,9 @@ describe('peer-relay', function(){
         yield t(`ab>connect(!r)`, `ab>connect(!r)`);
         yield t(`ab>!connect`, `ab>!connect ab>connect(wss) ab<connected`);
         yield t(`ab>!connect(!r)`, `ab>!connect(!r)`);
-        yield t(`ab>connect(find(c d))`, `ab>connect(find(c d)) ab<connected
-          ab>find(a r(c)) ab<find_r(c) ab<find(b r(d)) ab>find_r(d)`);
+        yield t(`ab>!connect(find(c d))`, `ab>!connect
+          ab>connect(wss find(c d)) ab<connected ab>find(a r(c))
+          ab<find_r(c) ab<find(b r(d)) ab>find_r(d)`);
       }));
     });
   });
