@@ -760,6 +760,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   if (t_pre_process)
   {
+    assert.equal(t_depth, 0);
     if (c.loop)
       c = extend_loop(c);
   }
