@@ -879,6 +879,14 @@ describe('peer-relay', function(){
           bc>fwd(ab>find(a))`);
         yield t(`ab,bc<fwd(ab>find(a))`, `bc<fwd(ab>find(a))
           ab<fwd(ab>find(a))`);
+        yield t(`abc>fwd(ab>find(a))`, `ab>fwd(ab>find(a))
+          bc>fwd(ab>find(a))`);
+        yield t(`abcd>fwd(ab>find(a))`, `ab>fwd(ab>find(a))
+          bc>fwd(ab>find(a)) cd>fwd(ab>find(a))`);
+        yield t(`abc<fwd(ab>find(a))`, `bc<fwd(ab>find(a))
+          ab<fwd(ab>find(a))`);
+        yield t(`abcd<fwd(ab>find(a))`, `cd<fwd(ab>find(a)) bc<fwd(ab>find(a))
+          ab<fwd(ab>find(a))`);
       }));
     });
   });
