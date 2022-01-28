@@ -524,7 +524,7 @@ const cmd_connect = opt=>etask(function*(){
 const cmd_connected = opt=>etask(function*cmd_connected(){
   let {c, event} = opt, d = t_nodes[c.d];
   if (event)
-    assert_event(event, c.orig);
+    assert_event_c(c, event);
   else
     assert(d.t.fake, 'dst must be fake');
   if (t_pre_process)
@@ -556,10 +556,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
     return;
   }
   if (event)
-  {
     assert_event(event, build_cmd(c.meta.cmd, peers));
-    assert(!s.t.fake, 'src must be real for event '+event);
-  }
   yield fake_send_msg(c, {type: 'find', data: _str(s.id)});
   yield cmd_run_if_next_fake();
 });
@@ -571,8 +568,7 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
   // XXX: assert c.arg
   if (event)
   {
-    assert_event(event, c.orig);
-    assert(!s.t.fake, 'src must be real for event '+event);
+    assert_event_c(c, event);
   }
   yield fake_send_msg(c, {type: 'find_r', data:
     array_name_to_id(c.arg.split(''))});
@@ -611,11 +607,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
     return;
   }
   if (event)
-  {
-    let cmd = normalize(c.meta.cmd);
-    let expected = c.fwd ? build_cmd(c.fwd+'fwd', cmd) : cmd;
-    assert_event(event, expected);
-  }
+    assert_event_c(c, event);
   yield fake_send_msg(c, {type: 'conn_info'});
   yield cmd_run_if_next_fake();
 });
