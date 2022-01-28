@@ -201,6 +201,10 @@ function assert_peers(peers){
 function assert_event(event, exp){
   assert.equal(normalize(event), normalize(exp)); }
 
+function assert_event_c(c, event){
+  let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
+  assert_event(event, expected);
+}
 const test_on_connection = channel=>etask(function*test_on_connection(){
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
   if (channel.t.initiaor)
@@ -630,11 +634,8 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   });
   if (t_pre_process)
     return;
-  if (event) // XXX: copy this logic to all places of assert_event
-  {
-    let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
-    assert_event(event, expected);
-  }
+  if (event)
+    assert_event_c(c, event);
   yield fake_send_msg(c, {type: 'conn_info_r', data: {ws, wrtc}});
   yield cmd_run_if_next_fake();
 });
@@ -658,11 +659,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
   });
   assert(call || !msg, 'msg only avail for call mode');
-  if (event) // XXX: copy this logic to all places of assert_event
-  {
-    let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
-    assert_event(event, expected);
-  }
   if (t_pre_process)
   {
     if (call)
@@ -685,6 +681,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     set_orig(c, build_cmd(c.meta.cmd, data, call ? '!msg' : ''));
     return;
   }
+  if (event)
+    assert_event_c(c, event);
   if (call)
   {
     if (!s.t.fake)
