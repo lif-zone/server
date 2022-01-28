@@ -666,7 +666,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
         if (msg)
           push_cmd(_build_cmd(c.s+c.d+'>msg', c.fwd, data));
         c.fwd = '';
-        set_orig(c, build_cmd(c.s+c.d+'>!msg', data, '!msg'));
+        set_orig(c, build_cmd((c.dir=='>' ? c.s+c.d+'>' : c.d+c.s+'<')+'!msg',
+          data, '!msg'));
         return;
       }
       else if (c.had_loop)
@@ -958,9 +959,9 @@ describe('peer-relay', function(){
         t('ab>!msg(hi msg)', `ab>!msg(hi !msg) ab>msg(hi)`);
         t('abc>!msg(hi)', `ac>!msg(hi !msg) ab>fwd(ac>msg(hi))
           bc>fwd(ac>msg(hi))`);
-        if (0) // XXX TODO
-        t('abc<!msg(hi)', `ac<!msg(hi !msg) bc<fwd(ac>msg(hi))
-          ab<fwd(ac>msg(hi))`);
+        // XXX: fix ca> ==> ac<
+        t('abc<!msg(hi)', `ac<!msg(hi !msg) bc<fwd(ca>msg(hi))
+          ab<fwd(ca>msg(hi))`);
         t('ab,bc>!msg(hi)', `ac>!msg(hi !msg) ab>fwd(ac>msg(hi))
           bc>fwd(ac>msg(hi))`);
         /* XXX derry: REVIEW
