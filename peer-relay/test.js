@@ -86,7 +86,6 @@ function build_cmd(){
 
 function rev_cmd(sd, cmd, arg){ return build_cmd(rev_trim(sd)+cmd, arg); }
 
-// XXX: need test
 function dir_str(s, d, dir){ return dir=='>' ? s+d+'>' : d+s+'<'; }
 function dir_c(c){ return dir_str(c.s, c.d, c.dir); }
 
@@ -881,6 +880,11 @@ describe('api', function(){
     t('ab<', 'ab>');
     t('a>c(d)', 'a<');
     t('ab>c(d)', 'ab<');
+  });
+  it('dir_str', ()=>{
+    let t = (s, d, dir, exp)=>assert.equal(dir_str(s, d, dir), exp);
+    t('a', 'b', '>', 'ab>');
+    t('a', 'b', '<', 'ba<');
   });
   it('build_cmd', ()=>{
     let t = (arg, exp)=>assert.equal(_build_cmd.apply(this, arg), exp);
