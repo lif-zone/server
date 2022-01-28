@@ -88,6 +88,7 @@ function rev_cmd(sd, cmd, arg){ return build_cmd(rev_trim(sd)+cmd, arg); }
 
 // XXX: need test
 function dir_str(s, d, dir){ return dir=='>' ? s+d+'>' : d+s+'<'; }
+function dir_c(c){ return dir_str(c.s, c.d, c.dir); }
 
 function set_orig(c, orig){
   c.meta.orig = c.orig;
@@ -667,15 +668,15 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       if (c.loop_first)
       {
         if (msg)
-          push_cmd(_build_cmd(dir_str(c.s, c.d, c.dir)+'msg', c.fwd, data));
+          push_cmd(_build_cmd(dir_c(c)+'msg', c.fwd, data));
         c.fwd = '';
-        set_orig(c, build_cmd(dir_str(c.s, c.d, c.dir)+'!msg', data, '!msg'));
+        set_orig(c, build_cmd(dir_c(c)+'!msg', data, '!msg'));
         return;
       }
       else if (c.had_loop)
-        return set_orig(c, build_cmd(dir_str(c.s, c.d, c.dir)+'msg', data));
+        return set_orig(c, build_cmd(dir_c(c)+'msg', data));
       if (msg)
-        push_cmd(build_cmd(dir_str(c.s, c.d, c.dir)+'msg', data));
+        push_cmd(build_cmd(dir_c(c)+'msg', data));
     }
     else
       assert(!msg);
@@ -697,7 +698,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
   let a = xtest.test_parse(c.arg);
   assert(a.length==1, 'invalid fwd '+c.orig);
-  a[0].fwd = c.dir=='>' ? c.s+c.d+'>' : c.d+c.s+'<';
+  a[0].fwd = dir_c(c);
   if (t_pre_process)
   {
     a[0].orig_loop = c.orig_loop;
@@ -742,14 +743,13 @@ function extend_loop(c){
     delete o.loop;
     if (o.cmd!='fwd')
     {
-      o.arg = build_cmd((o.dir=='>' ?
-      c.loop[0].s+c.loop[c.loop.length-1].d+o.dir :
-      c.loop[c.loop.length-1].d+c.loop[0].s+o.dir)+o.cmd, o.arg);
+      o.arg = build_cmd(
+        dir_str(c.loop[0].s, c.loop[c.loop.length-1].d, o.dir)+o.cmd, o.arg);
       o.cmd = 'fwd';
     }
     assert.equal(o.cmd, 'fwd');
     // XXX: need api to build dir correctly + grep everywhere
-    set_orig(o, _build_cmd(o.arg, (o.dir=='>' ? o.s+o.d : o.d+o.s)+o.dir));
+    set_orig(o, _build_cmd(o.arg, dir_c(o)));
     o.had_loop = true;
   }
   a[0].loop_first = true;
