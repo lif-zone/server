@@ -64,7 +64,6 @@ function rev_trim(s){
   return s;
 }
 
-// XXX: need test
 // _build_cmd(cmd, fwd, ...)
 function _build_cmd(){
   let args = Array.from(arguments), cmd = args[0], fwd = args[1]||'', arg = '';
@@ -882,6 +881,16 @@ describe('api', function(){
     t('ab<', 'ab>');
     t('a>c(d)', 'a<');
     t('ab>c(d)', 'ab<');
+  });
+  it('build_cmd', ()=>{
+    let t = (arg, exp)=>assert.equal(_build_cmd.apply(this, arg), exp);
+    t(['a'], 'a');
+    t(['ab>'], 'ab>');
+    t(['ab>msg'], 'ab>msg');
+    t(['ab>msg', 'cd>'], 'cd>fwd(ab>msg)');
+    t(['ab>msg', '', 'x'], 'ab>msg(x)');
+    t(['ab>msg', '', 'x', 'y'], 'ab>msg(x y)');
+    t(['ab>msg', 'cd>', 'x', 'y'], 'cd>fwd(ab>msg(x y))');
   });
 });
 
