@@ -814,12 +814,9 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   yield test_end();
 });
 
-// XXX: need test
 const test_to_str = cmds=>{
   let a = [];
-  cmds.forEach(cmd=>{
-    a.push(cmd.orig);
-  });
+  cmds.forEach(cmd=>a.push(cmd.orig));
   return a.join(' ');
 };
 
