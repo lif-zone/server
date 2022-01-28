@@ -47,35 +47,33 @@ export default class Client extends EventEmitter {
   // switch (a){
   // for (...){
   // } else {
-  _onConnection = channel=>{
-    let _this = this;
-    etask(function*_onConnection(){
-      const onClose = ()=>{
-        delete _this.pending[channel.id];
-        _this.canidates.remove(channel.id);
-        _this.peers.remove(channel.id);
-      };
-      assert(!_this.destroyed, 'node already destroyed');
-      channel.on('close', onClose);
-      // XXX: decide how to handle errors
-      channel.on('error', err=>xerr('Error', err));
+  _onConnection = channel=>etask(function*_onConnection(){
+    let _this = this.this;
+    const onClose = ()=>{
       delete _this.pending[channel.id];
-      _this.canidates.add({id: channel.id});
-      if (_this.peers.get(channel.id)){
-        if (channel.id.compare(_this.id) >= 0)
-          channel.destroy();
-        return;
-      }
-      _this.peers.add(channel);
-      _this.emit('connection', channel);
-      if (util.test_on_connection)
-        yield util.test_on_connection(channel);
-      // once sending a msg - remember it, and keep it 'open'
-      yield _this.router.send(channel.id, {type: 'find', data: ids(_this.id)});
-      _this.emit('peer', channel.id);
-      return channel;
-    });
-  };
+      _this.canidates.remove(channel.id);
+      _this.peers.remove(channel.id);
+    };
+    assert(!_this.destroyed, 'node already destroyed');
+    channel.on('close', onClose);
+    // XXX: decide how to handle errors
+    channel.on('error', err=>xerr('Error', err));
+    delete _this.pending[channel.id];
+    _this.canidates.add({id: channel.id});
+    if (_this.peers.get(channel.id)){
+      if (channel.id.compare(_this.id) >= 0)
+        channel.destroy();
+      return;
+    }
+    _this.peers.add(channel);
+    _this.emit('connection', channel);
+    if (util.test_on_connection)
+      yield util.test_on_connection(channel);
+    // once sending a msg - remember it, and keep it 'open'
+    yield _this.router.send(channel.id, {type: 'find', data: ids(_this.id)});
+    _this.emit('peer', channel.id);
+    return channel;
+  }, this);
   connect_wrtc(id){ return this.wrtcConnector.connect(id); }
   connect = id=>etask(function*connect(){
     let _this = this.this;
@@ -108,21 +106,19 @@ export default class Client extends EventEmitter {
     return this.router.send(id, {type: 'find', data: ids(this.id)});
   }
   // XXX: need to validate all data to make sure we don't crash
-  on_message = (msg, from)=>{
-    let _this = this;
-    return etask(function*on_message(){
-      if (_this.destroyed)
-        return;
-      switch (msg.type){
-      case 'user': _this.emit('message', msg.data, from); break;
-      case 'find': yield _this._on_find(msg, from); break;
-      case 'find_r': yield _this._on_find_r(msg, from); break;
-      case 'conn_info': yield _this._on_conn_info(msg, from); break;
-      case 'conn_info_r': yield _this._on_conn_info_r(msg, from); break;
-      default: xerr('unknown msg type %s', msg.type);
-      }
-    });
-  };
+  on_message = (msg, from)=>etask(function*on_message(){
+    let _this = this.this;
+    if (_this.destroyed)
+      return;
+    switch (msg.type){
+    case 'user': _this.emit('message', msg.data, from); break;
+    case 'find': yield _this._on_find(msg, from); break;
+    case 'find_r': yield _this._on_find_r(msg, from); break;
+    case 'conn_info': yield _this._on_conn_info(msg, from); break;
+    case 'conn_info_r': yield _this._on_conn_info_r(msg, from); break;
+    default: xerr('unknown msg type %s', msg.type);
+    }
+  }, this);
   _on_find = (msg, from)=>{
     let _this = this;
     return etask(function*_on_find(){
