@@ -661,6 +661,16 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   {
     if (call)
     {
+      if (c.loop_first)
+      {
+        if (msg)
+          push_cmd(_build_cmd(c.s+c.d+'>msg', c.fwd, data));
+        c.fwd = '';
+        set_orig(c, build_cmd(c.s+c.d+'>!msg', data, '!msg'));
+        return;
+      }
+      else if (c.had_loop)
+        return set_orig(c, build_cmd(c.s+c.d+'>msg', data));
       if (msg)
         push_cmd(build_cmd(c.s+c.d+'>msg', data));
     }
@@ -689,6 +699,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   {
     a[0].orig_loop = c.orig_loop;
     a[0].had_loop = c.had_loop;
+    a[0].loop_first = c.loop_first;
   }
   yield cmd_run_single({c: a[0], event});
   if (t_pre_process)
@@ -738,6 +749,7 @@ function extend_loop(c){
     set_orig(o, _build_cmd(o.arg, (o.dir=='>' ? o.s+o.d : o.d+o.s)+o.dir));
     o.had_loop = true;
   }
+  a[0].loop_first = true;
   a[a.length-1].orig_loop = c.loop;
   t_cmds.splice(t_i, 1, ...a);
   return t_cmds[t_i];
@@ -886,7 +898,7 @@ describe('peer-relay', function(){
         ]));
         yield t('node(a) node(b) ab,ba>fwd(ab>conn_info(r))', ab.concat([
           {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'a', d: 'b', dir: '>',
-            had_loop: true},
+            had_loop: true, loop_first: true},
           {cmd: 'fwd', arg: 'ab>conn_info(r)', s: 'b', d: 'a', dir: '>',
           had_loop: true, orig_loop:
           [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
@@ -944,6 +956,13 @@ describe('peer-relay', function(){
         t('ab>!msg(hi !msg)', `ab>!msg(hi !msg)`);
         t('ab>!msg(hi)', `ab>!msg(hi !msg) ab>msg(hi)`);
         t('ab>!msg(hi msg)', `ab>!msg(hi !msg) ab>msg(hi)`);
+        t('abc>!msg(hi)', `ac>!msg(hi !msg) ab>fwd(ac>msg(hi))
+          bc>fwd(ac>msg(hi))`);
+        if (0) // XXX TODO
+        t('abc<!msg(hi)', `ac<!msg(hi !msg) bc<fwd(ac>msg(hi))
+          ab<fwd(ac>msg(hi))`);
+        t('ab,bc>!msg(hi)', `ac>!msg(hi !msg) ab>fwd(ac>msg(hi))
+          bc>fwd(ac>msg(hi))`);
         /* XXX derry: REVIEW
         abc>!msg(hi msg) == abc>!msg(hi msg(fwd(abc>))) ==
         ac>!msg(hi) ab>fwd(ac>msg(hi)) bc>fwd(ac>msg(hi))
@@ -994,12 +1013,8 @@ describe('peer-relay', function(){
     // connect directly
     t('linear', `node(a) node(b wss) node(c wss) - ab>!connect(find(a ba)) -
       bc>!connect(find(b cab)) abc<conn_info(r)`);
-    t('linear_msg', `setup(3_nodes_linear)
-      ab>!msg(hi) - ab<!msg(hi) -
-      ac>!msg(hi !msg) abc>msg(hi) - ac<!msg(hi !msg) abc<msg(hi) -
-      bc>!msg(hi) - bc<!msg(hi) -
-    `);
-    // XXX: TODO: abc>!msg(hi msg) - abc<!msg(hi fwd(abc<)) -
+    t('linear_msg', `setup(3_nodes_linear) ab>!msg(hi) - ab<!msg(hi) -
+      abc>!msg(hi) - abc<!msg(hi) - bc>!msg(hi) - bc<!msg(hi)`);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       abc<conn_info(r(wrtc)) ca>connect(wrtc find(cab abc))`);
@@ -1019,23 +1034,14 @@ describe('peer-relay', function(){
     t('linear', `setup(3_nodes_linear) node(d wss) - cd>!connect(find(c dcba))
       dcb>conn_info(r(ws)) db>connect(find(dcba badc))
       ba>fwd(bd>conn_info_r(ws)) dba>conn_info(r) dcb>fwd(ad<conn_info)`);
-    // XXX: support abc>fwd(ac>msg(hi)) --> abc>fwd(msg(hi))
-    // XXX: add test to preprocess for all loops/expansions (ie, for all
-    // push_cmd)
-    t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) -
-      ac>!msg(hi !msg) abc>msg(hi) -
-      ad>!msg(hi !msg) ab,bd,bc,cd>msg(hi) -
-      ba>!msg(hi) - ba>!msg(hi) -
-      bc>!msg(hi) - bd>!msg(hi) -
-      ca>!msg(hi !msg) cb>fwd(ca>msg(hi)) ba>fwd(ca>msg(hi)) cd>fwd(ca>msg(hi))
-      db>fwd(ca>msg(hi)) -
-      da>!msg(hi !msg) db>fwd(da>msg(hi)) ba>fwd(da>msg(hi)) dc>fwd(da>msg(hi))
-      cb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
+    t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) - abc>!msg(hi) -
+      abd>!msg(hi) - ba>!msg(hi) - ba>!msg(hi) - bc>!msg(hi) - bd>!msg(hi) -
+      cba>!msg(hi) cd>fwd(ca>msg(hi)) db>fwd(ca>msg(hi)) - dba>!msg(hi)
+      dc>fwd(da>msg(hi)) cb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
     t('linear_wss', `setup(3_nodes_wss) node(d wss) -
       cd>!connect(find(c dcba)) dcb>conn_info(r(ws))
-      db>connect(find(dcba badc)) dba>conn_info
-      dca>conn_info(r(ws)) da>connect(find(dcba abcd))
-      abd>conn_info_r(ws) ba,ad,ac>fwd(bd>conn_info_r(ws))`);
+      db>connect(find(dcba badc)) dba>conn_info dca>conn_info(r(ws))
+      da>connect(find(dcba abcd)) abd>conn_info_r(ws) bad>conn_info_r(ws)`);
   });
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
