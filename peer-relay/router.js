@@ -35,11 +35,13 @@ export default class Router extends EventEmitter {
     for (var c of this._channels.toArray())
       this._onChannelAdded(c);
   }
+  /* XXX derry TODO:
   send_req(id, data){
     // remember packet. keep in send queue. update parent in 'on'
     this.send(id, data);
   }
   send_req('hi').on('res', ...).on('fail', ..);
+  */
   send(id, data){
     var msg = {to: id.toString('hex'), from: this.id.toString('hex'),
       nonce: '' + Math.floor(1e15 * Math.random()), data: data,

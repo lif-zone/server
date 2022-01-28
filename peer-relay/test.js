@@ -1014,7 +1014,7 @@ describe('peer-relay', function(){
       as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r(ws))
       ba>connect(find(bas abs))`);
   });
-  // XXX: mv '-' to node
+  // XXX derry: mv '-' to node
   // ba>fwd(bd>conn_info_r(ws)) == ba>bd>conn_info_r(ws))
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);

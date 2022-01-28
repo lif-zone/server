@@ -42,7 +42,7 @@ export default class Client extends EventEmitter {
         this.wsConnector.connect(uri);
     });
   }
-  // XXX: update js_code and fix existing code
+  // XXX derry: update js_code and fix existing code
   // if (...){
   // switch (a){
   // for (...){
