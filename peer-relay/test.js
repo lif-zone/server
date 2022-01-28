@@ -527,6 +527,8 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
     assert_event(event, c.orig);
   else
     assert(d.t.fake, 'dst must be fake');
+  if (t_pre_process)
+    return;
   yield cmd_run_if_next_fake();
 });
 
@@ -564,6 +566,8 @@ const cmd_find = opt=>etask(function*cmd_find(){
 
 const cmd_find_r = opt=>etask(function*cmd_find_r(){
   let {c, event} = opt, s = t_nodes[c.s];
+  if (t_pre_process)
+    return;
   // XXX: assert c.arg
   if (event)
   {
@@ -629,6 +633,8 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
+  if (t_pre_process)
+    return;
   if (event) // XXX: copy this logic to all places of assert_event
   {
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
@@ -682,6 +688,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     else
       assert(!msg);
     set_orig(c, build_cmd(c.meta.cmd, data, call ? '!msg' : ''));
+    return;
   }
   if (call)
   {
@@ -771,7 +778,8 @@ function extend_loop_rev(loop, cmd){
 }
 
 const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
-  if (t_role=='fake') // assert !t_pre_process
+  assert(!t_pre_process);
+  if (t_role=='fake')
     return;
   let next = t_cmds[t_i];
   if (!next)
