@@ -1003,9 +1003,6 @@ describe('peer-relay', function(){
       ab>find_r(ba)`);
     t('short', `node(a) node(b wss) - ab>!connect(find(a ba))`);
     t('msg', `setup(2_nodes) ab>!msg(hi) ab<!msg(hi)`);
-    if (0) // XXX TODO: find way to test this sequence of events
-    t('events_order', `node(a) node(b wss(port:4000)) - ab>!connect
-      ab>find(a) ab<find(b) ab>find_r(b) ab<find_r(b)`);
     t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
   });
   describe('3_nodes', function(){
@@ -1018,11 +1015,11 @@ describe('peer-relay', function(){
     t('linear_msg', `setup(3_nodes_linear) ab>!msg(hi) - ab<!msg(hi) -
       abc>!msg(hi) - abc<!msg(hi) - bc>!msg(hi) - bc<!msg(hi)`);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
-      ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-      abc<conn_info(r(wrtc)) ca>connect(wrtc find(cab abc))`);
+      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) abc<conn_info(r(wrtc))
+      ca>connect(wrtc find(cab abc))`);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
-      ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-      cba>conn_info(r(ws)) ca>connect(find(cab abc))`);
+      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) cba>conn_info(r(ws))
+      ca>connect(find(cab abc))`);
     t('star', `
       node(s wss) node(a) node(b wss) - as>!connect(find(a sa)) -
       bs>!connect(find(bas sab)) bsa>conn_info(r)`);
@@ -1040,10 +1037,10 @@ describe('peer-relay', function(){
       abd>!msg(hi) - ba>!msg(hi) - ba>!msg(hi) - bc>!msg(hi) - bd>!msg(hi) -
       cba>!msg(hi) cd>fwd(ca>msg(hi)) db>fwd(ca>msg(hi)) - dba>!msg(hi)
       dc>fwd(da>msg(hi)) cb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
-    t('linear_wss', `setup(3_nodes_wss) node(d wss) -
-      cd>!connect(find(c dcba)) dcb>conn_info(r(ws))
-      db>connect(find(dcba badc)) dba>conn_info dca>conn_info(r(ws))
-      da>connect(find(dcba abcd)) abd>conn_info_r(ws) bad>conn_info_r(ws)`);
+    t('linear_wss', `setup(3_nodes_wss) node(d wss) - cd>!connect(find(c dcba))
+      dcb>conn_info(r(ws)) db>connect(find(dcba badc))
+      dba>conn_info dca>conn_info(r(ws)) da>connect(find(dcba abcd))
+      abd>conn_info_r(ws) bad>conn_info_r(ws)`);
   });
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
