@@ -968,6 +968,8 @@ describe('peer-relay', function(){
         // ba>fwd(bd>conn_info_r(ws)) == ba>bd>conn_info_r(ws))
         if (0)
         t('ab>cd>(msg(hi))', `ab>fwd(cd>msg(hi))`);
+        if (0)
+        t('ab,cd>ef>(msg(hi))', `ab,cd>fwd(ef>msg(hi))`);
       });
     });
   });

@@ -89,12 +89,12 @@ function stack_get(){
     return err;
 }
 
-function Etask(opt, states, parent_this){
+function Etask(opt, states, _this){
     if (!(this instanceof Etask))
-        return new Etask(opt, states, parent_this);
+        return new Etask(opt, states, _this);
     if (Array.isArray(opt) || typeof opt=='function')
     {
-        parent_this = states;
+        _this = states;
         states = opt;
         opt = undefined;
     }
@@ -102,7 +102,7 @@ function Etask(opt, states, parent_this){
     if (typeof states=='function')
     {
         if (states.constructor.name=='GeneratorFunction')
-            return E._generator(null, states, opt, parent_this);
+            return E._generator(null, states, opt, _this);
         states = [states];
     }
     // performance: set all fields to undefined
@@ -126,7 +126,7 @@ function Etask(opt, states, parent_this){
     this._stack = Etask.use_bt ? stack_get() : undefined;
     this.tm_create = Date.now();
     this.info = {};
-    this.this = parent_this;
+    this.this = _this;
     var idx = this.states.idx = {};
     for (var i=0; i<states.length; i++)
     {
@@ -1407,7 +1407,7 @@ function etask_fn(opt, states, push_this){
 }
 E.fn = function(opt, states){ return etask_fn(opt, states, false); };
 E._fn = function(opt, states){ return etask_fn(opt, states, true); };
-E._generator = function(gen, ctor, opt, parent_this){
+E._generator = function(gen, ctor, opt, _this){
     opt = opt||{};
     opt.name = opt.name || ctor && ctor.name || 'generator';
     if (opt.cancel===undefined)
@@ -1435,7 +1435,7 @@ E._generator = function(gen, ctor, opt, parent_this){
         // .return() supported only in node>=6.x.x
         if (!done && gen && gen.return)
             try { gen.return(); } catch(e){}
-    }], parent_this);
+    }], _this);
 };
 E.ef = function(err){ // error filter
     if (xerr.on_exception)
