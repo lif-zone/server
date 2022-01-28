@@ -561,14 +561,12 @@ const cmd_find = opt=>etask(function*cmd_find(){
 });
 
 const cmd_find_r = opt=>etask(function*cmd_find_r(){
-  let {c, event} = opt, s = t_nodes[c.s];
+  let {c, event} = opt;
   if (t_pre_process)
     return;
   // XXX: assert c.arg
   if (event)
-  {
     assert_event_c(c, event);
-  }
   yield fake_send_msg(c, {type: 'find_r', data:
     array_name_to_id(c.arg.split(''))});
   yield cmd_run_if_next_fake();
@@ -1011,12 +1009,10 @@ describe('peer-relay', function(){
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab)) cba>conn_info(r(ws))
       ca>connect(find(cab abc))`);
-    t('star', `
-      node(s wss) node(a) node(b wss) - as>!connect(find(a sa)) -
+    t('star', `node(s wss) node(a) node(b wss) - as>!connect(find(a sa)) -
       bs>!connect(find(bas sab)) bsa>conn_info(r)`);
-    t('star_wss', `
-      node(s wss) node(a wss) node(b wss) - as>!connect(find(a sa)) -
-      bs>!connect(find(bas sab)) bsa>conn_info(r(ws))
+    t('star_wss', `node(s wss) node(a wss) node(b wss) -
+      as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r(ws))
       ba>connect(find(bas abs))`);
   });
   describe('4_nodes', function(){
