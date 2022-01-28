@@ -366,6 +366,8 @@ const fake_send_msg = (c, data)=>etask(function*(){
 const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   let event = util.get(opt, 'event');
   assert(!event, 'unexpected event '+event);
+  if (t_pre_process)
+    return;
   yield etask.sleep(0); // XXX TODO: change to tick();
 });
 
@@ -440,6 +442,7 @@ const cmd_connect = opt=>etask(function*(){
     {
     case 'wss':
       assert(wss===undefined, 'multiple '+a.cmd);
+      debugger;
       wss = assert_wss_url(c.d, a.arg);
       break;
     case 'wrtc':
@@ -909,7 +912,7 @@ describe('peer-relay', function(){
       }));
       describe('shortcut', ()=>{
         const t = (test, exp)=>it(test, ()=>etask(function*(){
-          let setup = 'node(a) node(b wss) node(c) node(d) ';
+          let setup = 'node(a wss) node(b wss) node(c wss) node(d wss) ';
           let regex = new RegExp('^'+xescape.regex(setup));
           let res = yield test_pre_process(setup+test);
           assert.equal(test_to_str(res).replace(regex, ''),
@@ -982,10 +985,10 @@ describe('peer-relay', function(){
   };
   describe('2_nodes', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
-    t('long', `node(a) node(b wss(port:4000)) - ab>!connect(wss !r)
+    t('long', `node(a) node(b wss(port:4000)) ab>!connect(wss !r)
       ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
       ab>find_r(ba)`);
-    t('short', `node(a) node(b wss) - ab>!connect(find(a ba))`);
+    t('short', `node(a) node(b wss) ab>!connect(find(a ba))`);
     t('msg', `setup(2_nodes) ab>!msg(hi) ab<!msg(hi)`);
     t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
   });
@@ -994,7 +997,7 @@ describe('peer-relay', function(){
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
-    t('linear', `node(a) node(b wss) node(c wss) - ab>!connect(find(a ba)) -
+    t('linear', `node(a) node(b wss) node(c wss) ab>!connect(find(a ba)) -
       bc>!connect(find(b cab)) abc<conn_info(r)`);
     t('linear_msg', `setup(3_nodes_linear) ab>!msg(hi) - ab<!msg(hi) -
       abc>!msg(hi) - abc<!msg(hi) - bc>!msg(hi) - bc<!msg(hi)`);
@@ -1004,17 +1007,17 @@ describe('peer-relay', function(){
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab)) cba>conn_info(r(ws))
       ca>connect(find(cab abc))`);
-    t('star', `node(s wss) node(a) node(b wss) - as>!connect(find(a sa)) -
+    t('star', `node(s wss) node(a) node(b wss) as>!connect(find(a sa)) -
       bs>!connect(find(bas sab)) bsa>conn_info(r)`);
     t('star_wss', `node(s wss) node(a wss) node(b wss) -
       as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r(ws))
       ba>connect(find(bas abs))`);
   });
-  // XXX derry: mv '-' to node
+  // XXX derry:
   // ba>fwd(bd>conn_info_r(ws)) == ba>bd>conn_info_r(ws))
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
-    t('linear', `setup(3_nodes_linear) node(d wss) - cd>!connect(find(c dcba))
+    t('linear', `setup(3_nodes_linear) node(d wss) cd>!connect(find(c dcba))
       dcb>conn_info(r(ws)) db>connect(find(dcba badc))
       ba>fwd(bd>conn_info_r(ws)) dba>conn_info(r) dcb>fwd(ad<conn_info)`);
     t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) - abc>!msg(hi) -
