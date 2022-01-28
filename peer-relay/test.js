@@ -240,18 +240,16 @@ class FakeWsConnector extends EventEmitter {
       this.url = 'wss://'+host+':'+port;
     }
   }
-  connect = url=>{
-    let _this = this;
-    return etask(function*connect(){
-      let d = node_from_url(url), s = node_from_id(_this.id);
-      assert(d, 'node not found '+url);
-      let channel = new FakeChannel({localID: s.id, id: d.id});
-      channel.wsConnector = _this;
-      channel.t.initiaor = true;
-      assert(!s.t.fake, 'src must be real');
-      yield s._onConnection(channel);
-    });
-  }
+  connect = url=>etask(function*connect(){
+    let _this = this.this;
+    let d = node_from_url(url), s = node_from_id(_this.id);
+    assert(d, 'node not found '+url);
+    let channel = new FakeChannel({localID: s.id, id: d.id});
+    channel.wsConnector = _this;
+    channel.t.initiaor = true;
+    assert(!s.t.fake, 'src must be real');
+    yield s._onConnection(channel);
+  }, this);
   destroy(){}
 }
 
@@ -261,17 +259,15 @@ class FakeWrtcConnector extends EventEmitter {
     this.id = id;
     this.supported = wrtc;
   }
-  connect = _d=>{
-    let _this = this;
-    return etask(function*connect(){
-      let d = node_from_id(_d), s = node_from_id(_this.id);
-      let channel = new FakeChannel({localID: s.id, id: d.id});
-      channel.wrtcConnector = _this;
-      channel.t.initiaor = true;
-      assert(!s.t.fake, 'src must be real');
-      yield s._onConnection(channel);
-    });
-  }
+  connect = _d=>etask(function*connect(){
+    let _this = this.this;
+    let d = node_from_id(_d), s = node_from_id(_this.id);
+    let channel = new FakeChannel({localID: s.id, id: d.id});
+    channel.wrtcConnector = _this;
+    channel.t.initiaor = true;
+    assert(!s.t.fake, 'src must be real');
+    yield s._onConnection(channel);
+  }, this);
   destroy(){}
 }
 
