@@ -5,6 +5,7 @@ import assert from 'assert';
 import Node from './client.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
+import xescape from '../util/escape.js';
 import util from '../util/util.js';
 import string from '../util/string.js';
 import xtest from '../util/test_lib.js';
@@ -911,10 +912,10 @@ describe('peer-relay', function(){
       }));
       describe('shortcut', ()=>{
         const t = (test, exp)=>it(test, ()=>etask(function*(){
-          let setup = 'node(a) node(b wss) node(c) node(d)';
-          let res = yield test_pre_process(setup+' '+test);
-          // XXX: fix replace (need to escape regex and use /^.../
-          assert.equal(test_to_str(res).replace(setup+' ', ''),
+          let setup = 'node(a) node(b wss) node(c) node(d) ';
+          let regex = new RegExp('^'+xescape.regex(setup));
+          let res = yield test_pre_process(setup+test);
+          assert.equal(test_to_str(res).replace(regex, ''),
             string.split_ws(exp).join(' '));
         }));
         t('ab>connect(wss !r)', `ab>connect(wss !r)`);

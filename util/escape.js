@@ -1,6 +1,7 @@
 'use strict'; /*jslint node:true, browser:true*/
 const E = {};
 export default E;
+
 E.un = {};
 
 var html_escape_table = {
@@ -15,7 +16,7 @@ E.sh = function(s_or_a){
         s = ''+s; // supports also numbers
         if (!s)
             return '""';
-        if (/^[a-z0-9_\-./:]+$/i.test(s))
+        if (/^[a-z0-9_\-.\/:]+$/i.test(s))
             return s;
         return '"'+s.replace(/([\\"`$])/g, '\\$1')+'"';
     }
@@ -111,7 +112,7 @@ E.un_sh = function(s, keep_esc){
     return argv;
 };
 
-E.regex = function(s){ return s.replace(/[[\]{}()*+?.\\^$|/]/g, '\\$&'); };
+E.regex = function(s){ return s.replace(/[[\]{}()*+?.\\^$|\/]/g, '\\$&'); };
 
 E.uri_comp = function(s){ return encodeURIComponent(s).replace(/%20/g, '+'); };
 
@@ -121,7 +122,7 @@ var http_escape_chars = [];
     for (i=0; i<256; i++)
     {
         var c = String.fromCharCode(i);
-        http_escape_chars[i] = /^[a-zA-Z0-9_.~,-]$/.test(c) ? c :
+        http_escape_chars[i] = /^[a-zA-Z0-9_.~,\-]$/.test(c) ? c :
             '%'+('0'+i.toString(16)).slice(-2);
     }
 }());
@@ -226,7 +227,7 @@ E.parse.http_words = function(val){
         {
             var v = match[1];
             // a quoted value
-            if (match = eat_token(o, /^\s*=\s*"([^"\\]*(?:\\.[^"\\]*)*)"/))
+            if (match = eat_token(o, /^\s*=\s*\"([^\"\\]*(?:\\.[^\"\\]*)*)\"/))
                 res.push([v, match[1].replace(/\\(.)/, '$1')]);
             // some unquoted value
             else if (match = eat_token(o, /^\s*=\s*([^;,\s]*)/))
@@ -243,4 +244,3 @@ E.parse.http_words = function(val){
     }
     return res;
 };
-
