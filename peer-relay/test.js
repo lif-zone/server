@@ -1,4 +1,3 @@
-// XXX: obsolete - rm
 'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
 // XXX: need jslint mocha: true
 import assert from 'assert';
@@ -741,7 +740,6 @@ function extend_loop(c){
       o.cmd = 'fwd';
     }
     assert.equal(o.cmd, 'fwd');
-    // XXX: need api to build dir correctly + grep everywhere
     set_orig(o, _build_cmd(o.arg, dir_c(o)));
     o.had_loop = true;
   }
