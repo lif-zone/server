@@ -89,11 +89,12 @@ function stack_get(){
     return err;
 }
 
-function Etask(opt, states){
+function Etask(opt, states, parent_this){
     if (!(this instanceof Etask))
-        return new Etask(opt, states);
+        return new Etask(opt, states, parent_this);
     if (Array.isArray(opt) || typeof opt=='function')
     {
+        parent_this = states;
         states = opt;
         opt = undefined;
     }
@@ -101,7 +102,7 @@ function Etask(opt, states){
     if (typeof states=='function')
     {
         if (states.constructor.name=='GeneratorFunction')
-            return E._generator(null, states, opt);
+            return E._generator(null, states, opt, parent_this);
         states = [states];
     }
     // performance: set all fields to undefined
@@ -112,7 +113,7 @@ function Etask(opt, states){
     this.name = this._name = this.parent = this.cancelable =
     this.tm_create = this._alarm = this.tm_completed = this.parent_type =
     this.info = this.then_waiting = this.free = this.parent_guess =
-    this.child_guess = this.wait_retval = undefined;
+    this.child_guess = this.wait_retval = this.this = undefined;
     // init fields
     this.name = opt.name;
     this._name = this.name===undefined ? 'noname' : this.name;
@@ -125,6 +126,7 @@ function Etask(opt, states){
     this._stack = Etask.use_bt ? stack_get() : undefined;
     this.tm_create = Date.now();
     this.info = {};
+    this.this = parent_this;
     var idx = this.states.idx = {};
     for (var i=0; i<states.length; i++)
     {
@@ -1405,7 +1407,7 @@ function etask_fn(opt, states, push_this){
 }
 E.fn = function(opt, states){ return etask_fn(opt, states, false); };
 E._fn = function(opt, states){ return etask_fn(opt, states, true); };
-E._generator = function(gen, ctor, opt){
+E._generator = function(gen, ctor, opt, parent_this){
     opt = opt||{};
     opt.name = opt.name || ctor && ctor.name || 'generator';
     if (opt.cancel===undefined)
@@ -1433,7 +1435,7 @@ E._generator = function(gen, ctor, opt){
         // .return() supported only in node>=6.x.x
         if (!done && gen && gen.return)
             try { gen.return(); } catch(e){}
-    }]);
+    }], parent_this);
 };
 E.ef = function(err){ // error filter
     if (xerr.on_exception)

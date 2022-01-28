@@ -3740,6 +3740,12 @@ describe('etask', function(){
         t(etask.err(), 1);
         t(etask.err('oops'), 1);
     });
+    it('this_this', ()=>etask(function*(){
+      let _this = this;
+      yield etask({}, [function(){ assert.equal(this.this, _this); }], _this);
+      yield etask([function(){ assert.equal(this.this, _this); }], _this);
+      yield etask(function*(){ yield assert.equal(this.this, _this); }, _this);
+    }));
     it('is_final', ()=>{
         let t = (val, exp)=>assert.strictEqual(etask.is_final(val), !!exp);
         t(0, 1);

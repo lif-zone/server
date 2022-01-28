@@ -954,9 +954,8 @@ describe('peer-relay', function(){
         t('abc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
           ab<fwd(ac<conn_info_r(ws))`);
-        t('abc>conn_info(r(ws))', `ab>fwd(ac>conn_info)
-          bc>fwd(ac>conn_info) bc<fwd(ac<conn_info_r(ws))
-          ab<fwd(ac<conn_info_r(ws))`);
+        t('abc>conn_info(r(ws))', `ab>fwd(ac>conn_info) bc>fwd(ac>conn_info)
+          bc<fwd(ac<conn_info_r(ws)) ab<fwd(ac<conn_info_r(ws))`);
         t('ab>!msg(hi !msg)', `ab>!msg(hi !msg)`);
         t('ab>!msg(hi)', `ab>!msg(hi !msg) ab>msg(hi)`);
         t('ab>!msg(hi msg)', `ab>!msg(hi !msg) ab>msg(hi)`);
@@ -1015,6 +1014,8 @@ describe('peer-relay', function(){
       as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r(ws))
       ba>connect(find(bas abs))`);
   });
+  // XXX: mv '-' to node
+  // ba>fwd(bd>conn_info_r(ws)) == ba>bd>conn_info_r(ws))
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup(3_nodes_linear) node(d wss) - cd>!connect(find(c dcba))
@@ -1029,7 +1030,9 @@ describe('peer-relay', function(){
       dba>conn_info dca>conn_info(r(ws)) da>connect(find(dcba abcd))
       abd>conn_info_r(ws) bad>conn_info_r(ws)`);
   });
+  // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
 });
+
 

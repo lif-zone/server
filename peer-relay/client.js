@@ -42,6 +42,11 @@ export default class Client extends EventEmitter {
         this.wsConnector.connect(uri);
     });
   }
+  // XXX: update js_code and fix existing code
+  // if (...){
+  // switch (a){
+  // for (...){
+  // } else {
   _onConnection = channel=>{
     let _this = this;
     etask(function*_onConnection(){
@@ -56,8 +61,7 @@ export default class Client extends EventEmitter {
       channel.on('error', err=>xerr('Error', err));
       delete _this.pending[channel.id];
       _this.canidates.add({id: channel.id});
-      if (_this.peers.get(channel.id))
-      {
+      if (_this.peers.get(channel.id)){
         if (channel.id.compare(_this.id) >= 0)
           channel.destroy();
         return;
@@ -66,27 +70,26 @@ export default class Client extends EventEmitter {
       _this.emit('connection', channel);
       if (util.test_on_connection)
         yield util.test_on_connection(channel);
+      // once sending a msg - remember it, and keep it 'open'
       yield _this.router.send(channel.id, {type: 'find', data: ids(_this.id)});
       _this.emit('peer', channel.id);
       return channel;
     });
   };
   connect_wrtc(id){ return this.wrtcConnector.connect(id); }
-  connect = id=>{
-    let _this = this;
-    return etask(function*connect(){
-      if (_this.destroyed) // XXX: print error (or assert)
-        return;
-      if (id in _this.pending)
-        return;
-      if (_this.peers.get(id))
-        return;
-      if (id.equals(_this.id))
-        return;
-      _this.pending[id] = true;
-      yield _this.router.send(id, {type: 'conn_info'});
-    });
-  }
+  connect = id=>etask(function*connect(){
+    let _this = this.this;
+    if (_this.destroyed) // XXX: print error (or assert)
+      return;
+    if (id in _this.pending)
+      return;
+    if (_this.peers.get(id))
+      return;
+    if (id.equals(_this.id))
+      return;
+    _this.pending[id] = true;
+    yield _this.router.send(id, {type: 'conn_info'});
+  }, this);
   disconnect(id){
     if (this.destroyed)
       return;
@@ -110,8 +113,7 @@ export default class Client extends EventEmitter {
     return etask(function*on_message(){
       if (_this.destroyed)
         return;
-      switch (msg.type)
-      {
+      switch (msg.type){
       case 'user': _this.emit('message', msg.data, from); break;
       case 'find': yield _this._on_find(msg, from); break;
       case 'find_r': yield _this._on_find_r(msg, from); break;
