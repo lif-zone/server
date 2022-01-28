@@ -917,7 +917,6 @@ describe('peer-relay', function(){
           assert.equal(test_to_str(res).replace(setup+' ', ''),
             string.split_ws(exp).join(' '));
         }));
-        // XXX: add wrtc
         t('ab>connect(wss !r)', `ab>connect(wss !r)`);
         t('ab>connect(!r)', `ab>connect(wss !r)`);
         t('ab>connect', `ab>connect(wss !r) ab<connected`);
@@ -970,7 +969,6 @@ describe('peer-relay', function(){
   });
   const xit = (name, role, test)=>it(name+'_'+role, ()=>test_run(role, test));
   // XXX TODO:
-  // - check generic assert code that derry wrote
   // - check etask error handling of unchaught errors
   // - add test for failures (missing events, event mismatch etc)
   // - test.js code cleaup
