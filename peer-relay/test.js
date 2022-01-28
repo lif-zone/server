@@ -117,7 +117,6 @@ function node_from_id(id){
   for (let name in t_nodes)
   {
     let node = t_nodes[name];
-    // XXX: make it nicer
     if (node.t.id == _str(id))
       return node;
   }
@@ -207,7 +206,6 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
   if (channel.t.initiaor)
   {
     assert(!s.t.fake, 'src must be real');
-    // XXX: review. why we send event?
     yield cmd_run(build_cmd(s.t.name+d.t.name+'>connect',
       channel.wsConnector ? 'wss' : 'wrtc'));
     let event = s.t.name+d.t.name+'<connected';
@@ -514,7 +512,7 @@ const cmd_connect = opt=>etask(function*(){
         channel.wrtcConnector = d.wrtcConnector;
       yield d._onConnection(channel);
     }
-    else // XXX: review
+    else
       assert_event(event, build_cmd(c.s+c.d+'>connect', wss ? 'wss' : 'wrtc'));
   }
 });
@@ -612,7 +610,6 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   {
     let cmd = normalize(c.meta.cmd);
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', cmd) : cmd;
-    xerr.notice('XXX-pre-assert %s', JSON.stringify(c, null, '\t'));
     assert_event(event, expected);
   }
   yield fake_send_msg(c, {type: 'conn_info'});
