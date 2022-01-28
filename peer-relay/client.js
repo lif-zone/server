@@ -119,60 +119,52 @@ export default class Client extends EventEmitter {
     default: xerr('unknown msg type %s', msg.type);
     }
   }, this);
-  _on_find = (msg, from)=>{
-    let _this = this;
-    return etask(function*_on_find(){
-      var target = new Buffer(msg.data, 'hex');
-      var closest = _this.canidates.closest(target, 20);
-      yield _this.router.send(from,
-        {type: 'find_r', data: closest.map(e=>ids(e.id))});
-    });
-  };
+  _on_find = (msg, from)=>etask(function*_on_find(){
+    let _this = this.this;
+    var target = new Buffer(msg.data, 'hex');
+    var closest = _this.canidates.closest(target, 20);
+    yield _this.router.send(from,
+      {type: 'find_r', data: closest.map(e=>ids(e.id))});
+  }, this);
   _on_find_r(msg){
     for (var canidate of msg.data)
       this.canidates.add({id: new Buffer(canidate, 'hex')});
     return this._populate();
   }
-  _on_conn_info = (msg, from)=>{
-    let _this = this;
-    return etask(function*_on_conn_info(){
-      if (_this.peers.get(from))
-        return;
-      if (_this.pending[from] == null || from.compare(_this.id) < 0)
-      {
-        _this.pending[from] = true;
-        yield _this.router.send(from, {type: 'conn_info_r', data:
-          {ws: _this.wsConnector.url, wrtc: _this.wrtcConnector.supported}});
-      }
-    });
-  };
-  _on_conn_info_r(msg, from){
-    let _this = this;
-    return etask(function*(){
-      if (_this.peers.get(from))
-        return;
-      if (msg.data == null)
-        return;
-      if (msg.data.wrtc && _this.wrtcConnector.supported)
-        yield _this.connect_wrtc(from);
-      else if (msg.data.ws)
-        yield _this.wsConnector.connect(msg.data.ws);
-    });
-  }
-  _populate = ()=>{
-    let _this = this;
-    return etask(function*_populate(){
-      var optimal = 15;
-      var closest = _this.canidates.closest(_this.id, optimal);
-      for (var i = 0; i < closest.length &&
-        _this.peers.count() + Object.keys(_this.pending).length < optimal; i++)
-      {
-        if (_this.peers.get(closest[i].id))
-          continue;
-        yield _this.connect(closest[i].id);
-      }
-    });
-  }
+  _on_conn_info = (msg, from)=>etask(function*_on_conn_info(){
+    let _this = this.this;
+    if (_this.peers.get(from))
+      return;
+    if (_this.pending[from] == null || from.compare(_this.id) < 0)
+    {
+      _this.pending[from] = true;
+      yield _this.router.send(from, {type: 'conn_info_r', data:
+        {ws: _this.wsConnector.url, wrtc: _this.wrtcConnector.supported}});
+    }
+  }, this);
+  _on_conn_info_r = (msg, from)=>etask(function*(){
+    let _this = this.this;
+    if (_this.peers.get(from))
+      return;
+    if (msg.data == null)
+      return;
+    if (msg.data.wrtc && _this.wrtcConnector.supported)
+      yield _this.connect_wrtc(from);
+    else if (msg.data.ws)
+      yield _this.wsConnector.connect(msg.data.ws);
+  }, this);
+  _populate = ()=>etask(function*_populate(){
+    let _this = this.this;
+    var optimal = 15;
+    var closest = _this.canidates.closest(_this.id, optimal);
+    for (var i = 0; i < closest.length &&
+      _this.peers.count() + Object.keys(_this.pending).length < optimal; i++)
+    {
+      if (_this.peers.get(closest[i].id))
+        continue;
+      yield _this.connect(closest[i].id);
+    }
+  }, this);
   destroy(cb){
     if (this.destroyed)
       return;
