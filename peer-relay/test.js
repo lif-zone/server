@@ -964,6 +964,10 @@ describe('peer-relay', function(){
           ab<fwd(ac<msg(hi))`);
         t('ab,bc>!msg(hi)', `ac>!msg(hi !msg) ab>fwd(ac>msg(hi))
           bc>fwd(ac>msg(hi))`);
+        // XXX derry:
+        // ba>fwd(bd>conn_info_r(ws)) == ba>bd>conn_info_r(ws))
+        if (0)
+        t('ab>cd>(msg(hi))', `ab>fwd(cd>msg(hi))`);
       });
     });
   });
@@ -1013,8 +1017,6 @@ describe('peer-relay', function(){
       as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r(ws))
       ba>connect(find(bas abs))`);
   });
-  // XXX derry:
-  // ba>fwd(bd>conn_info_r(ws)) == ba>bd>conn_info_r(ws))
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup(3_nodes_linear) node(d wss) cd>!connect(find(c dcba))
