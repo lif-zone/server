@@ -442,7 +442,6 @@ const cmd_connect = opt=>etask(function*(){
     {
     case 'wss':
       assert(wss===undefined, 'multiple '+a.cmd);
-      debugger;
       wss = assert_wss_url(c.d, a.arg);
       break;
     case 'wrtc':
@@ -701,7 +700,18 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
 });
 
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
-  switch (opt.c.cmd)
+  let c = opt.c;
+  xerr.notice('cmd_single pre cmd %s orig %s', c.cmd, c.orig);
+  if (t_pre_process)
+  {
+    if ('<>'.indexOf(c.cmd[2])!=-1) // XXX: ugly code
+    {
+      assign(c, xtest.test_parse(
+        build_cmd(c.orig.substr(0, 3)+'fwd', c.orig.substr(3)))[0]);
+    }
+  }
+  xerr.notice('cmd_single post cmd %s orig %s', c.cmd, c.orig);
+  switch (c.cmd)
   {
   case '-': cmd_ensure_no_events(opt); break;
   case 'setup': yield cmd_setup(opt); break;
@@ -716,7 +726,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '!msg': yield cmd_msg(opt); break;
   case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
-  default: throw new Error('unknown cmd '+opt.c.cmd);
+  default: assert(false, 'unknown cmd '+opt.c.cmd);
   }
 });
 
@@ -912,7 +922,8 @@ describe('peer-relay', function(){
       }));
       describe('shortcut', ()=>{
         const t = (test, exp)=>it(test, ()=>etask(function*(){
-          let setup = 'node(a wss) node(b wss) node(c wss) node(d wss) ';
+          let setup = 'node(a wss) node(b wss) node(c wss) node(d wss) '+
+            'node(e wss) node(f wss) ';
           let regex = new RegExp('^'+xescape.regex(setup));
           let res = yield test_pre_process(setup+test);
           assert.equal(test_to_str(res).replace(regex, ''),
@@ -966,10 +977,13 @@ describe('peer-relay', function(){
           bc>fwd(ac>msg(hi))`);
         // XXX derry:
         // ba>fwd(bd>conn_info_r(ws)) == ba>bd>conn_info_r(ws))
+        t('ab>cd>msg(hi)', `ab>fwd(cd>msg(hi))`);
+        t('ab>cd<msg(hi)', `ab>fwd(cd<msg(hi))`);
+        t('ab<cd>msg(hi)', `ab<fwd(cd>msg(hi))`);
+        t('ab<cd<msg(hi)', `ab<fwd(cd<msg(hi))`);
         if (0)
-        t('ab>cd>(msg(hi))', `ab>fwd(cd>msg(hi))`);
-        if (0)
-        t('ab,cd>ef>(msg(hi))', `ab,cd>fwd(ef>msg(hi))`);
+        t('ab,cd>ef>msg(hi)', `ab,cd>fwd(ef>msg(hi))`);
+        // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
       });
     });
   });
@@ -1023,11 +1037,11 @@ describe('peer-relay', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup(3_nodes_linear) node(d wss) cd>!connect(find(c dcba))
       dcb>conn_info(r(ws)) db>connect(find(dcba badc))
-      ba>fwd(bd>conn_info_r(ws)) dba>conn_info(r) dcb>fwd(ad<conn_info)`);
+      ba>bd>conn_info_r(ws) dba>conn_info(r) dcb>fwd(ad<conn_info)`);
     t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) - abc>!msg(hi) -
       abd>!msg(hi) - ba>!msg(hi) - ba>!msg(hi) - bc>!msg(hi) - bd>!msg(hi) -
-      cba>!msg(hi) cd>fwd(ca>msg(hi)) db>fwd(ca>msg(hi)) - dba>!msg(hi)
-      dc>fwd(da>msg(hi)) cb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
+      cba>!msg(hi) cd>ca>msg(hi) db>ca>msg(hi) - dba>!msg(hi)
+      dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
     t('linear_wss', `setup(3_nodes_wss) node(d wss) - cd>!connect(find(c dcba))
       dcb>conn_info(r(ws)) db>connect(find(dcba badc))
       dba>conn_info dca>conn_info(r(ws)) da>connect(find(dcba abcd))
