@@ -706,6 +706,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   {
     if ('<>'.indexOf(c.cmd[2])!=-1) // XXX: ugly code
     {
+      // XXX fixme:
+      // build_cmd(c.s+c.d+c.dir+'fwd', build_cmd(c.cmd, c.arg)))[0]);
       assign(c, xtest.test_parse(
         build_cmd(c.orig.substr(0, 3)+'fwd', c.orig.substr(3)))[0]);
     }
@@ -975,14 +977,12 @@ describe('peer-relay', function(){
           ab<fwd(ac<msg(hi))`);
         t('ab,bc>!msg(hi)', `ac>!msg(hi !msg) ab>fwd(ac>msg(hi))
           bc>fwd(ac>msg(hi))`);
-        // XXX derry:
-        // ba>fwd(bd>conn_info_r(ws)) == ba>bd>conn_info_r(ws))
         t('ab>cd>msg(hi)', `ab>fwd(cd>msg(hi))`);
         t('ab>cd<msg(hi)', `ab>fwd(cd<msg(hi))`);
         t('ab<cd>msg(hi)', `ab<fwd(cd>msg(hi))`);
         t('ab<cd<msg(hi)', `ab<fwd(cd<msg(hi))`);
-        if (0)
-        t('ab,cd>ef>msg(hi)', `ab,cd>fwd(ef>msg(hi))`);
+        if (0) // XXX: fixme
+        t('ab,cd>ef>msg(hi)', `ab>fwd(ef>msg(hi)) cd>fwd(msg(hi))`);
         // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
       });
     });
