@@ -89,12 +89,11 @@ function stack_get(){
     return err;
 }
 
-function Etask(opt, states, _this){
+function Etask(opt, states){
     if (!(this instanceof Etask))
-        return new Etask(opt, states, _this);
+        return new Etask(opt, states);
     if (Array.isArray(opt) || typeof opt=='function')
     {
-        _this = states;
         states = opt;
         opt = undefined;
     }
@@ -102,7 +101,7 @@ function Etask(opt, states, _this){
     if (typeof states=='function')
     {
         if (states.constructor.name=='GeneratorFunction')
-            return E._generator(null, states, opt, _this);
+            return E._generator(null, states, opt);
         states = [states];
     }
     // performance: set all fields to undefined
@@ -126,7 +125,7 @@ function Etask(opt, states, _this){
     this._stack = Etask.use_bt ? stack_get() : undefined;
     this.tm_create = Date.now();
     this.info = {};
-    this.this = _this;
+    this.this = opt.this;
     var idx = this.states.idx = {};
     for (var i=0; i<states.length; i++)
     {
