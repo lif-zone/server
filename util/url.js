@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 'use strict'; /*zlint node, br*/
 import xutil from './util.js';
 import qs from 'querystring';

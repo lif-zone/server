@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 export default EventEmitter;
 /**
  * Minimal EventEmitter interface that is molded against the Node.js

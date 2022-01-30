@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 'use strict'; /*jslint node:true, browser:true*/
 import {inherits} from 'util';
 import {EventEmitter} from 'events';

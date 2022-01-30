@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 'use strict'; /*zlint node, br*/
 const E = rate_limit;
 export default E;

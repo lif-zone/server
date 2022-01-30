@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 'use strict'; /*zlint node, br*/
 import xutil from './util.js';
 import date from './date.js';

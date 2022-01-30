@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 'use strict'; /*zlint node*/
 const E = {};
 export default E;

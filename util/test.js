@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach,before,after*/
 // XXX: need jslint mocha: true
 import etask from './etask.js';

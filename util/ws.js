@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 'use strict'; /*jslint node:true*/
 import WS, {WebSocketServer} from 'ws';
 const E = {};

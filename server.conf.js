@@ -1,3 +1,4 @@
+// author: derry, coder: arik
 'use strict'; /*jslint node:true*/
 const env = process.env, DEV = env.DEV;
 const E = {
