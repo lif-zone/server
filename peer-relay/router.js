@@ -51,18 +51,18 @@ export default class Router extends EventEmitter {
     debugMsg('SEND', this.id, msg);
     return this._send(msg);
   }
-  _send = msg=>etask(function*(){
+  _send = msg=>etask({'this': this}, function*(){
     var _this = this.this;
     _this.emit('send', msg);
     if (msg.__meta__.path.length >= _this.maxHops)
       return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
-    if (_this._channels.count()===0)
+    if (!_this._channels.count())
       _this._queue.push(msg);
     msg.__meta__.path.push(_this.id.toString('hex'));
     var target = new Buffer(msg.to, 'hex');
     var closests = _this._channels.closest(target, 20)
-      .filter(c=>msg.__meta__.path.indexOf(c.id.toString('hex'))===-1)
-      .filter((_, index) => index < _this.concurrency);
+    .filter(c=>msg.__meta__.path.indexOf(c.id.toString('hex'))===-1)
+    .filter((_, index) => index < _this.concurrency);
     if (msg.to in _this._paths)
     {
       var preferred = _this._channels.closest(
@@ -81,8 +81,8 @@ export default class Router extends EventEmitter {
         break;
       }
     }
-  }, this);
-  _onMessage = msg=>etask(function*_onMessage(){
+  });
+  _onMessage = msg=>etask({'this': this}, function*_onMessage(){
     let _this = this.this;
     if (msg.nonce in _this._touched)
       return;
@@ -93,33 +93,31 @@ export default class Router extends EventEmitter {
     assert(typeof msg.from=='string',
       'invalid from _this '+_this.id.toString('hex')+' '+stringify(msg));
     _this._paths[msg.from] = msg.__meta__.path[msg.__meta__.path.length - 1];
-    if (to.equals(_this.id))
-    {
+    if (to.equals(_this.id)){
       // XXX: ugly: we change to/from fields and make code diffiuclt to debug
       msg.to = to;
       msg.from = from;
       debugMsg('RECV', _this.id, msg);
       yield _this.emit_message(msg.data, msg.from, msg);
-    }
-    else
-    {
+    } else {
       debugMsg('RELAY', _this.id, msg);
       _this.emit('relay', msg);
       yield _this._send(msg);
     }
-  }, this);
+  });
   set_on_message = function(cb){
     if (!cb)
       return this.on_message_cb = cb;
     assert(!this.on_message_cb);
     this.on_message_cb = cb;
   }
-  emit_message = (data, from, msg)=>etask(function*emit_message(){
+  emit_message = (data, from, msg)=>etask({'this': this},
+    function*emit_message(){
     let _this = this.this;
     if (_this.on_message_cb)
       yield _this.on_message_cb(data, from, msg);
     _this.emit('message', data, from, msg);
-  }, this);
+  });
   _onChannelAdded(channel){
     const listener = msg=>this._onMessage(msg);
     channel.on('message', listener);

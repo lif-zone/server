@@ -47,7 +47,7 @@ export default class Client extends EventEmitter {
   // switch (a){
   // for (...){
   // } else {
-  _onConnection = channel=>etask(function*_onConnection(){
+  _onConnection = channel=>etask({'this': this}, function*_onConnection(){
     let _this = this.this;
     const onClose = ()=>{
       delete _this.pending[channel.id];
@@ -73,9 +73,9 @@ export default class Client extends EventEmitter {
     yield _this.router.send(channel.id, {type: 'find', data: ids(_this.id)});
     _this.emit('peer', channel.id);
     return channel;
-  }, this);
+  });
   connect_wrtc(id){ return this.wrtcConnector.connect(id); }
-  connect = id=>etask(function*connect(){
+  connect = id=>etask({'this': this}, function*connect(){
     let _this = this.this;
     if (_this.destroyed) // XXX: print error (or assert)
       return;
@@ -87,7 +87,7 @@ export default class Client extends EventEmitter {
       return;
     _this.pending[id] = true;
     yield _this.router.send(id, {type: 'conn_info'});
-  }, this);
+  });
   disconnect(id){
     if (this.destroyed)
       return;
@@ -106,7 +106,7 @@ export default class Client extends EventEmitter {
     return this.router.send(id, {type: 'find', data: ids(this.id)});
   }
   // XXX: need to validate all data to make sure we don't crash
-  on_message = (msg, from)=>etask(function*on_message(){
+  on_message = (msg, from)=>etask({'this': this}, function*on_message(){
     let _this = this.this;
     if (_this.destroyed)
       return;
@@ -118,20 +118,20 @@ export default class Client extends EventEmitter {
     case 'conn_info_r': yield _this._on_conn_info_r(msg, from); break;
     default: xerr('unknown msg type %s', msg.type);
     }
-  }, this);
-  _on_find = (msg, from)=>etask(function*_on_find(){
+  });
+  _on_find = (msg, from)=>etask({'this': this}, function*_on_find(){
     let _this = this.this;
     var target = new Buffer(msg.data, 'hex');
     var closest = _this.canidates.closest(target, 20);
     yield _this.router.send(from,
       {type: 'find_r', data: closest.map(e=>ids(e.id))});
-  }, this);
+  });
   _on_find_r(msg){
     for (var canidate of msg.data)
       this.canidates.add({id: new Buffer(canidate, 'hex')});
     return this._populate();
   }
-  _on_conn_info = (msg, from)=>etask(function*_on_conn_info(){
+  _on_conn_info = (msg, from)=>etask({'this': this}, function*_on_conn_info(){
     let _this = this.this;
     if (_this.peers.get(from))
       return;
@@ -141,8 +141,8 @@ export default class Client extends EventEmitter {
       yield _this.router.send(from, {type: 'conn_info_r', data:
         {ws: _this.wsConnector.url, wrtc: _this.wrtcConnector.supported}});
     }
-  }, this);
-  _on_conn_info_r = (msg, from)=>etask(function*(){
+  });
+  _on_conn_info_r = (msg, from)=>etask({'this': this}, function*(){
     let _this = this.this;
     if (_this.peers.get(from))
       return;
@@ -152,8 +152,8 @@ export default class Client extends EventEmitter {
       yield _this.connect_wrtc(from);
     else if (msg.data.ws)
       yield _this.wsConnector.connect(msg.data.ws);
-  }, this);
-  _populate = ()=>etask(function*_populate(){
+  });
+  _populate = ()=>etask({'this': this}, function*_populate(){
     let _this = this.this;
     var optimal = 15;
     var closest = _this.canidates.closest(_this.id, optimal);
@@ -164,7 +164,7 @@ export default class Client extends EventEmitter {
         continue;
       yield _this.connect(closest[i].id);
     }
-  }, this);
+  });
   destroy(cb){
     if (this.destroyed)
       return;

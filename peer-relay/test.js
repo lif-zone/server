@@ -240,7 +240,7 @@ class FakeWsConnector extends EventEmitter {
       this.url = 'wss://'+host+':'+port;
     }
   }
-  connect = url=>etask(function*connect(){
+  connect = url=>etask({'this': this}, function*connect(){
     let _this = this.this;
     let d = node_from_url(url), s = node_from_id(_this.id);
     assert(d, 'node not found '+url);
@@ -249,7 +249,7 @@ class FakeWsConnector extends EventEmitter {
     channel.t.initiaor = true;
     assert(!s.t.fake, 'src must be real');
     yield s._onConnection(channel);
-  }, this);
+  });
   destroy(){}
 }
 
@@ -259,7 +259,7 @@ class FakeWrtcConnector extends EventEmitter {
     this.id = id;
     this.supported = wrtc;
   }
-  connect = _d=>etask(function*connect(){
+  connect = _d=>etask({'this': this}, function*connect(){
     let _this = this.this;
     let d = node_from_id(_d), s = node_from_id(_this.id);
     let channel = new FakeChannel({localID: s.id, id: d.id});
@@ -267,7 +267,7 @@ class FakeWrtcConnector extends EventEmitter {
     channel.t.initiaor = true;
     assert(!s.t.fake, 'src must be real');
     yield s._onConnection(channel);
-  }, this);
+  });
   destroy(){}
 }
 
@@ -1039,7 +1039,7 @@ describe('peer-relay', function(){
       dcb>conn_info(r(ws)) db>connect(find(dcba badc))
       ba>bd>conn_info_r(ws) dba>conn_info(r) dcb>fwd(ad<conn_info)`);
     t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) - abc>!msg(hi) -
-      abd>!msg(hi) - ba>!msg(hi) - ba>!msg(hi) - bc>!msg(hi) - bd>!msg(hi) -
+      abd>!msg(hi) - ba>!msg(hi) - ba<!msg(hi) - bc>!msg(hi) - bd>!msg(hi) -
       cba>!msg(hi) cd>ca>msg(hi) db>ca>msg(hi) - dba>!msg(hi)
       dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
     t('linear_wss', `setup(3_nodes_wss) node(d wss) - cd>!connect(find(c dcba))
