@@ -1,4 +1,4 @@
-// author: derry, coder: arik
+// author: derry. coder: arik.
 'use strict'; /*jslint node:true*/
 const E = date_get;
 export default E;

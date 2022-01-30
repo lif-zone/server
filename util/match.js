@@ -1,4 +1,4 @@
-// author: derry, coder: arik
+// author: derry. coder: arik.
 'use strict'; /*zlint node, br*/
 import xescape from './escape.js';
 import xutil from './util.js';

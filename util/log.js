@@ -1,4 +1,4 @@
-// author: derry, coder: arik
+// author: derry. coder: arik.
 'use strict'; /*jslint node:true*/
 import * as date from './date.js';
 export default log;

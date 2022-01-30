@@ -1,4 +1,4 @@
-// author: derry, coder: arik
+// author: derry. coder: arik.
 'use strict'; /*jslint node:true*/
 import xerr from './xerr.js';
 import xutil from './util.js';

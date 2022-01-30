@@ -1,4 +1,4 @@
-// author: derry, coder: arik
+// author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
 import KBucket from 'k-bucket';
 import {EventEmitter} from 'events';

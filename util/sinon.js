@@ -1,4 +1,4 @@
-// author: derry, coder: arik
+// author: derry. coder: arik.
 'use strict'; /*jslint node:true*/ /*global afterEach*/
 import sinon from '@hola.org/sinon';
 import etask from './etask.js';

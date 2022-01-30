@@ -1,4 +1,4 @@
-// author: derry, coder: arik
+// author: derry. coder: arik.
 /* eslint-disable */ // XXX: fix and rm
 'use strict'
 

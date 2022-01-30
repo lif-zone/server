@@ -1,4 +1,4 @@
-// author: derry, coder: arik
+// author: derry. coder: arik.
 import ping from 'ping';
 import etask from '../util/etask.js';
 import date from '../util/date.js';
