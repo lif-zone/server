@@ -51,6 +51,7 @@ export default class Router extends EventEmitter {
     debugMsg('SEND', this.id, msg);
     return this._send(msg);
   }
+  // XXX: add method etask to class and use _send=msg=this.etask()
   _send = msg=>etask({'this': this}, function*(){
     var _this = this.this;
     _this.emit('send', msg);
