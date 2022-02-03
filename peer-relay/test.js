@@ -962,15 +962,16 @@ describe('peer-relay', function(){
   describe('req', function(){
     if (true) return; // XXX WIP
     const t = ()=>{};
-    // XXX: send_req('hi').on('res', ...).on('fail', ..);
-    t(`setup(2_nodes`);
+    // XXX: send_req('ping').on('res', ...).on('fail', ..);
+    t(`setup:2_nodes`);
     t_nodes['b'].on('req', (data, res)=>{ res.send('pong'); });
-    t(`ab!>req(id(1) data(ping)) ab>req(id(1) data(ping))
-      ab<res(id(1) data(pong))`);
-    t(`ab!>req(id(2) data(ping)) ab>req(id(2) data(ping))
-      ab<res(id(2) data(pong))`);
-    t(`ab!>req(id(3) data(ping)) ab>req(id(3) data(ping)) ab>disconnect -
-      9.9s - 0.1s a<fail(id(3) err(timeout))`);
+    t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
+      ab<res(id:1 data:pong)`);
+    t(`ab!>req(id:2 data:ping) ab>req(id:2 data:ping)
+      ab<res(id:2 data:pong)`);
+    t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
+    ab>disconnect ab<disconnect -
+      9.9s - 0.1s a<fail(id:3 err:timeout)`);
   });
   // XXX: add boostrap support
   describe('2_nodes', function(){
@@ -979,7 +980,7 @@ describe('peer-relay', function(){
       ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
       ab>find_r(ba)`);
     t('short', `node(a) node(b wss) ab>!connect(find(a ba))`);
-    t('msg', `setup(2_nodes) ab>!msg(hi) ab<!msg(hi)`);
+    t('msg', `setup:2_nodes ab>!msg(hi) ab<!msg(hi)`);
     t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
   });
   describe('3_nodes', function(){
@@ -988,7 +989,7 @@ describe('peer-relay', function(){
     // and send supported connections in conn_info so other side can
     // connect directly
     t('linear', `node(a) node(b wss) node(c wss) ab>!connect(find(a ba)) -
-      bc>!connect(find(b cab)) abc<conn_info(r)`);
+      bc>!connect(find(b cab)) abc<conn_info:r`);
     t('linear_msg', `setup(3_nodes_linear) ab>!msg(hi) - ab<!msg(hi) -
       abc>!msg(hi) - abc<!msg(hi) - bc>!msg(hi) - bc<!msg(hi)`);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
