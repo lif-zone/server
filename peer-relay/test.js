@@ -13,7 +13,7 @@ import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
 const assign = Object.assign;
-const _buf = util.buf_from_str;
+const s2b = util.buf_from_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
 // XXX: make it automatic for all node/browser
@@ -413,7 +413,7 @@ function cmd_node(opt){
   assert(t_keys[name], 'key not founnd '+name);
   assert(!wss || !node_from_url(wss.url), wss?.url+' already used');
   let node = new (fake ? FakeNode : Node)(assign(
-    {keys: {priv: _buf(key.priv), pub: _buf(key.pub)}, bootstrap, wrtc},
+    {keys: {priv: s2b(key.priv), pub: s2b(key.pub)}, bootstrap, wrtc},
     wss));
   node.t = {id: _str(node.id), name, fake, wss};
   t_nodes[name] = node;

@@ -6,6 +6,7 @@ import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import util from '../util/util.js';
 const stringify = JSON.stringify;
+const b2s = util.buf_to_str;
 
 export default class Router extends EventEmitter {
   constructor(opt){
@@ -33,7 +34,12 @@ export default class Router extends EventEmitter {
   send_req('hi').on('res', ...).on('fail', ..);
   */
   send_req(id, data){
-    return this.send(id, data);
+    var msg = {to: b2s(id), from: b2s(this.id),
+      nonce: '' + Math.floor(1e15 * Math.random()), data: data,
+      __meta__: {path: []}};
+    this._touched[msg.nonce] = true;
+    util.set(msg, '__meta__.sign', this.wallet.sign(msg));
+    return this._send(msg);
   }
   send(id, data){
     var msg = {to: id.toString('hex'), from: this.id.toString('hex'),
