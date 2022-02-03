@@ -7,7 +7,7 @@ import xerr from '../util/xerr.js';
 import util from '../util/util.js';
 import date from '../util/date.js';
 const stringify = JSON.stringify;
-const b2s = util.buf_to_str;
+const b2s = util.buf_to_str, s2b = util.buf_from_str;
 
 export default class Router extends EventEmitter {
   constructor(opt){
@@ -18,10 +18,12 @@ export default class Router extends EventEmitter {
     this.req_id = date.monotonic();
     this.concurrency = 2;
     this.maxHops = 20;
-    this._touched = {}; // XXX: memory leak - no cleanup
+    // XXX: memory leak - no cleanup for all
+    this._touched = {};
     this._channelListeners = {};
     this._paths = {};
     this._queue = [];
+    this._requests = {};
     this._channels = channels;
     this._channels.on('added', channel=>this._onChannelAdded(channel));
     this._channels.on('removed', channel=>this._onChannelRemoved(channel));
@@ -41,6 +43,7 @@ export default class Router extends EventEmitter {
     let msg = {req_id, ts, to, from, nonce, data, __meta: {path: []}};
     this._touched[nonce] = true;
     util.set(msg, '__meta.sign', this.wallet.sign(msg));
+    this._requests[req_id] = {req_id, msg};
     return this._send(msg);
   }
   send(dst, data){
@@ -53,20 +56,18 @@ export default class Router extends EventEmitter {
   }
   _send = msg=>etask({'this': this}, function*(){
     let _this = this.this;
-    _this.emit('send', msg);
     if (msg.__meta.path.length >= _this.maxHops)
       return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
     if (!_this._channels.count())
       _this._queue.push(msg);
     msg.__meta.path.push(b2s(_this.id));
-    let target = new Buffer(msg.to, 'hex');
+    let target = s2b(msg.to);
     let closests = _this._channels.closest(target, 20)
     .filter(c=>msg.__meta.path.indexOf(b2s(c.id))===-1)
     .filter((_, index) => index < _this.concurrency);
     if (msg.to in _this._paths)
     {
-      let preferred = _this._channels.closest(
-        new Buffer(_this._paths[msg.to], 'hex'), 1)[0];
+      let preferred = _this._channels.closest(s2b(_this._paths[msg.to]), 1)[0];
       if (preferred != null && closests.indexOf(preferred) === -1)
         closests.unshift(preferred);
     }
@@ -82,7 +83,7 @@ export default class Router extends EventEmitter {
     let _this = this.this;
     if (msg.nonce in _this._touched)
       return;
-    let from = new Buffer(msg.from, 'hex'), to = new Buffer(msg.to, 'hex');
+    let from = s2b(msg.from), to = s2b(msg.to);
     if (!_this.wallet.verify(msg, msg.__meta.sign, from))
       return xerr('invalid message signature');
     _this._touched[msg.nonce] = true;
