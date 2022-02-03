@@ -5,6 +5,7 @@ import assert from 'assert';
 import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import util from '../util/util.js';
+import date from '../util/date.js';
 const stringify = JSON.stringify;
 const b2s = util.buf_to_str;
 
@@ -14,6 +15,7 @@ export default class Router extends EventEmitter {
     let {channels, id, wallet} = opt;
     this.wallet = wallet;
     this.id = id;
+    this.req_id = date.monotonic();
     this.concurrency = 2;
     this.maxHops = 20;
     this._touched = {}; // XXX: memory leak - no cleanup
@@ -34,32 +36,32 @@ export default class Router extends EventEmitter {
   send_req('hi').on('res', ...).on('fail', ..);
   */
   send_req(dst, data){
-    let msg = {to: b2s(dst), from: b2s(this.id),
-      nonce: '' + Math.floor(1e15 * Math.random()), data: data,
-      __meta__: {path: []}};
-    this._touched[msg.nonce] = true;
-    util.set(msg, '__meta__.sign', this.wallet.sign(msg));
+    let req_id=this.req_id++, to=b2s(dst), from=b2s(this.id);
+    let nonce = ''+Math.floor(1e15*Math.random()), ts = date.monotonic();
+    let msg = {req_id, ts, to, from, nonce, data, __meta: {path: []}};
+    this._touched[nonce] = true;
+    util.set(msg, '__meta.sign', this.wallet.sign(msg));
     return this._send(msg);
   }
   send(dst, data){
     let msg = {to: b2s(dst), from: b2s(this.id),
       nonce: '' + Math.floor(1e15 * Math.random()), data: data,
-      __meta__: {path: []}};
+      __meta: {path: []}};
     this._touched[msg.nonce] = true;
-    util.set(msg, '__meta__.sign', this.wallet.sign(msg));
+    util.set(msg, '__meta.sign', this.wallet.sign(msg));
     return this._send(msg);
   }
   _send = msg=>etask({'this': this}, function*(){
     let _this = this.this;
     _this.emit('send', msg);
-    if (msg.__meta__.path.length >= _this.maxHops)
+    if (msg.__meta.path.length >= _this.maxHops)
       return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
     if (!_this._channels.count())
       _this._queue.push(msg);
-    msg.__meta__.path.push(b2s(_this.id));
+    msg.__meta.path.push(b2s(_this.id));
     let target = new Buffer(msg.to, 'hex');
     let closests = _this._channels.closest(target, 20)
-    .filter(c=>msg.__meta__.path.indexOf(b2s(c.id))===-1)
+    .filter(c=>msg.__meta.path.indexOf(b2s(c.id))===-1)
     .filter((_, index) => index < _this.concurrency);
     if (msg.to in _this._paths)
     {
@@ -81,12 +83,12 @@ export default class Router extends EventEmitter {
     if (msg.nonce in _this._touched)
       return;
     let from = new Buffer(msg.from, 'hex'), to = new Buffer(msg.to, 'hex');
-    if (!_this.wallet.verify(msg, msg.__meta__.sign, from))
+    if (!_this.wallet.verify(msg, msg.__meta.sign, from))
       return xerr('invalid message signature');
     _this._touched[msg.nonce] = true;
     assert(typeof msg.from=='string',
       'invalid from _this '+b2s(_this.id)+' '+stringify(msg));
-    _this._paths[msg.from] = msg.__meta__.path[msg.__meta__.path.length - 1];
+    _this._paths[msg.from] = msg.__meta.path[msg.__meta.path.length - 1];
     if (to.equals(_this.id)){
       // XXX: ugly: we change to/from fields and make code diffiuclt to debug
       msg.to = to;

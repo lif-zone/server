@@ -22,7 +22,7 @@ export default class Wallet {
   }
   hash_obj(o){
     return Uint8Array.from(hash(o,
-      {respectType: false, excludeKeys: key=>key=='__meta__'}));
+      {respectType: false, excludeKeys: key=>key=='__meta'}));
   }
   sign(o){
     // XXX: we use sha1 algorithm. need to find a more secured one (blake?)

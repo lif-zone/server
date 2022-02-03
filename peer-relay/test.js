@@ -344,8 +344,8 @@ const fake_send_msg = (c, data)=>etask(function*(){
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
-  var msg = {to, from, nonce, data, __meta__: {path: [s.id.toString('hex')]}};
-  util.set(msg, '__meta__.sign', s.wallet.sign(msg));
+  var msg = {to, from, nonce, data, __meta: {path: [s.id.toString('hex')]}};
+  util.set(msg, '__meta.sign', s.wallet.sign(msg));
   if (c.fwd){
     let fwd = normalize(c.fwd);
     s = t_nodes[fwd[0]];
