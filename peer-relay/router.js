@@ -6,7 +6,6 @@ import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import util from '../util/util.js';
 import date from '../util/date.js';
-const stringify = JSON.stringify;
 const b2s = util.buf_to_str, s2b = util.buf_from_str;
 
 export default class Router extends EventEmitter {
@@ -91,15 +90,12 @@ export default class Router extends EventEmitter {
     if (!_this.wallet.verify(msg, msg.__meta.sign, from))
       return xerr('invalid message signature');
     _this._touched[msg.nonce] = true;
-    assert(typeof msg.from=='string',
-      'invalid from _this '+b2s(_this.id)+' '+stringify(msg));
+    assert(typeof msg.from=='string', 'invalid from');
+    assert(typeof msg.to=='string', 'invalid to');
     _this._paths[msg.from] = msg.__meta.path[msg.__meta.path.length - 1];
-    if (to.equals(_this.id)){
-      // XXX: ugly: we change to/from fields and make code diffiuclt to debug
-      msg.to = to;
-      msg.from = from;
-      _this.emit('message', msg.data, msg.from, msg);
-    } else // relay
+    if (to.equals(_this.id))
+      _this.emit('message', msg.data, s2b(msg.from), msg);
+    else // relay
       yield _this._send(msg);
   });
   _onChannelAdded(channel){
