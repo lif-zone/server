@@ -42,7 +42,7 @@ export default class Router extends EventEmitter {
     return this._send(msg);
   }
   send(id, data){
-    var msg = {to: id.toString('hex'), from: this.id.toString('hex'),
+    var msg = {to: b2s(id), from: b2s(this.id),
       nonce: '' + Math.floor(1e15 * Math.random()), data: data,
       __meta__: {path: []}};
     this._touched[msg.nonce] = true;
@@ -56,10 +56,10 @@ export default class Router extends EventEmitter {
       return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
     if (!_this._channels.count())
       _this._queue.push(msg);
-    msg.__meta__.path.push(_this.id.toString('hex'));
+    msg.__meta__.path.push(b2s(_this.id));
     var target = new Buffer(msg.to, 'hex');
     var closests = _this._channels.closest(target, 20)
-    .filter(c=>msg.__meta__.path.indexOf(c.id.toString('hex'))===-1)
+    .filter(c=>msg.__meta__.path.indexOf(b2s(c.id))===-1)
     .filter((_, index) => index < _this.concurrency);
     if (msg.to in _this._paths)
     {
@@ -72,12 +72,8 @@ export default class Router extends EventEmitter {
     {
       // TODO BUG Sometimes the WS on closest in not in the ready state
       yield channel.send(msg);
-      if (channel.id.toString('hex') ===
-        (typeof msg.to==='string' ? msg.to : msg.to.toString('hex')))
-      {
-        // XXX: why do we break?
-        break;
-      }
+      if (b2s(channel.id)==(typeof msg.to==='string' ? msg.to : b2s(msg.to)))
+        break; // XXX: why do we break?
     }
   });
   _onMessage = msg=>etask({'this': this}, function*_onMessage(){
@@ -89,7 +85,7 @@ export default class Router extends EventEmitter {
       return xerr('invalid message signature');
     _this._touched[msg.nonce] = true;
     assert(typeof msg.from=='string',
-      'invalid from _this '+_this.id.toString('hex')+' '+stringify(msg));
+      'invalid from _this '+b2s(_this.id)+' '+stringify(msg));
     _this._paths[msg.from] = msg.__meta__.path[msg.__meta__.path.length - 1];
     if (to.equals(_this.id)){
       // XXX: ugly: we change to/from fields and make code diffiuclt to debug
