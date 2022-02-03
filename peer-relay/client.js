@@ -10,15 +10,14 @@ import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
-
-function ids(id){ return util.buf_to_str(id); }
+const b2s = util.buf_to_str;
 
 export default class Client extends EventEmitter {
   constructor(opt){
     super();
     if (!opt)
       opt = {};
-    // XXX: change id to priv/pub keys
+    // XXX: change id string
     this.wallet = new Wallet({keys: opt.keys});
     this.id = this.wallet.keys.pub;
     // XXX: need cleanup for all internal structures
@@ -32,7 +31,7 @@ export default class Client extends EventEmitter {
       wallet: this.wallet});
     this.router.set_on_message((msg, from)=>this.on_message(msg, from));
     if (opt.port)
-      xerr.notice('peer-relay: listen on %s id %s', opt.port, ids(this.id));
+      xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
     this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
     this.wrtcConnector = new Client.WrtcConnector(this.id, this.router,
@@ -72,7 +71,7 @@ export default class Client extends EventEmitter {
       yield util.test_on_connection(channel);
     // once sending a msg - remember it, and keep it 'open'
     yield _this.router.send_req(channel.id,
-      {type: 'find', data: ids(_this.id)});
+      {type: 'find', data: b2s(_this.id)});
     _this.emit('peer', channel.id);
     return channel;
   });
@@ -105,7 +104,7 @@ export default class Client extends EventEmitter {
   find(id){
     if (this.destroyed)
       return;
-    return this.router.send_req(id, {type: 'find', data: ids(this.id)});
+    return this.router.send_req(id, {type: 'find', data: b2s(this.id)});
   }
   // XXX: need to validate all data to make sure we don't crash
   on_message = (msg, from)=>etask({'this': this}, function*on_message(){
@@ -126,7 +125,7 @@ export default class Client extends EventEmitter {
     var target = new Buffer(msg.data, 'hex');
     var closest = _this.canidates.closest(target, 20);
     yield _this.router.send_req(from,
-      {type: 'find_r', data: closest.map(e=>ids(e.id))});
+      {type: 'find_r', data: closest.map(e=>b2s(e.id))});
   });
   _on_find_r(msg){
     for (var canidate of msg.data)
