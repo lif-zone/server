@@ -959,6 +959,14 @@ describe('peer-relay', function(){
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
+  describe('send_api', function(){
+    const t = ()=>{};
+    // XXX: send_req('hi').on('res', ...).on('fail', ..);
+    t(`ab!>msg(hi) ab>msg(hi) ab<msg_r(hi-r)`);
+    t(`ab!>msg(hi) ab>msg(hi) ab>disonnect - 9.9s - 0.1s a!msg_fail(timeout)`);
+    t(`ab!>msg(hi) a!msg_fail(no_connection)`);
+  });
+  // XXX: add boostrap support
   describe('2_nodes', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
     t('long', `node(a) node(b wss(port:4000)) ab>!connect(wss !r)

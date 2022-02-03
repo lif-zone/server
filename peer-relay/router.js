@@ -43,6 +43,9 @@ export default class Router extends EventEmitter {
   }
   send_req('hi').on('res', ...).on('fail', ..);
   */
+  send_req(id, data){
+    return this.send(id, data);
+  }
   send(id, data){
     var msg = {to: id.toString('hex'), from: this.id.toString('hex'),
       nonce: '' + Math.floor(1e15 * Math.random()), data: data,
