@@ -108,21 +108,20 @@ export default class Client extends EventEmitter {
     });
   }
   // XXX: need to validate all data to make sure we don't crash
-  on_message = (msg, from)=>etask({'this': this}, function*on_message(){
-    let _this = this.this;
-    if (_this.destroyed)
+  on_message = (msg, from)=>{
+    if (this.destroyed)
       return;
     switch (msg.type){
-    case 'user': _this.emit('message', msg.data, from); break;
-    case 'find': yield _this._on_find(msg, from); break;
-    case 'find_r': yield _this._on_find_r(msg, from); break;
-    case 'conn_info': yield _this._on_conn_info(msg, from); break;
-    case 'conn_info_r': yield _this._on_conn_info_r(msg, from); break;
+    case 'user': this.emit('message', msg.data, from); break;
+    case 'find': this._on_find(msg, from); break;
+    case 'find_r': this._on_find_r(msg, from); break;
+    case 'conn_info': this._on_conn_info(msg, from); break;
+    case 'conn_info_r': this._on_conn_info_r(msg, from); break;
     default: xerr('unknown msg type %s', msg.type);
     }
-  });
-  on_req = (msg, from)=>etask({'this': this}, function*on_req(){
-  });
+  };
+  on_req = (data, res)=>{
+  };
   _on_find = (msg, from)=>etask({'this': this}, function*_on_find(){
     let _this = this.this;
     var target = new Buffer(msg.data, 'hex');
