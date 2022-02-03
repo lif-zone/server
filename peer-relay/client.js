@@ -69,9 +69,7 @@ export default class Client extends EventEmitter {
     _this.emit('connection', channel);
     if (util.test_on_connection)
       yield util.test_on_connection(channel);
-    // once sending a msg - remember it, and keep it 'open'
-    yield _this.router.send_req(channel.id,
-      {type: 'find', data: b2s(_this.id)});
+    yield _this.router.send(channel.id, {type: 'find', data: b2s(_this.id)});
     _this.emit('peer', channel.id);
     return channel;
   });
@@ -87,7 +85,7 @@ export default class Client extends EventEmitter {
     if (id.equals(_this.id))
       return;
     _this.pending[id] = true;
-    yield _this.router.send_req(id, {type: 'conn_info'});
+    yield _this.router.send(id, {type: 'conn_info'});
   });
   disconnect(id){
     if (this.destroyed)
@@ -99,12 +97,12 @@ export default class Client extends EventEmitter {
   send = function(id, data){
     if (this.destroyed)
       return;
-    return this.router.send_req(id, {type: 'user', data: data});
+    return this.router.send(id, {type: 'user', data: data});
   }
   find(id){
     if (this.destroyed)
       return;
-    return this.router.send_req(id, {type: 'find', data: b2s(this.id)});
+    return this.router.send(id, {type: 'find', data: b2s(this.id)});
   }
   // XXX: need to validate all data to make sure we don't crash
   on_message = (msg, from)=>etask({'this': this}, function*on_message(){
@@ -124,7 +122,7 @@ export default class Client extends EventEmitter {
     let _this = this.this;
     var target = new Buffer(msg.data, 'hex');
     var closest = _this.canidates.closest(target, 20);
-    yield _this.router.send_req(from,
+    yield _this.router.send(from,
       {type: 'find_r', data: closest.map(e=>b2s(e.id))});
   });
   _on_find_r(msg){
@@ -138,7 +136,7 @@ export default class Client extends EventEmitter {
       return;
     if (_this.pending[from] == null || from.compare(_this.id) < 0){
       _this.pending[from] = true;
-      yield _this.router.send_req(from, {type: 'conn_info_r', data:
+      yield _this.router.send(from, {type: 'conn_info_r', data:
         {ws: _this.wsConnector.url, wrtc: _this.wrtcConnector.supported}});
     }
   });

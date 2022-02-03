@@ -8,6 +8,7 @@ import util from '../util/util.js';
 import date from '../util/date.js';
 const b2s = util.buf_to_str, s2b = util.buf_from_str;
 
+// XXX: need safe emit support
 export default class Router extends EventEmitter {
   constructor(opt){
     super();
@@ -53,7 +54,7 @@ export default class Router extends EventEmitter {
     if (!req_id)
       return;
     if (!this.reqs[req_id])
-      return xerr.error('req not found %s', req_id);
+      return; // XXX: need to emit 'req'
     let {req} = this.reqs[req_id];
     req.emit('res', data, from, msg);
     // XXX: if final response, remove from this.reqs
