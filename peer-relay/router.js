@@ -1,22 +1,11 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
 import {EventEmitter} from 'events';
-import _debug from 'debug';
 import assert from 'assert';
 import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import util from '../util/util.js';
-const debug = _debug('peer-relay:router');
 const stringify = JSON.stringify;
-
-function debugMsg(verb, localID, msg){
-  var to = Buffer.isBuffer(msg.to) ? msg.to.toString('hex') : msg.to;
-  var from = Buffer.isBuffer(msg.from) ? msg.from.toString('hex') : msg.from;
-  verb = (verb + '     ').substr(0, 5);
-  debug('[%s] %s (%s->%s) %s', localID.toString('hex', 0, 2), verb,
-        from.substr(0, 4), to.substr(0, 4), msg.nonce.substr(0, 4),
-        JSON.stringify(msg.data));
-}
 
 export default class Router extends EventEmitter {
   constructor(opt){
@@ -52,7 +41,6 @@ export default class Router extends EventEmitter {
       __meta__: {path: []}};
     this._touched[msg.nonce] = true;
     util.set(msg, '__meta__.sign', this.wallet.sign(msg));
-    debugMsg('SEND', this.id, msg);
     return this._send(msg);
   }
   // XXX: add method etask to class and use _send=msg=this.etask()
@@ -103,13 +91,9 @@ export default class Router extends EventEmitter {
       // XXX: ugly: we change to/from fields and make code diffiuclt to debug
       msg.to = to;
       msg.from = from;
-      debugMsg('RECV', _this.id, msg);
       yield _this.emit_message(msg.data, msg.from, msg);
-    } else {
-      debugMsg('RELAY', _this.id, msg);
-      _this.emit('relay', msg);
+    } else // relay
       yield _this._send(msg);
-    }
   });
   set_on_message = function(cb){
     if (!cb)
