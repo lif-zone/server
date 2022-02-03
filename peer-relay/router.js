@@ -38,13 +38,18 @@ export default class Router extends EventEmitter {
   send_req('hi').on('res', ...).on('fail', ..);
   */
   send_req(dst, data){
+    let req = new EventEmitter(); // XXX: need Request class
     let req_id=this.req_id++, to=b2s(dst), from=b2s(this.id);
     let nonce = ''+Math.floor(1e15*Math.random()), ts = date.monotonic();
     let msg = {req_id, ts, to, from, nonce, data, __meta: {path: []}};
     this._touched[nonce] = true;
     util.set(msg, '__meta.sign', this.wallet.sign(msg));
-    this._requests[req_id] = {req_id, msg};
-    return this._send(msg);
+    this._requests[req_id] = {req_id, req, msg};
+    this._send(msg); // XXX: what if error
+    return req;
+  }
+  // XXX: add opt to filter what we listen on. eg: {src, type}
+  listen(cb){
   }
   send(dst, data){
     let msg = {to: b2s(dst), from: b2s(this.id),
@@ -93,22 +98,9 @@ export default class Router extends EventEmitter {
       // XXX: ugly: we change to/from fields and make code diffiuclt to debug
       msg.to = to;
       msg.from = from;
-      yield _this.emit_message(msg.data, msg.from, msg);
+      _this.emit('message', msg.data, msg.from, msg);
     } else // relay
       yield _this._send(msg);
-  });
-  set_on_message = function(cb){
-    if (!cb)
-      return this.on_message_cb = cb;
-    assert(!this.on_message_cb);
-    this.on_message_cb = cb;
-  }
-  emit_message = (data, from, msg)=>etask({'this': this},
-    function*emit_message(){
-    let _this = this.this;
-    if (_this.on_message_cb)
-      yield _this.on_message_cb(data, from, msg);
-    _this.emit('message', data, from, msg);
   });
   _onChannelAdded(channel){
     const listener = msg=>this._onMessage(msg);

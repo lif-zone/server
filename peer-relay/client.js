@@ -29,7 +29,7 @@ export default class Client extends EventEmitter {
     this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router({channels: this.peers, id: this.id,
       wallet: this.wallet});
-    this.router.set_on_message((msg, from)=>this.on_message(msg, from));
+    this.router.on('message', (msg, from)=>this.on_message(msg, from));
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
     this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host);
