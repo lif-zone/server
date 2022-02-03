@@ -43,8 +43,6 @@ export default class Router extends EventEmitter {
     util.set(msg, '__meta__.sign', this.wallet.sign(msg));
     return this._send(msg);
   }
-  // XXX: add method etask to class and use _send=msg=this.etask()
-  // and consider add etask_root to class and spawn all from it
   _send = msg=>etask({'this': this}, function*(){
     var _this = this.this;
     _this.emit('send', msg);
