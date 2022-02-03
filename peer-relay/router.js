@@ -23,7 +23,7 @@ export default class Router extends EventEmitter {
     this._channels = channels;
     this._channels.on('added', channel=>this._onChannelAdded(channel));
     this._channels.on('removed', channel=>this._onChannelRemoved(channel));
-    for (var c of this._channels.toArray())
+    for (let c of this._channels.toArray())
       this._onChannelAdded(c);
   }
   /* XXX derry TODO:
@@ -33,16 +33,16 @@ export default class Router extends EventEmitter {
   }
   send_req('hi').on('res', ...).on('fail', ..);
   */
-  send_req(id, data){
-    var msg = {to: b2s(id), from: b2s(this.id),
+  send_req(dst, data){
+    let msg = {to: b2s(dst), from: b2s(this.id),
       nonce: '' + Math.floor(1e15 * Math.random()), data: data,
       __meta__: {path: []}};
     this._touched[msg.nonce] = true;
     util.set(msg, '__meta__.sign', this.wallet.sign(msg));
     return this._send(msg);
   }
-  send(id, data){
-    var msg = {to: b2s(id), from: b2s(this.id),
+  send(dst, data){
+    let msg = {to: b2s(dst), from: b2s(this.id),
       nonce: '' + Math.floor(1e15 * Math.random()), data: data,
       __meta__: {path: []}};
     this._touched[msg.nonce] = true;
@@ -50,25 +50,25 @@ export default class Router extends EventEmitter {
     return this._send(msg);
   }
   _send = msg=>etask({'this': this}, function*(){
-    var _this = this.this;
+    let _this = this.this;
     _this.emit('send', msg);
     if (msg.__meta__.path.length >= _this.maxHops)
       return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
     if (!_this._channels.count())
       _this._queue.push(msg);
     msg.__meta__.path.push(b2s(_this.id));
-    var target = new Buffer(msg.to, 'hex');
-    var closests = _this._channels.closest(target, 20)
+    let target = new Buffer(msg.to, 'hex');
+    let closests = _this._channels.closest(target, 20)
     .filter(c=>msg.__meta__.path.indexOf(b2s(c.id))===-1)
     .filter((_, index) => index < _this.concurrency);
     if (msg.to in _this._paths)
     {
-      var preferred = _this._channels.closest(
+      let preferred = _this._channels.closest(
         new Buffer(_this._paths[msg.to], 'hex'), 1)[0];
       if (preferred != null && closests.indexOf(preferred) === -1)
         closests.unshift(preferred);
     }
-    for (var channel of closests)
+    for (let channel of closests)
     {
       // TODO BUG Sometimes the WS on closest in not in the ready state
       yield channel.send(msg);
@@ -117,7 +117,7 @@ export default class Router extends EventEmitter {
       this._send(this._queue.shift());
   }
   _onChannelRemoved = function(channel){
-    var listener = this._channelListeners[channel.id];
+    let listener = this._channelListeners[channel.id];
     channel.removeListener('message', listener);
   }
 }
