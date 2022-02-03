@@ -61,8 +61,7 @@ export default class Router extends EventEmitter {
     if (!_this._channels.count())
       _this._queue.push(msg);
     msg.__meta.path.push(b2s(_this.id));
-    let target = s2b(msg.to);
-    let closests = _this._channels.closest(target, 20)
+    let closests = _this._channels.closest(s2b(msg.to), 20)
     .filter(c=>msg.__meta.path.indexOf(b2s(c.id))===-1)
     .filter((_, index) => index < _this.concurrency);
     if (msg.to in _this._paths)
