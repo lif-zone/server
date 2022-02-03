@@ -1,5 +1,5 @@
-// author: derry. coder: arik.
 #!/usr/bin/env node
+// author: derry. coder: arik.
 'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach before after*/
 // XXX: need jslint mocha: true
 import proc from './proc.js';
