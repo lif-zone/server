@@ -959,12 +959,18 @@ describe('peer-relay', function(){
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
-  describe('send_api', function(){
+  describe('req', function(){
+    if (true) return; // XXX WIP
     const t = ()=>{};
     // XXX: send_req('hi').on('res', ...).on('fail', ..);
-    t(`ab!>msg(hi) ab>msg(hi) ab<msg_r(hi-r)`);
-    t(`ab!>msg(hi) ab>msg(hi) ab>disonnect - 9.9s - 0.1s a!msg_fail(timeout)`);
-    t(`ab!>msg(hi) a!msg_fail(no_connection)`);
+    t(`setup(2_nodes`);
+    t_nodes['b'].on('req', (data, res)=>{ res.send('pong'); });
+    t(`ab!>req(id(1) ts(0) data(ping)) ab>req(id(1) ts(0) data(ping))
+      ab<res(id(1) ts(0) data(pong))`);
+    t(`ab!>req(id(2) ts(0) data(ping)) ab>req(id(2) ts(0) data(ping))
+      ab<res(id(2) ts(0) data(pong))`);
+    t(`ab!>req(id(3) ts(0) data(ping)) ab>req(id(3) ts(0) data(ping))
+      ab>disconnect - 9.9s - 0.1s a<fail(id(3) err(timeout))`);
   });
   // XXX: add boostrap support
   describe('2_nodes', function(){
