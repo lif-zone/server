@@ -136,8 +136,7 @@ export default class Client extends EventEmitter {
     let _this = this.this;
     if (_this.peers.get(from))
       return;
-    if (_this.pending[from] == null || from.compare(_this.id) < 0)
-    {
+    if (_this.pending[from] == null || from.compare(_this.id) < 0){
       _this.pending[from] = true;
       yield _this.router.send(from, {type: 'conn_info_r', data:
         {ws: _this.wsConnector.url, wrtc: _this.wrtcConnector.supported}});
@@ -159,8 +158,7 @@ export default class Client extends EventEmitter {
     var optimal = 15;
     var closest = _this.canidates.closest(_this.id, optimal);
     for (var i = 0; i < closest.length &&
-      _this.peers.count() + Object.keys(_this.pending).length < optimal; i++)
-    {
+      _this.peers.count() + Object.keys(_this.pending).length < optimal; i++){
       if (_this.peers.get(closest[i].id))
         continue;
       yield _this.connect(closest[i].id);
@@ -176,7 +174,7 @@ export default class Client extends EventEmitter {
     for (var i = 0; i < peers.length; i++)
       peers[i].destroy();
   }
- get_peers(){ return this.peers; }
+  get_peers(){ return this.peers; }
 }
 Client.WsConnector = WsConnector;
 Client.WrtcConnector = WrtcConnector;
