@@ -38,26 +38,47 @@ export default class Router extends EventEmitter {
   }
   send_req('hi').on('res', ...).on('fail', ..);
   */
-  send_req(dst, data){
+  send_req(to, data){
     let req = new EventEmitter(); // XXX: need Request class
-    let req_id = this.req_id++, to = b2s(dst), from = b2s(this.id);
-    let nonce = ''+Math.floor(1e15*Math.random()), ts = date.monotonic();
-    let msg = {req_id, ts, to, from, nonce, data, __meta: {path: []}};
+    let req_id=this.req_id++, from=b2s(this.id), path=[];
+    let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
+    let msg = {req_id, ts, type: 'req', to, from, nonce, data, __meta: {path}};
     this._touched[nonce] = true;
     util.set(msg, '__meta.sign', this.wallet.sign(msg));
     this.reqs[req_id] = {req_id, req, msg};
     this._send(msg); // XXX: what if error
     return req;
   }
+  send_res(opt, data){
+    let req_id=opt.req_id, to=b2s(opt.to), from=b2s(this.id), path=[];
+    let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
+    let msg = {req_id, ts, type: 'res', to, from, nonce, data, __meta: {path}};
+    this._touched[nonce] = true;
+    util.set(msg, '__meta.sign', this.wallet.sign(msg));
+    this._send(msg); // XXX: what if error
+  }
   _on_msg = (data, from, msg)=>{
-    let {req_id} = msg;
+    let {req_id, type} = msg, _this = this;
     if (!req_id)
       return;
-    if (!this.reqs[req_id])
-      return; // XXX: need to emit 'req'
-    let {req} = this.reqs[req_id];
-    req.emit('res', data, from, msg);
-    // XXX: if final response, remove from this.reqs
+    if (type=='req'){
+      let res = {from, req_id,
+        send: function(data){
+          return _this.send_res({req_id: this.req_id, to: this.from}, data); },
+      };
+      // XXX: mv res to this of cb handler
+      this.emit('req', data, res);
+    }
+    else if (type=='res'){
+      // XXX: if final response, remove from this.reqs
+      if (!this.reqs[req_id])
+        return xerr('req not found %s', req_id);
+      let {req} = this.reqs[req_id];
+      req.emit('res', data);
+      return xerr('invalid type %s %s', type, req_id);
+    }
+    else
+      return xerr('invalid msg type %s %s', type, req_id);
   }
   send(dst, data){
     let msg = {to: b2s(dst), from: b2s(this.id),

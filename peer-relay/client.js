@@ -29,7 +29,8 @@ export default class Client extends EventEmitter {
     this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router({channels: this.peers, id: this.id,
       wallet: this.wallet});
-    this.router.on('message', (msg, from)=>this.on_message(msg, from));
+    this.router.on('message', this.on_message);
+    this.router.on('req', this.on_req);
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
     this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host);
@@ -69,7 +70,7 @@ export default class Client extends EventEmitter {
     _this.emit('connection', channel);
     if (util.test_on_connection)
       yield util.test_on_connection(channel);
-    yield _this.router.send(channel.id, {type: 'find', data: b2s(_this.id)});
+    _this.find(b2s(channel.id));
     _this.emit('peer', channel.id);
     return channel;
   });
@@ -102,7 +103,9 @@ export default class Client extends EventEmitter {
   find(id){
     if (this.destroyed)
       return;
-    return this.router.send(id, {type: 'find', data: b2s(this.id)});
+    this.router.send_req(id, {type: 'find', data: b2s(this.id)})
+    .on('res', data=>{
+    });
   }
   // XXX: need to validate all data to make sure we don't crash
   on_message = (msg, from)=>etask({'this': this}, function*on_message(){
@@ -117,6 +120,8 @@ export default class Client extends EventEmitter {
     case 'conn_info_r': yield _this._on_conn_info_r(msg, from); break;
     default: xerr('unknown msg type %s', msg.type);
     }
+  });
+  on_req = (msg, from)=>etask({'this': this}, function*on_req(){
   });
   _on_find = (msg, from)=>etask({'this': this}, function*_on_find(){
     let _this = this.this;
