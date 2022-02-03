@@ -17,14 +17,16 @@ export default class Router extends EventEmitter {
     this.req_id = date.monotonic();
     this.concurrency = 2;
     this.maxHops = 20;
+    // XXX: rm _ from properites + methods
     // XXX: memory leak - no cleanup for all
     this._touched = {};
     this._paths = {};
     this._queue = [];
-    this._requests = {};
+    this.reqs = {};
     this._channels = channels;
     this._channels.on('added', channel=>this._onChannelAdded(channel));
     this._channels.on('removed', channel=>this._onChannelRemoved(channel));
+    this.on('message', this._on_msg);
     for (let c of this._channels.toArray())
       this._onChannelAdded(c);
   }
@@ -37,14 +39,24 @@ export default class Router extends EventEmitter {
   */
   send_req(dst, data){
     let req = new EventEmitter(); // XXX: need Request class
-    let req_id=this.req_id++, to=b2s(dst), from=b2s(this.id);
+    let req_id = this.req_id++, to = b2s(dst), from = b2s(this.id);
     let nonce = ''+Math.floor(1e15*Math.random()), ts = date.monotonic();
     let msg = {req_id, ts, to, from, nonce, data, __meta: {path: []}};
     this._touched[nonce] = true;
     util.set(msg, '__meta.sign', this.wallet.sign(msg));
-    this._requests[req_id] = {req_id, req, msg};
+    this.reqs[req_id] = {req_id, req, msg};
     this._send(msg); // XXX: what if error
     return req;
+  }
+  _on_msg = (data, from, msg)=>{
+    let {req_id} = msg;
+    if (!req_id)
+      return;
+    if (!this.reqs[req_id])
+      return xerr.error('req not found %s', req_id);
+    let {req} = this.reqs[req_id];
+    req.emit('res', data, from, msg);
+    // XXX: if final response, remove from this.reqs
   }
   send(dst, data){
     let msg = {to: b2s(dst), from: b2s(this.id),
