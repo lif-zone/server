@@ -336,7 +336,7 @@ function node_get_channel(_s, _d){
 const send_msg = (s, d, msg)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   assert(channel, 'no channel '+s+d+'>');
-  yield t_nodes[d].router._onMessage(msg);
+  yield t_nodes[d].router._on_channel_msg(msg);
 });
 
 const fake_send_msg = (c, data)=>etask(function*(){

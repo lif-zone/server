@@ -19,7 +19,6 @@ export default class Router extends EventEmitter {
     this.maxHops = 20;
     // XXX: memory leak - no cleanup for all
     this._touched = {};
-    this._channelListeners = {};
     this._paths = {};
     this._queue = [];
     this._requests = {};
@@ -46,9 +45,6 @@ export default class Router extends EventEmitter {
     this._requests[req_id] = {req_id, req, msg};
     this._send(msg); // XXX: what if error
     return req;
-  }
-  // XXX: add opt to filter what we listen on. eg: {src, type}
-  listen(cb){
   }
   send(dst, data){
     let msg = {to: b2s(dst), from: b2s(this.id),
@@ -82,7 +78,7 @@ export default class Router extends EventEmitter {
         break; // XXX: why do we break?
     }
   });
-  _onMessage = msg=>etask({'this': this}, function*_onMessage(){
+  _on_channel_msg = msg=>etask({'this': this}, function*_on_channel_msg(){
     let _this = this.this;
     if (msg.nonce in _this._touched)
       return;
@@ -99,16 +95,12 @@ export default class Router extends EventEmitter {
       yield _this._send(msg);
   });
   _onChannelAdded(channel){
-    const listener = msg=>this._onMessage(msg);
-    channel.on('message', listener);
-    this._channelListeners[channel.id] = listener;
+    channel.on('message', this._on_channel_msg);
     // XXX: check if this can happen during test and add yield
     while (this._queue.length > 0)
       this._send(this._queue.shift());
   }
   _onChannelRemoved = function(channel){
-    let listener = this._channelListeners[channel.id];
-    channel.removeListener('message', listener);
-  }
+    channel.removeListener('message', this._on_channel_msg); }
 }
 
