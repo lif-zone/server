@@ -68,8 +68,7 @@ function rev_trim(s){
 function _build_cmd(){
   let args = Array.from(arguments), cmd = args[0], fwd = args[1]||'', arg = '';
   assert(cmd);
-  for (let i=2; i<args.length; i++)
-  {
+  for (let i=2; i<args.length; i++){
     if (args[i])
       arg += (arg ? ' ' : '')+args[i];
   }
@@ -103,8 +102,7 @@ function is_fake(p){ return t_role!=p; }
 function wss_from_node(node){ return util.get(node, 't.wss.url'); }
 
 function node_from_url(url){
-  for (let name in t_nodes)
-  {
+  for (let name in t_nodes){
     let node = t_nodes[name];
     if (node.t.wss && wss_from_node(node)==url)
       return node;
@@ -114,8 +112,7 @@ function node_from_url(url){
 function support_wrtc(name){ return false; } // XXX: TODO
 
 function node_from_id(id){
-  for (let name in t_nodes)
-  {
+  for (let name in t_nodes){
     let node = t_nodes[name];
     if (node.t.id == _str(id))
       return node;
@@ -147,8 +144,7 @@ function assert_host(host){
 function assert_wss(val){
   let host = 'lif.zone', port, arg = xtest.test_parse(val);
   util.forEach(arg, a=>{
-    switch (a.cmd)
-    {
+    switch (a.cmd){
     case 'host': host = assert_host(a.arg); break;
     case 'port': port = assert_port(a.arg); break;
     default: 'invalid cmd '+a.cmd;
@@ -169,8 +165,7 @@ function assert_wss_url(d, val){
   let wss;
   if (!val)
     wss = t_nodes[d].wsConnector.url;
-  else
-  {
+  else {
     assert(!d);
     wss = val;
   }
@@ -207,8 +202,7 @@ function assert_event_c(c, event){
 }
 const test_on_connection = channel=>etask(function*test_on_connection(){
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
-  if (channel.t.initiaor)
-  {
+  if (channel.t.initiaor){
     assert(!s.t.fake, 'src must be real');
     yield cmd_run(build_cmd(s.t.name+d.t.name+'>connect',
       channel.wsConnector ? 'wss' : 'wrtc'));
@@ -234,8 +228,7 @@ class FakeWsConnector extends EventEmitter {
   constructor(id, port, host){
     super();
     this.id = id;
-    if (port || host) // XXX: what if no host?
-    {
+    if (port || host){ // XXX: what if no host?
       assert(host, 'missing host');
       assert(port, 'missing port');
       this.url = 'wss://'+host+':'+port;
@@ -289,8 +282,7 @@ class FakeChannel extends EventEmitter {
     xerr.debug('****** send%s msg %s', fwd ? ' '+fwd : '',
       from.t.name+to.t.name+'>'+type);
     return etask(function*send(){
-      switch (type)
-      {
+      switch (type){
       case 'find':
         p = node_from_id(data);
         cmd = build_cmd(from.t.name+to.t.name+'>find', p.t.name);
@@ -354,8 +346,7 @@ const fake_send_msg = (c, data)=>etask(function*(){
     '' + Math.floor(1e15 * Math.random());
   var msg = {to, from, nonce, data, __meta__: {path: [s.id.toString('hex')]}};
   util.set(msg, '__meta__.sign', s.wallet.sign(msg));
-  if (c.fwd)
-  {
+  if (c.fwd){
     let fwd = normalize(c.fwd);
     s = t_nodes[fwd[0]];
     d = t_nodes[fwd[1]];
@@ -379,8 +370,7 @@ function cmd_setup(opt){
   if (!t_pre_process)
     return;
   // XXX: proper assert setup params
-  switch (m)
-  {
+  switch (m){
   case '2_nodes':
     M(`node(a) node(b wss) - ab>!connect(find(a ba))`);
     break;
@@ -412,8 +402,7 @@ function cmd_node(opt){
   util.forEach(arg, a=>{
     if (!name)
       return name = assert_name_new(a.cmd);
-    switch (a.cmd)
-    {
+    switch (a.cmd){
     case 'wss': wss = assert_wss(a.arg); break;
     case 'wrtc': wrtc = assert_wrtc(a.arg); break;
     case 'boot': bootstrap = assert_bootstrap(a.arg); break;
@@ -439,8 +428,7 @@ const cmd_connect = opt=>etask(function*(){
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
   let r = true;
   util.forEach(arg, a=>{
-    switch (a.cmd)
-    {
+    switch (a.cmd){
     case 'wss':
       assert(wss===undefined, 'multiple '+a.cmd);
       wss = assert_wss_url(c.d, a.arg);
@@ -459,29 +447,24 @@ const cmd_connect = opt=>etask(function*(){
     }
   });
   assert(d, 'not node found '+c.d);
-  if (!wss && !wrtc && util.xor(wss_from_node(d), support_wrtc(d.t.name)))
-  {
+  if (!wss && !wrtc && util.xor(wss_from_node(d), support_wrtc(d.t.name))){
     wss = wss_from_node(d);
     wrtc = support_wrtc(d.t.name);
   }
   assert_exist(c.s);
   assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
   assert(find ? r : true, 'find must be used together with find');
-  if (t_pre_process)
-  {
+  if (t_pre_process){
     if (call)
     {
-      if (r)
-      {
+      if (r){
         push_cmd(build_cmd(c.s+c.d+'>connect', wss&&'wss', wrtc&&'wrtc',
           find&&build_cmd('find', find.join(' '))));
       }
       set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
     }
-    else
-    {
-      if (r)
-      {
+    else {
+      if (r){
         push_cmd(c.s+c.d+'<connected'+(find ? ' '+
           build_cmd(c.s+c.d+'>find', c.s+' '+build_cmd('r', find[0]))+' '+
           build_cmd(c.s+c.d+'<find', c.d+' '+build_cmd('r', find[1])) : ''));
@@ -490,23 +473,19 @@ const cmd_connect = opt=>etask(function*(){
     }
     return;
   }
-  if (call)
-  {
+  if (call){
     assert(!event);
-    if (!s.t.fake)
-    {
+    if (!s.t.fake){
       if (wss)
         yield s.wsConnector.connect(wss);
       else if (wrtc)
         yield s.wrtcConnector.connect(d.id);
     }
   }
-  else
-  {
+  else {
     if (s.t.fake && d.t.fake)
       return;
-    if (s.t.fake)
-    {
+    if (s.t.fake){
       let channel = new FakeChannel({localID: d.id, id: s.id});
       if (wss)
         channel.wsConnector = d.wsConnector;
@@ -534,20 +513,17 @@ const cmd_find = opt=>etask(function*cmd_find(){
   let {c, event} = opt, s = t_nodes[c.s];
   let r, peers, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
-    if (a.cmd=='r')
-    {
+    if (a.cmd=='r'){
       assert(!r, 'invalid '+c.orig);
       r = a.arg||true;
     }
-    else
-    {
+    else {
       assert(!peers, 'invalid '+c.orig);
       peers = a.cmd;
       assert_peers(peers);
     }
   });
-  if (t_pre_process)
-  {
+  if (t_pre_process){
     if (r)
       push_cmd(rev_cmd(c.orig, 'find_r', r));
     set_orig(c, build_cmd(c.meta.cmd, peers));
@@ -575,8 +551,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   let {c, event} = opt, r;
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
-    switch (a.cmd)
-    {
+    switch (a.cmd){
     case 'r':
       assert(!r, 'invalid '+c.orig);
       r = a.arg||'';
@@ -584,17 +559,13 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
     default: throw new Error('unknown arg '+a.cmd);
     }
   });
-  if (t_pre_process)
-  {
-    if (typeof r!=='undefined')
-    {
-      if (c.orig_loop)
-      {
+  if (t_pre_process){
+    if (typeof r!=='undefined'){
+      if (c.orig_loop){
         _push_cmd(extend_loop_rev(c.orig_loop,
           rev_cmd(c.orig, 'conn_info_r', r)));
       }
-      else if (!c.had_loop)
-      {
+      else if (!c.had_loop){
         push_cmd(build_cmd(rev_trim(c.fwd)+'fwd',
           rev_cmd(c.orig, 'conn_info_r', r)));
       }
@@ -612,8 +583,7 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   let {c, event} = opt, s = t_nodes[c.s], ws, wrtc;
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
-    switch (a.cmd)
-    {
+    switch (a.cmd){
     case 'wrtc': wrtc = assert_wrtc(a.arg); break;
     // XXX: assert and verify ws is correct url
     case 'ws': ws = wss_from_node(s); break;
@@ -634,8 +604,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   let arg = xtest.test_parse(c.arg), call = c.cmd=='!msg', data;
   let msg = call ? true : false;
   util.forEach(arg, a=>{
-    switch (a.cmd)
-    {
+    switch (a.cmd){
     case '!msg': msg = false; break;
     case 'msg':
       assert(!a.arg);
@@ -647,12 +616,9 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
   });
   assert(call || !msg, 'msg only avail for call mode');
-  if (t_pre_process)
-  {
-    if (call)
-    {
-      if (c.loop_first)
-      {
+  if (t_pre_process){
+    if (call){
+      if (c.loop_first){
         if (msg)
           push_cmd(_build_cmd(dir_c(c)+'msg', c.fwd, data));
         c.fwd = '';
@@ -671,13 +637,11 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   if (event)
     assert_event_c(c, event);
-  if (call)
-  {
+  if (call){
     if (!s.t.fake)
       yield s.send(d.id, data);
   }
-  else
-  {
+  else {
     yield fake_send_msg(c, {type: 'user', data});
     yield cmd_run_if_next_fake();
   }
@@ -688,8 +652,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let a = xtest.test_parse(c.arg);
   assert(a.length==1, 'invalid fwd '+c.orig);
   a[0].fwd = dir_c(c);
-  if (t_pre_process)
-  {
+  if (t_pre_process){
     a[0].orig_loop = c.orig_loop;
     a[0].had_loop = c.had_loop;
     a[0].loop_first = c.loop_first;
@@ -703,10 +666,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
   let c = opt.c;
   xerr.notice('cmd_single pre cmd %s orig %s', c.cmd, c.orig);
-  if (t_pre_process)
-  {
-    if ('<>'.indexOf(c.cmd[2])!=-1) // XXX: ugly code
-    {
+  if (t_pre_process){
+    if ('<>'.indexOf(c.cmd[2])!=-1){ // XXX: ugly code
       // XXX fixme:
       // build_cmd(c.s+c.d+c.dir+'fwd', build_cmd(c.cmd, c.arg)))[0]);
       assign(c, xtest.test_parse(
@@ -714,8 +675,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
     }
   }
   xerr.notice('cmd_single post cmd %s orig %s', c.cmd, c.orig);
-  switch (c.cmd)
-  {
+  switch (c.cmd){
   case '-': cmd_ensure_no_events(opt); break;
   case 'setup': yield cmd_setup(opt); break;
   case 'node': yield cmd_node(opt); break;
@@ -738,13 +698,11 @@ function extend_loop(c){
   assert(c.loop);
   assert(t_pre_process);
   let a = [];
-  for (let i=0; i<c.loop.length; i++)
-  {
+  for (let i=0; i<c.loop.length; i++){
     let o = assign({}, c, c.loop[i]);
     a.push(o);
     delete o.loop;
-    if (o.cmd!='fwd')
-    {
+    if (o.cmd!='fwd'){
       o.arg = build_cmd(
         dir_str(c.loop[0].s, c.loop[c.loop.length-1].d, o.dir)+o.cmd, o.arg);
       o.cmd = 'fwd';
@@ -762,8 +720,7 @@ function extend_loop(c){
 function extend_loop_rev(loop, cmd){
   let a = [];
   loop = Array.from(loop).reverse();
-  for (let i=0; i<loop.length; i++)
-  {
+  for (let i=0; i<loop.length; i++){
     let o = loop[i];
     a.push(xtest.test_parse(build_cmd(o.s+o.d+'<fwd', cmd))[0]);
   }
@@ -787,8 +744,7 @@ let t_depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
-  if (t_pre_process)
-  {
+  if (t_pre_process){
     assert.equal(t_depth, 0);
     if (c.loop)
       c = extend_loop(c);
@@ -840,8 +796,7 @@ const test_end = ()=>etask(function*(){
   yield cmd_ensure_no_events();
   assert(t_cmds, 'test not running');
   assert.equal(t_i, t_cmds.length, 'not all cmds run');
-  for (let n in t_nodes)
-  {
+  for (let n in t_nodes){
     yield t_nodes[n].destroy();
     delete t_nodes[n];
   }
