@@ -965,12 +965,12 @@ describe('peer-relay', function(){
     // XXX: send_req('hi').on('res', ...).on('fail', ..);
     t(`setup(2_nodes`);
     t_nodes['b'].on('req', (data, res)=>{ res.send('pong'); });
-    t(`ab!>req(id(1) ts(0) data(ping)) ab>req(id(1) ts(0) data(ping))
-      ab<res(id(1) ts(0) data(pong))`);
-    t(`ab!>req(id(2) ts(0) data(ping)) ab>req(id(2) ts(0) data(ping))
-      ab<res(id(2) ts(0) data(pong))`);
-    t(`ab!>req(id(3) ts(0) data(ping)) ab>req(id(3) ts(0) data(ping))
-      ab>disconnect - 9.9s - 0.1s a<fail(id(3) err(timeout))`);
+    t(`ab!>req(id(1) data(ping)) ab>req(id(1) data(ping))
+      ab<res(id(1) data(pong))`);
+    t(`ab!>req(id(2) data(ping)) ab>req(id(2) data(ping))
+      ab<res(id(2) data(pong))`);
+    t(`ab!>req(id(3) data(ping)) ab>req(id(3) data(ping)) ab>disconnect -
+      9.9s - 0.1s a<fail(id(3) err(timeout))`);
   });
   // XXX: add boostrap support
   describe('2_nodes', function(){
