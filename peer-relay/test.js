@@ -13,7 +13,7 @@ import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
 const assign = Object.assign;
-const s2b = util.buf_from_str;
+const s2b = util.buf_from_str, b2s = util.buf_to_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
 // XXX: make it automatic for all node/browser
@@ -303,7 +303,11 @@ class FakeChannel extends EventEmitter {
         cmd = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
         break;
       case 'user': cmd = build_cmd(from.t.name+to.t.name+'>msg', data); break;
-      default: assert(false, 'unexpected msg '+type);
+      default:
+        if (msg.type=='req')
+          cmd = build_cmd(from.t.name+to.t.name+'>req', 'xxx');
+        else
+          assert(false, 'unexpected msg '+type);
       }
       t_nonce[normalize(cmd)] = msg.nonce;
       yield cmd_run_if_next_fake();
@@ -425,7 +429,7 @@ function cmd_node(opt){
 // once b gets a.id, it emits 'connection' - we emit ab<connected
 const cmd_connect = opt=>etask(function*(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], find;
-  let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd=='!connect';
+  let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd[0]=='!';
   let r = true;
   util.forEach(arg, a=>{
     switch (a.cmd){
@@ -601,7 +605,7 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
-  let arg = xtest.test_parse(c.arg), call = c.cmd=='!msg', data;
+  let arg = xtest.test_parse(c.arg), data, call = c.cmd[0]=='!';
   let msg = call ? true : false;
   util.forEach(arg, a=>{
     switch (a.cmd){
@@ -647,6 +651,22 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
 });
 
+const cmd_req = opt=>etask(function*req(){
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  assert(s && d, 'invalid event '+c.orig);
+  let call = c.cmd[0]=='!', data = c.arg;
+  if (t_pre_process)
+    return;
+  if (event)
+    assert_event_c(c, event);
+  if (call){
+    if (!s.t.fake)
+      yield s.send_req(b2s(d.id), data);
+  }
+  else
+    yield cmd_run_if_next_fake();
+});
+
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
   let a = xtest.test_parse(c.arg);
@@ -688,6 +708,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '!msg': yield cmd_msg(opt); break;
   case 'msg': yield cmd_msg(opt); break;
+  case '!req': yield cmd_req(opt); break;
+  case 'req': yield cmd_req(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   default: assert(false, 'unknown cmd '+opt.c.cmd);
   }
@@ -958,15 +980,18 @@ describe('peer-relay', function(){
   // - ack on each message
   // - add beep sound to ping script
   const t_roles = (name, roles, test)=>{
+    assert(test);
+    assert(roles);
     xit(name, 'fake', test);
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
   describe('req', function(){
-    if (true) return; // XXX WIP
-    const t = ()=>{};
+    const t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
-    t(`setup:2_nodes`);
+    if (true) return; // XXX WIP
+    t('basic',
+      `setup:2_nodes ab>!req(id:1 data:ping) ab>req(id:1 data:ping)`);
     t_nodes['b'].on('req', (data, res)=>{ res.send('pong'); });
     t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
       ab<res(id:1 data:pong)`);
