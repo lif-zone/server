@@ -979,12 +979,12 @@ describe('peer-relay', function(){
   describe('2_nodes', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
     t('long', `node:a node(b wss(port:4000)) ab>!connect(wss !r)
-      ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find(b)
+      ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
       ab>find_r:ba`);
-    t('short', `node(a) node(b wss) ab>!connect(find(a ba))`);
+    t('short', `node:a node(b wss) ab>!connect(find(a ba))`);
     t('msg_long', `setup:2_nodes ab>!msg(hi !msg) ab>msg:hi ab<!msg(hi !msg)
       ab<msg:hi`);
-    t('msg', `setup:2_nodes ab>!msg(hi) ab<!msg(hi)`);
+    t('msg', `setup:2_nodes ab>!msg:hi ab<!msg:hi`);
     t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
   });
   describe('3_nodes', function(){
@@ -994,33 +994,33 @@ describe('peer-relay', function(){
     // connect directly
     t('linear', `node:a node(b wss) node(c wss) ab>!connect(find(a ba)) -
       bc>!connect(find(b cab)) abc<conn_info:r`);
-    t('linear_msg', `setup:3_nodes_linear ab>!msg(hi) - ab<!msg(hi) -
-      abc>!msg(hi) - abc<!msg(hi) - bc>!msg(hi) - bc<!msg(hi)`);
+    t('linear_msg', `setup:3_nodes_linear ab>!msg:hi - ab<!msg:hi -
+      abc>!msg:hi - abc<!msg:hi - bc>!msg:hi - bc<!msg:hi`);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
-      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) abc<conn_info(r(wrtc))
+      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) abc<conn_info(r:wrtc)
       ca>connect(wrtc find(cab abc))`);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab)) cba>conn_info(r(ws))
       ca>connect(find(cab abc))`);
-    t('star', `node(s wss) node(a) node(b wss) as>!connect(find(a sa)) -
-      bs>!connect(find(bas sab)) bsa>conn_info(r)`);
+    t('star', `node(s wss) node:a node(b wss) as>!connect(find(a sa)) -
+      bs>!connect(find(bas sab)) bsa>conn_info:r`);
     t('star_wss', `node(s wss) node(a wss) node(b wss) -
-      as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r(ws))
+      as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r:ws)
       ba>connect(find(bas abs))`);
   });
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup:3_nodes_linear node(d wss) cd>!connect(find(c dcba))
-      dcb>conn_info(r(ws)) db>connect(find(dcba badc))
-      ba>bd>conn_info_r(ws) dba>conn_info(r) dcb>fwd(ad<conn_info)`);
-    t('linear_msg', `setup:4_nodes_linear ab>!msg(hi) - abc>!msg(hi) -
-      abd>!msg(hi) - ba>!msg(hi) - ba<!msg(hi) - bc>!msg(hi) - bd>!msg(hi) -
-      cba>!msg(hi) cd>ca>msg(hi) db>ca>msg(hi) - dba>!msg(hi)
-      dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
+      dcb>conn_info(r:ws) db>connect(find(dcba badc))
+      ba>bd>conn_info_r(ws) dba>conn_info:r dcb>fwd(ad<conn_info)`);
+    t('linear_msg', `setup:4_nodes_linear ab>!msg:hi - abc>!msg:hi -
+      abd>!msg:hi - ba>!msg:hi - ba<!msg:hi - bc>!msg:hi - bd>!msg:hi -
+      cba>!msg:hi cd>ca>msg:hi db>ca>msg:hi - dba>!msg:hi
+      dcb>fwd(da>msg:hi) - db>!msg:hi - dc>!msg:hi`);
     t('linear_wss', `setup:3_nodes_wss node(d wss) - cd>!connect(find(c dcba))
-      dcb>conn_info(r(ws)) db>connect(find(dcba badc))
-      dba>conn_info dca>conn_info(r(ws)) da>connect(find(dcba abcd))
-      abd>conn_info_r(ws) bad>conn_info_r(ws)`);
+      dcb>conn_info(r:ws) db>connect(find(dcba badc))
+      dba>conn_info dca>conn_info(r:ws) da>connect(find(dcba abcd))
+      abd>conn_info_r:ws bad>conn_info_r:ws`);
   });
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
