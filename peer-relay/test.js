@@ -980,8 +980,8 @@ describe('peer-relay', function(){
       ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
       ab>find_r(ba)`);
     t('short', `node(a) node(b wss) ab>!connect(find(a ba))`);
-    t('msg_long', `setup:2_nodes ab>!msg(hi !msg) ab>msg(hi) ab<!msg(hi !msg)
-      ab<msg(hi)`);
+    t('msg_long', `setup:2_nodes ab>!msg(hi !msg) ab>msg:hi ab<!msg(hi !msg)
+      ab<msg:hi`);
     t('msg', `setup:2_nodes ab>!msg(hi) ab<!msg(hi)`);
     t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
   });
@@ -990,9 +990,9 @@ describe('peer-relay', function(){
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
-    t('linear', `node(a) node(b wss) node(c wss) ab>!connect(find(a ba)) -
+    t('linear', `node:a node(b wss) node(c wss) ab>!connect(find(a ba)) -
       bc>!connect(find(b cab)) abc<conn_info:r`);
-    t('linear_msg', `setup(3_nodes_linear) ab>!msg(hi) - ab<!msg(hi) -
+    t('linear_msg', `setup:3_nodes_linear ab>!msg(hi) - ab<!msg(hi) -
       abc>!msg(hi) - abc<!msg(hi) - bc>!msg(hi) - bc<!msg(hi)`);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab)) abc<conn_info(r(wrtc))
@@ -1008,14 +1008,14 @@ describe('peer-relay', function(){
   });
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
-    t('linear', `setup(3_nodes_linear) node(d wss) cd>!connect(find(c dcba))
+    t('linear', `setup:3_nodes_linear node(d wss) cd>!connect(find(c dcba))
       dcb>conn_info(r(ws)) db>connect(find(dcba badc))
       ba>bd>conn_info_r(ws) dba>conn_info(r) dcb>fwd(ad<conn_info)`);
-    t('linear_msg', `setup(4_nodes_linear) ab>!msg(hi) - abc>!msg(hi) -
+    t('linear_msg', `setup:4_nodes_linear ab>!msg(hi) - abc>!msg(hi) -
       abd>!msg(hi) - ba>!msg(hi) - ba<!msg(hi) - bc>!msg(hi) - bd>!msg(hi) -
       cba>!msg(hi) cd>ca>msg(hi) db>ca>msg(hi) - dba>!msg(hi)
       dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
-    t('linear_wss', `setup(3_nodes_wss) node(d wss) - cd>!connect(find(c dcba))
+    t('linear_wss', `setup:3_nodes_wss node(d wss) - cd>!connect(find(c dcba))
       dcb>conn_info(r(ws)) db>connect(find(dcba badc))
       dba>conn_info dca>conn_info(r(ws)) da>connect(find(dcba abcd))
       abd>conn_info_r(ws) bad>conn_info_r(ws)`);
