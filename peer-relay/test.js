@@ -305,7 +305,10 @@ class FakeChannel extends EventEmitter {
       case 'user': cmd = build_cmd(from.t.name+to.t.name+'>msg', data); break;
       default:
         if (msg.type=='req')
-          cmd = build_cmd(from.t.name+to.t.name+'>req', 'xxx');
+        {
+          cmd = build_cmd(from.t.name+to.t.name+'>req',
+            build_cmd('id', msg.req_id), build_cmd('data', msg.data));
+        }
         else
           assert(false, 'unexpected msg '+type);
       }
@@ -654,7 +657,15 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
-  let call = c.cmd[0]=='!', data = c.arg;
+  let call = c.cmd[0]=='!', data, id, arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
+    switch (a.cmd){
+    case 'id': id = a.arg; break;
+    case 'data': data = a.arg; break;
+    default: throw new Error('unknown arg '+a.cmd);
+    }
+  });
+  assert(id);
   if (t_pre_process)
     return;
   if (event)
@@ -990,8 +1001,7 @@ describe('peer-relay', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
     if (true) return; // XXX WIP
-    t('basic',
-      `setup:2_nodes ab>!req(id:1 data:ping) ab>req(id:1 data:ping)`);
+    t('basic', `setup:2_nodes ab>!req(id:1 data:ping) ab>req(id:1 data:ping)`);
     t_nodes['b'].on('req', (data, res)=>{ res.send('pong'); });
     t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
       ab<res(id:1 data:pong)`);
