@@ -899,6 +899,9 @@ describe('peer-relay', function(){
         t('ab>find(a)', `ab>find(a)`);
         t('ab>find(a r(c))', `ab>find(a) ab<find_r(c)`);
         t('ab>fwd(ab>find(a))', `ab>fwd(ab>find(a))`);
+        t('ab>find:a', `ab>find(a)`);
+        if (0) // XXX: fixme (and add tests for commands with :
+        t('ab<find_r:a', `ab<find_r(a)`);
         t('ab,bc>fwd(ac>find(a))', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
         t('ab,bc<fwd(ac<find(a))', `bc<fwd(ac<find(a)) ab<fwd(ac<find(a))`);
         t('ab,bc>find(a)', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
