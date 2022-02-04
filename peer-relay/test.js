@@ -980,6 +980,8 @@ describe('peer-relay', function(){
       ab>connect(wss !r) ab<connected ab>find(a) ab<find_r(a) ab<find(b)
       ab>find_r(ba)`);
     t('short', `node(a) node(b wss) ab>!connect(find(a ba))`);
+    t('msg_long', `setup:2_nodes ab>!msg(hi !msg) ab>msg(hi) ab<!msg(hi !msg)
+      ab<msg(hi)`);
     t('msg', `setup:2_nodes ab>!msg(hi) ab<!msg(hi)`);
     t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
   });
