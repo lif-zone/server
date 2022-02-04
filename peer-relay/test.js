@@ -538,7 +538,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
 const cmd_find_r = opt=>etask(function*cmd_find_r(){
   let {c, event} = opt;
   if (t_pre_process)
-    return;
+    return set_orig(c, build_cmd(c.meta.cmd, c.arg));
   // XXX: assert c.arg
   if (event)
     assert_event_c(c, event);
@@ -900,7 +900,6 @@ describe('peer-relay', function(){
         t('ab>find(a r(c))', `ab>find(a) ab<find_r(c)`);
         t('ab>fwd(ab>find(a))', `ab>fwd(ab>find(a))`);
         t('ab>find:a', `ab>find(a)`);
-        if (0) // XXX: fixme (and add tests for commands with :
         t('ab<find_r:a', `ab<find_r(a)`);
         t('ab,bc>fwd(ac>find(a))', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
         t('ab,bc<fwd(ac<find(a))', `bc<fwd(ac<find(a)) ab<fwd(ac<find(a))`);
@@ -980,8 +979,8 @@ describe('peer-relay', function(){
   describe('2_nodes', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
     t('long', `node:a node(b wss(port:4000)) ab>!connect(wss !r)
-      ab>connect(wss !r) ab<connected ab>find:a ab<find_r(a) ab<find(b)
-      ab>find_r(ba)`);
+      ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find(b)
+      ab>find_r:ba`);
     t('short', `node(a) node(b wss) ab>!connect(find(a ba))`);
     t('msg_long', `setup:2_nodes ab>!msg(hi !msg) ab>msg:hi ab<!msg(hi !msg)
       ab<msg:hi`);
