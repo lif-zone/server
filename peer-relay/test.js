@@ -591,7 +591,7 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
     }
   });
   if (t_pre_process)
-    return;
+    return set_orig(c, build_cmd(c.meta.cmd, c.arg));
   if (event)
     assert_event_c(c, event);
   yield fake_send_msg(c, {type: 'conn_info_r', data: {ws, wrtc}});
@@ -926,6 +926,7 @@ describe('peer-relay', function(){
           ab<fwd(ac<conn_info_r(ws))`);
         t('abc>conn_info(r(ws))', `ab>fwd(ac>conn_info) bc>fwd(ac>conn_info)
           bc<fwd(ac<conn_info_r(ws)) ab<fwd(ac<conn_info_r(ws))`);
+        t('ba>bd>conn_info_r:ws', `ba>fwd(bd>conn_info_r(ws))`);
         t('ab>!msg(hi !msg)', `ab>!msg(hi !msg)`);
         t('ab>!msg(hi)', `ab>!msg(hi !msg) ab>msg(hi)`);
         t('ab>!msg(hi msg)', `ab>!msg(hi !msg) ab>msg(hi)`);
@@ -1000,7 +1001,7 @@ describe('peer-relay', function(){
       ab>!connect(find(a ba)) - bc>!connect(find(b cab)) abc<conn_info(r:wrtc)
       ca>connect(wrtc find(cab abc))`);
     t('linear_wss', `node(a wss) node(b wss) node(c wss) -
-      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) cba>conn_info(r(ws))
+      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) cba>conn_info(r:ws)
       ca>connect(find(cab abc))`);
     t('star', `node(s wss) node:a node(b wss) as>!connect(find(a sa)) -
       bs>!connect(find(bas sab)) bsa>conn_info:r`);
@@ -1012,7 +1013,7 @@ describe('peer-relay', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup:3_nodes_linear node(d wss) cd>!connect(find(c dcba))
       dcb>conn_info(r:ws) db>connect(find(dcba badc))
-      ba>bd>conn_info_r(ws) dba>conn_info:r dcb>fwd(ad<conn_info)`);
+      ba>bd>conn_info_r:ws dba>conn_info:r dcb>fwd(ad<conn_info)`);
     t('linear_msg', `setup:4_nodes_linear ab>!msg:hi - abc>!msg:hi -
       abd>!msg:hi - ba>!msg:hi - ba<!msg:hi - bc>!msg:hi - bd>!msg:hi -
       cba>!msg:hi cd>ca>msg:hi db>ca>msg:hi - dba>!msg:hi
