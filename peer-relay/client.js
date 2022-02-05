@@ -121,8 +121,7 @@ export default class Client extends EventEmitter {
     default: xerr('unknown msg type %s', msg.type);
     }
   };
-  on_req = (data, res)=>{
-  };
+  on_req = (data, res)=>this.emit('req', data, res);
   _on_find = (msg, from)=>etask({'this': this}, function*_on_find(){
     let _this = this.this;
     var target = new Buffer(msg.data, 'hex');

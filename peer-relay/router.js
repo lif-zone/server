@@ -40,7 +40,7 @@ export default class Router extends EventEmitter {
   */
   send_req(to, data){
     let req = new EventEmitter(); // XXX: need Request class
-    let req_id=''+(this.req_id++), from=b2s(this.id), path=[];
+    let req_id=''+this.req_id++, from=b2s(this.id), path=[];
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
     let msg = {req_id, ts, type: 'req', to, from, nonce, data, __meta: {path}};
     this._touched[nonce] = true;
@@ -66,7 +66,6 @@ export default class Router extends EventEmitter {
         send: function(data){
           return _this.send_res({req_id: this.req_id, to: this.from}, data); },
       };
-      // XXX: mv res to this of cb handler
       this.emit('req', data, res);
     }
     else if (type=='res'){

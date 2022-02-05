@@ -305,9 +305,9 @@ class FakeChannel extends EventEmitter {
         break;
       case 'user': cmd = build_cmd(from.t.name+to.t.name+'>msg', data); break;
       default:
-        if (msg.type=='req')
+        if (msg.type)
         {
-          cmd = build_cmd(from.t.name+to.t.name+'>req',
+          cmd = build_cmd(from.t.name+to.t.name+'>'+msg.type,
             build_cmd('id', msg.req_id), build_cmd('data', msg.data));
         }
         else
@@ -347,12 +347,14 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
   yield t_nodes[d].router._on_channel_msg(msg);
 });
 
-const fake_send_msg = (c, data)=>etask(function*(){
+const fake_send_msg = (c, data, req_id, type)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
-  var msg = {to, from, nonce, data, __meta: {path: [s.id.toString('hex')]}};
+  var msg = {req_id, type, to, from, nonce, data,
+    __meta: {path: [s.id.toString('hex')]}};
+  // XXX: why do we sign __meta.path?
   util.set(msg, '__meta.sign', s.wallet.sign(msg));
   if (c.fwd){
     let fwd = normalize(c.fwd);
@@ -375,29 +377,38 @@ function cmd_setup(opt){
   let {c, event} = opt, m = c.arg;
   let M = s=>push_cmd(s+' - ');
   assert(!event);
-  if (!t_pre_process)
-    return;
   // XXX: proper assert setup params
   switch (m){
   case '2_nodes':
+    if (!t_pre_process)
+      break;
     M(`node(a) node(b wss) - ab>!connect(find(a ba))`);
     break;
   case '3_nodes_linear':
+    if (!t_pre_process)
+      break;
     M(`node(a) node(b wss) node(c wss) - ab>!connect(find(a ba)) -
       bc>!connect(find(b cab)) abc<fwd(ca>conn_info(r))`);
     break;
   case '3_nodes_wss':
+    if (!t_pre_process)
+      break;
      M(`node(a wss) node(b wss) node(c wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       cba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
      break;
   case '4_nodes_linear':
+    if (!t_pre_process)
+      break;
     M(`node(a) node(b wss) node(c wss) node(d wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab))
       cba>fwd(ca>conn_info(r)) - cd>!connect(find(c dcba))
       dcb>fwd(bd<conn_info(r(ws))) db>connect(find(dcba badc))
       ba>fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
       dcb>fwd(ad<conn_info)`);
+    break;
+  case 'on_req_pong':
+    t_nodes['b'].on('req', (data, res)=>res.send('pong'));
     break;
   default: assert(false, 'unknown macro '+m);
   }
@@ -675,9 +686,32 @@ const cmd_req = opt=>etask(function*req(){
     if (!s.t.fake)
       yield s.send_req(b2s(d.id), data);
   }
-  else
+  else {
+    yield fake_send_msg(c, {type: 'user', data}, id, 'req');
     yield cmd_run_if_next_fake();
+  }
 });
+
+const cmd_res = opt=>etask(function*req(){
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  assert(s && d, 'invalid event '+c.orig);
+  let data, id, arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
+    switch (a.cmd){
+    case 'id': id = a.arg; break;
+    case 'data': data = a.arg; break;
+    default: throw new Error('unknown arg '+a.cmd);
+    }
+  });
+  assert(id);
+  if (t_pre_process)
+    return;
+  if (event)
+    assert_event_c(c, event);
+  yield fake_send_msg(c, {type: 'user', data}, id, 'res');
+  yield cmd_run_if_next_fake();
+});
+
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
@@ -722,6 +756,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'msg': yield cmd_msg(opt); break;
   case '!req': yield cmd_req(opt); break;
   case 'req': yield cmd_req(opt); break;
+  case 'res': yield cmd_res(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   default: assert(false, 'unknown cmd '+opt.c.cmd);
   }
@@ -1003,12 +1038,13 @@ describe('peer-relay', function(){
     afterEach(()=>xsinon.uninit());
     const t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
-    t('basic', `setup:2_nodes
-      ab>!req(id:2 data:ping) ab>req(id(2) data(ping)) -
-      ab>!req(id:3 data:ping) ab>req(id(3) data(ping)) -
+    t('basic', `setup:2_nodes setup:on_req_pong
+      ab>!req(id:2 data:ping) ab>req(id(2) data(ping))
+      ab<res(id(2) data(pong)) -
+      ab>!req(id:3 data:ping) ab>req(id(3) data(ping))
+      ab<res(id(3) data(pong)) -
     `);
     if (true) return; // XXX WIP
-    t_nodes['b'].on('req', (data, res)=>{ res.send('pong'); });
     t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
       ab<res(id:1 data:pong)`);
     t(`ab!>req(id:2 data:ping) ab>req(id:2 data:ping)
