@@ -1003,8 +1003,10 @@ describe('peer-relay', function(){
     afterEach(()=>xsinon.uninit());
     const t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
-    t('basic', `setup:2_nodes ab>!req(id:1 data:ping)
-      ab>req(id(2) data(ping))`);
+    t('basic', `setup:2_nodes
+      ab>!req(id:2 data:ping) ab>req(id(2) data(ping)) -
+      ab>!req(id:3 data:ping) ab>req(id(3) data(ping)) -
+    `);
     if (true) return; // XXX WIP
     t_nodes['b'].on('req', (data, res)=>{ res.send('pong'); });
     t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
