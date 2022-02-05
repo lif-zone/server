@@ -6,6 +6,7 @@ import Node from './client.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import xescape from '../util/escape.js';
+import xsinon from '../util/sinon.js';
 import util from '../util/util.js';
 import string from '../util/string.js';
 import xtest from '../util/test_lib.js';
@@ -998,10 +999,13 @@ describe('peer-relay', function(){
       xit(name, roles[i], test);
   };
   describe('req', function(){
+    beforeEach(()=>xsinon.clock_set({now: 1, auto_inc: true}));
+    afterEach(()=>xsinon.uninit());
     const t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
+    t('basic', `setup:2_nodes ab>!req(id:1 data:ping)
+      ab>req(id(2) data(ping))`);
     if (true) return; // XXX WIP
-    t('basic', `setup:2_nodes ab>!req(id:1 data:ping) ab>req(id:1 data:ping)`);
     t_nodes['b'].on('req', (data, res)=>{ res.send('pong'); });
     t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
       ab<res(id:1 data:pong)`);
