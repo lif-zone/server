@@ -1111,9 +1111,9 @@ describe('peer-relay', function(){
     t('no_route', `setup:2_nodes node:c setup:on_req_pong
       cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
     // XXX: support setup:2_nodes(cd)
-    t('timeout', `setup:2_nodes node:c node(d wss) setup:on_req_pong
-      cd>!connect(find(c dc)) - cb>!req(id:2 data:ping)
-      cd>cb>req(id:2 data:ping) - 19999ms - 1ms c<fail(id:2 error:timeout)`);
+    t('timeout', `setup:2_nodes node:c node(d wss) cd>!connect(find(c dc)) -
+      setup:on_req_pong cb>!req(id:2 data:ping) cd>cb>req(id:2 data:ping) -
+      19999ms - 1ms c<fail(id:2 error:timeout)`);
     if (false) // XXX: TODO
     t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
       ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:3 err:timeout)`);
