@@ -1124,22 +1124,23 @@ describe('peer-relay', function(){
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
     // XXX: why it starts with 2 and not 1?
     // XXX replace on_req_ping with ab<!res(...)
-    t('basic', `setup:2_nodes setup:on_req_pong ab>!req(id:2 data:ping)
-      ab>req(id:2 data:ping) ab<res(id:2 data:pong) 20s -
-      ab>!req(id:3 data:ping) ab>req(id:3 data:ping) ab<res(id:3 data:pong)
+    t('basic', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
+      ab<!res(id:2 data:pong) ab<res(id:2 data:pong) 20s -
+      ab>!req(id:3 data:ping) ab>req(id:3 data:ping) -
+      ab<!res(id:3 data:pong) ab<res(id:3 data:pong)
     `);
     t('basic2', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
       ab<!res(id:2 data:pong) ab<res(id:2 data:pong)`);
     // XXX: support setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss) cd>!connect(find(c dc)) -
-      setup:on_req_pong cb>!req(id:2 data:ping) cd>cb>req(id:2 data:ping) -
-      19999ms - 1ms c<fail(id:2 error:timeout)`);
+      cb>!req(id:2 data:ping) cd>cb>req(id:2 data:ping) - 19999ms -
+      1ms c<fail(id:2 error:timeout)`);
     t('timeout_wrong_id', `setup:2_nodes
       ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
       ab<!res(id:3 data:pong) ab<res(id:3 data:pong) - 19999ms -
       1ms a<fail(id:2 error:timeout)`);
     // XXX: no_route should fail with error(no_route)
-    t('no_route', `setup:2_nodes node:c setup:on_req_pong
+    t('no_route', `setup:2_nodes node:c
       cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
     if (false) // XXX: TODO
     t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
