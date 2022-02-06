@@ -1114,14 +1114,9 @@ describe('peer-relay', function(){
     t('timeout', `setup:2_nodes node:c node(d wss) setup:on_req_pong
       cd>!connect(find(c dc)) - cb>!req(id:2 data:ping)
       cd>cb>req(id:2 data:ping) - 19999ms - 1ms c<fail(id:2 error:timeout)`);
-    if (true) return; // XXX WIP
-    t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
-      ab<res(id:1 data:pong)`);
-    t(`ab!>req(id:2 data:ping) ab>req(id:2 data:ping)
-      ab<res(id:2 data:pong)`);
+    if (false) // XXX: TODO
     t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
-    ab>disconnect ab<disconnect -
-      9.9s - 0.1s a<fail(id:3 err:timeout)`);
+      ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:3 err:timeout)`);
   });
   // XXX: add boostrap support
   describe('2_nodes', function(){
