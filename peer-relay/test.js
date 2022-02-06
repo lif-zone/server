@@ -680,8 +680,12 @@ const cmd_req = opt=>etask(function*req(){
     }
   });
   assert(id);
-  if (t_pre_process)
+  if (t_pre_process){
+    // XXX support {id: id} instead of build_cmd for params
+    set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
+      build_cmd('data', data)));
     return;
+  }
   if (event)
     assert_event_c(c, event);
   if (call){
@@ -710,8 +714,11 @@ const cmd_res = opt=>etask(function*req(){
     }
   });
   assert(id);
-  if (t_pre_process)
+  if (t_pre_process){
+    set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
+      build_cmd('data', data)));
     return;
+  }
   if (event)
     assert_event_c(c, event);
   yield fake_send_msg(c, {type: 'user', data}, id, 'res');
@@ -731,8 +738,11 @@ const cmd_fail = opt=>etask(function*req(){
   });
   assert(id, 'fail missing id');
   assert(error, 'fail missing error');
-  if (t_pre_process)
+  if (t_pre_process){
+    set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
+      build_cmd('error', error)));
     return;
+  }
   if (event)
     assert_event_c(c, event);
   else
@@ -1063,6 +1073,9 @@ describe('peer-relay', function(){
         if (0) // XXX: fixme
         t('ab,cd>ef>msg(hi)', `ab>fwd(ef>msg(hi)) cd>fwd(msg(hi))`);
         // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
+        t('ab>req(id:1 data:ping)', `ab>req(id(1) data(ping))`);
+        t('ab>res(id:1 data:pong)', `ab>res(id(1) data(pong))`);
+        t('a<fail(id:1 error:timeout)', `a<fail(id(1) error(timeout))`);
       });
     });
   });
@@ -1089,19 +1102,18 @@ describe('peer-relay', function(){
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
     // XXX: why it starts with 2 and not 1?
     t('basic', `setup:2_nodes setup:on_req_pong
-      ab>!req(id:2 data:ping) ab>req(id(2) data(ping))
+      ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
       ab<res(id(2) data(pong)) - 20s -
-      ab>!req(id:3 data:ping) ab>req(id(3) data(ping))
-      ab<res(id(3) data(pong)) - 20s -
+      ab>!req(id:3 data:ping) ab>req(id:3 data:ping)
+      ab<res(id:3 data:pong) - 20s -
     `);
     // XXX: no_route should fail differnt error without timeout
     t('no_route', `setup:2_nodes node:c setup:on_req_pong
-      cb>!req(id:1 data:ping) - 19999ms -
-      1ms c<fail(id(1) error(timeout))`);
+      cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
+    // XXX: support setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss) setup:on_req_pong
       cd>!connect(find(c dc)) - cb>!req(id:2 data:ping)
-      cd>cb>req(id(2) data(ping)) - 19999ms -
-      1ms c<fail(id(2) error(timeout))`);
+      cd>cb>req(id:2 data:ping) - 19999ms - 1ms c<fail(id:2 error:timeout)`);
     if (true) return; // XXX WIP
     t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
       ab<res(id:1 data:pong)`);
