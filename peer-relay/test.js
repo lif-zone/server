@@ -769,12 +769,17 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
   let c = opt.c;
   if (t_pre_process){
+    let a;
     if ('<>'.indexOf(c.cmd[2])!=-1){ // XXX: ugly code
       // XXX fixme:
       // build_cmd(c.s+c.d+c.dir+'fwd', build_cmd(c.cmd, c.arg)))[0]);
       assign(c, xtest.test_parse(
         build_cmd(c.orig.substr(0, 3)+'fwd', c.orig.substr(3)))[0]);
     }
+    if (a = c.cmd.match(/(^\d+)ms$/))
+      assign(c, xtest.test_parse(build_cmd('ms', a[1]))[0]);
+    if (a = c.cmd.match(/(^\d+)s$/))
+      assign(c, xtest.test_parse(build_cmd('ms', +a[1]*date.ms.SEC))[0]);
   }
   switch (c.cmd){
   case '-': cmd_ensure_no_events(opt); break;
@@ -998,6 +1003,10 @@ describe('peer-relay', function(){
           assert.equal(test_to_str(res).replace(regex, ''),
             string.split_ws(exp).join(' '));
         }));
+        t('1ms', `ms(1)`);
+        t('12ms', `ms(12)`);
+        t('1s', `ms(1000)`);
+        t('12s', `ms(12000)`);
         t('ab>connect(wss !r)', `ab>connect(wss !r)`);
         t('ab>connect(!r)', `ab>connect(wss !r)`);
         t('ab>connect', `ab>connect(wss !r) ab<connected`);
@@ -1081,19 +1090,18 @@ describe('peer-relay', function(){
     // XXX: why it starts with 2 and not 1?
     t('basic', `setup:2_nodes setup:on_req_pong
       ab>!req(id:2 data:ping) ab>req(id(2) data(ping))
-      ab<res(id(2) data(pong)) - ms(20000) -
+      ab<res(id(2) data(pong)) - 20s -
       ab>!req(id:3 data:ping) ab>req(id(3) data(ping))
-      ab<res(id(3) data(pong)) - ms(20000) -
+      ab<res(id(3) data(pong)) - 20s -
     `);
-    // XXX: support 9.9s + add ms test
     // XXX: no_route should fail differnt error without timeout
     t('no_route', `setup:2_nodes node:c setup:on_req_pong
-      cb>!req(id:1 data:ping) - ms(19999) - ms(1)
-      c<fail(id(1) error(timeout))`);
+      cb>!req(id:1 data:ping) - 19999ms -
+      1ms c<fail(id(1) error(timeout))`);
     t('timeout', `setup:2_nodes node:c node(d wss) setup:on_req_pong
       cd>!connect(find(c dc)) - cb>!req(id:2 data:ping)
-      cd>cb>req(id(2) data(ping)) - ms(19999) - ms(1)
-      c<fail(id(2) error(timeout))`);
+      cd>cb>req(id(2) data(ping)) - 19999ms -
+      1ms c<fail(id(2) error(timeout))`);
     if (true) return; // XXX WIP
     t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
       ab<res(id:1 data:pong)`);
