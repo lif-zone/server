@@ -559,19 +559,21 @@ const cmd_find = opt=>etask(function*cmd_find(){
 });
 
 const cmd_find_r = opt=>etask(function*cmd_find_r(){
-  let {c, event} = opt;
+  let {c, event} = opt, s = t_nodes[c.s];
   if (t_pre_process)
     return set_orig(c, build_cmd(c.meta.cmd, c.arg));
   // XXX: assert c.arg
   if (event)
     assert_event_c(c, event);
+  else
+    assert(s.t.fake, 'missing event '+c.orig);
   yield fake_send_msg(c, {type: 'find_r', data:
     array_name_to_id(c.arg.split(''))});
   yield cmd_run_if_next_fake();
 });
 
 const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
-  let {c, event} = opt, r;
+  let {c, event} = opt, r, s = t_nodes[c.s];
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
@@ -598,6 +600,8 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   }
   if (event)
     assert_event_c(c, event);
+  else
+    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   yield fake_send_msg(c, {type: 'conn_info'});
   yield cmd_run_if_next_fake();
 });
@@ -617,6 +621,8 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
     return set_orig(c, build_cmd(c.meta.cmd, c.arg));
   if (event)
     assert_event_c(c, event);
+  else
+    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   yield fake_send_msg(c, {type: 'conn_info_r', data: {ws, wrtc}});
   yield cmd_run_if_next_fake();
 });
@@ -660,6 +666,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   if (event)
     assert_event_c(c, event);
+  else if (!call)
+    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
     if (!s.t.fake)
       yield s.send(d.id, data);
@@ -690,6 +698,8 @@ const cmd_req = opt=>etask(function*req(){
   }
   if (event)
     assert_event_c(c, event);
+  else if (!call)
+    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
     if (!s.t.fake){
       let req = s.send_req(b2s(d.id), data)
@@ -723,6 +733,8 @@ const cmd_res = opt=>etask(function*req(){
   }
   if (event)
     assert_event_c(c, event);
+  else // XXX: copy everywhere
+    assert(s.t.fake, 'missing event '+c.orig);
   yield fake_send_msg(c, {type: 'user', data}, id, 'res');
   yield cmd_run_if_next_fake();
 });
@@ -1110,6 +1122,10 @@ describe('peer-relay', function(){
       ab>!req(id:3 data:ping) ab>req(id:3 data:ping)
       ab<res(id:3 data:pong) - 20s -
     `);
+    if (false) // XXX: TODO
+    t('basic2', `setup:2_nodes
+      ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
+      ab<res(id(2) data(pong)) - 20s -`);
     // XXX: no_route should fail with error(no_route)
     t('no_route', `setup:2_nodes node:c setup:on_req_pong
       cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
