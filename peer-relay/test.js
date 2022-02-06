@@ -411,9 +411,6 @@ function cmd_setup(opt){
       ba>fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
       dcb>fwd(ad<conn_info)`);
     break;
-  case 'on_req_pong':
-    t_nodes['b'].on('req', (data, res)=>res.send('pong'));
-    break;
   default: assert(false, 'unknown macro '+m);
   }
 }
@@ -1123,7 +1120,6 @@ describe('peer-relay', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
     // XXX: why it starts with 2 and not 1?
-    // XXX replace on_req_ping with ab<!res(...)
     t('basic', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
       ab<!res(id:2 data:pong) ab<res(id:2 data:pong) 20s -
       ab>!req(id:3 data:ping) ab>req(id:3 data:ping) -
