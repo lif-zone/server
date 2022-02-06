@@ -1107,7 +1107,7 @@ describe('peer-relay', function(){
       ab>!req(id:3 data:ping) ab>req(id:3 data:ping)
       ab<res(id:3 data:pong) - 20s -
     `);
-    // XXX: no_route should fail differnt error without timeout
+    // XXX: no_route should fail with error(no_route)
     t('no_route', `setup:2_nodes node:c setup:on_req_pong
       cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
     // XXX: support setup:2_nodes(cd)
