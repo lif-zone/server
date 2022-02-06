@@ -5,6 +5,7 @@ import assert from 'assert';
 import Node from './client.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
+import date from '../util/date.js';
 import xescape from '../util/escape.js';
 import xsinon from '../util/sinon.js';
 import util from '../util/util.js';
@@ -343,7 +344,8 @@ function node_get_channel(_s, _d){
 
 const send_msg = (s, d, msg)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
-  assert(channel, 'no channel '+s+d+'>');
+  if (!channel)
+    return xerr.notice('no channel '+s+d+'>');
   yield t_nodes[d].router._on_channel_msg(msg);
 });
 
@@ -370,7 +372,7 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   assert(!event, 'unexpected event '+event);
   if (t_pre_process)
     return;
-  yield etask.sleep(0); // XXX TODO: change to tick();
+  yield xsinon.tick();
 });
 
 function cmd_setup(opt){
@@ -683,8 +685,12 @@ const cmd_req = opt=>etask(function*req(){
   if (event)
     assert_event_c(c, event);
   if (call){
-    if (!s.t.fake)
-      yield s.send_req(b2s(d.id), data);
+    if (!s.t.fake){
+      let req = s.send_req(b2s(d.id), data)
+      .on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
+        build_cmd('id', o.req_id), build_cmd('error', o.error))));
+      assert.equal(req.__meta.req_id, id, 'req_id mismatch');
+    }
   }
   else {
     yield fake_send_msg(c, {type: 'user', data}, id, 'req');
@@ -712,6 +718,27 @@ const cmd_res = opt=>etask(function*req(){
   yield cmd_run_if_next_fake();
 });
 
+const cmd_fail = opt=>etask(function*req(){
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  assert(!s && d, 'invalid event '+c.orig);
+  let error, id, arg = xtest.test_parse(c.arg);
+  util.forEach(arg, a=>{
+    switch (a.cmd){
+    case 'id': id = a.arg; break;
+    case 'error': error = a.arg; break;
+    default: throw new Error('unknown arg '+a.cmd);
+    }
+  });
+  assert(id, 'fail missing id');
+  assert(error, 'fail missing error');
+  if (t_pre_process)
+    return;
+  if (event)
+    assert_event_c(c, event);
+  else
+    assert(d.t.fake, 'missing fail event '+c.orig);
+  yield cmd_run_if_next_fake();
+});
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
@@ -729,9 +756,18 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   yield cmd_run_if_next_fake();
 });
 
+const cmd_ms = opt=>etask(function*cmd_ms(){
+  let {c, event} = opt;
+  if (t_pre_process)
+    return;
+  assert(!event, 'unexpected event for ms cmd '+event);
+  // XXX: add assert for ms command and support ms/s
+  xsinon.tick(+c.arg);
+  yield cmd_run_if_next_fake(); // XXX: probably can be removed from ms cmd
+});
+
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
   let c = opt.c;
-  xerr.notice('cmd_single pre cmd %s orig %s', c.cmd, c.orig);
   if (t_pre_process){
     if ('<>'.indexOf(c.cmd[2])!=-1){ // XXX: ugly code
       // XXX fixme:
@@ -740,7 +776,6 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
         build_cmd(c.orig.substr(0, 3)+'fwd', c.orig.substr(3)))[0]);
     }
   }
-  xerr.notice('cmd_single post cmd %s orig %s', c.cmd, c.orig);
   switch (c.cmd){
   case '-': cmd_ensure_no_events(opt); break;
   case 'setup': yield cmd_setup(opt); break;
@@ -757,7 +792,9 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '!req': yield cmd_req(opt); break;
   case 'req': yield cmd_req(opt); break;
   case 'res': yield cmd_res(opt); break;
+  case 'fail': yield cmd_fail(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
+  case 'ms': yield cmd_ms(opt); break;
   default: assert(false, 'unknown cmd '+opt.c.cmd);
   }
 });
@@ -854,17 +891,22 @@ const test_pre_process = test=>etask(function*test_preprocess(){
 });
 
 const test_run = (role, test)=>etask(function*test_run(){
+  xsinon.clock_set({now: 1});
   xerr.notice('pre_process run');
   let cmds = yield test_pre_process(test);
   cmds = xtest.test_parse(test_to_str(cmds));
   xerr.notice('real run');
   yield _test_run(role, cmds);
+  xsinon.uninit();
 });
 
 const test_end = ()=>etask(function*(){
   yield cmd_ensure_no_events();
   assert(t_cmds, 'test not running');
   assert.equal(t_i, t_cmds.length, 'not all cmds run');
+  if (!t_pre_process)
+    xsinon.tick(date.ms.YEAR);
+  yield cmd_ensure_no_events();
   for (let n in t_nodes){
     yield t_nodes[n].destroy();
     delete t_nodes[n];
@@ -1034,16 +1076,44 @@ describe('peer-relay', function(){
       xit(name, roles[i], test);
   };
   describe('req', function(){
-    beforeEach(()=>xsinon.clock_set({now: 1, auto_inc: true}));
-    afterEach(()=>xsinon.uninit());
-    const t = (name, test)=>t_roles(name, 'ab', test);
+    const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
+    // XXX: why it starts with 2 and not 1?
     t('basic', `setup:2_nodes setup:on_req_pong
       ab>!req(id:2 data:ping) ab>req(id(2) data(ping))
-      ab<res(id(2) data(pong)) -
+      ab<res(id(2) data(pong)) - ms(20000) -
       ab>!req(id:3 data:ping) ab>req(id(3) data(ping))
-      ab<res(id(3) data(pong)) -
+      ab<res(id(3) data(pong)) - ms(20000) -
     `);
+    // XXX: support 9.9s + add ms test
+    // XXX: no_route should fail differnt error without timeout
+    t('no_route', `setup:2_nodes node:c setup:on_req_pong
+      cb>!req(id:1 data:ping) - ms(19999) - ms(1)
+      c<fail(id(1) error(timeout))`);
+    t('timeout', `setup:2_nodes node:c node(d wss) setup:on_req_pong
+      cd>!connect(find(c dc)) - cb>!req(id:2 data:ping)
+      cd>cb>req(id(2) data(ping)) - ms(19999) - ms(1)
+      c<fail(id(2) error(timeout))`);
+    if (true) return; // XXX WIP
+    t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
+      ab<res(id:1 data:pong)`);
+    t(`ab!>req(id:2 data:ping) ab>req(id:2 data:ping)
+      ab<res(id:2 data:pong)`);
+    t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
+    ab>disconnect ab<disconnect -
+      9.9s - 0.1s a<fail(id:3 err:timeout)`);
+  });
+  // XXX: add boostrap support
+  describe('2_nodes', function(){
+    const t = (name, test)=>t_roles(name, 'ab', test);
+    t('long', `node:a node(b wss(port:4000)) ab>!connect(wss !r)
+      ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
+      ab>find_r:ba`);
+    t('short', `node:a node(b wss) ab>!connect(find(a ba))`);
+    t('msg_long', `setup:2_nodes ab>!msg(hi !msg) ab>msg:hi ab<!msg(hi !msg)
+      ab<msg:hi`);
+    t('msg', `setup:2_nodes ab>!msg:hi ab<!msg:hi`);
+    t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
     if (true) return; // XXX WIP
     t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
       ab<res(id:1 data:pong)`);

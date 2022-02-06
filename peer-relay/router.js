@@ -7,6 +7,7 @@ import xerr from '../util/xerr.js';
 import util from '../util/util.js';
 import date from '../util/date.js';
 const b2s = util.buf_to_str, s2b = util.buf_from_str;
+const REQ_TIMEOUT = 20*date.ms.SEC;
 
 // XXX: need safe emit support
 export default class Router extends EventEmitter {
@@ -40,12 +41,19 @@ export default class Router extends EventEmitter {
   */
   send_req(to, data){
     let req = new EventEmitter(); // XXX: need Request class
+    // XXX: use etask
+    let timeout = setTimeout(()=>{
+      let o = this.reqs[req_id];
+      delete this.reqs[req_id];
+      o.req.emit('fail', {error: 'timeout', req_id});
+    }, REQ_TIMEOUT);
     let req_id=''+this.req_id++, from=b2s(this.id), path=[];
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
     let msg = {req_id, ts, type: 'req', to, from, nonce, data, __meta: {path}};
     this._touched[nonce] = true;
+    // XXX: rm __meta: {path} from sign
     util.set(msg, '__meta.sign', this.wallet.sign(msg));
-    this.reqs[req_id] = {req_id, req, msg};
+    req.__meta = this.reqs[req_id] = {req_id, req, msg, timeout};
     this._send(msg); // XXX: what if error
     return req;
   }
@@ -72,7 +80,9 @@ export default class Router extends EventEmitter {
       // XXX: if final response, remove from this.reqs
       if (!this.reqs[req_id])
         return xerr('req not found %s', req_id);
-      let {req} = this.reqs[req_id];
+      let {req, timeout} = this.reqs[req_id];
+      delete this.reqs[req_id];
+      clearTimeout(timeout);
       req.emit('res', data);
       return xerr('invalid type %s %s', type, req_id);
     }
