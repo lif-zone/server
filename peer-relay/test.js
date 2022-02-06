@@ -1103,6 +1103,7 @@ describe('peer-relay', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
     // XXX: why it starts with 2 and not 1?
+    // XXX replace on_req_ping with ab<!res(...)
     t('basic', `setup:2_nodes setup:on_req_pong
       ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
       ab<res(id(2) data(pong)) - 20s -
