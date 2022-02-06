@@ -716,8 +716,8 @@ const cmd_req = opt=>etask(function*req(){
 
 const cmd_res = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let call = c.cmd[0]=='!', data, id, arg = xtest.test_parse(c.arg);
   assert(s && d, 'invalid event '+c.orig);
-  let data, id, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
@@ -733,10 +733,17 @@ const cmd_res = opt=>etask(function*req(){
   }
   if (event)
     assert_event_c(c, event);
-  else // XXX: copy everywhere
+  else if (!call)
     assert(s.t.fake, 'missing event '+c.orig);
-  yield fake_send_msg(c, {type: 'user', data}, id, 'res');
-  yield cmd_run_if_next_fake();
+  if (call){
+    if (!s.t.fake){
+      yield s.send_res({req_id: id, to: b2s(d.id)}, data);
+    }
+  }
+  else {
+    yield fake_send_msg(c, {type: 'user', data}, id, 'res');
+    yield cmd_run_if_next_fake();
+  }
 });
 
 const cmd_fail = opt=>etask(function*req(){
@@ -821,6 +828,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '!req': yield cmd_req(opt); break;
   case 'req': yield cmd_req(opt); break;
   case 'res': yield cmd_res(opt); break;
+  case '!res': yield cmd_res(opt); break;
   case 'fail': yield cmd_fail(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   case 'ms': yield cmd_ms(opt); break;
@@ -1117,22 +1125,24 @@ describe('peer-relay', function(){
     // XXX: why it starts with 2 and not 1?
     // XXX replace on_req_ping with ab<!res(...)
     t('basic', `setup:2_nodes setup:on_req_pong
-      ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
-      ab<res(id(2) data(pong)) - 20s -
-      ab>!req(id:3 data:ping) ab>req(id:3 data:ping)
+      ab>!req(id:2 data:ping) ab>req(id:2 data:ping) ab<res(id:2 data:pong) -
+      20s - ab>!req(id:3 data:ping) ab>req(id:3 data:ping)
       ab<res(id:3 data:pong) - 20s -
     `);
-    if (false) // XXX: TODO
     t('basic2', `setup:2_nodes
       ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
-      ab<res(id(2) data(pong)) - 20s -`);
-    // XXX: no_route should fail with error(no_route)
-    t('no_route', `setup:2_nodes node:c setup:on_req_pong
-      cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
+      ab<!res(id:2 data:pong) ab<res(id:2 data:pong) - 20s -`);
     // XXX: support setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss) cd>!connect(find(c dc)) -
       setup:on_req_pong cb>!req(id:2 data:ping) cd>cb>req(id:2 data:ping) -
       19999ms - 1ms c<fail(id:2 error:timeout)`);
+    t('timeout_wrong_id', `setup:2_nodes
+      ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
+      ab<!res(id:3 data:pong) ab<res(id:3 data:pong) - 19999ms -
+      1ms a<fail(id:2 error:timeout)`);
+    // XXX: no_route should fail with error(no_route)
+    t('no_route', `setup:2_nodes node:c setup:on_req_pong
+      cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
     if (false) // XXX: TODO
     t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
       ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:3 err:timeout)`);
