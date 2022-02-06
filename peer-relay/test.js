@@ -7,6 +7,8 @@ import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import date from '../util/date.js';
 import xescape from '../util/escape.js';
+// XXX derry: review fromNodeTimers() and npm package
+// home/arik/lif-server/node_modules/@hola.org/lolex/src/lolex.js
 import xsinon from '../util/sinon.js';
 import util from '../util/util.js';
 import string from '../util/string.js';
