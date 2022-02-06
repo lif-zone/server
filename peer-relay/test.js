@@ -1129,8 +1129,7 @@ describe('peer-relay', function(){
       20s - ab>!req(id:3 data:ping) ab>req(id:3 data:ping)
       ab<res(id:3 data:pong) - 20s -
     `);
-    t('basic2', `setup:2_nodes
-      ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
+    t('basic2', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
       ab<!res(id:2 data:pong) ab<res(id:2 data:pong) - 20s -`);
     // XXX: support setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss) cd>!connect(find(c dc)) -
