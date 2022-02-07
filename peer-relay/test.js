@@ -351,13 +351,32 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
   yield t_nodes[d].router._on_channel_msg(msg);
 });
 
-const fake_send_msg = (c, data, req_id, type)=>etask(function*(){
+const _fake_send_msg = (c, msg)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
-  var msg = {req_id, type, to, from, nonce, data,
-    __meta: {path: [s.id.toString('hex')]}};
+  msg.to = to;
+  msg.from = from;
+  msg.nonce = nonce;
+  msg.__meta = {path: [s.id.toString('hex')]};
+  // XXX: why do we sign __meta.path?
+  util.set(msg, '__meta.sign', s.wallet.sign(msg));
+  if (c.fwd){
+    let fwd = normalize(c.fwd);
+    s = t_nodes[fwd[0]];
+    d = t_nodes[fwd[1]];
+  }
+  if (s.t.fake && !d.t.fake)
+    yield send_msg(s.t.name, d.t.name, msg);
+});
+
+const fake_send_msg = (c, data)=>etask(function*(){
+  let s = t_nodes[c.s], d = t_nodes[c.d];
+  let to = d.id.toString('hex'), from = s.id.toString('hex');
+  let nonce = t_nonce[normalize(c.orig)]||
+    '' + Math.floor(1e15 * Math.random());
+  var msg = {to, from, nonce, data, __meta: {path: [s.id.toString('hex')]}};
   // XXX: why do we sign __meta.path?
   util.set(msg, '__meta.sign', s.wallet.sign(msg));
   if (c.fwd){
@@ -719,8 +738,7 @@ const cmd_req = opt=>etask(function*req(){
     }
   }
   else {
-    // XXX: create _fake_send_msg where we can pass id/type as whole
-    yield fake_send_msg(c, data, id, 'req');
+    yield _fake_send_msg(c, {req_id: id, type: 'req', data});
     yield cmd_run_if_next_fake();
   }
 });
@@ -751,8 +769,7 @@ const cmd_res = opt=>etask(function*req(){
       yield s.send_res({req_id: id, to: b2s(d.id)}, data);
   }
   else {
-    // XXX: create _fake_send_msg where we can pass id/type as whole
-    yield fake_send_msg(c, data, id, 'res');
+    yield _fake_send_msg(c, {req_id: id, type: 'res', data});
     yield cmd_run_if_next_fake();
   }
 });
