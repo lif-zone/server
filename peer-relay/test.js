@@ -1156,8 +1156,7 @@ describe('peer-relay', function(){
       ab<res(id:3 data:pong)`);
     t('fwd', `setup:3_nodes_linear ac>!req(id:2 data:ping res:pong)
       abc>req(id:2 data:ping) abc<fwd(ac<res(id:2 data:pong))`);
-    // XXX: test continous response and final response (multi-part)
-    // XXX: support setup:2_nodes(cd)
+    // XXX: codding: setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss)
       ab>!req(id:2 data:ping)ab>req(id:2 data:ping) - 19999ms -
       1ms a<fail(id:2 error:timeout)`);
@@ -1174,6 +1173,7 @@ describe('peer-relay', function(){
     if (false) // XXX: TODO
     t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
       ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:3 err:timeout)`);
+    // XXX: test continous response and final response (multi-part)
   });
   // XXX: add boostrap support
   describe('2_nodes', function(){
