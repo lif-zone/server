@@ -71,6 +71,7 @@ E.hook_assert = ()=>{
             '%s\nexpected: %O\n\nactual:   %O\n%soperator: %s\n',
             msg, err.expected, err.actual, diff, err.operator);
         console.log(msg);
+        debugger; // eslint-disable-line no-debugger
     };
     Object.defineProperty(AssertionError.prototype, 'operator', {
       get: function(){ return this._operator; },
