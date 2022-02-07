@@ -711,16 +711,16 @@ const cmd_req = opt=>etask(function*req(){
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');
     }
     if (!d.t.fake && res){
-      let req_cb = (data, res)=>{
+       d.on('req', t_req[id].cb = (data, res)=>{
         res.send(t_req[id].res);
-        d.off('req', req_cb);
-      };
-      d.on('req', req_cb);
+        d.off('req', t_req[id].cb);
+        delete t_req[id].cb;
+      });
     }
   }
   else {
-    yield fake_send_msg(c, {type: 'user', data}, id, 'req');
-    delete t_req[id];
+    // XXX: create _fake_send_msg where we can pass id/type as whole
+    yield fake_send_msg(c, data, id, 'req');
     yield cmd_run_if_next_fake();
   }
 });
@@ -745,14 +745,14 @@ const cmd_res = opt=>etask(function*req(){
   if (event)
     assert_event_c(c, event);
   else if (!call)
-    assert(s.t.fake, 'missing event '+c.orig);
+    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
-    if (!s.t.fake){
+    if (!s.t.fake)
       yield s.send_res({req_id: id, to: b2s(d.id)}, data);
-    }
   }
   else {
-    yield fake_send_msg(c, {type: 'user', data}, id, 'res');
+    // XXX: create _fake_send_msg where we can pass id/type as whole
+    yield fake_send_msg(c, data, id, 'res');
     yield cmd_run_if_next_fake();
   }
 });
@@ -1154,10 +1154,10 @@ describe('peer-relay', function(){
       ab>req(id:2 data:ping) ab<res(id:2 data:pong)
       ab>!req(id:3 data:ping res:pong) ab>req(id:3 data:ping)
       ab<res(id:3 data:pong)`);
-    if (0) // XXX FIXME
     t('fwd', `setup:3_nodes_linear ac>!req(id:2 data:ping res:pong)
-      abc>req(id:2 data:ping) abc<res(id:2 data:pong)
-    `);
+      abc>req(id:2 data:ping) abc<fwd(ac<res(id:2 data:pong))`);
+    // XXX: if we add the following ab<fwd(ac<res(id:2 data:pong)) there is no
+    // error
     // XXX: test continous response and final response (multi-part)
     // XXX: support setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss)
