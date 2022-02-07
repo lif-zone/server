@@ -1144,36 +1144,35 @@ describe('peer-relay', function(){
   };
   describe('req', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
-    // XXX: why it starts with 2 and not 1?
-    t('manual', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
-      ab<!res(id:2 data:pong) ab<res(id:2 data:pong) 20s -
-      ab>!req(id:3 data:ping) ab>req(id:3 data:ping) -
-      ab<!res(id:3 data:pong) ab<res(id:3 data:pong)
+    t('manual', `setup:2_nodes ab>!req(id:1 data:ping) ab>req(id:1 data:ping) -
+      ab<!res(id:1 data:pong) ab<res(id:1 data:pong) 20s -
+      ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
+      ab<!res(id:2 data:pong) ab<res(id:2 data:pong)
     `);
     // XXX coding: ab>!req(id2: data:ping !req) and by default send ab>req...
-    t('auto', `setup:2_nodes ab>!req(id:2 data:ping res:pong)
-      ab>req(id:2 data:ping) ab<res(id:2 data:pong)
-      ab>!req(id:3 data:ping res:pong) ab>req(id:3 data:ping)
-      ab<res(id:3 data:pong)`);
-    t('fwd', `setup:3_nodes_linear ac>!req(id:2 data:ping res:pong)
-      abc>req(id:2 data:ping) abc<fwd(ac<res(id:2 data:pong))`);
+    t('auto', `setup:2_nodes ab>!req(id:1 data:ping res:pong)
+      ab>req(id:1 data:ping) ab<res(id:1 data:pong)
+      ab>!req(id:2 data:ping res:pong) ab>req(id:2 data:ping)
+      ab<res(id:2 data:pong)`);
+    t('fwd', `setup:3_nodes_linear ac>!req(id:1 data:ping res:pong)
+      abc>req(id:1 data:ping) abc<fwd(ac<res(id:1 data:pong))`);
     // XXX: codding: setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss)
-      ab>!req(id:2 data:ping)ab>req(id:2 data:ping) - 19999ms -
-      1ms a<fail(id:2 error:timeout)`);
+      ab>!req(id:1 data:ping)ab>req(id:1 data:ping) - 19999ms -
+      1ms a<fail(id:1 error:timeout)`);
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
-      cd>!connect(find(c dc)) - cb>!req(id:2 data:ping)
-      cd>cb>req(id:2 data:ping) - 19999ms - 1ms c<fail(id:2 error:timeout)`);
+      cd>!connect(find(c dc)) - cb>!req(id:1 data:ping)
+      cd>cb>req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
     t('timeout_wrong_id', `setup:2_nodes
-      ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
-      ab<!res(id:3 data:pong) ab<res(id:3 data:pong) - 19999ms -
-      1ms a<fail(id:2 error:timeout)`);
+      ab>!req(id:1 data:ping) ab>req(id:1 data:ping)
+      ab<!res(id:2 data:pong) ab<res(id:2 data:pong) - 19999ms -
+      1ms a<fail(id:1 error:timeout)`);
     // XXX: no_route should fail with error(no_route)
     t('no_route', `setup:2_nodes node:c
       cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
     if (false) // XXX: TODO
-    t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
-      ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:3 err:timeout)`);
+    t(`ab!>req(id:2 data:ping) ab>req(id:2 data:ping) ab>!disconnect
+      ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:2 err:timeout)`);
     // XXX: test continous response and final response (multi-part)
   });
   // XXX: add boostrap support
@@ -1187,14 +1186,6 @@ describe('peer-relay', function(){
       ab<msg:hi`);
     t('msg', `setup:2_nodes ab>!msg:hi ab<!msg:hi`);
     t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
-    if (true) return; // XXX WIP
-    t(`ab!>req(id:1 data:ping) ab>req(id:1 data:ping))
-      ab<res(id:1 data:pong)`);
-    t(`ab!>req(id:2 data:ping) ab>req(id:2 data:ping)
-      ab<res(id:2 data:pong)`);
-    t(`ab!>req(id:3 data:ping) ab>req(id:3 data:ping) ab>!disconnect
-    ab>disconnect ab<disconnect -
-      9.9s - 0.1s a<fail(id:3 err:timeout)`);
   });
   // XXX: add boostrap support
   describe('2_nodes', function(){
