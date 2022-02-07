@@ -8,7 +8,7 @@ import xurl from '../util/url.js';
 import date from '../util/date.js';
 import xescape from '../util/escape.js';
 // XXX derry: review fromNodeTimers() and npm package
-// home/arik/lif-server/node_modules/@hola.org/lolex/src/lolex.js
+// /home/arik/lif-server/node_modules/@hola.org/lolex/src/lolex.js
 import xsinon from '../util/sinon.js';
 import util from '../util/util.js';
 import string from '../util/string.js';
@@ -26,7 +26,7 @@ process.on('uncaughtException', err=>xerr.zexit(err));
 process.on('unhandledRejection', err=>xerr.zexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.zexit(err));
 
-let t_nodes = {}, t_nonce = {}, t_cmds, t_i, t_role, t_port=4000;
+let t_nodes, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
@@ -426,7 +426,7 @@ function cmd_node(opt){
     case 'wss': wss = assert_wss(a.arg); break;
     case 'wrtc': wrtc = assert_wrtc(a.arg); break;
     case 'boot': bootstrap = assert_bootstrap(a.arg); break;
-    default: throw new Error('unknown arg '+a.cmd);
+    default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   let key = t_keys[name], fake = is_fake(name);
@@ -463,7 +463,7 @@ const cmd_connect = opt=>etask(function*(){
       assert(find.length==2, 'invalid find '+a.arg);
       break;
     case '!r': r = false; break;
-    default: throw new Error('unknown arg '+a.cmd);
+    default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   assert(d, 'not node found '+c.d);
@@ -578,7 +578,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
       assert(!r, 'invalid '+c.orig);
       r = a.arg||'';
       break;
-    default: throw new Error('unknown arg '+a.cmd);
+    default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   if (t_pre_process){
@@ -611,7 +611,7 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
     case 'wrtc': wrtc = assert_wrtc(a.arg); break;
     // XXX: assert and verify ws is correct url
     case 'ws': ws = wss_from_node(s); break;
-    default: throw new Error('unknown arg '+a.cmd);
+    default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   if (t_pre_process)
@@ -678,12 +678,16 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
-  let call = c.cmd[0]=='!', data, id, arg = xtest.test_parse(c.arg);
+  let call = c.cmd[0]=='!', data, id, res, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case 'data': data = a.arg; break;
-    default: throw new Error('unknown arg '+a.cmd);
+    case 'res':
+      assert(call, 'res only valid for !req');
+      res = a.arg;
+      break;
+    default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   assert(id);
@@ -699,10 +703,16 @@ const cmd_req = opt=>etask(function*req(){
     assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
     if (!s.t.fake){
-      let req = s.send_req(b2s(d.id), data)
-      .on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
+      let req = s.send_req(b2s(d.id), data).on('res', data2=>{
+          push_cmd(build_cmd(s.t.name+d.t.name+'<res',
+            build_cmd('id', id), build_cmd('data', data)));
+      }).on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error))));
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');
+    }
+    else if (res){
+      assert(t_req[id], 'request already exists '+id);
+      t_req[id] = {id, data, res};
     }
   }
   else {
@@ -719,7 +729,7 @@ const cmd_res = opt=>etask(function*req(){
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case 'data': data = a.arg; break;
-    default: throw new Error('unknown arg '+a.cmd);
+    default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   assert(id);
@@ -751,7 +761,7 @@ const cmd_fail = opt=>etask(function*req(){
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case 'error': error = a.arg; break;
-    default: throw new Error('unknown arg '+a.cmd);
+    default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   assert(id, 'fail missing id');
@@ -899,13 +909,20 @@ const cmd_run = event=>etask(function*cmd_run(){
   t_depth--;
 });
 
+function test_start(role){
+  t_role = role;
+  t_port = 4000;
+  t_nodes = {};
+  t_cmds = undefined;
+  t_cmds_processed = [];
+  t_nonce = {};
+  t_req = {};
+}
+
 const _test_run = (role, cmds)=>etask(function*_test_run(){
   assert(!t_cmds && !t_i && !t_role, 'test already running');
-  t_port = 4000;
+  test_start(role);
   t_cmds = cmds;
-  t_cmds_processed = [];
-  t_role = role;
-  t_nonce = {};
   for (t_i=0; t_i<t_cmds.length;)
     yield cmd_run();
   yield test_end();
@@ -1003,6 +1020,7 @@ describe('peer-relay', function(){
     describe('pre_process', function(){
       it('low_level', ()=>etask(function*(){
         let t = function*(test, exp){
+          test_start();
           let cmds = yield test_pre_process(test);
           cmds = xtest.test_parse_rm_meta_orig(cmds);
           assert.deepEqual(cmds, exp);
@@ -1025,6 +1043,7 @@ describe('peer-relay', function(){
       }));
       describe('shortcut', ()=>{
         const t = (test, exp)=>it(test, ()=>etask(function*(){
+          test_start();
           let setup = 'node(a wss) node(b wss) node(c wss) node(d wss) '+
             'node(e wss) node(f wss) ';
           let regex = new RegExp('^'+xescape.regex(setup));
@@ -1127,6 +1146,10 @@ describe('peer-relay', function(){
     `);
     t('basic2', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
       ab<!res(id:2 data:pong) ab<res(id:2 data:pong)`);
+    if (0) // XXX TODO
+    t('res', `setup:2_nodes ab>!req(id:2 data:ping res(pong))
+      ab>req(id:2 data:ping) ab<res(id:2 data:pong)`);
+    // XXX: final response
     // XXX: support setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss) cd>!connect(find(c dc)) -
       cb>!req(id:2 data:ping) cd>cb>req(id:2 data:ping) - 19999ms -
