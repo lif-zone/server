@@ -351,6 +351,7 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
   yield t_nodes[d].router._on_channel_msg(msg);
 });
 
+const fake_send_msg = (c, data)=>_fake_send_msg(c, {data});
 const _fake_send_msg = (c, msg)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
@@ -360,23 +361,6 @@ const _fake_send_msg = (c, msg)=>etask(function*(){
   msg.from = from;
   msg.nonce = nonce;
   msg.__meta = {path: [s.id.toString('hex')]};
-  // XXX: why do we sign __meta.path?
-  util.set(msg, '__meta.sign', s.wallet.sign(msg));
-  if (c.fwd){
-    let fwd = normalize(c.fwd);
-    s = t_nodes[fwd[0]];
-    d = t_nodes[fwd[1]];
-  }
-  if (s.t.fake && !d.t.fake)
-    yield send_msg(s.t.name, d.t.name, msg);
-});
-
-const fake_send_msg = (c, data)=>etask(function*(){
-  let s = t_nodes[c.s], d = t_nodes[c.d];
-  let to = d.id.toString('hex'), from = s.id.toString('hex');
-  let nonce = t_nonce[normalize(c.orig)]||
-    '' + Math.floor(1e15 * Math.random());
-  var msg = {to, from, nonce, data, __meta: {path: [s.id.toString('hex')]}};
   // XXX: why do we sign __meta.path?
   util.set(msg, '__meta.sign', s.wallet.sign(msg));
   if (c.fwd){
