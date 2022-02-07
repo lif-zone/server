@@ -20,7 +20,7 @@ function WrtcConnector(id, router, wrtc){
   self._router.on('message', onMessage);
 
   function onMessage(msg, from){
-    if (msg.type === 'signal')
+    if (msg.cmd === 'signal')
       self._onSignal(msg.data, from);
   }
 }
@@ -57,7 +57,7 @@ WrtcConnector.prototype._setupSimplePeer = function(remoteID, offer){
 
   function onSignal(signal){
     self._debug('SIGNAL', signal);
-    self._router.send(remoteID, {type: 'signal', data: signal});
+    self._router.send(remoteID, {cmd: 'signal', data: signal});
   }
 
   function onConnect(){

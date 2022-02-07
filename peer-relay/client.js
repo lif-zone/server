@@ -86,7 +86,7 @@ export default class Client extends EventEmitter {
     if (id.equals(_this.id))
       return;
     _this.pending[id] = true;
-    yield _this.router.send(id, {type: 'conn_info'});
+    yield _this.router.send(id, {cmd: 'conn_info'});
   });
   disconnect(id){
     if (this.destroyed)
@@ -98,26 +98,26 @@ export default class Client extends EventEmitter {
   send = function(id, data){
     if (this.destroyed)
       return;
-    return this.router.send(id, {type: 'user', data: data});
+    return this.router.send(id, {cmd: 'user', data: data});
   }
   send_req(id, data){ return this.router.send_req(id, data); }
   send_res(opt, data){ return this.router.send_res(opt, data); }
   find(id){
     if (this.destroyed)
       return;
-    this.router.send(id, {type: 'find', data: b2s(this.id)});
+    this.router.send(id, {cmd: 'find', data: b2s(this.id)});
   }
   // XXX: need to validate all data to make sure we don't crash
   on_message = (msg, from)=>{
     if (this.destroyed)
       return;
-    switch (msg.type){
+    switch (msg.cmd){
     case 'user': this.emit('message', msg.data, from); break;
     case 'find': this._on_find(msg, from); break;
     case 'find_r': this._on_find_r(msg, from); break;
     case 'conn_info': this._on_conn_info(msg, from); break;
     case 'conn_info_r': this._on_conn_info_r(msg, from); break;
-    default: xerr('unknown msg type %s', msg.type);
+    default: xerr('unknown msg cmd %s', msg.cmd);
     }
   };
   on_req = (data, res)=>this.emit('req', data, res);
@@ -126,7 +126,7 @@ export default class Client extends EventEmitter {
     var target = new Buffer(msg.data, 'hex');
     var closest = _this.canidates.closest(target, 20);
     yield _this.router.send(from,
-      {type: 'find_r', data: closest.map(e=>b2s(e.id))});
+      {cmd: 'find_r', data: closest.map(e=>b2s(e.id))});
   });
   _on_find_r(msg){
     for (var canidate of msg.data)
@@ -139,7 +139,7 @@ export default class Client extends EventEmitter {
       return;
     if (_this.pending[from] == null || from.compare(_this.id) < 0){
       _this.pending[from] = true;
-      yield _this.router.send(from, {type: 'conn_info_r', data:
+      yield _this.router.send(from, {cmd: 'conn_info_r', data:
         {ws: _this.wsConnector.url, wrtc: _this.wrtcConnector.supported}});
     }
   });
