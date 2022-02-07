@@ -694,7 +694,7 @@ const cmd_req = opt=>etask(function*req(){
   if (t_pre_process){
     // XXX support {id: id} instead of build_cmd for params
     set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
-      build_cmd('data', data)));
+      build_cmd('data', data), res&&build_cmd('res', res)));
     return;
   }
   if (event)
@@ -702,21 +702,25 @@ const cmd_req = opt=>etask(function*req(){
   else if (!call)
     assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
+    assert(!t_req[id], 'request already exists '+id);
+    t_req[id] = {id, data, res, s: c.s, d: c.d};
     if (!s.t.fake){
-      let req = s.send_req(b2s(d.id), data).on('res', data2=>{
-          push_cmd(build_cmd(s.t.name+d.t.name+'<res',
-            build_cmd('id', id), build_cmd('data', data)));
-      }).on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
+      let req = s.send_req(b2s(d.id), data)
+      .on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error))));
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');
     }
-    else if (res){
-      assert(t_req[id], 'request already exists '+id);
-      t_req[id] = {id, data, res};
+    if (!d.t.fake && res){
+      let req_cb = (data, res)=>{
+        res.send(t_req[id].res);
+        d.off('req', req_cb);
+      };
+      d.on('req', req_cb);
     }
   }
   else {
     yield fake_send_msg(c, {type: 'user', data}, id, 'req');
+    delete t_req[id];
     yield cmd_run_if_next_fake();
   }
 });
@@ -1112,6 +1116,8 @@ describe('peer-relay', function(){
         t('ab,cd>ef>msg(hi)', `ab>fwd(ef>msg(hi)) cd>fwd(msg(hi))`);
         // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
         t('ab>req(id:1 data:ping)', `ab>req(id(1) data(ping))`);
+        t('ab>!req(id:1 data:ping res:pong)', `ab>!req(id(1) data(ping)
+          res(pong))`);
         t('ab>res(id:1 data:pong)', `ab>res(id(1) data(pong))`);
         t('a<fail(id:1 error:timeout)', `a<fail(id(1) error(timeout))`);
       });
@@ -1146,10 +1152,11 @@ describe('peer-relay', function(){
     `);
     t('basic2', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
       ab<!res(id:2 data:pong) ab<res(id:2 data:pong)`);
-    if (0) // XXX TODO
     t('res', `setup:2_nodes ab>!req(id:2 data:ping res(pong))
-      ab>req(id:2 data:ping) ab<res(id:2 data:pong)`);
-    // XXX: final response
+      ab>req(id:2 data:ping) ab<res(id:2 data:pong)
+      ab>!req(id:3 data:ping res(pong)) ab>req(id:3 data:ping)
+      ab<res(id:3 data:pong)`);
+    // XXX: test continous response and final response (multi-part)
     // XXX: support setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss) cd>!connect(find(c dc)) -
       cb>!req(id:2 data:ping) cd>cb>req(id:2 data:ping) - 19999ms -
