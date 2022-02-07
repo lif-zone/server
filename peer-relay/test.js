@@ -1157,8 +1157,6 @@ describe('peer-relay', function(){
       ab<res(id:3 data:pong)`);
     t('fwd', `setup:3_nodes_linear ac>!req(id:2 data:ping res:pong)
       abc>req(id:2 data:ping) abc<fwd(ac<res(id:2 data:pong))`);
-    // XXX: if we add the following ab<fwd(ac<res(id:2 data:pong)) there is no
-    // error
     // XXX: test continous response and final response (multi-part)
     // XXX: support setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss)
