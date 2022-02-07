@@ -1145,22 +1145,27 @@ describe('peer-relay', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: send_req('ping').on('res', ...).on('fail', ..);
     // XXX: why it starts with 2 and not 1?
-    t('basic', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
+    t('manual', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
       ab<!res(id:2 data:pong) ab<res(id:2 data:pong) 20s -
       ab>!req(id:3 data:ping) ab>req(id:3 data:ping) -
       ab<!res(id:3 data:pong) ab<res(id:3 data:pong)
     `);
-    t('basic2', `setup:2_nodes ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
-      ab<!res(id:2 data:pong) ab<res(id:2 data:pong)`);
-    t('res', `setup:2_nodes ab>!req(id:2 data:ping res(pong))
+    t('auto', `setup:2_nodes ab>!req(id:2 data:ping res:pong)
       ab>req(id:2 data:ping) ab<res(id:2 data:pong)
-      ab>!req(id:3 data:ping res(pong)) ab>req(id:3 data:ping)
+      ab>!req(id:3 data:ping res:pong) ab>req(id:3 data:ping)
       ab<res(id:3 data:pong)`);
+    if (0) // XXX FIXME
+    t('fwd', `setup:3_nodes_linear ac>!req(id:2 data:ping res:pong)
+      abc>req(id:2 data:ping) abc<res(id:2 data:pong)
+    `);
     // XXX: test continous response and final response (multi-part)
     // XXX: support setup:2_nodes(cd)
-    t('timeout', `setup:2_nodes node:c node(d wss) cd>!connect(find(c dc)) -
-      cb>!req(id:2 data:ping) cd>cb>req(id:2 data:ping) - 19999ms -
-      1ms c<fail(id:2 error:timeout)`);
+    t('timeout', `setup:2_nodes node:c node(d wss)
+      ab>!req(id:2 data:ping)ab>req(id:2 data:ping) - 19999ms -
+      1ms a<fail(id:2 error:timeout)`);
+    t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
+      cd>!connect(find(c dc)) - cb>!req(id:2 data:ping)
+      cd>cb>req(id:2 data:ping) - 19999ms - 1ms c<fail(id:2 error:timeout)`);
     t('timeout_wrong_id', `setup:2_nodes
       ab>!req(id:2 data:ping) ab>req(id:2 data:ping)
       ab<!res(id:3 data:pong) ab<res(id:3 data:pong) - 19999ms -
