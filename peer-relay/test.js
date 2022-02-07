@@ -1150,6 +1150,7 @@ describe('peer-relay', function(){
       ab>!req(id:3 data:ping) ab>req(id:3 data:ping) -
       ab<!res(id:3 data:pong) ab<res(id:3 data:pong)
     `);
+    // XXX coding: ab>!req(id2: data:ping !req) and by default send ab>req...
     t('auto', `setup:2_nodes ab>!req(id:2 data:ping res:pong)
       ab>req(id:2 data:ping) ab<res(id:2 data:pong)
       ab>!req(id:3 data:ping res:pong) ab>req(id:3 data:ping)
