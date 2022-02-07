@@ -1142,6 +1142,18 @@ describe('peer-relay', function(){
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
+  // XXX derry: msg format:
+  // CURRENT:
+  // {to, from, nonce, data: {type, data}, __meta}
+  // eg. {to, from, nonce, data: {type: 'find', data: 'a'}, __meta}
+  // type: 'find|find_r|conn_info|conn_info_r|user'
+  // __meta: {path, sign}
+  // PLAN:
+  // {to, from, nonce, nonce, type, id, cmd, data, __meta}
+  // eg. {to, from, nonce, nonce, type: 'req', id, cmd: 'find', data: 'a',
+  //  __meta}
+  // type: 'req|res|msg'
+  // cmd: 'find|conn_info|msg'
   describe('req', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     t('manual', `setup:2_nodes ab>!req(id:1 data:ping) ab>req(id:1 data:ping) -
