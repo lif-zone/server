@@ -103,9 +103,16 @@ export default class Client extends EventEmitter {
   send_req(id, data){ return this.router.send_req(id, data); }
   send_res(opt, data){ return this.router.send_res(opt, data); }
   find(id){
+    let _this = this;
     if (this.destroyed)
       return;
     this.router.send(id, {cmd: 'find', data: b2s(this.id)});
+    if (0) // XXX: TODO
+    this.router.send_req(id, {cmd: 'find', body: {id: b2s(this.id)}})
+    .on('res', msg=>{
+      // XXX: fix _on_find_r and rm data
+      return _this._on_find_r({data: msg.data.ids});
+    });
   }
   // XXX: need to validate all data to make sure we don't crash
   on_message = (msg, from)=>{
