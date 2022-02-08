@@ -944,9 +944,7 @@ E.arg_to_obj_multi = function(arg){
 };
 
 function xerr_cb(level, args){
-  console.log('XXX xerr_cb');
-  assert(level>xerr.L.ERR, 'xerr L.'+xerr.LINV[level]+' in mocha');
-}
+  assert(level>xerr.L.ERR, 'xerr L.'+xerr.LINV[level]+' in mocha'); }
 
 E.xerr_level = function(level){
   if (level===undefined)
