@@ -100,7 +100,7 @@ export default class Client extends EventEmitter {
       return;
     return this.router.send(id, {cmd: 'user', data: data});
   }
-  send_req(id, data){ return this.router.send_req(id, data); }
+  send_req(id, o){ return this.router.send_req(id, o); }
   send_res(opt, data){ return this.router.send_res(opt, data); }
   find(id){
     let _this = this;

@@ -311,7 +311,7 @@ class FakeChannel extends EventEmitter {
         if (msg.type)
         {
           e = build_cmd(from.t.name+to.t.name+'>'+msg.type,
-            build_cmd('id', msg.req_id), build_cmd('data', msg.data));
+            build_cmd('id', msg.req_id), build_cmd('body', msg.data));
         }
         else
           assert(false, 'unexpected msg '+cmd);
@@ -681,11 +681,11 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
-  let call = c.cmd[0]=='!', data, id, res, arg = xtest.test_parse(c.arg);
+  let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
-    case 'data': data = a.arg; break;
+    case 'body': body = a.arg; break;
     case 'res':
       assert(call, 'res only valid for !req');
       res = a.arg;
@@ -697,7 +697,7 @@ const cmd_req = opt=>etask(function*req(){
   if (t_pre_process){
     // XXX support {id: id} instead of build_cmd for params
     set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
-      build_cmd('data', data), res&&build_cmd('res', res)));
+      build_cmd('body', body), res&&build_cmd('res', res)));
     return;
   }
   if (event)
@@ -706,9 +706,9 @@ const cmd_req = opt=>etask(function*req(){
     assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
     assert(!t_req[id], 'request already exists '+id);
-    t_req[id] = {id, data, res, s: c.s, d: c.d};
+    t_req[id] = {id, body, res, s: c.s, d: c.d};
     if (!s.t.fake){
-      let req = s.send_req(b2s(d.id), data)
+      let req = s.send_req(b2s(d.id), {body})
       .on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error))));
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');
@@ -722,26 +722,26 @@ const cmd_req = opt=>etask(function*req(){
     }
   }
   else {
-    yield _fake_send_msg(c, {req_id: id, type: 'req', data});
+    yield _fake_send_msg(c, {req_id: id, type: 'req', data: body});
     yield cmd_run_if_next_fake();
   }
 });
 
 const cmd_res = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
-  let call = c.cmd[0]=='!', data, id, arg = xtest.test_parse(c.arg);
+  let call = c.cmd[0]=='!', body, id, arg = xtest.test_parse(c.arg);
   assert(s && d, 'invalid event '+c.orig);
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
-    case 'data': data = a.arg; break;
+    case 'body': body = a.arg; break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   assert(id);
   if (t_pre_process){
     set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
-      build_cmd('data', data)));
+      build_cmd('body', body)));
     return;
   }
   if (event)
@@ -750,10 +750,10 @@ const cmd_res = opt=>etask(function*req(){
     assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
     if (!s.t.fake)
-      yield s.send_res({req_id: id, to: b2s(d.id)}, data);
+      yield s.send_res({req_id: id, to: b2s(d.id)}, body);
   }
   else {
-    yield _fake_send_msg(c, {req_id: id, type: 'res', data});
+    yield _fake_send_msg(c, {req_id: id, type: 'res', data: body});
     yield cmd_run_if_next_fake();
   }
 });
@@ -1116,10 +1116,10 @@ describe('peer-relay', function(){
         if (0) // XXX: fixme
         t('ab,cd>ef>msg(hi)', `ab>fwd(ef>msg(hi)) cd>fwd(msg(hi))`);
         // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
-        t('ab>req(id:1 data:ping)', `ab>req(id(1) data(ping))`);
-        t('ab>!req(id:1 data:ping res:pong)', `ab>!req(id(1) data(ping)
+        t('ab>req(id:1 body:ping)', `ab>req(id(1) body(ping))`);
+        t('ab>!req(id:1 body:ping res:pong)', `ab>!req(id(1) body(ping)
           res(pong))`);
-        t('ab>res(id:1 data:pong)', `ab>res(id(1) data(pong))`);
+        t('ab>res(id:1 body:pong)', `ab>res(id(1) body(pong))`);
         t('a<fail(id:1 error:timeout)', `a<fail(id(1) error(timeout))`);
       });
     });
@@ -1156,34 +1156,34 @@ describe('peer-relay', function(){
   // cmd: 'find|conn_info|msg'
   describe('req', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
-    t('manual', `setup:2_nodes ab>!req(id:1 data:ping) ab>req(id:1 data:ping) -
-      ab<!res(id:1 data:pong) ab<res(id:1 data:pong) 20s -
-      ab>!req(id:2 data:ping) ab>req(id:2 data:ping) -
-      ab<!res(id:2 data:pong) ab<res(id:2 data:pong)
+    t('manual', `setup:2_nodes ab>!req(id:1 body:ping) ab>req(id:1 body:ping) -
+      ab<!res(id:1 body:pong) ab<res(id:1 body:pong) 20s -
+      ab>!req(id:2 body:ping) ab>req(id:2 body:ping) -
+      ab<!res(id:2 body:pong) ab<res(id:2 body:pong)
     `);
-    // XXX coding: ab>!req(id2: data:ping !req) and by default send ab>req...
-    t('auto', `setup:2_nodes ab>!req(id:1 data:ping res:pong)
-      ab>req(id:1 data:ping) ab<res(id:1 data:pong)
-      ab>!req(id:2 data:ping res:pong) ab>req(id:2 data:ping)
-      ab<res(id:2 data:pong)`);
-    t('fwd', `setup:3_nodes_linear ac>!req(id:1 data:ping res:pong)
-      abc>req(id:1 data:ping) abc<fwd(ac<res(id:1 data:pong))`);
+    // XXX coding: ab>!req(id2: body:ping !req) and by default send ab>req...
+    t('auto', `setup:2_nodes ab>!req(id:1 body:ping res:pong)
+      ab>req(id:1 body:ping) ab<res(id:1 body:pong)
+      ab>!req(id:2 body:ping res:pong) ab>req(id:2 body:ping)
+      ab<res(id:2 body:pong)`);
+    t('fwd', `setup:3_nodes_linear ac>!req(id:1 body:ping res:pong)
+      abc>req(id:1 body:ping) abc<fwd(ac<res(id:1 body:pong))`);
     // XXX: codding: setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss)
-      ab>!req(id:1 data:ping)ab>req(id:1 data:ping) - 19999ms -
+      ab>!req(id:1 body:ping)ab>req(id:1 body:ping) - 19999ms -
       1ms a<fail(id:1 error:timeout)`);
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
-      cd>!connect(find(c dc)) - cb>!req(id:1 data:ping)
-      cd>cb>req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
+      cd>!connect(find(c dc)) - cb>!req(id:1 body:ping)
+      cd>cb>req(id:1 body:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
     t('timeout_wrong_id', `setup:2_nodes
-      ab>!req(id:1 data:ping) ab>req(id:1 data:ping)
-      ab<!res(id:2 data:pong) ab<res(id:2 data:pong) - 19999ms -
+      ab>!req(id:1 body:ping) ab>req(id:1 body:ping)
+      ab<!res(id:2 body:pong) ab<res(id:2 body:pong) - 19999ms -
       1ms a<fail(id:1 error:timeout)`);
     // XXX: no_route should fail with error(no_route)
     t('no_route', `setup:2_nodes node:c
-      cb>!req(id:1 data:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
+      cb>!req(id:1 body:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
     if (false) // XXX: TODO
-    t(`ab!>req(id:2 data:ping) ab>req(id:2 data:ping) ab>!disconnect
+    t(`ab!>req(id:2 body:ping) ab>req(id:2 body:ping) ab>!disconnect
       ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:2 err:timeout)`);
     // XXX: test continous response and final response (multi-part)
   });
