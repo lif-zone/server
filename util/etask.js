@@ -1509,7 +1509,7 @@ E.shutdown = function(){
         if (e==prev)
         {
             assert(e.tm_completed);
-            xerr.zexit('etask root not removed after return - '+
+            xerr.xexit('etask root not removed after return - '+
                 'fix non-cancelable child etask');
         }
         prev = e;

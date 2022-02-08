@@ -351,7 +351,7 @@ E.get_free_port = ()=>etask(function*get_free_port(){
     let server = net.createServer();
     server.on('error', err=>{
         server.close();
-        xerr.zexit(err);
+        xerr.xexit(err);
     });
     server.on('close', ()=>wait.return());
     server.listen(0, ()=>{
@@ -944,4 +944,4 @@ E.arg_to_obj_multi = function(arg){
 };
 
 if (xutil.is_mocha())
-    proc.zexit_init();
+    proc.xexit_init();

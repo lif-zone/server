@@ -1,5 +1,6 @@
 // author: derry. coder: arik.
 'use strict'; /*zlint node, br*/
+import assert from 'assert';
 import xutil from './util.js';
 import date from './date.js';
 import sprintf from './sprintf.js';
@@ -9,7 +10,7 @@ import cluster from 'cluster';
 const is_node = typeof window==='undefined';
 let version = '0.0.1'; // XXX HACK
 let _process = is_node ? process : {env: {}};
-var _xerr;
+var _xerr, in_xexit;
 var env = _process.env;
 var xerr = function(msg){ _xerr(L.ERR, arguments); };
 var E = xerr;
@@ -217,7 +218,7 @@ function log_tail_push(msg){
 
 if (is_node)
 { // xerr-node
-E.ZEXIT_LOG_DIR = env.ZEXIT_LOG_DIR||'/tmp/zexit_logs';
+E.ZEXIT_LOG_DIR = env.ZEXIT_LOG_DIR||'/tmp/xexit_logs';
 E.prefix = '';
 
 E.level = L.NOTICE;
@@ -247,6 +248,8 @@ var __xerr = function(level, args){
     if (!xerr.buffered)
       console.error(res);
     log_tail_push(res);
+    // XXX derry: review the proper way to implement it (c:jtest_zerr_level)
+    assert(!xutil.is_mocha() || level>L.ERR || in_xexit, 'ERR in test');
 };
 
 E.set_logger = function(logger){
@@ -264,7 +267,8 @@ _xerr = function(level, args){
 };
 E._xerr = _xerr;
 
-E.zexit = function(args){
+E.xexit = function(args){
+    in_xexit = true;
     var stack;
     if (err_has_stack(args))
     {
@@ -279,14 +283,14 @@ E.zexit = function(args){
     }
     E.flush();
     if ((args&&args.code)!='ERR_ASSERTION')
-        console.error('xerr.zexit was called', new Error().stack);
+        console.error('xerr.xexit was called', new Error().stack);
     if (env.NODE_ENV=='production')
     {
         var conf = require('./conf.js');
         var zcounter_file = require('./zcounter_file.js');
-        zcounter_file.inc('server_zexit');
+        zcounter_file.inc('server_xexit');
         args = xerr_format(arguments);
-        write_zexit_log({id: 'lerr_server_zexit', info: ''+args,
+        write_xexit_log({id: 'lerr_server_xexit', info: ''+args,
             ts: date.to_sql(), backtrace: stack, version: version,
             app: conf.app});
     }
@@ -295,11 +299,11 @@ E.zexit = function(args){
     _process.exit(1);
 };
 
-var write_zexit_log = function(json){
+var write_xexit_log = function(json){
     try {
         var file = require('./file.js');
         file.mkdirp(E.ZEXIT_LOG_DIR);
-        file.write_atomic_e(E.ZEXIT_LOG_DIR+'/'+date.to_log_file()+'_zexit_'+
+        file.write_atomic_e(E.ZEXIT_LOG_DIR+'/'+date.to_log_file()+'_xexit_'+
             _process.pid+'.log', E.json(json));
     } catch(e){ E.xerr(E.e2s(e)); }
 };
