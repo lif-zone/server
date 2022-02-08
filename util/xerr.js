@@ -1,8 +1,8 @@
 // author: derry. coder: arik.
 'use strict'; /*zlint node, br*/
-import assert from 'assert';
 import xutil from './util.js';
 import date from './date.js';
+import array from './array.js';
 import sprintf from './sprintf.js';
 import xescape from './escape.js';
 import rate_limit from './rate_limit.js';
@@ -10,8 +10,8 @@ import cluster from 'cluster';
 const is_node = typeof window==='undefined';
 let version = '0.0.1'; // XXX HACK
 let _process = is_node ? process : {env: {}};
-var _xerr, in_xexit;
-var env = _process.env;
+var _xerr;
+var env = _process.env, xerr_cb = [];
 var xerr = function(msg){ _xerr(L.ERR, arguments); };
 var E = xerr;
 export default xerr;
@@ -248,8 +248,7 @@ var __xerr = function(level, args){
     if (!xerr.buffered)
       console.error(res);
     log_tail_push(res);
-    // XXX derry: review the proper way to implement it (c:jtest_zerr_level)
-    assert(!xutil.is_mocha() || level>L.ERR || in_xexit, 'ERR in test');
+    xerr_cb.forEach(cb=>(level, args));
 };
 
 E.set_logger = function(logger){
@@ -268,7 +267,6 @@ _xerr = function(level, args){
 E._xerr = _xerr;
 
 E.xexit = function(args){
-    in_xexit = true;
     var stack;
     if (err_has_stack(args))
     {
@@ -389,6 +387,13 @@ var perr = function(perr_orig, pending){
     return perr_transport;
 };
 E.perr_install(perr);
+
+E.register = function(cb){
+  E.unregister(cb);
+  xerr_cb.push(cb);
+};
+
+E.unregister = function(cb){ array.rm_elm(xerr_cb, cb); };
 
 } // end of browser-xerr}
 

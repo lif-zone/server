@@ -943,5 +943,17 @@ E.arg_to_obj_multi = function(arg){
   return ret;
 };
 
+function xerr_cb(level, args){
+  assert(level>xerr.L.ERR, 'ERR in test');
+}
+
+E.xerr_level = function(level){
+  if (level===undefined)
+    return xerr.unregister(xerr_cb);
+  xerr_cb.level = level;
+  xerr.register(xerr_cb);
+};
+
 if (xutil.is_mocha())
     proc.xexit_init();
+
