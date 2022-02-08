@@ -278,7 +278,7 @@ class FakeChannel extends EventEmitter {
   }
   send = msg=>{
     let p, a, fwd, e;
-    let {cmd, data} = msg.data;
+    let {cmd, body} = msg.body;
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
     let s = node_from_id(this.localID), d = node_from_id(this.id);
     if (s!=from || d!=to)
@@ -288,11 +288,11 @@ class FakeChannel extends EventEmitter {
     return etask(function*send(){
       switch (cmd){
       case 'find':
-        p = node_from_id(data);
+        p = node_from_id(body);
         e = build_cmd(from.t.name+to.t.name+'>find', p.t.name);
         break;
       case 'find_r':
-        a = array_id_to_name(data);
+        a = array_id_to_name(body);
         e = build_cmd(from.t.name+to.t.name+'>find_r', a.join(''));
         break;
       case 'conn_info':
@@ -300,18 +300,18 @@ class FakeChannel extends EventEmitter {
         break;
       case 'conn_info_r':
           a = [];
-          if (data.ws)
+          if (body.ws)
             a.push('ws'); // XXX: assert correct val of ws
-          if (data.wrtc)
+          if (body.wrtc)
             a.push('wrtc');
         e = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
         break;
-      case 'user': e = build_cmd(from.t.name+to.t.name+'>msg', data); break;
+      case 'user': e = build_cmd(from.t.name+to.t.name+'>msg', body); break;
       default:
         if (msg.type)
         {
           e = build_cmd(from.t.name+to.t.name+'>'+msg.type,
-            build_cmd('id', msg.req_id), build_cmd('body', msg.data));
+            build_cmd('id', msg.req_id), build_cmd('body', msg.body));
         }
         else
           assert(false, 'unexpected msg '+cmd);
@@ -351,7 +351,7 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
   yield t_nodes[d].router._on_channel_msg(msg);
 });
 
-const fake_send_msg = (c, data)=>_fake_send_msg(c, {data});
+const fake_send_msg = (c, body)=>_fake_send_msg(c, {body});
 const _fake_send_msg = (c, msg)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
@@ -553,7 +553,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
   }
   if (event)
     assert_event(event, build_cmd(c.meta.cmd, peers));
-  yield fake_send_msg(c, {cmd: 'find', data: _str(s.id)});
+  yield fake_send_msg(c, {cmd: 'find', body: _str(s.id)});
   yield cmd_run_if_next_fake();
 });
 
@@ -566,7 +566,7 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
     assert_event_c(c, event);
   else
     assert(s.t.fake, 'missing event '+c.orig);
-  yield fake_send_msg(c, {cmd: 'find_r', data:
+  yield fake_send_msg(c, {cmd: 'find_r', body:
     array_name_to_id(c.arg.split(''))});
   yield cmd_run_if_next_fake();
 });
@@ -622,14 +622,14 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
     assert_event_c(c, event);
   else
     assert(s.t.fake || c.fwd, 'missing event '+c.orig);
-  yield fake_send_msg(c, {cmd: 'conn_info_r', data: {ws, wrtc}});
+  yield fake_send_msg(c, {cmd: 'conn_info_r', body: {ws, wrtc}});
   yield cmd_run_if_next_fake();
 });
 
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
-  let arg = xtest.test_parse(c.arg), data, call = c.cmd[0]=='!';
+  let arg = xtest.test_parse(c.arg), body, call = c.cmd[0]=='!';
   let msg = call ? true : false;
   util.forEach(arg, a=>{
     switch (a.cmd){
@@ -639,8 +639,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       msg = true;
       break;
     default:
-      assert(!data, 'invalid arg '+a.cmd);
-      data = a.cmd;
+      assert(!body, 'invalid arg '+a.cmd);
+      body = a.cmd;
     }
   });
   assert(call || !msg, 'msg only avail for call mode');
@@ -648,19 +648,19 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     if (call){
       if (c.loop_first){
         if (msg)
-          push_cmd(_build_cmd(dir_c(c)+'msg', c.fwd, data));
+          push_cmd(_build_cmd(dir_c(c)+'msg', c.fwd, body));
         c.fwd = '';
-        set_orig(c, build_cmd(dir_c(c)+'!msg', data, '!msg'));
+        set_orig(c, build_cmd(dir_c(c)+'!msg', body, '!msg'));
         return;
       }
       else if (c.had_loop)
-        return set_orig(c, build_cmd(dir_c(c)+'msg', data));
+        return set_orig(c, build_cmd(dir_c(c)+'msg', body));
       if (msg)
-        push_cmd(build_cmd(dir_c(c)+'msg', data));
+        push_cmd(build_cmd(dir_c(c)+'msg', body));
     }
     else
       assert(!msg);
-    set_orig(c, build_cmd(c.meta.cmd, data, call ? '!msg' : ''));
+    set_orig(c, build_cmd(c.meta.cmd, body, call ? '!msg' : ''));
     return;
   }
   if (event)
@@ -669,10 +669,10 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
     if (!s.t.fake)
-      yield s.send(d.id, data);
+      yield s.send(d.id, body);
   }
   else {
-    yield fake_send_msg(c, {cmd: 'user', data});
+    yield fake_send_msg(c, {cmd: 'user', body});
     yield cmd_run_if_next_fake();
   }
 });
@@ -713,7 +713,7 @@ const cmd_req = opt=>etask(function*req(){
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');
     }
     if (!d.t.fake && res){
-       d.on('req', t_req[id].cb = (data, res)=>{
+       d.on('req', t_req[id].cb = (body, res)=>{
         res.send(t_req[id].res);
         d.off('req', t_req[id].cb);
         delete t_req[id].cb;
@@ -721,7 +721,7 @@ const cmd_req = opt=>etask(function*req(){
     }
   }
   else {
-    yield _fake_send_msg(c, {req_id: id, type: 'req', data: body});
+    yield _fake_send_msg(c, {req_id: id, type: 'req', body});
     yield cmd_run_if_next_fake();
   }
 });
@@ -752,7 +752,7 @@ const cmd_res = opt=>etask(function*req(){
       yield s.send_res({req_id: id, to: b2s(d.id), body});
   }
   else {
-    yield _fake_send_msg(c, {req_id: id, type: 'res', data: body});
+    yield _fake_send_msg(c, {req_id: id, type: 'res', body});
     yield cmd_run_if_next_fake();
   }
 });

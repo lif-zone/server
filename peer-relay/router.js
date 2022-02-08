@@ -32,13 +32,6 @@ export default class Router extends EventEmitter {
     for (let c of this._channels.toArray())
       this._onChannelAdded(c);
   }
-  /* XXX derry TODO:
-  send_req(id, data){
-    // remember packet. keep in send queue. update parent in 'on'
-    this.send(id, data);
-  }
-  send_req('hi').on('res', ...).on('fail', ..);
-  */
   send_req(to, o){
     let req = new EventEmitter(); // XXX: need Request class
     // XXX: use etask
@@ -50,7 +43,7 @@ export default class Router extends EventEmitter {
     let req_id=''+this.req_id++, from=b2s(this.id), path=[];
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
     let msg = {req_id, ts, type: 'req', to, from, nonce,
-      cmd: o.cmd, data: o.body, path};
+      cmd: o.cmd, body: o.body, path};
     this._touched[nonce] = true;
     // XXX: rm __meta: {path} from sign
     msg.sign = this.wallet.sign(msg);
@@ -62,12 +55,12 @@ export default class Router extends EventEmitter {
     let req_id=o.req_id, to=o.to, from=b2s(this.id), path=[];
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
     let msg = {req_id, ts, type: 'res', to, from, nonce, cmd: o.cmd,
-      data: o.body, path};
+      body: o.body, path};
     this._touched[nonce] = true;
     msg.sign = this.wallet.sign(msg);
     this._send(msg); // XXX: what if error
   }
-  _on_msg = (data, from, msg)=>{
+  _on_msg = (body, from, msg)=>{
     let {req_id, type} = msg, _this = this;
     if (!req_id)
       return;
@@ -76,7 +69,7 @@ export default class Router extends EventEmitter {
         send: function(body){
           return _this.send_res({req_id: this.req_id, to: this.from, body}); },
       };
-      this.emit('req', data, res);
+      this.emit('req', body, res);
     }
     else if (type=='res'){
       // XXX: if final response, remove from this.reqs
@@ -85,15 +78,15 @@ export default class Router extends EventEmitter {
       let {req, timeout} = this.reqs[req_id];
       delete this.reqs[req_id];
       clearTimeout(timeout);
-      req.emit('res', data);
+      req.emit('res', body);
       return xerr('invalid type %s %s', type, req_id);
     }
     else
       return xerr('invalid msg type %s %s', type, req_id);
   }
-  send(dst, data){
+  send(dst, body){
     let msg = {to: b2s(dst), from: b2s(this.id),
-      nonce: '' + Math.floor(1e15 * Math.random()), data: data, path: []};
+      nonce: '' + Math.floor(1e15 * Math.random()), body, path: []};
     this._touched[msg.nonce] = true;
     msg.sign = this.wallet.sign(msg);
     return this._send(msg);
@@ -134,7 +127,7 @@ export default class Router extends EventEmitter {
     assert(typeof msg.to=='string', 'invalid to');
     _this._paths[msg.from] = msg.path[msg.path.length - 1];
     if (to.equals(_this.id))
-      _this.emit('message', msg.data, s2b(msg.from), msg);
+      _this.emit('message', msg.body, s2b(msg.from), msg);
     else // relay
       yield _this._send(msg);
   });
