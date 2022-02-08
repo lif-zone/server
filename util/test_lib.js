@@ -944,7 +944,8 @@ E.arg_to_obj_multi = function(arg){
 };
 
 function xerr_cb(level, args){
-  assert(level>xerr.L.ERR, 'ERR in test');
+  console.log('XXX xerr_cb');
+  assert(level>xerr.L.ERR, 'xerr L.'+xerr.LINV[level]+' in mocha');
 }
 
 E.xerr_level = function(level){
@@ -955,5 +956,7 @@ E.xerr_level = function(level){
 };
 
 if (xutil.is_mocha())
-    proc.xexit_init();
-
+{
+  proc.xexit_init();
+  E.xerr_level(xerr.L.ERR);
+}

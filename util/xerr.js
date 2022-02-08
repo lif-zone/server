@@ -248,7 +248,8 @@ var __xerr = function(level, args){
     if (!xerr.buffered)
       console.error(res);
     log_tail_push(res);
-    xerr_cb.forEach(cb=>(level, args));
+    debugger;
+    xerr_cb.forEach(cb=>cb(level, args));
 };
 
 E.set_logger = function(logger){
@@ -387,13 +388,15 @@ var perr = function(perr_orig, pending){
     return perr_transport;
 };
 E.perr_install(perr);
+} // end of browser-xerr}
 
 E.register = function(cb){
+  debugger;
   E.unregister(cb);
   xerr_cb.push(cb);
 };
 
 E.unregister = function(cb){ array.rm_elm(xerr_cb, cb); };
 
-} // end of browser-xerr}
+
 
