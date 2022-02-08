@@ -50,10 +50,10 @@ export default class Router extends EventEmitter {
     let req_id=''+this.req_id++, from=b2s(this.id), path=[];
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
     let msg = {req_id, ts, type: 'req', to, from, nonce,
-      cmd: o.cmd, data: o.body, __meta: {path}};
+      cmd: o.cmd, data: o.body, path};
     this._touched[nonce] = true;
     // XXX: rm __meta: {path} from sign
-    util.set(msg, '__meta.sign', this.wallet.sign(msg));
+    msg.sign = this.wallet.sign(msg);
     req.__meta = this.reqs[req_id] = {req_id, req, msg, timeout};
     this._send(msg); // XXX: what if error
     return req;
@@ -61,9 +61,9 @@ export default class Router extends EventEmitter {
   send_res(opt, data){
     let req_id=opt.req_id, to=b2s(opt.to), from=b2s(this.id), path=[];
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
-    let msg = {req_id, ts, type: 'res', to, from, nonce, data, __meta: {path}};
+    let msg = {req_id, ts, type: 'res', to, from, nonce, data, path};
     this._touched[nonce] = true;
-    util.set(msg, '__meta.sign', this.wallet.sign(msg));
+    msg.sign = this.wallet.sign(msg);
     this._send(msg); // XXX: what if error
   }
   _on_msg = (data, from, msg)=>{
@@ -92,21 +92,20 @@ export default class Router extends EventEmitter {
   }
   send(dst, data){
     let msg = {to: b2s(dst), from: b2s(this.id),
-      nonce: '' + Math.floor(1e15 * Math.random()), data: data,
-      __meta: {path: []}};
+      nonce: '' + Math.floor(1e15 * Math.random()), data: data, path: []};
     this._touched[msg.nonce] = true;
-    util.set(msg, '__meta.sign', this.wallet.sign(msg));
+    msg.sign = this.wallet.sign(msg);
     return this._send(msg);
   }
   _send = msg=>etask({'this': this}, function*(){
     let _this = this.this;
-    if (msg.__meta.path.length >= _this.maxHops)
+    if (msg.path.length >= _this.maxHops)
       return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
     if (!_this._channels.count())
       _this._queue.push(msg);
-    msg.__meta.path.push(b2s(_this.id));
+    msg.path.push(b2s(_this.id));
     let closests = _this._channels.closest(s2b(msg.to), 20)
-    .filter(c=>msg.__meta.path.indexOf(b2s(c.id))===-1)
+    .filter(c=>msg.path.indexOf(b2s(c.id))===-1)
     .filter((_, index) => index < _this.concurrency);
     if (msg.to in _this._paths)
     {
@@ -127,12 +126,12 @@ export default class Router extends EventEmitter {
     if (msg.nonce in _this._touched)
       return;
     let from = s2b(msg.from), to = s2b(msg.to);
-    if (!_this.wallet.verify(msg, msg.__meta.sign, from))
+    if (!_this.wallet.verify(msg, msg.sign, from))
       return xerr('invalid message signature');
     _this._touched[msg.nonce] = true;
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
-    _this._paths[msg.from] = msg.__meta.path[msg.__meta.path.length - 1];
+    _this._paths[msg.from] = msg.path[msg.path.length - 1];
     if (to.equals(_this.id))
       _this.emit('message', msg.data, s2b(msg.from), msg);
     else // relay

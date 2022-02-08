@@ -21,8 +21,9 @@ export default class Wallet {
     }
   }
   hash_obj(o){
-    return Uint8Array.from(hash(o,
-      {respectType: false, excludeKeys: key=>key=='__meta'}));
+    // XXX: need to exclude path/sign only from root, not from sub keys
+    return Uint8Array.from(hash(o, {respectType: false, excludeKeys:
+      key=>['path', 'sign'].indexOf(key)!=-1}));
   }
   sign(o){
     // XXX: we use sha1 algorithm. need to find a more secured one (blake?)

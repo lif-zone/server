@@ -360,9 +360,8 @@ const _fake_send_msg = (c, msg)=>etask(function*(){
   msg.to = to;
   msg.from = from;
   msg.nonce = nonce;
-  msg.__meta = {path: [s.id.toString('hex')]};
-  // XXX: why do we sign __meta.path?
-  util.set(msg, '__meta.sign', s.wallet.sign(msg));
+  msg.path = [s.id.toString('hex')];
+  msg.sign = s.wallet.sign(msg);
   if (c.fwd){
     let fwd = normalize(c.fwd);
     s = t_nodes[fwd[0]];
