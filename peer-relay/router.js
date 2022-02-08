@@ -58,10 +58,11 @@ export default class Router extends EventEmitter {
     this._send(msg); // XXX: what if error
     return req;
   }
-  send_res(opt, data){
-    let req_id=opt.req_id, to=b2s(opt.to), from=b2s(this.id), path=[];
+  send_res(o){
+    let req_id=o.req_id, to=o.to, from=b2s(this.id), path=[];
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
-    let msg = {req_id, ts, type: 'res', to, from, nonce, data, path};
+    let msg = {req_id, ts, type: 'res', to, from, nonce, cmd: o.cmd,
+      data: o.body, path};
     this._touched[nonce] = true;
     msg.sign = this.wallet.sign(msg);
     this._send(msg); // XXX: what if error
@@ -71,9 +72,9 @@ export default class Router extends EventEmitter {
     if (!req_id)
       return;
     if (type=='req'){
-      let res = {from, req_id,
-        send: function(data){
-          return _this.send_res({req_id: this.req_id, to: this.from}, data); },
+      let res = {from: b2s(from), req_id,
+        send: function(body){
+          return _this.send_res({req_id: this.req_id, to: this.from, body}); },
       };
       this.emit('req', data, res);
     }

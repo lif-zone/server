@@ -749,7 +749,7 @@ const cmd_res = opt=>etask(function*req(){
     assert(s.t.fake || c.fwd, 'missing event '+c.orig);
   if (call){
     if (!s.t.fake)
-      yield s.send_res({req_id: id, to: b2s(d.id)}, body);
+      yield s.send_res({req_id: id, to: b2s(d.id), body});
   }
   else {
     yield _fake_send_msg(c, {req_id: id, type: 'res', data: body});
@@ -1141,16 +1141,15 @@ describe('peer-relay', function(){
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
-  // XXX: mv __meta: {path, sign} to outside
   // XXX derry: msg format:
   // CURRENT:
-  // {to, from, nonce, data: {type, data}, __meta}
-  // eg. {to, from, nonce, data: {type: 'find', data: 'a'}, __meta}
+  // {to, from, nonce, data: {type, data}, path, sign}
+  // eg. {to, from, nonce, data: {type: 'find', data: 'a'}, path, sign}
   // type: 'find|find_r|conn_info|conn_info_r|user'
   // PLAN:
   // {to, from, nonce, nonce, type, id, cmd, data}
   // eg. {to, from, nonce, nonce, type: 'req', id, cmd: 'find', data: 'a',
-  //  __meta}
+  //  path, sign}
   // type: 'req|res|req_start|req_next|req_end|res_start|res_next|res_end'
   // cmd: 'find|conn_info|msg'
   describe('req', function(){
