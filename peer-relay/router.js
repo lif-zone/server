@@ -69,7 +69,7 @@ export default class Router extends EventEmitter {
         send: function(body){
           return _this.send_res({req_id: this.req_id, to: this.from, body}); },
       };
-      this.emit('req', body, res);
+      this.emit('req', msg, res);
     }
     else if (type=='res'){
       // XXX: if final response, remove from this.reqs

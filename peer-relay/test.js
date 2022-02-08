@@ -713,7 +713,7 @@ const cmd_req = opt=>etask(function*req(){
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');
     }
     if (!d.t.fake && res){
-       d.on('req', t_req[id].cb = (body, res)=>{
+       d.on('req', t_req[id].cb = (msg, res)=>{
         res.send(t_req[id].res);
         d.off('req', t_req[id].cb);
         delete t_req[id].cb;
