@@ -707,7 +707,7 @@ const cmd_req = opt=>etask(function*req(){
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
     if (!s.t.fake){
-      let req = s.send_req(b2s(d.id), {body})
+      let req = s.send_req(b2s(d.id), {}, body)
       .on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error))));
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');

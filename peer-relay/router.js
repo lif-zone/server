@@ -32,7 +32,7 @@ export default class Router extends EventEmitter {
     for (let c of this._channels.toArray())
       this._onChannelAdded(c);
   }
-  send_req(to, o){
+  send_req(to, hdr, body){
     let req = new EventEmitter(); // XXX: need Request class
     // XXX: use etask
     let timeout = setTimeout(()=>{
@@ -43,7 +43,7 @@ export default class Router extends EventEmitter {
     let req_id=''+this.req_id++, from=b2s(this.id), path=[];
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
     let msg = {req_id, ts, type: 'req', to, from, nonce,
-      cmd: o.cmd, body: o.body, path};
+      cmd: hdr.cmd, body, path};
     this._touched[nonce] = true;
     // XXX: rm __meta: {path} from sign
     msg.sign = this.wallet.sign(msg);

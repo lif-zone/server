@@ -100,7 +100,7 @@ export default class Client extends EventEmitter {
       return;
     return this.router.send(id, {cmd: 'user', body});
   }
-  send_req(id, o){ return this.router.send_req(id, o); }
+  send_req(id, hdr, body){ return this.router.send_req(id, hdr, body); }
   send_res(opt, body){ return this.router.send_res(opt, body); }
   find(id){
     let _this = this;
@@ -108,7 +108,7 @@ export default class Client extends EventEmitter {
       return;
     this.router.send(id, {cmd: 'find', body: b2s(this.id)});
     if (0) // XXX: TODO
-    this.router.send_req(id, {cmd: 'find', body: {id: b2s(this.id)}})
+    this.router.send_req(id, {cmd: 'find'}, {id: b2s(this.id)})
     .on('res', msg=>{
       // XXX: fix _on_find_r and rm body
       return _this._on_find_r({body: msg.body.ids});
