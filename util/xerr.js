@@ -248,7 +248,6 @@ var __xerr = function(level, args){
     if (!xerr.buffered)
       console.error(res);
     log_tail_push(res);
-    debugger;
     xerr_cb.forEach(cb=>cb(level, args));
 };
 
@@ -293,8 +292,7 @@ E.xexit = function(args){
             ts: date.to_sql(), backtrace: stack, version: version,
             app: conf.app});
     }
-    // eslint-disable-next-line no-debugger
-    debugger;
+    debugger; // eslint-disable-line no-debugger
     _process.exit(1);
 };
 
@@ -391,12 +389,9 @@ E.perr_install(perr);
 } // end of browser-xerr}
 
 E.register = function(cb){
-  debugger;
   E.unregister(cb);
   xerr_cb.push(cb);
 };
 
 E.unregister = function(cb){ array.rm_elm(xerr_cb, cb); };
-
-
 
