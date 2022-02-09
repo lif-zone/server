@@ -61,13 +61,15 @@ export default class Router extends EventEmitter {
     this._send(msg); // XXX: what if error
   }
   _on_msg = (body, from, msg)=>{
-    let {req_id, type} = msg, _this = this;
+    let {req_id, type, cmd} = msg, _this = this;
     if (!req_id)
       return;
     if (type=='req'){
-      let res = {from: b2s(from), req_id,
+      let res = {from: b2s(from), req_id, cmd,
         send: function(body){
-          return _this.send_res({req_id: this.req_id, to: this.from, body}); },
+          return _this.send_res({req_id: this.req_id, type: 'res',
+          cmd: this.cmd, to: this.from, body});
+        },
       };
       this.emit('req', msg, res);
     }
@@ -78,8 +80,7 @@ export default class Router extends EventEmitter {
       let {req, timeout} = this.reqs[req_id];
       delete this.reqs[req_id];
       clearTimeout(timeout);
-      req.emit('res', body);
-      return xerr('invalid type %s %s', type, req_id);
+      req.emit('res', msg);
     }
     else
       return xerr('invalid msg type %s %s', type, req_id);

@@ -10,7 +10,7 @@ import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
-const s2b = util.buf_from_str, b2s = util.buf_to_str;
+const b2s = util.buf_to_str;
 
 export default class Client extends EventEmitter {
   constructor(opt){
@@ -31,13 +31,6 @@ export default class Client extends EventEmitter {
       wallet: this.wallet});
     this.router.on('message', this.on_message);
     this.router.on('req', this.on_req);
-    this.on('req', (msg, res)=>{
-      if (msg.cmd!='find')
-        return;
-      var target = new Buffer(s2b(msg.body.id));
-      var closest = this.canidates.closest(target, 20);
-      res.send(closest.map(e=>b2s(e.id)));
-    });
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
     this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host);
@@ -113,6 +106,8 @@ export default class Client extends EventEmitter {
     let _this = this;
     if (this.destroyed)
       return;
+    this.router.send(id, {cmd: 'find', body: b2s(this.id)});
+    if (0) // XXX: TODO
     this.router.send_req(id, {cmd: 'find'}, {id: b2s(this.id)})
     .on('res', msg=>{
       // XXX: fix _on_find_r and rm body
@@ -120,19 +115,26 @@ export default class Client extends EventEmitter {
     });
   }
   // XXX: need to validate all data to make sure we don't crash
-  // XXX: fix and rm msg, from, _msg - just need msg
-  on_message = (msg, from, _msg)=>{
+  on_message = (msg, from)=>{
     if (this.destroyed)
       return;
-    xerr.notice('XXX msg %s', JSON.stringify(_msg));
     switch (msg.cmd){
     case 'user': this.emit('message', msg.body, from); break;
+    case 'find': this._on_find(msg, from); break;
+    case 'find_r': this._on_find_r(msg, from); break;
     case 'conn_info': this._on_conn_info(msg, from); break;
     case 'conn_info_r': this._on_conn_info_r(msg, from); break;
     default: xerr('unknown msg cmd %s', msg.cmd);
     }
   };
   on_req = (body, res)=>this.emit('req', body, res);
+  _on_find = (msg, from)=>etask({'this': this}, function*_on_find(){
+    let _this = this.this;
+    var target = new Buffer(msg.body, 'hex');
+    var closest = _this.canidates.closest(target, 20);
+    yield _this.router.send(from,
+      {cmd: 'find_r', body: closest.map(e=>b2s(e.id))});
+  });
   _on_find_r(msg){
     for (var canidate of msg.body)
       this.canidates.add({id: new Buffer(canidate, 'hex')});

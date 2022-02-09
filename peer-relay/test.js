@@ -16,10 +16,11 @@ import xtest from '../util/test_lib.js';
 import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
-const assign = Object.assign, s2b = util.buf_from_str, b2s = util.buf_to_str;
+const assign = Object.assign;
+const s2b = util.buf_from_str, b2s = util.buf_to_str;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
-// XXX: make it automatic for all node/browser in proc.js
+// XXX: make it automatic for all node/browser
 xerr.set_exception_catch_all(true);
 process.on('uncaughtException', err=>xerr.xexit(err));
 process.on('unhandledRejection', err=>xerr.xexit(err));
@@ -277,7 +278,7 @@ class FakeChannel extends EventEmitter {
   }
   send = msg=>{
     let p, a, fwd, e;
-    let {cmd, body} = msg.body; // XXX: rm
+    let {cmd, body} = msg.body;
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
     let s = node_from_id(this.localID), d = node_from_id(this.id);
     if (s!=from || d!=to)
@@ -307,15 +308,8 @@ class FakeChannel extends EventEmitter {
         break;
       case 'user': e = build_cmd(from.t.name+to.t.name+'>msg', body); break;
       default:
-        if (msg.type=='req' && msg.cmd=='find'){
-          console.log('ZZZ send %s', JSON.stringify(msg));
-          p = node_from_id(msg.body.id);
-          e = build_cmd(from.t.name+to.t.name+'>find', p.t.name);
-        }
-        else if (msg.type=='res' && msg.cmd=='find'){
-          a = array_id_to_name(msg.body.ids);
-          e = build_cmd(from.t.name+to.t.name+'>find_r', a.join(''));
-        } else if (msg.type){
+        if (msg.type)
+        {
           e = build_cmd(from.t.name+to.t.name+'>'+msg.type,
             build_cmd('id', msg.req_id), build_cmd('body', msg.body));
         }
@@ -574,7 +568,6 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
     assert(s.t.fake, 'missing event '+c.orig);
   yield fake_send_msg(c, {cmd: 'find_r', body:
     array_name_to_id(c.arg.split(''))});
-  //yield _fake_send_msg(c, {req_id: id, type: 'req', body});
   yield cmd_run_if_next_fake();
 });
 
@@ -1160,6 +1153,9 @@ describe('peer-relay', function(){
   // type: 'req|res|req_start|req_next|req_end|res_start|res_next|res_end'
   // cmd: 'find|conn_info|msg'
   describe('req', function(){
+    // XXX: temporary till fixing req api
+    beforeEach(()=>xtest.xerr_level());
+    afterEach(()=>xtest.xerr_level(xerr.L.ERR));
     const t = (name, test)=>t_roles(name, 'abc', test);
     t('manual', `setup:2_nodes ab>!req(id:1 body:ping) ab>req(id:1 body:ping) -
       ab<!res(id:1 body:pong) ab<res(id:1 body:pong) 20s -
@@ -1255,5 +1251,3 @@ describe('peer-relay', function(){
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
 });
-
-
