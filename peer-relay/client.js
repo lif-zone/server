@@ -108,7 +108,7 @@ export default class Client extends EventEmitter {
     this.pending[id] = true;
     // XXX: allow empty body
     this.send_req(id, {cmd: 'conn_info'}, {})
-    .on('res', msg=>this._on_conn_info_r(msg)).test_do_send();
+    .on('res', msg=>this._on_conn_info_r(msg)).test_send();
   };
   disconnect(id){
     if (this.destroyed)
@@ -120,7 +120,7 @@ export default class Client extends EventEmitter {
   send = function(id, body){
     if (this.destroyed)
       return;
-    this.send_req(id, {cmd: 'user'}, body).test_do_send();
+    this.send_req(id, {cmd: 'user'}, body).test_send();
   }
   send_req(id, hdr, body){ return this.router.send_req(id, hdr, body); }
   send_res(opt, body){ return this.router.send_res(opt, body); }
@@ -129,7 +129,7 @@ export default class Client extends EventEmitter {
     if (this.destroyed)
       return;
     this.send_req(id, {cmd: 'find'}, {id: b2s(this.id)})
-    .on('res', msg=>_this._on_find_r(msg.body.ids)).test_do_send();
+    .on('res', msg=>_this._on_find_r(msg.body.ids)).test_send();
   }
   on_req = (body, res)=>this.emit('req', body, res);
   _on_find_r(ids){
