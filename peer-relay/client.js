@@ -10,7 +10,7 @@ import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
-const b2s = util.buf_to_str;
+const s2b = util.buf_from_str, b2s = util.buf_to_str;
 
 export default class Client extends EventEmitter {
   constructor(opt){
@@ -29,8 +29,29 @@ export default class Client extends EventEmitter {
     this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router({channels: this.peers, id: this.id,
       wallet: this.wallet});
-    this.router.on('message', this.on_message);
     this.router.on('req', this.on_req);
+    this.on('req', (msg, res)=>{
+      let {cmd, from} = msg;
+      from = s2b(from);
+      switch (cmd){
+      case 'find':
+        var target = new Buffer(s2b(msg.body.id));
+        var closest = this.canidates.closest(target, 20);
+        res.send({ids: closest.map(e=>b2s(e.id))});
+        break;
+      case 'conn_info':
+        if (this.peers.get(from))
+          break;
+        if (this.pending[from] == null || from.compare(this.id) < 0){
+          this.pending[from] = true;
+        res.send({ws: this.wsConnector.url,
+          wrtc: this.wrtcConnector.supported});
+        }
+        break;
+      case 'user': this.emit('message', msg.body, from); break;
+      default: xerr('unknown cmd %s', cmd);
+      }
+    });
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
     this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host);
@@ -75,19 +96,20 @@ export default class Client extends EventEmitter {
     return channel;
   });
   connect_wrtc(id){ return this.wrtcConnector.connect(id); }
-  connect = id=>etask({'this': this}, function*connect(){
-    let _this = this.this;
-    if (_this.destroyed) // XXX: print error (or assert)
+  connect = id=>{
+    if (this.destroyed) // XXX: print error (or assert)
       return;
-    if (id in _this.pending)
+    if (id in this.pending)
       return;
-    if (_this.peers.get(id))
+    if (this.peers.get(id))
       return;
-    if (id.equals(_this.id))
+    if (id.equals(this.id))
       return;
-    _this.pending[id] = true;
-    yield _this.router.send(id, {cmd: 'conn_info'});
-  });
+    this.pending[id] = true;
+    // XXX: allow empty body
+    this.send_req(id, {cmd: 'conn_info'}, {})
+    .on('res', msg=>this._on_conn_info_r(msg)).test_do_send();
+  };
   disconnect(id){
     if (this.destroyed)
       return;
@@ -98,7 +120,7 @@ export default class Client extends EventEmitter {
   send = function(id, body){
     if (this.destroyed)
       return;
-    return this.router.send(id, {cmd: 'user', body});
+    this.send_req(id, {cmd: 'user'}, body).test_do_send();
   }
   send_req(id, hdr, body){ return this.router.send_req(id, hdr, body); }
   send_res(opt, body){ return this.router.send_res(opt, body); }
@@ -106,52 +128,19 @@ export default class Client extends EventEmitter {
     let _this = this;
     if (this.destroyed)
       return;
-    this.router.send(id, {cmd: 'find', body: b2s(this.id)});
-    if (0) // XXX: TODO
-    this.router.send_req(id, {cmd: 'find'}, {id: b2s(this.id)})
-    .on('res', msg=>{
-      // XXX: fix _on_find_r and rm body
-      return _this._on_find_r({body: msg.body.ids});
-    });
+    this.send_req(id, {cmd: 'find'}, {id: b2s(this.id)})
+    .on('res', msg=>_this._on_find_r(msg.body.ids)).test_do_send();
   }
-  // XXX: need to validate all data to make sure we don't crash
-  on_message = (msg, from)=>{
-    if (this.destroyed)
-      return;
-    switch (msg.cmd){
-    case 'user': this.emit('message', msg.body, from); break;
-    case 'find': this._on_find(msg, from); break;
-    case 'find_r': this._on_find_r(msg, from); break;
-    case 'conn_info': this._on_conn_info(msg, from); break;
-    case 'conn_info_r': this._on_conn_info_r(msg, from); break;
-    default: xerr('unknown msg cmd %s', msg.cmd);
-    }
-  };
   on_req = (body, res)=>this.emit('req', body, res);
-  _on_find = (msg, from)=>etask({'this': this}, function*_on_find(){
-    let _this = this.this;
-    var target = new Buffer(msg.body, 'hex');
-    var closest = _this.canidates.closest(target, 20);
-    yield _this.router.send(from,
-      {cmd: 'find_r', body: closest.map(e=>b2s(e.id))});
-  });
-  _on_find_r(msg){
-    for (var canidate of msg.body)
+  _on_find_r(ids){
+    for (var canidate of ids)
       this.canidates.add({id: new Buffer(canidate, 'hex')});
     return this._populate();
   }
-  _on_conn_info = (msg, from)=>etask({'this': this}, function*_on_conn_info(){
+  _on_conn_info_r = msg=>etask({'this': this}, function*(){
+    let {from} = msg;
     let _this = this.this;
-    if (_this.peers.get(from))
-      return;
-    if (_this.pending[from] == null || from.compare(_this.id) < 0){
-      _this.pending[from] = true;
-      yield _this.router.send(from, {cmd: 'conn_info_r', body:
-        {ws: _this.wsConnector.url, wrtc: _this.wrtcConnector.supported}});
-    }
-  });
-  _on_conn_info_r = (msg, from)=>etask({'this': this}, function*(){
-    let _this = this.this;
+    from = s2b(from);
     if (_this.peers.get(from))
       return;
     if (msg.body == null)
