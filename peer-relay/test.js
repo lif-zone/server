@@ -371,6 +371,8 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
 });
 
 function get_req_id(msg){
+  if (msg.req_id)
+    return msg.req_id;
   assert(msg.type=='res', 'TODO type==req'); // XXX TODO:
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
   let prev = t_msg[to.t.name+'_'+from.t.name+'_req_'+msg.cmd];
@@ -1219,7 +1221,6 @@ describe('peer-relay', function(){
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
       cd>!connect(find(c dc)) - cb>!req(id:r1 body:ping)
       cd>cb>req(id:r1 body:ping) - 19999ms - 1ms c<fail(id:r1 error:timeout)`);
-    if (0) // XXX: fixme
     t('timeout_wrong_id', `setup:2_nodes
       ab>!req(id:r1 body:ping) ab>req(id:r1 body:ping)
       ab<!res(id:r2 body:pong) ab<res(id:r2 body:pong) - 19999ms -
