@@ -40,7 +40,10 @@ export default class Router extends EventEmitter {
       delete this.reqs[req_id];
       o.req.emit('fail', {error: 'timeout', req_id});
     }, REQ_TIMEOUT);
-    let req_id=''+this.req_id++, from=b2s(this.id), path=[];
+    let req_id, from=b2s(this.id), path=[];
+    if (!util.is_mocha())
+      assert(!hdr.req_id, 'req_id is only allowed during tests '+hdr.req_id);
+    req_id = hdr.req_id || ''+this.req_id++;
     let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
     let msg = {req_id, ts, type: 'req', to, from, nonce,
       cmd: hdr.cmd, body, path};
@@ -49,7 +52,7 @@ export default class Router extends EventEmitter {
     msg.sign = this.wallet.sign(msg);
     req.__meta = this.reqs[req_id] = {req_id, req, msg, timeout};
     // XXX HACK
-    req.test_send = util.is_mocha() ? ()=>this._send(msg) : ()=>{};
+    req.test_send = util.is_mocha() ? ()=>(this._send(msg), req) : ()=>req;
     return req;
   }
   send_res(o){

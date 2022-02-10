@@ -279,17 +279,18 @@ class FakeChannel extends EventEmitter {
   send = msg=>{
     assert(!t_pre_process, 'invalid send during pre_process');
     let p, a, fwd, e;
-    let {cmd, body} = msg;
+    let {type, cmd, body} = msg;
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
     let s = node_from_id(this.localID), d = node_from_id(this.id);
     if (s!=from || d!=to)
       fwd = s.t.name+d.t.name+'>';
     xerr.notice('****** send%s msg %s %s', fwd ? ' '+fwd : '',
       from.t.name+to.t.name+'>'+cmd, JSON.stringify(msg));
-    t_msg[from.t.name+'_'+to.t.name+'_'+msg.type+'_'+cmd] =
+    t_msg[from.t.name+'_'+to.t.name+'_'+type+'_'+cmd] =
       assign({}, msg);
     return etask(function*send(){
-      if (msg.type=='req')
+      assert(type, 'unexpected msg type '+type);
+      if (type=='req')
       {
         switch (cmd){
         case 'find':
@@ -302,10 +303,16 @@ class FakeChannel extends EventEmitter {
         case 'user':
           e = build_cmd(from.t.name+to.t.name+'>msg', body);
           break;
-        default: xerr('invalid cmd %s', cmd);
+        default:
+          if (!cmd){
+            e = build_cmd(from.t.name+to.t.name+'>'+type,
+              build_cmd('id', msg.req_id), build_cmd('body', body));
+          }
+          else
+            assert(0, 'invalid cmd %s', cmd);
         }
       }
-      else if (msg.type=='res'){
+      else if (type=='res'){
         switch (cmd){
         case 'find':
           a = array_id_to_name(body.ids);
@@ -319,14 +326,15 @@ class FakeChannel extends EventEmitter {
             a.push('wrtc');
           e = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
           break;
-        default: xerr('invalid cmd %s', cmd);
+        default:
+          if (!cmd){
+            e = build_cmd(from.t.name+to.t.name+'>'+type,
+              build_cmd('id', msg.req_id), build_cmd('body', body));
+          }
+          else
+            assert(0, 'invalid cmd %s', cmd);
         }
-      } else if (msg.type){
-        e = build_cmd(from.t.name+to.t.name+'>'+msg.type,
-          build_cmd('id', msg.req_id), build_cmd('body', body));
       }
-      else
-        assert(false, 'unexpected msg '+cmd);
       t_nonce[normalize(e)] = msg.nonce;
       yield cmd_run_if_next_fake();
       yield cmd_run(_build_cmd(e, fwd, ''));
@@ -387,7 +395,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
   if (s.t.fake && !d.t.fake)
   {
     if (msg.type=='req')
-      msg.req_id = ++s.req_id+'';
+      msg.req_id = msg.req_id || ++s.req_id+'';
     else if (msg.type=='res')
     {
       if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake)
@@ -712,7 +720,10 @@ const cmd_req = opt=>etask(function*req(){
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
-    case 'id': id = a.arg; break;
+    case 'id':
+      id = a.arg;
+      assert(id && /^[a-z].*/.test(id), 'test id must be string '+id);
+      break;
     case 'body': body = a.arg; break;
     case 'res':
       assert(call, 'res only valid for !req');
@@ -736,16 +747,16 @@ const cmd_req = opt=>etask(function*req(){
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
     if (!s.t.fake){
-      let req = s.send_req(b2s(d.id), {}, body)
+      let req = s.send_req(b2s(d.id), {req_id: id}, body)
       .on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
-        build_cmd('id', o.req_id), build_cmd('error', o.error))));
+        build_cmd('id', o.req_id), build_cmd('error', o.error)))).test_send();
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');
     }
     if (!d.t.fake && res){
        d.on('req', t_req[id].cb = (msg, res)=>{
-        res.send(t_req[id].res);
-        d.off('req', t_req[id].cb);
-        delete t_req[id].cb;
+         res.send(t_req[id].res);
+         d.off('req', t_req[id].cb);
+         delete t_req[id].cb;
       });
     }
   }
@@ -1146,11 +1157,11 @@ describe('peer-relay', function(){
         if (0) // XXX: fixme
         t('ab,cd>ef>msg(hi)', `ab>fwd(ef>msg(hi)) cd>fwd(msg(hi))`);
         // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
-        t('ab>req(id:1 body:ping)', `ab>req(id(1) body(ping))`);
-        t('ab>!req(id:1 body:ping res:pong)', `ab>!req(id(1) body(ping)
+        t('ab>req(id:r1 body:ping)', `ab>req(id(r1) body(ping))`);
+        t('ab>!req(id:r1 body:ping res:pong)', `ab>!req(id(r1) body(ping)
           res(pong))`);
-        t('ab>res(id:1 body:pong)', `ab>res(id(1) body(pong))`);
-        t('a<fail(id:1 error:timeout)', `a<fail(id(1) error(timeout))`);
+        t('ab>res(id:r1 body:pong)', `ab>res(id(r1) body(pong))`);
+        t('a<fail(id:r1 error:timeout)', `a<fail(id(r1) error(timeout))`);
       });
     });
   });
@@ -1183,41 +1194,42 @@ describe('peer-relay', function(){
   //  path, sign}
   // type: 'req|res|req_start|req_next|req_end|res_start|res_next|res_end'
   // cmd: 'find|conn_info|msg'
-  if (0) // XXX HACK: fixme
   describe('req', function(){
     // XXX: temporary till fixing req api
     beforeEach(()=>xtest.xerr_level());
     afterEach(()=>xtest.xerr_level(xerr.L.ERR));
     const t = (name, test)=>t_roles(name, 'abc', test);
-    t('manual', `setup:2_nodes ab>!req(id:1 body:ping) ab>req(id:1 body:ping) -
-      ab<!res(id:1 body:pong) ab<res(id:1 body:pong) 20s -
-      ab>!req(id:2 body:ping) ab>req(id:2 body:ping) -
-      ab<!res(id:2 body:pong) ab<res(id:2 body:pong)
+    t('manual', `setup:2_nodes ab>!req(id:r1 body:ping)
+      ab>req(id:r1 body:ping) -
+      ab<!res(id:r1 body:pong) ab<res(id:r1 body:pong) 20s -
+      ab>!req(id:r2 body:ping) ab>req(id:r2 body:ping) -
+      ab<!res(id:r2 body:pong) ab<res(id:r2 body:pong)
     `);
     // XXX coding: ab>!req(id2: body:ping !req) and by default send ab>req...
-    t('auto', `setup:2_nodes ab>!req(id:1 body:ping res:pong)
-      ab>req(id:1 body:ping) ab<res(id:1 body:pong)
-      ab>!req(id:2 body:ping res:pong) ab>req(id:2 body:ping)
-      ab<res(id:2 body:pong)`);
-    t('fwd', `setup:3_nodes_linear ac>!req(id:1 body:ping res:pong)
-      abc>req(id:1 body:ping) abc<fwd(ac<res(id:1 body:pong))`);
+    t('auto', `setup:2_nodes ab>!req(id:r1 body:ping res:pong)
+      ab>req(id:r1 body:ping) ab<res(id:r1 body:pong)
+      ab>!req(id:r2 body:ping res:pong) ab>req(id:r2 body:ping)
+      ab<res(id:r2 body:pong)`);
+    t('fwd', `setup:3_nodes_linear ac>!req(id:r1 body:ping res:pong)
+      abc>req(id:r1 body:ping) abc<fwd(ac<res(id:r1 body:pong))`);
     // XXX: codding: setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss)
-      ab>!req(id:1 body:ping)ab>req(id:1 body:ping) - 19999ms -
-      1ms a<fail(id:1 error:timeout)`);
+      ab>!req(id:r1 body:ping)ab>req(id:r1 body:ping) - 19999ms -
+      1ms a<fail(id:r1 error:timeout)`);
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
-      cd>!connect(find(c dc)) - cb>!req(id:1 body:ping)
-      cd>cb>req(id:1 body:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
+      cd>!connect(find(c dc)) - cb>!req(id:r1 body:ping)
+      cd>cb>req(id:r1 body:ping) - 19999ms - 1ms c<fail(id:r1 error:timeout)`);
+    if (0) // XXX: fixme
     t('timeout_wrong_id', `setup:2_nodes
-      ab>!req(id:1 body:ping) ab>req(id:1 body:ping)
-      ab<!res(id:2 body:pong) ab<res(id:2 body:pong) - 19999ms -
-      1ms a<fail(id:1 error:timeout)`);
+      ab>!req(id:r1 body:ping) ab>req(id:r1 body:ping)
+      ab<!res(id:r2 body:pong) ab<res(id:r2 body:pong) - 19999ms -
+      1ms a<fail(id:r1 error:timeout)`);
     // XXX: no_route should fail with error(no_route)
     t('no_route', `setup:2_nodes node:c
-      cb>!req(id:1 body:ping) - 19999ms - 1ms c<fail(id:1 error:timeout)`);
+      cb>!req(id:r1 body:ping) - 19999ms - 1ms c<fail(id:r1 error:timeout)`);
     if (false) // XXX: TODO
-    t(`ab!>req(id:2 body:ping) ab>req(id:2 body:ping) ab>!disconnect
-      ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:2 err:timeout)`);
+    t(`ab!>req(id:r2 body:ping) ab>req(id:r2 body:ping) ab>!disconnect
+      ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:r2 err:timeout)`);
     // XXX: test continous response and final response (multi-part)
   });
   // XXX: add boostrap support
