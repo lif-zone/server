@@ -125,9 +125,8 @@ export default class Router extends EventEmitter {
     if (msg.nonce in _this._touched)
       return;
     let from = s2b(msg.from), to = s2b(msg.to);
-    // XXX HACK: fixme
-    if (false && !_this.wallet.verify(msg, msg.sign, from))
-      return xerr('invalid message signature %s', JSON.stringify(msg));
+    if (!_this.wallet.verify(msg, msg.sign, from))
+      return xerr('invalid message signature');
     _this._touched[msg.nonce] = true;
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
@@ -146,4 +145,3 @@ export default class Router extends EventEmitter {
   _onChannelRemoved = function(channel){
     channel.removeListener('message', this._on_channel_msg); }
 }
-

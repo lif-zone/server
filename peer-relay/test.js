@@ -403,8 +403,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
       if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake)
         msg.req_id = get_req_id(msg);
     }
-    assert(!msg.__pre_sign, 'already pre-signed');
-    msg.sign = s.wallet.sign(msg);
+    msg.sign = node_from_id(from).wallet.sign(msg);
     yield send_msg(s.t.name, d.t.name, msg);
   }
 });
@@ -1055,6 +1054,31 @@ describe('api', function(){
     t(['ab>msg', '', 'x'], 'ab>msg(x)');
     t(['ab>msg', '', 'x', 'y'], 'ab>msg(x y)');
     t(['ab>msg', 'cd>', 'x', 'y'], 'cd>fwd(ab>msg(x y))');
+  });
+});
+
+describe('wallet', ()=>{
+  let key = t_keys.a;
+  let keys = {priv: s2b(key.priv), pub: s2b(key.pub)};
+  let wallet = new Wallet({keys});
+  const t = (o, exp)=>assert.deepEqual(wallet.hash_passthrough(o), exp);
+  it('hash_obj', ()=>{
+    t({}, 'object:0:');
+    t({from: 'a'}, 'object:1:string:4:from:string:1:a,');
+    t({path: []}, 'object:0:');
+    t({path: ['a']}, 'object:0:');
+    t({sign: 's'}, 'object:0:');
+  });
+  it('sign', ()=>{
+    const t = msg=>{
+      msg.sign = wallet.sign(msg);
+       assert(wallet.verify(msg));
+       assert(wallet.verify(msg, msg.sign));
+       assert(wallet.verify(msg, msg.sign, keys.pub));
+    };
+    t({});
+    t({path: []});
+    t({from: 'a'});
   });
 });
 
