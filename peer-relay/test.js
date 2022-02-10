@@ -1225,37 +1225,50 @@ describe('peer-relay', function(){
     beforeEach(()=>xtest.xerr_level());
     afterEach(()=>xtest.xerr_level(xerr.L.ERR));
     const t = (name, test)=>t_roles(name, 'abc', test);
-    t('manual', `setup:2_nodes ab>!req(id:r1 body:ping)
-      ab>req(id:r1 body:ping) -
-      ab<!res(id:r1 body:pong) ab<res(id:r1 body:pong) 20s -
-      ab>!req(id:r2 body:ping) ab>req(id:r2 body:ping) -
-      ab<!res(id:r2 body:pong) ab<res(id:r2 body:pong)
+    t('manual', `setup:2_nodes ab>!req(id:r0 body:ping)
+      ab>req(id:r0 body:ping) -
+      ab<!res(id:r0 body:pong) ab<res(id:r0 body:pong) 20s -
+      ab>!req(id:r1 body:ping) ab>req(id:r1 body:ping) -
+      ab<!res(id:r1 body:pong) ab<res(id:r1 body:pong)
     `);
     // XXX coding: ab>!req(id2: body:ping !req) and by default send ab>req...
-    t('auto', `setup:2_nodes ab>!req(id:r1 body:ping res:pong)
-      ab>req(id:r1 body:ping) ab<res(id:r1 body:pong)
-      ab>!req(id:r2 body:ping res:pong) ab>req(id:r2 body:ping)
-      ab<res(id:r2 body:pong)`);
-    t('fwd', `setup:3_nodes_linear ac>!req(id:r1 body:ping res:pong)
-      abc>req(id:r1 body:ping) abc<fwd(ac<res(id:r1 body:pong))`);
+    t('auto', `setup:2_nodes ab>!req(id:r0 body:ping res:pong)
+      ab>req(id:r0 body:ping) ab<res(id:r0 body:pong)
+      ab>!req(id:r1 body:ping res:pong) ab>req(id:r1 body:ping)
+      ab<res(id:r1 body:pong)`);
+    t('fwd', `setup:3_nodes_linear ac>!req(id:r0 body:ping res:pong)
+      abc>req(id:r0 body:ping) abc<fwd(ac<res(id:r0 body:pong))`);
     // XXX: codding: setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss)
-      ab>!req(id:r1 body:ping)ab>req(id:r1 body:ping) - 19999ms -
-      1ms a<fail(id:r1 error:timeout)`);
+      ab>!req(id:r0 body:ping)ab>req(id:r0 body:ping) - 19999ms -
+      1ms a<fail(id:r0 error:timeout)`);
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
-      cd>!connect(find(c dc)) - cb>!req(id:r1 body:ping)
-      cd>cb>req(id:r1 body:ping) - 19999ms - 1ms c<fail(id:r1 error:timeout)`);
+      cd>!connect(find(c dc)) - cb>!req(id:r0 body:ping)
+      cd>cb>req(id:r0 body:ping) - 19999ms - 1ms c<fail(id:r0 error:timeout)`);
     t('timeout_wrong_id', `setup:2_nodes
-      ab>!req(id:r1 body:ping) ab>req(id:r1 body:ping)
-      ab<!res(id:r2 body:pong) ab<res(id:r2 body:pong) - 19999ms -
-      1ms a<fail(id:r1 error:timeout)`);
+      ab>!req(id:r0 body:ping) ab>req(id:r0 body:ping)
+      ab<!res(id:r1 body:pong) ab<res(id:r1 body:pong) - 19999ms -
+      1ms a<fail(id:r0 error:timeout)`);
     // XXX: no_route should fail with error(no_route)
     t('no_route', `setup:2_nodes node:c
-      cb>!req(id:r1 body:ping) - 19999ms - 1ms c<fail(id:r1 error:timeout)`);
-    if (false) // XXX: TODO
-    t(`ab!>req(id:r2 body:ping) ab>req(id:r2 body:ping) ab>!disconnect
-      ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:r2 err:timeout)`);
+      cb>!req(id:r0 body:ping) - 19999ms - 1ms c<fail(id:r0 error:timeout)`);
+    if (false) // XXX: TODO (add disconnect api)
+    t(`ab!>req(id:r1 body:ping) ab>req(id:r1 body:ping) ab>!disconnect
+      ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:r1 err:timeout)`);
     // XXX: test continous response and final response (multi-part)
+    describe('state', ()=>{
+      // XXX: TODO
+      // type: 'req_start|req_next|req_end|res_start|res_next|res_end'
+      if (0)
+      t('basic', `setup:2_nodes
+        ab>!req_start(id:r0 body:ping) ab>req_start(id:r0 seq:0 body:ping)
+        ab<!res_start(id:r0 body:ping) ab<res_start(id:r0 seq:0 body:ping)
+        ab>!req_next(id:r0 body:ping2) ab>req_start(id:r0 seq:1 body:ping2)
+        ab<!res_next(id:r0 body:pong2) ab<res_start(id:r0 seq:1 body:pong2)
+        ab>!req_end(id:r0 body:pong3) ab>req_end(id:r0 seq:3 body:pong3)
+        ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:3 body:pong3)
+      `);
+    });
   });
   // XXX: add boostrap support
   describe('2_nodes', function(){
