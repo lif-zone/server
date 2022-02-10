@@ -1259,14 +1259,23 @@ describe('peer-relay', function(){
     describe('state', ()=>{
       // XXX: TODO
       // type: 'req_start|req_next|req_end|res_start|res_next|res_end'
-      if (0)
-      t('basic', `setup:2_nodes
-        ab>!req_start(id:r0 body:ping) ab>req_start(id:r0 seq:0 body:ping)
-        ab<!res_start(id:r0 body:ping) ab<res_start(id:r0 seq:0 body:ping)
-        ab>!req_next(id:r0 body:ping2) ab>req_start(id:r0 seq:1 body:ping2)
-        ab<!res_next(id:r0 body:pong2) ab<res_start(id:r0 seq:1 body:pong2)
-        ab>!req_end(id:r0 body:pong3) ab>req_end(id:r0 seq:3 body:pong3)
-        ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:3 body:pong3)
+      if (true)
+        return;
+      t('manual', `setup:2_nodes
+        ab>!rstart(id:r0 body:ping) ab>rstart(id:r0 seq:0 body:ping)
+        ab<!rstart(id:r0 body:ping) ab<rstart(id:r0 seq:0 body:ping)
+        ab>!rnext(id:r0 body:ping2) ab>rnext(id:r0 seq:1 body:ping2)
+        ab<!rnext(id:r0 body:pong2) ab<rnext(id:r0 seq:1 body:pong2)
+        ab>!rend(id:r0 body:ping3) ab>rend(id:r0 seq:3 body:ping3)
+        ab<!rend(id:r0 body:pong3) ab<rend(id:r0 seq:3 body:pong3)
+      `);
+      t('auto', `setup:2_nodes
+        ab>!rstart(id:r0 body:ping res:pong))
+        ab>rstart(id:r0 seq:0 body:ping) ab<rstart(id:r0 seq:0 body:ping)
+        ab>!rnext(id:r0 body:ping2 res:pong2)
+        ab>rnext(id:r0 seq:1 body:ping2) ab<rnext(id:r0 seq:1 body:pong2)
+        ab>!rend(id:r0 body:ping3 res:pong3)
+        ab>rend(id:r0 seq:3 body:ping3) ab<rend(id:r0 seq:3 body:pong3)
       `);
     });
   });
