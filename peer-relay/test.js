@@ -199,7 +199,9 @@ function assert_peers(peers){
 function assert_event(event, exp){
   assert.equal(normalize(event), normalize(exp)); }
 
-function assert_event_c(c, event){
+function assert_event_c(c, event, call){
+  if (call)
+    return assert(!event, 'unexpected event for call '+c.orig);
   if (event){
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
@@ -701,8 +703,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     set_orig(c, build_cmd(c.meta.cmd, body, call ? '!msg' : ''));
     return;
   }
-  if (!call)
-    assert_event_c(c, event);
+  assert_event_c(c, event, call);
   if (call){
     if (!s.t.fake)
       yield s.send(d.id, body);
@@ -738,8 +739,7 @@ const cmd_req = opt=>etask(function*req(){
       build_cmd('body', body), res&&build_cmd('res', res)));
     return;
   }
-  if (!call)
-    assert_event_c(c, event);
+  assert_event_c(c, event, call);
   if (call){
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
@@ -780,8 +780,7 @@ const cmd_res = opt=>etask(function*req(){
       build_cmd('body', body)));
     return;
   }
-  if (!call)
-    assert_event_c(c, event);
+  assert_event_c(c, event, call);
   if (call){
     if (!s.t.fake)
       yield s.send_res({req_id: id, to: b2s(d.id), body});
