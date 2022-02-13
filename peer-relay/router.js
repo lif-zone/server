@@ -52,7 +52,12 @@ export default class Router extends EventEmitter {
     msg.sign = this.wallet.sign(msg);
     req.__meta = this.reqs[req_id] = {req_id, req, msg, timeout};
     // XXX HACK
-    req.test_send = util.is_mocha() ? ()=>(this._send(msg), req) : ()=>req;
+    if (util.is_mocha())
+      req.test_send = ()=>(this._send(msg), req);
+    else {
+      this._send(msg);
+      req.test_send = ()=>req;
+    }
     return req;
   }
   send_res(o){
