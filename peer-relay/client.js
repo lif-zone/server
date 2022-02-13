@@ -126,7 +126,6 @@ export default class Client extends EventEmitter {
     let req = new Req({node: this, dst, hdr: {cmd: 'user'}, body});
     req.test_send();
   }
-  send_req(id, hdr, body){ return this.router.send_req(id, hdr, body); }
   send_res(opt, body){ return this.router.send_res(opt, body); }
   find(id){
     let _this = this;
