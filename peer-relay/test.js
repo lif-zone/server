@@ -429,6 +429,7 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   if (t_pre_process)
     return;
   yield xsinon.tick();
+  yield xsinon.wait();
 });
 
 function cmd_setup(opt){
