@@ -203,6 +203,14 @@ function assert_event_c(c, event){
   let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
   assert_event(event, expected);
 }
+
+function assert_missing_event(c){
+  let s = t_nodes[c.s];
+  if (c.fwd)
+    s = c.fwd[2]=='>' ? t_nodes[c.fwd[0]] : t_nodes[c.fwd[1]];
+  assert(s.t.fake, 'missing event for '+c.orig);
+}
+
 const test_on_connection = channel=>etask(function*test_on_connection(){
   let s = node_from_id(channel.localID), d = node_from_id(channel.id);
   if (channel.t.initiaor){
@@ -595,21 +603,21 @@ const cmd_find = opt=>etask(function*cmd_find(){
 });
 
 const cmd_find_r = opt=>etask(function*cmd_find_r(){
-  let {c, event} = opt, s = t_nodes[c.s];
+  let {c, event} = opt;
   if (t_pre_process)
     return set_orig(c, build_cmd(c.meta.cmd, c.arg));
   // XXX: assert c.arg
   if (event)
     assert_event_c(c, event);
   else
-    assert_missing_event(c)
+    assert_missing_event(c);
   yield fake_send_msg(c, {type: 'res', cmd: 'find',
     body: {ids: array_name_to_id(c.arg.split(''))}});
   yield cmd_run_if_next_fake();
 });
 
 const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
-  let {c, event} = opt, r, s = t_nodes[c.s];
+  let {c, event} = opt, r;
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
@@ -637,7 +645,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   if (event)
     assert_event_c(c, event);
   else
-    assert_missing_event(c)
+    assert_missing_event(c);
   yield fake_send_msg(c, {type: 'req', cmd: 'conn_info', body: {}});
   yield cmd_run_if_next_fake();
 });
@@ -658,18 +666,11 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   if (event)
     assert_event_c(c, event);
   else
-    assert_missing_event(c)
+    assert_missing_event(c);
   yield fake_send_msg(c, {type: 'res', cmd: 'conn_info',
     body: {ws, wrtc}});
   yield cmd_run_if_next_fake();
 });
-
-function assert_missing_event(c){
-  let s = t_nodes[c.s];
-  if (c.fwd)
-    s = c.fwd[2]=='>' ? t_nodes[c.fwd[0]] : t_nodes[c.fwd[1]];
-  assert(s.t.fake, 'missing event for '+c.orig);
-}
 
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
@@ -711,7 +712,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   if (event)
     assert_event_c(c, event);
   else if (!call)
-    assert_missing_event(c)
+    assert_missing_event(c);
   if (call){
     if (!s.t.fake)
       yield s.send(d.id, body);
@@ -750,7 +751,7 @@ const cmd_req = opt=>etask(function*req(){
   if (event)
     assert_event_c(c, event);
   else if (!call)
-    assert_missing_event(c)
+    assert_missing_event(c);
   if (call){
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
@@ -794,7 +795,7 @@ const cmd_res = opt=>etask(function*req(){
   if (event)
     assert_event_c(c, event);
   else if (!call)
-    assert_missing_event(c)
+    assert_missing_event(c);
   if (call){
     if (!s.t.fake)
       yield s.send_res({req_id: id, to: b2s(d.id), body});
