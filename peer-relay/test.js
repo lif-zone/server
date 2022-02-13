@@ -745,7 +745,7 @@ const cmd_req = opt=>etask(function*req(){
     t_req[id] = {id, body, res, s: c.s, d: c.d};
     if (!s.t.fake){
       let req = s.send_req(b2s(d.id), {req_id: id}, body)
-      .on('fail', o=>cmd_run(build_cmd(c.s+'<fail',
+      .on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error)))).test_send();
       assert.equal(req.__meta.req_id, id, 'req_id mismatch');
     }
@@ -793,7 +793,7 @@ const cmd_res = opt=>etask(function*req(){
 
 const cmd_fail = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
-  assert(!s && d, 'invalid event '+c.orig);
+  assert(s && !d, 'invalid event '+c.orig);
   let error, id, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
@@ -809,10 +809,7 @@ const cmd_fail = opt=>etask(function*req(){
       build_cmd('error', error)));
     return;
   }
-  if (event)
-    assert_event_c(c, event);
-  else
-    assert(d.t.fake, 'missing fail event '+c.orig);
+  assert_event_c(c, event);
   yield cmd_run_if_next_fake();
 });
 
@@ -1180,7 +1177,7 @@ describe('peer-relay', function(){
         t('ab>!req(id:r1 body:ping res:pong)', `ab>!req(id(r1) body(ping)
           res(pong))`);
         t('ab>res(id:r1 body:pong)', `ab>res(id(r1) body(pong))`);
-        t('a<fail(id:r1 error:timeout)', `a<fail(id(r1) error(timeout))`);
+        t('a>fail(id:r1 error:timeout)', `a>fail(id(r1) error(timeout))`);
       });
     });
   });
@@ -1234,20 +1231,20 @@ describe('peer-relay', function(){
     // XXX: codding: setup:2_nodes(cd)
     t('timeout', `setup:2_nodes node:c node(d wss)
       ab>!req(id:r0 body:ping)ab>req(id:r0 body:ping) - 19999ms -
-      1ms a<fail(id:r0 error:timeout)`);
+      1ms a>fail(id:r0 error:timeout)`);
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
       cd>!connect(find(c dc)) - cb>!req(id:r0 body:ping)
-      cd>cb>req(id:r0 body:ping) - 19999ms - 1ms c<fail(id:r0 error:timeout)`);
+      cd>cb>req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
     t('timeout_wrong_id', `setup:2_nodes
       ab>!req(id:r0 body:ping) ab>req(id:r0 body:ping)
       ab<!res(id:r1 body:pong) ab<res(id:r1 body:pong) - 19999ms -
-      1ms a<fail(id:r0 error:timeout)`);
+      1ms a>fail(id:r0 error:timeout)`);
     // XXX: no_route should fail with error(no_route)
     t('no_route', `setup:2_nodes node:c
-      cb>!req(id:r0 body:ping) - 19999ms - 1ms c<fail(id:r0 error:timeout)`);
+      cb>!req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
     if (false) // XXX: TODO (add disconnect api)
     t(`ab!>req(id:r1 body:ping) ab>req(id:r1 body:ping) ab>!disconnect
-      ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:r1 err:timeout)`);
+      ab>disconnect ab<disconnect - 9.9s - 0.1s a>fail(id:r1 err:timeout)`);
     // XXX: test continous response and final response (multi-part)
     describe('state', ()=>{
       // XXX: TODO
