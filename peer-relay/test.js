@@ -3,6 +3,7 @@
 // XXX: need jslint mocha: true
 import assert from 'assert';
 import Node from './client.js';
+import Req from './req.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import date from '../util/date.js';
@@ -744,10 +745,16 @@ const cmd_req = opt=>etask(function*req(){
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
     if (!s.t.fake){
+    /*
       let req = s.send_req(b2s(d.id), {req_id: id}, body)
       .on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error)))).test_send();
-      assert.equal(req.__meta.req_id, id, 'req_id mismatch');
+    */
+      let req = new Req({node: s, dst: b2s(d.id), hdr: {req_id: id}, body});
+      req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
+        build_cmd('id', o.req_id), build_cmd('error', o.error))));
+      req.test_send();
+      assert.equal(req.req_id, id, 'req_id mismatch');
     }
     if (!d.t.fake && res){
        d.on('req', t_req[id].cb = (msg, res)=>{
@@ -1253,7 +1260,7 @@ describe('peer-relay', function(){
       // server: ReqRes.on('req_start|req_next|req_end', ...)
       // managed api/msg
       /*
-      let req = new Req(node, id);
+      let req = new Req({node, dst, persistent});
       req.on('res_start', res=>{
         res.send();
       });

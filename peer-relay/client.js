@@ -4,6 +4,7 @@ import KBucket from 'k-bucket';
 import {EventEmitter} from 'events';
 import assert from 'assert';
 import Router from './router.js';
+import Req from './req.js';
 import Wallet from './wallet.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
@@ -107,8 +108,10 @@ export default class Client extends EventEmitter {
       return;
     this.pending[id] = true;
     // XXX: allow empty body
-    this.send_req(id, {cmd: 'conn_info'}, {})
-    .on('res', msg=>this._on_conn_info_r(msg)).test_send();
+    let req = new Req({node: this, dst: id, hdr: {cmd: 'conn_info'},
+      body: {}});
+    req.on('res', msg=>this._on_conn_info_r(msg));
+    req.test_send();
   };
   disconnect(id){
     if (this.destroyed)
@@ -117,10 +120,11 @@ export default class Client extends EventEmitter {
       return;
     this.peers.get(id).destroy();
   }
-  send = function(id, body){
+  send = function(dst, body){
     if (this.destroyed)
       return;
-    this.send_req(id, {cmd: 'user'}, body).test_send();
+    let req = new Req({node: this, dst, hdr: {cmd: 'user'}, body});
+    req.test_send();
   }
   send_req(id, hdr, body){ return this.router.send_req(id, hdr, body); }
   send_res(opt, body){ return this.router.send_res(opt, body); }
@@ -128,8 +132,10 @@ export default class Client extends EventEmitter {
     let _this = this;
     if (this.destroyed)
       return;
-    this.send_req(id, {cmd: 'find'}, {id: b2s(this.id)})
-    .on('res', msg=>_this._on_find_r(msg.body.ids)).test_send();
+    let req = new Req({node: this, dst: id, hdr: {cmd: 'find'},
+      body: {id: b2s(this.id)}});
+    req.on('res', msg=>_this._on_find_r(msg.body.ids));
+    req.test_send();
   }
   on_req = (body, res)=>this.emit('req', body, res);
   _on_find_r(ids){
