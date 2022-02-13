@@ -602,7 +602,7 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
   if (event)
     assert_event_c(c, event);
   else
-    assert(s.t.fake, 'missing event '+c.orig);
+    assert_missing_event(c)
   yield fake_send_msg(c, {type: 'res', cmd: 'find',
     body: {ids: array_name_to_id(c.arg.split(''))}});
   yield cmd_run_if_next_fake();
@@ -637,7 +637,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   if (event)
     assert_event_c(c, event);
   else
-    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
+    assert_missing_event(c)
   yield fake_send_msg(c, {type: 'req', cmd: 'conn_info', body: {}});
   yield cmd_run_if_next_fake();
 });
@@ -658,11 +658,18 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   if (event)
     assert_event_c(c, event);
   else
-    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
+    assert_missing_event(c)
   yield fake_send_msg(c, {type: 'res', cmd: 'conn_info',
     body: {ws, wrtc}});
   yield cmd_run_if_next_fake();
 });
+
+function assert_missing_event(c){
+  let s = t_nodes[c.s];
+  if (c.fwd)
+    s = c.fwd[2]=='>' ? t_nodes[c.fwd[0]] : t_nodes[c.fwd[1]];
+  assert(s.t.fake, 'missing event for '+c.orig);
+}
 
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
@@ -704,7 +711,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   if (event)
     assert_event_c(c, event);
   else if (!call)
-    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
+    assert_missing_event(c)
   if (call){
     if (!s.t.fake)
       yield s.send(d.id, body);
@@ -743,7 +750,7 @@ const cmd_req = opt=>etask(function*req(){
   if (event)
     assert_event_c(c, event);
   else if (!call)
-    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
+    assert_missing_event(c)
   if (call){
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
@@ -787,7 +794,7 @@ const cmd_res = opt=>etask(function*req(){
   if (event)
     assert_event_c(c, event);
   else if (!call)
-    assert(s.t.fake || c.fwd, 'missing event '+c.orig);
+    assert_missing_event(c)
   if (call){
     if (!s.t.fake)
       yield s.send_res({req_id: id, to: b2s(d.id), body});
