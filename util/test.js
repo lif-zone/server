@@ -36,6 +36,7 @@ describe('sinon', function(){
         };
     };
     describe('clock_set', ()=>{
+        afterEach(()=>xtest.assert_no_etasks());
         it('accepts an initial time', ()=>{
             let now = +date('2013-08-13 14:00:00');
             xsinon.clock_set({now});
@@ -55,6 +56,28 @@ describe('sinon', function(){
                 yield etask.sleep(ms.MIN);
                 t('2013-08-13 14:11:00');
                 xsinon.uninit();
+            });
+        });
+        it('manual-increment', ()=>{
+            xsinon.clock_set({now: '2013-08-13 14:00:00'});
+            let t = exp=>assert.strictEqual(+date(exp), Date.now());
+            let wait;
+            etask(function*(){
+                t('2013-08-13 14:00:00');
+                yield etask.sleep(10*ms.MIN);
+                t('2013-08-13 14:10:00');
+                wait.continue();
+                yield etask.sleep(ms.MIN);
+                t('2013-08-13 14:11:00');
+                xsinon.uninit();
+            });
+            return etask(function*(){
+                t('2013-08-13 14:00:00');
+                xsinon.tick(10*ms.MIN);
+                yield (wait = etask.wait());
+                t('2013-08-13 14:10:00');
+                xsinon.tick(ms.MIN);
+                t('2013-08-13 14:11:00');
             });
         });
         it('affects date.monotonic', ()=>{
