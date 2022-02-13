@@ -23,8 +23,6 @@ function res_handler(body, from, msg){
   delete reqs[req_id];
   if (req.timeout)
     req.timeout.return();
-  if (req.timer)
-    clearTimeout(req.timer);
   req.emit('res', msg);
 }
 
@@ -50,20 +48,11 @@ export default class Req extends EventEmitter {
     this.hdr = hdr;
     this.body = body;
     this.req_id = req_id; // XXX: change to id
-    if (true){ // XXX: check why etask doen't work
-      let timer = setTimeout(()=>{
-        delete reqs[req_id];
-        this.emit('fail', {error: 'timeout', req_id});
-      }, REQ_TIMEOUT);
-      this.timer = timer;
-    } else {
-      let timeout = etask({'this': this}, function*req_timeout(){
-        yield etask.sleep(REQ_TIMEOUT);
-        delete reqs[req_id];
-        this.this.emit('fail', {error: 'timeout2', req_id});
-      });
-      this.timeout = timeout;
-    }
+    this.timeout = etask({'this': this}, function*req_timeout(){
+      yield etask.sleep(REQ_TIMEOUT);
+      delete reqs[req_id];
+      this.this.emit('fail', {error: 'timeout', req_id});
+    });
     // XXX HACK
     if (util.is_mocha())
       this.test_send = ()=>(router._send(msg), this);

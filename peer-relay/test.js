@@ -842,7 +842,8 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
     return;
   assert(!event, 'unexpected event for ms cmd '+event);
   // XXX: add assert for ms command and support ms/s
-  xsinon.tick(+c.arg);
+  yield xsinon.tick(+c.arg);
+  yield xsinon.wait();
   yield cmd_run_if_next_fake(); // XXX: probably can be removed from ms cmd
 });
 
