@@ -701,10 +701,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     set_orig(c, build_cmd(c.meta.cmd, body, call ? '!msg' : ''));
     return;
   }
-  if (event)
+  if (!call)
     assert_event_c(c, event);
-  else if (!call)
-    assert_missing_event(c);
   if (call){
     if (!s.t.fake)
       yield s.send(d.id, body);
@@ -740,10 +738,8 @@ const cmd_req = opt=>etask(function*req(){
       build_cmd('body', body), res&&build_cmd('res', res)));
     return;
   }
-  if (event)
+  if (!call)
     assert_event_c(c, event);
-  else if (!call)
-    assert_missing_event(c);
   if (call){
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
@@ -784,10 +780,8 @@ const cmd_res = opt=>etask(function*req(){
       build_cmd('body', body)));
     return;
   }
-  if (event)
+  if (!call)
     assert_event_c(c, event);
-  else if (!call)
-    assert_missing_event(c);
   if (call){
     if (!s.t.fake)
       yield s.send_res({req_id: id, to: b2s(d.id), body});
