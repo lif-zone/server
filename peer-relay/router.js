@@ -7,7 +7,6 @@ import xerr from '../util/xerr.js';
 import util from '../util/util.js';
 import date from '../util/date.js';
 const b2s = util.buf_to_str, s2b = util.buf_from_str;
-const REQ_TIMEOUT = 20*date.ms.SEC;
 
 // XXX: need safe emit support
 export default class Router extends EventEmitter {
@@ -16,7 +15,6 @@ export default class Router extends EventEmitter {
     let {channels, id, wallet} = opt;
     this.wallet = wallet;
     this.id = id;
-    this.req_id = date.monotonic();
     this.concurrency = 2;
     this.maxHops = 20;
     // XXX: rm _ from properites + methods
@@ -24,41 +22,12 @@ export default class Router extends EventEmitter {
     this._touched = {};
     this._paths = {};
     this._queue = [];
-    this.reqs = {};
     this._channels = channels;
     this._channels.on('added', channel=>this._onChannelAdded(channel));
     this._channels.on('removed', channel=>this._onChannelRemoved(channel));
     this.on('message', this._on_msg);
     for (let c of this._channels.toArray())
       this._onChannelAdded(c);
-  }
-  send_req(to, hdr, body){
-    let req = new EventEmitter(); // XXX: need Request class
-    // XXX: use etask
-    let timeout = setTimeout(()=>{
-      let o = this.reqs[req_id];
-      delete this.reqs[req_id];
-      o.req.emit('fail', {error: 'timeout', req_id});
-    }, REQ_TIMEOUT);
-    let req_id, from=b2s(this.id), path=[];
-    if (!util.is_mocha())
-      assert(!hdr.req_id, 'req_id is only allowed during tests '+hdr.req_id);
-    req_id = hdr.req_id || ''+this.req_id++;
-    let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
-    let msg = {req_id, ts, type: 'req', to, from, nonce,
-      cmd: hdr.cmd, body, path};
-    this._touched[nonce] = true;
-    // XXX: rm __meta: {path} from sign
-    msg.sign = this.wallet.sign(msg);
-    req.__meta = this.reqs[req_id] = {req_id, req, msg, timeout};
-    // XXX HACK
-    if (util.is_mocha())
-      req.test_send = ()=>(this._send(msg), req);
-    else {
-      this._send(msg);
-      req.test_send = ()=>req;
-    }
-    return req;
   }
   send_res(o){
     let req_id=o.req_id, to=o.to, from=b2s(this.id), path=[];
@@ -82,15 +51,7 @@ export default class Router extends EventEmitter {
       };
       this.emit('req', msg, res);
     }
-    else if (type=='res'){
-      // XXX: if final response, remove from this.reqs
-      if (!this.reqs[req_id]) // XXX: change to LERR
-        return xerr.notice('req not found %s', req_id);
-      let {req, timeout} = this.reqs[req_id];
-      delete this.reqs[req_id];
-      clearTimeout(timeout);
-      req.emit('res', msg);
-    }
+    else if (type=='res');
     else
       return xerr('invalid msg type %s %s', type, req_id);
   }
