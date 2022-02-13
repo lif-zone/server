@@ -1257,14 +1257,13 @@ describe('peer-relay', function(){
       ab>disconnect ab<disconnect - 9.9s - 0.1s a<fail(id:r1 err:timeout)`);
     // XXX: test continous response and final response (multi-part)
     describe('state', ()=>{
-      let req = new node.Req(id);
       // XXX: TODO
       // type: 'req_start|req_next|req_end|res_start|res_next|res_end'
       // client: req = Req.new(); req.on('res_start|res_next|res_end', ...);
       // server: ReqRes.on('req_start|req_next|req_end', ...)
       // managed api/msg
       /*
-      let req = new node.Req(id);
+      let req = new Req(node, id);
       req.on('res_start', res=>{
         res.send();
       });
