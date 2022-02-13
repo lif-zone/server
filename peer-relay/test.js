@@ -200,8 +200,12 @@ function assert_event(event, exp){
   assert.equal(normalize(event), normalize(exp)); }
 
 function assert_event_c(c, event){
-  let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
-  assert_event(event, expected);
+  if (event){
+    let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
+    assert_event(event, expected);
+  }
+  else
+    assert_missing_event(c);
 }
 
 function assert_missing_event(c){
@@ -566,11 +570,8 @@ const cmd_connect = opt=>etask(function*(){
 });
 
 const cmd_connected = opt=>etask(function*cmd_connected(){
-  let {c, event} = opt, d = t_nodes[c.d];
-  if (event)
-    assert_event_c(c, event);
-  else
-    assert(d.t.fake, 'dst must be fake');
+  let {c, event} = opt;
+  assert_event_c(c, event);
   if (t_pre_process)
     return;
   yield cmd_run_if_next_fake();
@@ -607,10 +608,7 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
   if (t_pre_process)
     return set_orig(c, build_cmd(c.meta.cmd, c.arg));
   // XXX: assert c.arg
-  if (event)
-    assert_event_c(c, event);
-  else
-    assert_missing_event(c);
+  assert_event_c(c, event);
   yield fake_send_msg(c, {type: 'res', cmd: 'find',
     body: {ids: array_name_to_id(c.arg.split(''))}});
   yield cmd_run_if_next_fake();
@@ -642,10 +640,7 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
     set_orig(c, build_cmd(c.meta.cmd));
     return;
   }
-  if (event)
-    assert_event_c(c, event);
-  else
-    assert_missing_event(c);
+  assert_event_c(c, event);
   yield fake_send_msg(c, {type: 'req', cmd: 'conn_info', body: {}});
   yield cmd_run_if_next_fake();
 });
@@ -663,10 +658,7 @@ const cmd_conn_info_r = opt=>etask(function*cmd_conn_info_r(){
   });
   if (t_pre_process)
     return set_orig(c, build_cmd(c.meta.cmd, c.arg));
-  if (event)
-    assert_event_c(c, event);
-  else
-    assert_missing_event(c);
+  assert_event_c(c, event);
   yield fake_send_msg(c, {type: 'res', cmd: 'conn_info',
     body: {ws, wrtc}});
   yield cmd_run_if_next_fake();
