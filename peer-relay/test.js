@@ -1262,6 +1262,7 @@ describe('peer-relay', function(){
       // server: ReqRes.on('req_start|req_next|req_end', ...)
       // managed api/msg
       /*
+      client:
       let req = new Req({node, dst, persistent});
       req.on('res_start', res=>{
         res.send();
@@ -1271,6 +1272,16 @@ describe('peer-relay', function(){
       req.on('res_end', res=>{
         // assert on res.send()
       });
+
+      server:
+      let req_handler = new ReqHandler({node});
+      req_handler.on('req_start', (req, res)=>{
+        req.on('req_next', (req, res)=>{});
+        req.on('req_end', (req, res)=>{});
+      });
+      req_handler.on('req_next', (req, res)=>{});
+      req_handler.on('req_end', (req, res)=>{});
+
       */
       if (true)
         return;
