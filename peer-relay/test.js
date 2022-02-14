@@ -4,6 +4,7 @@
 import assert from 'assert';
 import Node from './client.js';
 import Req from './req.js';
+import ReqHandler from './req_handler.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import date from '../util/date.js';
@@ -757,9 +758,11 @@ const cmd_req = opt=>etask(function*req(){
       assert.equal(req.req_id, id, 'req_id mismatch');
     }
     if (!d.t.fake && res){
-       d.on('req', t_req[id].cb = (msg, res)=>{
+       let req_handler = new ReqHandler({node: d});
+       req_handler.on('req', t_req[id].cb = (msg, res)=>{
          res.send(t_req[id].res);
-         d.off('req', t_req[id].cb);
+         // XXX: need req_handler.destroy();
+         req_handler.off('req', t_req[id].cb);
          delete t_req[id].cb;
       });
     }
@@ -790,7 +793,7 @@ const cmd_res = opt=>etask(function*req(){
   assert_event_c(c, event, call);
   if (call){
     if (!s.t.fake)
-      yield s.send_res({req_id: id, to: b2s(d.id), body});
+      yield ReqHandler.send_res(s.router, {req_id: id, to: b2s(d.id), body});
   }
   else {
     yield fake_send_msg(c, {req_id: id, type: 'res', body});
@@ -1263,24 +1266,20 @@ describe('peer-relay', function(){
       /*
       client:
       let req = new Req({node, dst, persistent});
-      req.on('res_start', res=>{
+      req.on('res_start', (req, res)=>{
         res.send();
       });
-      req.on('res_next', res=>{
+      req.on('res_next', (req, res)=>{
       });
-      req.on('res_end', res=>{
+      req.on('res_end', (req, res)=>{
         // assert on res.send()
       });
-
       server:
       let req_handler = new ReqHandler({node});
       req_handler.on('req_start', (req, res)=>{
-        req.on('req_next', (req, res)=>{});
-        req.on('req_end', (req, res)=>{});
       });
       req_handler.on('req_next', (req, res)=>{});
       req_handler.on('req_end', (req, res)=>{});
-
       */
       if (true)
         return;

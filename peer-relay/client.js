@@ -5,6 +5,7 @@ import {EventEmitter} from 'events';
 import assert from 'assert';
 import Router from './router.js';
 import Req from './req.js';
+import ReqHandler from './req_handler.js';
 import Wallet from './wallet.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
@@ -30,8 +31,8 @@ export default class Client extends EventEmitter {
     this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router({channels: this.peers, id: this.id,
       wallet: this.wallet});
-    this.router.on('req', this.on_req);
-    this.on('req', (msg, res)=>{
+    this.req_handler = new ReqHandler({node: this});
+    this.req_handler.on('req', (msg, res)=>{
       let {cmd, from} = msg;
       from = s2b(from);
       switch (cmd){
@@ -126,7 +127,6 @@ export default class Client extends EventEmitter {
     let req = new Req({node: this, dst, hdr: {cmd: 'user'}, body});
     req.test_send();
   }
-  send_res(opt, body){ return this.router.send_res(opt, body); }
   find(id){
     let _this = this;
     if (this.destroyed)
@@ -136,7 +136,6 @@ export default class Client extends EventEmitter {
     req.on('res', msg=>_this._on_find_r(msg.body.ids));
     req.test_send();
   }
-  on_req = (body, res)=>this.emit('req', body, res);
   _on_find_r(ids){
     for (var canidate of ids)
       this.canidates.add({id: new Buffer(canidate, 'hex')});

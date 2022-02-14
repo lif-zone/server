@@ -5,7 +5,6 @@ import assert from 'assert';
 import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import util from '../util/util.js';
-import date from '../util/date.js';
 const b2s = util.buf_to_str, s2b = util.buf_from_str;
 
 // XXX: need safe emit support
@@ -29,28 +28,11 @@ export default class Router extends EventEmitter {
     for (let c of this._channels.toArray())
       this._onChannelAdded(c);
   }
-  send_res(o){
-    let req_id=o.req_id, to=o.to, from=b2s(this.id), path=[];
-    let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
-    let msg = {req_id, ts, type: 'res', to, from, nonce, cmd: o.cmd,
-      body: o.body, path};
-    this._touched[nonce] = true;
-    msg.sign = this.wallet.sign(msg);
-    this._send(msg); // XXX: what if error
-  }
   _on_msg = (body, from, msg)=>{
-    let {req_id, type, cmd} = msg, _this = this;
+    let {req_id, type} = msg;
     if (!req_id)
       return;
-    if (type=='req'){
-      let res = {from: b2s(from), req_id, cmd,
-        send: function(body){
-          return _this.send_res({req_id: this.req_id, type: 'res',
-          cmd: this.cmd, to: this.from, body});
-        },
-      };
-      this.emit('req', msg, res);
-    }
+    if (type=='req');
     else if (type=='res');
     else
       return xerr('invalid msg type %s %s', type, req_id);
