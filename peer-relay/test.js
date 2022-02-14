@@ -601,8 +601,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
     set_orig(c, build_cmd(c.meta.cmd, peers));
     return;
   }
-  if (event)
-    assert_event(event, build_cmd(c.meta.cmd, peers));
+  assert_event_c(c, event);
   yield fake_send_msg(c, {type: 'req', cmd: 'find', body: {id: _str(s.id)}});
   yield cmd_run_if_next_fake();
 });
