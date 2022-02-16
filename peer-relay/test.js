@@ -558,12 +558,12 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
 });
 
 function cmd_setup(opt){
-  let {c, event} = opt, a = c.arg.split(',');
+  let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let M = s=>push_cmd(s+' - ');
   assert(!event);
   // XXX: proper assert setup params
-  a.forEach(m=>{
-    switch (m){
+  util.forEach(arg, m=>{
+    switch (m.cmd){
     case '2_nodes':
       if (!t_pre_process)
         break;
@@ -594,7 +594,7 @@ function cmd_setup(opt){
       break;
     case 'msg': t_mode_msg = true; break;
     case 'req': t_mode_req = true; break;
-    default: assert(false, 'unknown macro '+m);
+    default: assert(false, 'unknown macro '+m.cmd);
     }
   });
 }
@@ -1396,8 +1396,7 @@ describe('peer-relay', function(){
         ab>msg(type:res cmd:find body:ba) -
         ab>!req(id:r0 body:ping res:pong)
         ab>msg(type:req id:r0 body:ping) ab<msg(type:res id:r0 body:pong)`);
-      // XXX arik: setup:msg,req --> setup(msg req)
-      t('msg,req', `setup:msg,req node:a node(b wss(port:4000))
+      t('msg,req', `setup(msg req) node:a node(b wss(port:4000))
         ab>!connect(wss !r) ab>connect(wss !r) ab<connected
         ab>msg(type:req cmd:find body:a) ab>find:a
         ab<msg(type:res cmd:find body:a) ab<find_r:a
@@ -1440,7 +1439,7 @@ describe('peer-relay', function(){
         abc>fwd(ac>msg(id:r0 type:req body:ping))
         abc<fwd(ac<msg(id:r0 type:res body:pong))`);
       t('msg,req', `
-        setup:msg,req node:a node(b wss) ab>!connect(wss !r)
+        setup(msg req) node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected
         ab>msg(type:req cmd:find body:a) ab>find:a
         ab<msg(type:res cmd:find body:a) ab<find_r:a
@@ -1522,7 +1521,7 @@ describe('peer-relay', function(){
       */
       if (true)
         return;
-      t('manual', `setup:2_nodes setup:req,msg
+      t('manual', `setup:2_nodes setup(req msg)
         ab>!req_start(id:r0 body:ping) ab>req_start(id:r0 seq:0 body:ping)
         ab>msg(type:req_start....)
         ab<!res_start(id:r0 body:ping) ab<res_start(id:r0 seq:0 body:ping)
@@ -1542,6 +1541,7 @@ describe('peer-relay', function(){
     });
   });
   // XXX: add boostrap support
+  // XXX: add setup:req,msg and msg tests
   describe('2_nodes', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
     t('long', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
@@ -1558,14 +1558,17 @@ describe('peer-relay', function(){
       ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
       ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
   });
-  if (true) return; // XXX: TODO
   describe('3_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcs', test);
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
-    t('linear', `node:a node(b wss) node(c wss) ab>!connect(find(a ba)) -
-      bc>!connect(find(b cab)) abc<conn_info:r`);
+    t('linear', `setup:req node:a node(b wss) node(c wss)
+      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<conn_info
+      ac>conn_info_r`);
+    if (true) return; // XXX: TODO
+    t('linear', `setup:req node:a node(b wss) node(c wss)
+      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) abc<conn_info:r`);
     t('linear_msg', `setup:3_nodes_linear ab>!msg:hi - ab<!msg:hi -
       abc>!msg:hi - abc<!msg:hi - bc>!msg:hi - bc<!msg:hi`);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
@@ -1580,6 +1583,7 @@ describe('peer-relay', function(){
       as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r:ws)
       ba>connect(find(bas abs))`);
   });
+  if (true) return; // XXX: TODO
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup:3_nodes_linear node(d wss) cd>!connect(find(c dcba))
