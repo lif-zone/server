@@ -384,27 +384,19 @@ function req_new_hook(msg){
   xerr.notice('****** req_new_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, JSON.stringify(msg));
   t_msg[from.t.name+'_'+to.t.name+'_'+type+'_'+cmd] = assign({}, msg);
-  if (type=='req')
-  {
-    switch (cmd){
-    case 'find':
-      p = node_from_id(body.id);
-      e = build_cmd(from.t.name+to.t.name+'>find', p.t.name);
-      break;
-    case 'conn_info':
-      e = build_cmd(from.t.name+to.t.name+'>conn_info', '');
-      break;
-    case '':
-      e = build_cmd_o(from.t.name+to.t.name+'>req', {id: req_id, body});
-      break;
-    default: // XXX: rm
-      if (!cmd){
-        e = build_cmd(from.t.name+to.t.name+'>'+type,
-          build_cmd('id', req_id), build_cmd('body', body));
-      }
-      else
-        assert(0, 'invalid cmd '+cmd);
-    }
+  switch (cmd){
+  case 'find':
+    p = node_from_id(body.id);
+    e = build_cmd(from.t.name+to.t.name+'>find', p.t.name);
+    break;
+  case 'conn_info':
+    e = build_cmd(from.t.name+to.t.name+'>conn_info', '');
+    break;
+  case '':
+    e = build_cmd_o(from.t.name+to.t.name+'>req',
+      {id: is_number(req_id) ? undefined : req_id, body});
+    break;
+  default: assert(0, 'invalid cmd '+cmd);
   }
   t_nonce[normalize(e)] = msg.nonce; // XXX: rm
   cmd_run_if_next_fake(); // XXX: need yield
@@ -437,14 +429,10 @@ function send_res_hook(router, msg){
     e = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
     break;
   case '':
-    e = build_cmd_o(from.t.name+to.t.name+'>res', {id: req_id, body}); break;
-  default: // XXX: rm
-    if (!cmd){
-      e = build_cmd(from.t.name+to.t.name+'>'+type,
-        build_cmd('id', req_id), build_cmd('body', body));
-    }
-    else
-      assert(0, 'invalid cmd '+cmd);
+    e = build_cmd_o(from.t.name+to.t.name+'>res',
+      {id: is_number(req_id) ? undefined : req_id, body});
+    break;
+  default: assert(0, 'invalid cmd '+cmd);
   }
   t_nonce[normalize(e)] = msg.nonce; // XXX: rm
   cmd_run_if_next_fake(); // XXX: need yield
@@ -478,6 +466,11 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
   yield t_nodes[d].router._on_channel_msg(msg);
 });
 
+function log_msg(msg){
+  t_msg[node_from_id(msg.from).t.name+'_'+node_from_id(msg.to).t.name+'_'+
+    msg.type+'_'+(msg.cmd||'')] = assign({}, msg);
+}
+
 function get_req_id(msg){
   if (msg.req_id)
     return msg.req_id;
@@ -505,7 +498,10 @@ function fake_emit(c, msg){
   if (s.t.fake && !d.t.fake)
   {
     if (msg.type=='req')
+    {
       msg.req_id = msg.req_id || ++t_req_id+'';
+      log_msg(msg);
+    }
     else if (msg.type=='res'){
       if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake)
         msg.req_id = get_req_id(msg);
@@ -888,15 +884,11 @@ const cmd_req = opt=>etask(function*req(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  assert(id);
-  if (t_pre_process){
-    // XXX support {id: id} instead of build_cmd for params
-    set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
-      build_cmd('body', body), res&&build_cmd('res', res)));
-    return;
-  }
+  if (t_pre_process)
+    return set_orig(c, build_cmd_o(c.meta.cmd, {id, body, res}));
   assert_event_c(c, event, call);
   if (call){
+    id = id || ++t_req_id+'';
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
     if (!s.t.fake){
@@ -933,13 +925,11 @@ const cmd_res = opt=>etask(function*req(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  assert(id);
-  if (t_pre_process){
-    set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
-      build_cmd('body', body)));
-    return;
-  }
+  if (t_pre_process)
+    return set_orig(c, build_cmd_o(c.meta.cmd, {id, body}));
   assert_event_c(c, event, call);
+  if (!id && t_msg[d.t.name+'_'+s.t.name+'_req_'])
+    id = t_msg[d.t.name+'_'+s.t.name+'_req_'].req_id;
   if (call){
     if (!s.t.fake)
       yield ReqHandler.send_res(s.router, {req_id: id, to: b2s(d.id), body});
@@ -1346,6 +1336,8 @@ describe('peer-relay', function(){
         t('ab>cd<msg(body:hi)', `ab>fwd(cd<msg(body(hi)))`);
         t('ab<cd>msg(body:hi)', `ab<fwd(cd>msg(body(hi)))`);
         t('ab<cd<msg(body:hi)', `ab<fwd(cd<msg(body(hi)))`);
+        t('ab>!req(body:hi)', `ab>!req(body(hi))`);
+        t('ab>!req(id(r0) body:hi)', `ab>!req(id(r0) body(hi))`);
         if (0) // XXX: fixme
         t('ab,cd>ef>msg(hi)', `ab>fwd(ef>msg(hi)) cd>fwd(msg(hi))`);
         // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
@@ -1549,7 +1541,6 @@ describe('peer-relay', function(){
       `);
     });
   });
-  if (true) return; // XXX: TODO
   // XXX: add boostrap support
   describe('2_nodes', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
@@ -1557,11 +1548,17 @@ describe('peer-relay', function(){
       ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
       ab>find_r:ba`);
     t('short', `setup:req node:a node(b wss) ab>!connect(find(a ba))`);
-    t('msg_long', `setup:req setup:2_nodes ab>!msg(body:hi !msg)
-      ab>msg(body:hi) ab<!msg(body:hi !msg) ab<msg(body:hi)`);
-    t('msg', `setup:2_nodes ab>!msg:hi ab<!msg:hi`);
-    t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
+    t('msg_long', `setup:req setup:2_nodes
+      ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
+      ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
+    t('msg', `setup:req setup:2_nodes
+      ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
+      ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
+    t('wrtc', `setup:req node(a wrtc) node(b wrtc wss) -
+      ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
+      ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
   });
+  if (true) return; // XXX: TODO
   describe('3_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcs', test);
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
