@@ -381,7 +381,7 @@ function req_new_hook(msg){
   assert(!t_pre_process, 'invalid send during pre_process');
   let p, e;
   let {req_id, type, cmd, body} = msg;
-  assert(type=='req', 'invaldi msg type '+type);
+  assert(type=='req', 'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
   xerr.notice('****** req_new_hook %s %s',
@@ -412,7 +412,7 @@ function send_res_hook(router, msg){
   assert(!t_pre_process, 'invalid send during pre_process');
   let e, a;
   let {req_id, type, cmd, body} = msg;
-  assert(type=='res', 'invaldi msg type '+type);
+  assert(type=='res', 'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
   xerr.notice('****** send_res_hook %s %s',
@@ -572,7 +572,7 @@ function cmd_mode(opt){
     default: assert(0, 'invalid mode '+m.cmd);
     }
   });
-  assert(!pop || !mode.req && !mode.msg, 'invaldi pop '+c.orig);
+  assert(!pop || !mode.req && !mode.msg, 'invalid pop '+c.orig);
   if (t_pre_process)
     return;
   if (pop){
