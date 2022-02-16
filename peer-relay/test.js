@@ -226,7 +226,7 @@ function assert_event(event, exp){
 
 function assert_event_c(c, event, call){
   if (call)
-    return assert(!event, 'unexpected event for call '+c.orig);
+    return assert(!event, 'unexpected event '+event+' for call '+c.orig);
   if (event){
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
@@ -601,8 +601,9 @@ function cmd_setup(opt){
     case '3_nodes_linear':
       if (!t_pre_process)
         break;
-      M(`node(a) node(b wss) node(c wss) - ab>!connect(find(a ba)) -
-        bc>!connect(find(b cab)) abc<fwd(ca>conn_info(r))`);
+      M(`mode:req node:a node(b wss) node(c wss)
+        ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<conn_info
+        ac>conn_info_r mode:pop`);
       break;
     case '3_nodes_wss':
       if (!t_pre_process)
@@ -1617,12 +1618,30 @@ describe('peer-relay', function(){
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
-    t('linear', `setup:req node:a node(b wss) node(c wss)
-      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<conn_info
-      ac>conn_info_r`);
+    describe('linear', ()=>{
+      t('req', `mode:req setup:3_nodes_linear
+        ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body:pong)
+        ac>!req(body:ping res:pong) ac>req(body:ping) ac<res(body:pong)
+        bc>!req(body:ping res:pong) bc>req(body:ping) bc<res(body:pong)`);
+      t('msg', `mode:msg setup:3_nodes_linear ab>!req(body:ping res:pong)
+        ab>msg(type:req body:ping) ab<msg(type:res body:pong)
+        ac>!req(body:ping res:pong)
+        abc>fwd(ac>msg(type:req body:ping)) abc<fwd(ac<msg(type:res body:pong))
+        bc>!req(body:ping res:pong)
+        bc>msg(type:req body:ping) bc<msg(type:res body:pong)
+      `);
+      t('msg,req', `mode(msg req) setup:3_nodes_linear
+        ab>!req(body:ping res:pong)
+        ab>msg(type:req body:ping) ab>req(body:ping)
+        ab<msg(type:res body:pong) ab<res(body:pong)
+        ac>!req(body:ping res:pong)
+        abc>fwd(ac>msg(type:req body:ping)) ac>req(body:ping)
+        abc<fwd(ac<msg(type:res body:pong)) ac<res(body:pong)
+        bc>!req(body:ping res:pong)
+        bc>msg(type:req body:ping) bc>req(body:ping)
+        bc<msg(type:res body:pong) bc<res(body:pong)`);
+    });
     if (true) return; // XXX: TODO
-    t('linear', `setup:req node:a node(b wss) node(c wss)
-      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) abc<conn_info:r`);
     t('linear_msg', `setup:3_nodes_linear ab>!msg:hi - ab<!msg:hi -
       abc>!msg:hi - abc<!msg:hi - bc>!msg:hi - bc<!msg:hi`);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
