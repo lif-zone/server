@@ -12,7 +12,7 @@ function req_handler(body, from, msg){
   let res = {router: this.router, from: b2s(from), req_id, cmd,
     send: function(body){
       return send_res(this.router, {req_id: this.req_id, type: 'res',
-      cmd: this.cmd, to: this.from, body});
+        cmd: this.cmd, to: this.from, body});
     },
   };
   this.emit('req', msg, res);
@@ -27,6 +27,8 @@ function send_res(router, o){
   router._touched[nonce] = true;
   msg.sign = router.wallet.sign(msg);
   router._send(msg); // XXX: what if error
+  if (ReqHandler.t_send_res)
+    ReqHandler.t_send_res(router, msg);
 }
 
 export default class ReqHandler extends EventEmitter {
@@ -36,9 +38,17 @@ export default class ReqHandler extends EventEmitter {
     let router = node.router;
     this.node = node;
     this.router = router;
-    router.on('message', req_handler.bind(this));
+    // XXX: need unregister + cleanup
+    this.req_handler = req_handler.bind(this);
+    if (util.is_mocha()){
+      ReqHandler.t.req_handler[router.id] =
+        ReqHandler.t.req_handler[router.id]||[];
+      ReqHandler.t.req_handler[router.id].push(this.req_handler);
+    }
+    router.on('message', this.req_handler);
   }
-  // XXX: need unregister + cleanup
 }
 
 ReqHandler.send_res = send_res;
+if (util.is_mocha())
+  ReqHandler.t = {req_handler: {}};

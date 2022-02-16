@@ -54,12 +54,16 @@ export default class Req extends EventEmitter {
       this.this.emit('fail', {error: 'timeout', req_id});
     });
     // XXX HACK
-    if (util.is_mocha())
-      this.test_send = ()=>(router._send(msg), this);
-    else {
+    this.test_send = ()=>{
+      if (!util.is_mocha())
+        return this;
       router._send(msg);
-      this.test_send = ()=>this;
-    }
+      if (Req.t_new_hook)
+        Req.t_new_hook(msg);
+      return this;
+    };
+    if (!util.is_mocha())
+      router._send(msg);
     if (!router.res_handler_attached){
       router.on('message', res_handler);
       router.res_handler_attached = true;
@@ -68,3 +72,4 @@ export default class Req extends EventEmitter {
   test_send(){ return this.req.test_send(); }
 }
 
+Req.t = {reqs, res_handler};

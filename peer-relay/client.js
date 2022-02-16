@@ -34,6 +34,7 @@ export default class Client extends EventEmitter {
     this.req_handler = new ReqHandler({node: this});
     this.req_handler.on('req', (msg, res)=>{
       let {cmd, from} = msg;
+      cmd = cmd||'';
       from = s2b(from);
       switch (cmd){
       case 'find':
@@ -50,7 +51,7 @@ export default class Client extends EventEmitter {
           wrtc: this.wrtcConnector.supported});
         }
         break;
-      case 'user': this.emit('message', msg.body, from); break;
+      case '': this.emit('message', msg.body, from); break;
       default: xerr('unknown cmd %s', cmd);
       }
     });
@@ -124,7 +125,7 @@ export default class Client extends EventEmitter {
   send = function(dst, body){
     if (this.destroyed)
       return;
-    let req = new Req({node: this, dst, hdr: {cmd: 'user'}, body});
+    let req = new Req({node: this, dst, hdr: {}, body});
     req.test_send();
   }
   find(id){
