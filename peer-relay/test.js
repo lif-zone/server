@@ -618,7 +618,7 @@ function cmd_setup(opt){
         ab>!connect(find(a ba)) - bc>!connect(find(b cab))
         cba>fwd(ca>conn_info(r)) - cd>!connect(find(c dcba))
         dcb>fwd(bd<conn_info(r(ws))) db>connect(find(dcba badc))
-        ba>fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
+        ab<fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
         dcb>fwd(ad<conn_info)`);
       break;
     case 'msg': t_mode.msg = true; break;
@@ -1572,7 +1572,7 @@ describe('peer-relay', function(){
   });
   // XXX: add boostrap support
   // XXX: add setup:req,msg and msg tests
-  describe('2_nodes', function(){
+  describe('2_nodes_ws', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
     t('long', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
       ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
@@ -1581,23 +1581,36 @@ describe('peer-relay', function(){
     t('req', `setup:req setup:2_nodes
       ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
       ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
-    t('msg', `setup:msg setup:2_nodes
+    t('msg', `setup:msg setup:2_nodes ab>!req(body:ping res:pong)
+      ab>msg(type:req body:ping) ab<msg(type:res body:pong)
+      ab<!req(body:ping res:pong)
+      ab<msg(type:req body:ping) ab>msg(type:res body:pong)`);
+    t('msg,req', `setup(msg req) setup:2_nodes
+      ab>!req(body:ping res:pong) ab>msg(type:req body:ping) ab>req(body:ping)
+      ab<msg(type:res body:pong) ab<res(body(pong))
+      ab<!req(body:ping res:pong) ab<msg(type:req body:ping) ab<req(body:ping)
+      ab>msg(type:res body:pong) ab>res(body:pong)
+    `);
+  });
+  describe('2_nodes_wrtc', function(){
+    const t = (name, test)=>t_roles(name, 'ab', test);
+    // XXX: check why it doesn't fail without connect?!
+    // t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
+    t('req', `mode:req node(a wrtc) node(b wrtc wss) -
+      ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
+      ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
+    t('msg', `mode:msg mode:req node(a wrtc) node(b wrtc wss) -
+      ab>!connect(find(a ba)) - mode:pop
       ab>!req(body:ping res:pong)
       ab>msg(type:req body:ping) ab<msg(type:res body:pong)
       ab<!req(body:ping res:pong)
-      ba>msg(type:req body:ping) ba<msg(type:res body:pong)
-    `);
-    t('msg,req', `setup(msg req) setup:2_nodes
-      ab>!req(body:ping res:pong)
-      ab>msg(type:req body:ping) ab>req(body:ping)
+      ab<msg(type:req body:ping) ab>msg(type:res body:pong)`);
+    t('msg,req', `mode(msg req) mode:req node(a wrtc) node(b wrtc wss) -
+      ab>!connect(find(a ba)) - mode:pop
+      ab>!req(body:ping res:pong) ab>msg(type:req body:ping) ab>req(body:ping)
       ab<msg(type:res body:pong) ab<res(body(pong))
-      ab<!req(body:ping res:pong)
-      ba>msg(type:req body:ping) ab<req(body:ping)
-      ba<msg(type:res body:pong) ab>res(body:pong)
-    `);
-    t('wrtc', `setup:req node(a wrtc) node(b wrtc wss) -
-      ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
-      ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
+      ab<!req(body:ping res:pong) ab<msg(type:req body:ping) ab<req(body:ping)
+      ab>msg(type:res body:pong) ab>res(body:pong)`);
   });
   describe('3_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcs', test);
@@ -1622,16 +1635,16 @@ describe('peer-relay', function(){
       bs>!connect(find(bas sab)) bsa>conn_info:r`);
     t('star_wss', `node(s wss) node(a wss) node(b wss) -
       as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r:ws)
-      ba>connect(find(bas abs))`);
+      ab<connect(find(bas abs))`);
   });
   if (true) return; // XXX: TODO
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     t('linear', `setup:3_nodes_linear node(d wss) cd>!connect(find(c dcba))
       dcb>conn_info(r:ws) db>connect(find(dcba badc))
-      ba>bd>conn_info_r:ws dba>conn_info:r dcb>fwd(ad<conn_info)`);
+      ab<bd>conn_info_r:ws dba>conn_info:r dcb>fwd(ad<conn_info)`);
     t('linear_msg', `setup:4_nodes_linear ab>!msg:hi - abc>!msg:hi -
-      abd>!msg:hi - ba>!msg:hi - ba<!msg:hi - bc>!msg:hi - bd>!msg:hi -
+      abd>!msg:hi - ab<!msg:hi - ab>!msg:hi - bc>!msg:hi - bd>!msg:hi -
       cba>!msg:hi cd>ca>msg:hi db>ca>msg:hi - dba>!msg:hi
       dcb>fwd(da>msg:hi) - db>!msg:hi - dc>!msg:hi`);
     t('linear_wss', `setup:3_nodes_wss node(d wss) - cd>!connect(find(c dcba))
