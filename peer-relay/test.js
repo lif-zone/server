@@ -31,7 +31,7 @@ process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
 let t_nodes, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
-let t_pre_process, t_cmds_processed, t_mode_msg, t_mode_req, t_req_id;
+let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
     priv: 'ba186102e13ec32e5273a30df6da2b6c9428258b4ea83ac88df7322e7645b864a'+
@@ -118,7 +118,10 @@ function set_orig(c, orig){
   c.orig = orig;
 }
 
-function _push_cmd(a){ t_cmds.splice(t_i, 0, ...a); }
+function _push_cmd(a){
+  assert(t_pre_process, 'push_cmd only allowed in pre pre_process');
+  t_cmds.splice(t_i, 0, ...a);
+}
 
 function push_cmd(cmd){ _push_cmd(xtest.test_parse(cmd)); }
 
@@ -314,7 +317,7 @@ class FakeChannel extends EventEmitter {
   send = msg=>{
     assert(!t_pre_process, 'invalid send during pre_process');
     // XXX: need to filter out only test commands, other should fail test
-    if (!t_mode_msg)
+    if (!t_mode.msg)
       return;
     let p, a, fwd, e;
     let {req_id, type, cmd, body} = msg;
@@ -373,7 +376,7 @@ class FakeChannel extends EventEmitter {
 
 function req_new_hook(msg){
   // XXX: need to filter out only test commands, other should fail test
-  if (!t_mode_req)
+  if (!t_mode.req)
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
   let p, e;
@@ -404,7 +407,7 @@ function req_new_hook(msg){
 }
 
 function send_res_hook(router, msg){
-  if (!t_mode_req)
+  if (!t_mode.req)
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
   let e, a;
@@ -482,9 +485,9 @@ function get_req_id(msg){
 }
 
 function fake_emit(c, msg){
-  if (!t_mode_req)
+  if (!t_mode.req)
     return;
-  if (t_mode_msg) // XXX: TODO
+  if (t_mode.msg) // XXX: TODO
     return;
   let s = t_nodes[c.s], d = t_nodes[c.d];
   let to = d.id.toString('hex'), from = s.id.toString('hex');
@@ -557,6 +560,32 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   yield xsinon.wait();
 });
 
+function cmd_mode(opt){
+  let {c, event} = opt, arg = xtest.test_parse(c.arg);
+  let mode = {req: false, msg: false}, pop;
+  assert(!event);
+  util.forEach(arg, m=>{
+    switch (m.cmd){
+    case 'req': mode.req = true; break;
+    case 'msg': mode.msg = true; break;
+    case 'pop': pop = true; break;
+    default: assert(0, 'invalid mode '+m.cmd);
+    }
+  });
+  assert(!pop || !mode.req && !mode.msg, 'invaldi pop '+c.orig);
+  if (t_pre_process)
+    return;
+  if (pop){
+    assert(t_mode_prev.length>0, 'invalid pop');
+    t_mode = t_mode_prev.pop();
+  }
+  else {
+    t_mode_prev.push(t_mode);
+    t_mode = mode;
+  }
+  test_setup_mode();
+}
+
 function cmd_setup(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let M = s=>push_cmd(s+' - ');
@@ -567,7 +596,7 @@ function cmd_setup(opt){
     case '2_nodes':
       if (!t_pre_process)
         break;
-      M(`node(a) node(b wss) - ab>!connect(find(a ba))`);
+      M(`mode:req node(a) node(b wss) - ab>!connect(find(a ba)) mode:pop`);
       break;
     case '3_nodes_linear':
       if (!t_pre_process)
@@ -592,8 +621,8 @@ function cmd_setup(opt){
         ba>fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
         dcb>fwd(ad<conn_info)`);
       break;
-    case 'msg': t_mode_msg = true; break;
-    case 'req': t_mode_req = true; break;
+    case 'msg': t_mode.msg = true; break;
+    case 'req': t_mode.req = true; break;
     default: assert(false, 'unknown macro '+m.cmd);
     }
   });
@@ -1005,8 +1034,9 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
       assign(c, xtest.test_parse(build_cmd('ms', +a[1]*date.ms.SEC))[0]);
   }
   switch (c.cmd){
-  case '-': cmd_ensure_no_events(opt); break;
+  case '-': yield cmd_ensure_no_events(opt); break;
   case 'setup': yield cmd_setup(opt); break;
+  case 'mode': yield cmd_mode(opt); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
   case 'connect': yield cmd_connect(opt); break;
@@ -1099,8 +1129,8 @@ function test_start(role){
   t_role = role;
   t_port = 4000;
   t_nodes = {};
-  t_mode_msg = false;
-  t_mode_req = false;
+  t_mode = {msg: false, req: false};
+  t_mode_prev = [];
   ReqHandler.t.req_handler = {}; // XXX TODO: auto-cleanup in req_handler.js
   t_req_id = 0;
   t_msg = {};
@@ -1110,12 +1140,12 @@ function test_start(role){
   t_req = {};
 }
 
-function test_setup_real_run(){
-  if (t_mode_req) // XXX: use sinon
+function test_setup_mode(){
+  if (t_mode.req) // XXX: use sinon
     Req.t_new_hook = req_new_hook;
   else
     delete Req.t_new_hook;
-  if (t_mode_req) // XXX: use sinon
+  if (t_mode.req) // XXX: use sinon
     ReqHandler.t_send_res = send_res_hook;
   else
     delete ReqHandler.t_send_res;
@@ -1149,7 +1179,7 @@ const test_run = (role, test)=>etask(function*test_run(){
   let cmds = yield test_pre_process(test);
   cmds = xtest.test_parse(test_to_str(cmds));
   xerr.notice('real run');
-  test_setup_real_run();
+  test_setup_mode();
   yield _test_run(role, cmds);
   xsinon.uninit();
 });
@@ -1495,7 +1525,7 @@ describe('peer-relay', function(){
     t(`ab!>req(id:r1 body:ping) ab>req(id:r1 body:ping) ab>!disconnect
       ab>disconnect ab<disconnect - 9.9s - 0.1s a>fail(id:r1 err:timeout)`);
     // XXX: test continous response and final response (multi-part)
-    describe('state', ()=>{
+    describe('stream', ()=>{
       // XXX: TODO
       // type: 'req_start|req_next|req_end|res_start|res_next|res_end'
       // client: req = Req.new(); req.on('res_start|res_next|res_end', ...);
@@ -1518,7 +1548,6 @@ describe('peer-relay', function(){
       });
       req_handler.on('req_next', (req, res)=>{});
       req_handler.on('req_end', (req, res)=>{});
-      */
       if (true)
         return;
       t('manual', `setup:2_nodes setup(req msg)
@@ -1538,6 +1567,7 @@ describe('peer-relay', function(){
         ab>!req_end(id:r0 body:ping3 res:pong3)
         ab>req_end(id:r0 seq:3 body:ping3) ab<res_end(id:r0 seq:3 body:pong3)
       `);
+      */
     });
   });
   // XXX: add boostrap support
@@ -1548,12 +1578,23 @@ describe('peer-relay', function(){
       ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
       ab>find_r:ba`);
     t('short', `setup:req node:a node(b wss) ab>!connect(find(a ba))`);
-    t('msg_long', `setup:req setup:2_nodes
+    t('req', `setup:req setup:2_nodes
       ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
       ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
-    t('msg', `setup:req setup:2_nodes
-      ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
-      ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
+    t('msg', `setup:msg setup:2_nodes
+      ab>!req(body:ping res:pong)
+      ab>msg(type:req body:ping) ab<msg(type:res body:pong)
+      ab<!req(body:ping res:pong)
+      ba>msg(type:req body:ping) ba<msg(type:res body:pong)
+    `);
+    t('msg,req', `setup(msg req) setup:2_nodes
+      ab>!req(body:ping res:pong)
+      ab>msg(type:req body:ping) ab>req(body:ping)
+      ab<msg(type:res body:pong) ab<res(body(pong))
+      ab<!req(body:ping res:pong)
+      ba>msg(type:req body:ping) ab<req(body:ping)
+      ba<msg(type:res body:pong) ab>res(body:pong)
+    `);
     t('wrtc', `setup:req node(a wrtc) node(b wrtc wss) -
       ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body(pong))
       ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
