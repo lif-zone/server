@@ -150,6 +150,8 @@ export default class Client extends EventEmitter {
       return;
     if (msg.body == null)
       return;
+    if (Client.t_conn_info_r_hook)
+      yield Client.t_conn_info_r_hook(msg);
     if (msg.body.wrtc && _this.wrtcConnector.supported)
       yield _this.connect_wrtc(from);
     else if (msg.body.ws)

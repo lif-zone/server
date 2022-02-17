@@ -844,6 +844,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
+  body = body||'';
   cmd = cmd||'';
   assert(call || !msg, 'msg only avail for call mode');
   if (t_pre_process){
@@ -881,15 +882,11 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
         body = {ids: array_name_to_id(body.split(''))};
       break;
     case 'conn_info':
-      if (type=='res')
-        body = 'xxx';
-        /* XXX TODO:
-          a = [];
-          if (body.ws)
-            a.push('ws'); // XXX: assert correct val of ws
-          if (body.wrtc)
-            a.push('wrtc');
-        */
+      if (type=='res'){
+        let a = body.split(' ');
+        body = {};
+        a.forEach(connector=>body[connector]=true);
+      }
       break;
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
@@ -1150,6 +1147,7 @@ function test_setup_mode(){
     ReqHandler.t_send_res = send_res_hook;
   else
     delete ReqHandler.t_send_res;
+  Node.t_conn_info_r_hook = msg=>cmd_run_if_next_fake();
 }
 
 const _test_run = (role, cmds)=>etask(function*_test_run(){
@@ -1618,7 +1616,7 @@ describe('peer-relay', function(){
     // XXX bug: missing ac>connect(wss) - need to fix peer-relay implemention
     // and send supported connections in conn_info so other side can
     // connect directly
-    describe('linear', ()=>{
+    describe('linear_simple', ()=>{
       t('req', `mode:req setup:3_nodes_linear
         ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body:pong)
         ac>!req(body:ping res:pong) ac>req(body:ping) ac<res(body:pong)
@@ -1641,9 +1639,43 @@ describe('peer-relay', function(){
         bc>msg(type:req body:ping) bc>req(body:ping)
         bc<msg(type:res body:pong) bc<res(body:pong)`);
     });
+    describe('linear_wrtc', ()=>{
+      t('req', `mode:req node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
+        ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<conn_info
+        ac>conn_info_r:wrtc ca>connect(wrtc find(cab abc))`);
+      t('msg', `mode:msg node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
+        ab>!connect
+        ab>msg(type:req cmd:find body:a) ab<msg(type:res cmd:find body:a)
+        ab<msg(type:req cmd:find body:b) ab>msg(type:res cmd:find body:ba) -
+        bc>!connect
+        bc>msg(type:req cmd:find body:b) bc<msg(type:res cmd:find body:b)
+        bc<msg(type:req cmd:find body:c) bc>msg(type:res cmd:find body:cab)
+        cba>fwd(ca>msg(type:req cmd:conn_info))
+        cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc))
+        ca>connect(wrtc)
+        ac>msg(type:req cmd:find body:a) ac<msg(type:res cmd:find body:abc)
+        ac<msg(type:req cmd:find body:c) ac>msg(type:res cmd:find body:cab)`);
+      t('msg,req', `mode(msg req) node(a wrtc) node(b wrtc wss)
+        node(c wrtc wss) - ab>!connect
+        ab>msg(type:req cmd:find body:a) ab>find(a)
+        ab<msg(type:res cmd:find body:a) ab<find_r(a)
+        ab<msg(type:req cmd:find body:b) ab<find(b)
+        ab>msg(type:res cmd:find body:ba) ab>find_r(ba) -
+        bc>!connect
+        bc>msg(type:req cmd:find body:b) bc>find(b)
+        bc<msg(type:res cmd:find body:b) bc<find_r(b)
+        bc<msg(type:req cmd:find body:c) bc<find(c)
+        bc>msg(type:res cmd:find body:cab) bc>find_r(cab)
+        cba>fwd(ca>msg(type:req cmd:conn_info)) ca>conn_info
+        cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc))
+        ca<conn_info_r:wrtc
+        ca>connect(wrtc)
+        ac>msg(type:req cmd:find body:a) ac>find(a)
+        ac<msg(type:res cmd:find body:abc) ac<find_r(abc)
+        ac<msg(type:req cmd:find body:c) ac<find(c)
+        ac>msg(type:res cmd:find body:cab) ac>find_r(cab)`);
+    });
     if (true) return; // XXX: TODO
-    t('linear_msg', `setup:3_nodes_linear ab>!msg:hi - ab<!msg:hi -
-      abc>!msg:hi - abc<!msg:hi - bc>!msg:hi - bc<!msg:hi`);
     t('linear_wrtc', `node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
       ab>!connect(find(a ba)) - bc>!connect(find(b cab)) abc<conn_info(r:wrtc)
       ca>connect(wrtc find(cab abc))`);
