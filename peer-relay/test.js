@@ -1696,22 +1696,21 @@ describe('peer-relay', function(){
         ca>connect(wss)
         ac>msg(type:req cmd:find body:a) ac<msg(type:res cmd:find body:abc)
         ac<msg(type:req cmd:find body:c) ac>msg(type:res cmd:find body:cab)`);
+      // XXX derry: msg-req-find(a)
+      // XXX derry: unite req/msg/msg,req together (ingnore req/msg per test)
       t('msg,req', `mode(msg req) node(a wrtc) node(b wrtc wss)
         node(c wrtc wss) - ab>!connect
         ab>msg(type:req cmd:find body:a) ab>find(a)
         ab<msg(type:res cmd:find body:a) ab<find_r(a)
         ab<msg(type:req cmd:find body:b) ab<find(b)
-        ab>msg(type:res cmd:find body:ba) ab>find_r(ba) -
-        bc>!connect
+        ab>msg(type:res cmd:find body:ba) ab>find_r(ba) - bc>!connect
         bc>msg(type:req cmd:find body:b) bc>find(b)
         bc<msg(type:res cmd:find body:b) bc<find_r(b)
         bc<msg(type:req cmd:find body:c) bc<find(c)
         bc>msg(type:res cmd:find body:cab) bc>find_r(cab)
         cba>fwd(ca>msg(type:req cmd:conn_info)) ca>conn_info
-        cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc))
-        ca<conn_info_r:wrtc
-        ca>connect(wrtc)
-        ac>msg(type:req cmd:find body:a) ac>find(a)
+        cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc)) ca<conn_info_r:wrtc
+        ca>connect(wrtc) ac>msg(type:req cmd:find body:a) ac>find(a)
         ac<msg(type:res cmd:find body:abc) ac<find_r(abc)
         ac<msg(type:req cmd:find body:c) ac<find(c)
         ac>msg(type:res cmd:find body:cab) ac>find_r(cab)`);
