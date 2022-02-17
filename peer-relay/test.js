@@ -1559,6 +1559,16 @@ describe('peer-relay', function(){
           ab<msg(id:r1 type:res body:pong) ab<res(id:r1 body:pong) - 19999ms -
           1ms a>fail(id:r0 error:timeout)`);
       });
+      describe('no_route', ()=>{
+        if (0) // XXX: fixme
+        t('req', `mode:req setup:2_nodes node:c cb>!req(id:r0 body:ping) -
+        19999ms - 1ms c>fail(id:r0 error:timeout)`);
+        t('msg', `mode:msg setup:2_nodes node:c cb>!req(id:r0 body:ping) -
+        19999ms - 1ms c>fail(id:r0 error:timeout)`);
+        if (0) // XXX: fixme
+        t('msg,req', `mode(msg req) setup:2_nodes node:c
+        cb>!req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
+      });
     });
   });
   if (0)
