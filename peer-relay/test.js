@@ -1437,6 +1437,28 @@ describe('peer-relay', function(){
         ab<!res(id:r1 body:pong) ab<msg(id:r1 type:res body:pong)
         ab<res(id:r1 body:pong)`);
     });
+    describe('wrong_order', ()=>{
+      t('req', `mode:req setup:2_nodes
+        ab>!req(id:r0 body:ping) ab>req(id:r0 body:ping) -
+        ab>!req(id:r1 body:ping) ab>req(id:r1 body:ping) -
+        ab<!res(id:r1 body:pong) ab<res(id:r1 body:pong) -
+        ab<!res(id:r0 body:pong) ab<res(id:r0 body:pong) -
+      `);
+      t('msg', `mode(msg) setup:2_nodes
+        ab>!req(id:r0 body:ping) ab>msg(id:r0 type:req body:ping) -
+        ab>!req(id:r1 body:ping) ab>msg(id:r1 type:req body:ping) -
+        ab<!res(id:r1 body:pong) ab<msg(id:r1 type:res body:pong) -
+        ab<!res(id:r0 body:pong) ab<msg(id:r0 type:res body:pong) -
+      `);
+       t('msg,req', `mode(msg req) setup:2_nodes ab>!req(id:r0 body:ping)
+        ab>msg(id:r0 type:req body:ping) ab>req(id:r0 body:ping) -
+        ab>!req(id:r1 body:ping) ab>msg(id:r1 type:req body:ping)
+        ab>req(id:r1 body:ping) - ab<!res(id:r1 body:pong)
+        ab<msg(id:r1 type:res body:pong) ab<res(id:r1 body:pong) -
+        ab<!res(id:r0 body:pong) ab<msg(id:r0 type:res body:pong)
+        ab<res(id:r0 body:pong) -
+      `);
+    });
     describe('2_nodes', ()=>{
       t('req', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
