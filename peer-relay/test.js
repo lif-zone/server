@@ -1115,12 +1115,9 @@ const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
   if (t_role=='fake')
     return;
   let next = t_cmds[t_i];
-  if (!next)
+  if (!next || !next.s || !t_nodes[next.s].t.fake)
     return;
-  if (!next.s)
-    return;
-  if (t_nodes[next.s].t.fake)
-    yield cmd_run();
+  yield cmd_run();
 });
 
 let t_depth = 0;
