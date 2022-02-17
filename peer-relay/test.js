@@ -608,9 +608,9 @@ function cmd_setup(opt){
     case '3_nodes_wss':
       if (!t_pre_process)
         break;
-       M(`node(a wss) node(b wss) node(c wss) -
-        ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-        cba>fwd(ca>conn_info(r(ws))) ca>connect(find(cab abc))`);
+      M(`mode:req node(a wss) node(b wss) node(c wss) -
+        ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<conn_info
+        ac>conn_info_r:ws ca>connect(wss find(cab abc)) mode:pop`);
        break;
     case '4_nodes_linear':
       if (!t_pre_process)
@@ -1682,6 +1682,7 @@ describe('peer-relay', function(){
       t('req', `mode:req node(a wss) node(b wss) node(c wss) -
         ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<conn_info
         ac>conn_info_r:ws ca>connect(wss find(cab abc))`);
+      t('setup', `setup:3_nodes_wss`);
       t('msg', `mode:msg node(a wss) node(b wss) node(c wss) - ab>!connect
         ab>msg(type:req cmd:find body:a) ab<msg(type:res cmd:find body:a)
         ab<msg(type:req cmd:find body:b) ab>msg(type:res cmd:find body:ba) -
@@ -1794,11 +1795,55 @@ describe('peer-relay', function(){
           cd>req(body:ping) cd<msg(type:res body:pong) cd<res(body:pong)`);
       });
     });
-    if (true) return; // XXX: TODO
-    t('linear_wss', `setup:3_nodes_wss node(d wss) - cd>!connect(find(c dcba))
-      dcb>conn_info(r:ws) db>connect(find(dcba badc))
-      dba>conn_info dca>conn_info(r:ws) da>connect(find(dcba abcd))
-      abd>conn_info_r:ws bad>conn_info_r:ws`);
+    describe('linear_wss', ()=>{
+      t('req', `mode:req setup:3_nodes_wss node(d wss) -
+        cd>!connect(find(c dcba)) db>conn_info db<conn_info_r:ws
+        db>connect(find(dcba badc)) ad<conn_info ad>conn_info_r:ws
+        da>connect(find(dcba abcd))`);
+      t('msg', `mode:msg setup:3_nodes_wss node(d wss) -
+        cd>!connect cd>msg(type:req cmd:find body:c)
+        cd<msg(type:res cmd:find body:c) cd<msg(type:req cmd:find body:d)
+        cd>msg(type:res cmd:find body:dcba)
+        dcb>fwd(db>msg(type:req cmd:conn_info))
+        bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
+        ba>fwd(bd>msg(type:res cmd:conn_info body:ws))
+        ac>fwd(bd>msg(type:res cmd:conn_info body:ws)) db>connect
+        db>msg(type:req cmd:find body:d) db<msg(type:res cmd:find body:dcba)
+        db<msg(type:req cmd:find body:b) db>msg(type:res cmd:find body:badc)
+        dba>fwd(da>msg(type:req cmd:conn_info))
+        dca<fwd(da<msg(type:res cmd:conn_info body:ws))
+        ab>fwd(ad>msg(type:res cmd:conn_info body:ws))
+        bd>fwd(ad>msg(type:res cmd:conn_info body:ws)) da>connect(wss)
+        da>msg(type:req cmd:find body:d) da<msg(type:res cmd:find body:dcba)
+        da<msg(type:req cmd:find body:a) da>msg(type:res cmd:find body:abcd)
+        dca>fwd(da>msg(type:req cmd:conn_info))
+        `);
+      t('msg,req', `mode(msg req) setup:3_nodes_wss node(d wss) -
+        cd>!connect
+        cd>msg(type:req cmd:find body:c) cd>find(c)
+        cd<msg(type:res cmd:find body:c) cd<find_r(c)
+        cd<msg(type:req cmd:find body:d) cd<find(d)
+        cd>msg(type:res cmd:find body:dcba) cd>find_r(dcba)
+        dcb>fwd(db>msg(type:req cmd:conn_info)) db>conn_info
+        bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
+        ba>fwd(bd>msg(type:res cmd:conn_info body:ws))
+        ac>fwd(bd>msg(type:res cmd:conn_info body:ws))
+        db<conn_info_r:ws db>connect
+        db>msg(type:req cmd:find body:d) db>find(d)
+        db<msg(type:res cmd:find body:dcba) db<find_r(dcba)
+        db<msg(type:req cmd:find body:b) db<find(b)
+        db>msg(type:res cmd:find body:badc) db>find_r(badc)
+        dba>fwd(da>msg(type:req cmd:conn_info))
+        dc>fwd(da>msg(type(req) cmd(conn_info))) da>conn_info
+        dca<fwd(da<msg(type:res cmd:conn_info body:ws))
+        ab>fwd(ad>msg(type:res cmd:conn_info body:ws))
+        bd>fwd(ad>msg(type:res cmd:conn_info body:ws)) da<conn_info_r:ws
+        da>connect(wss) da>msg(type:req cmd:find body:d) da>find(d)
+        da<msg(type:res cmd:find body:dcba) da<find_r(dcba)
+        da<msg(type:req cmd:find body:a) da<find(a)
+        da>msg(type:res cmd:find body:abcd) da>find_r(abcd)
+        ca>fwd(da>msg(type:req cmd:conn_info))`);
+    });
   });
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
