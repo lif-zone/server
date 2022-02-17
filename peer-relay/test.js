@@ -615,12 +615,10 @@ function cmd_setup(opt){
     case '4_nodes_linear':
       if (!t_pre_process)
         break;
-      M(`node(a) node(b wss) node(c wss) node(d wss) -
-        ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-        cba>fwd(ca>conn_info(r)) - cd>!connect(find(c dcba))
-        dcb>fwd(bd<conn_info(r(ws))) db>connect(find(dcba badc))
-        ab<fwd(bd>conn_info_r(ws)) dba>fwd(ad<conn_info(r))
-        dcb>fwd(ad<conn_info)`);
+      // XXX: support da<conn_info:r
+      M(`mode:req setup:3_nodes_linear node(d wss)
+        cd>!connect(find(c dcba)) db>conn_info db<conn_info_r(ws)
+        db>connect(find(dcba badc)) da>conn_info da<conn_info_r mode:pop`);
       break;
     case 'msg': t_mode.msg = true; break;
     case 'req': t_mode.req = true; break;
@@ -1684,16 +1682,14 @@ describe('peer-relay', function(){
       t('req', `mode:req node(a wss) node(b wss) node(c wss) -
         ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<conn_info
         ac>conn_info_r:ws ca>connect(wss find(cab abc))`);
-      t('msg', `mode:msg node(a wss) node(b wss) node(c wss) -
-        ab>!connect
+      t('msg', `mode:msg node(a wss) node(b wss) node(c wss) - ab>!connect
         ab>msg(type:req cmd:find body:a) ab<msg(type:res cmd:find body:a)
         ab<msg(type:req cmd:find body:b) ab>msg(type:res cmd:find body:ba) -
         bc>!connect
         bc>msg(type:req cmd:find body:b) bc<msg(type:res cmd:find body:b)
         bc<msg(type:req cmd:find body:c) bc>msg(type:res cmd:find body:cab)
         cba>fwd(ca>msg(type:req cmd:conn_info))
-        cba<fwd(ca<msg(type:res cmd:conn_info body:ws))
-        ca>connect(wss)
+        cba<fwd(ca<msg(type:res cmd:conn_info body:ws)) ca>connect(wss)
         ac>msg(type:req cmd:find body:a) ac<msg(type:res cmd:find body:abc)
         ac<msg(type:req cmd:find body:c) ac>msg(type:res cmd:find body:cab)`);
       // XXX derry: msg-req-find(a)
@@ -1725,9 +1721,11 @@ describe('peer-relay', function(){
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
     describe('linear', ()=>{
+      // XXX: support da<conn_info:r
       t('req', `mode:req setup:3_nodes_linear node(d wss)
         cd>!connect(find(c dcba)) db>conn_info db<conn_info_r(ws)
         db>connect(find(dcba badc)) da>conn_info da<conn_info_r`);
+      t('setup', `setup:4_nodes_linear`);
       t('msg', `mode:msg setup:3_nodes_linear node(d wss)
         cd>!connect cd>msg(type:req cmd:find body:c)
         cd<msg(type:res cmd:find body:c) cd<msg(type:req cmd:find body:d)
@@ -1758,10 +1756,6 @@ describe('peer-relay', function(){
         dba<fwd(da<msg(type:res cmd:conn_info)) da<conn_info_r`);
     });
     if (true) return; // XXX: TODO
-    t('linear', `setup:3_nodes_linear node(d wss)
-      cd>!connect(find(c dcba))
-      dcb>conn_info(r:ws) db>connect(find(dcba badc))
-      ab<bd>conn_info_r:ws dba>conn_info:r dcb>fwd(ad<conn_info)`);
     t('linear_msg', `setup:4_nodes_linear ab>!msg:hi - abc>!msg:hi -
       abd>!msg:hi - ab<!msg:hi - ab>!msg:hi - bc>!msg:hi - bd>!msg:hi -
       cba>!msg:hi cd>ca>msg:hi db>ca>msg:hi - dba>!msg:hi
