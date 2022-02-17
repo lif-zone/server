@@ -900,6 +900,20 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
 });
 
+function cmd_msg_req_find(opt){
+  let {c} = opt;
+  let body = c.arg;
+  assert(t_pre_process, 'only in t_pre_process '+c.orig);
+  set_orig(c, build_cmd_o(c.s+c.d+'>msg', {type: 'req', cmd: 'find', body}));
+}
+
+function cmd_msg_res_find(opt){
+  let {c} = opt;
+  let body = c.arg;
+  assert(t_pre_process, 'only in t_pre_process '+c.orig);
+  set_orig(c, build_cmd_o(c.s+c.d+'>msg', {type: 'res', cmd: 'find', body}));
+}
+
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
@@ -1049,6 +1063,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '!msg': yield cmd_msg(opt); break;
   case 'msg': yield cmd_msg(opt); break;
+  case 'msg_req_find': yield cmd_msg_req_find(opt); break;
+  case 'msg_res_find': yield cmd_msg_res_find(opt); break;
   case '!req': yield cmd_req(opt); break;
   case 'req': yield cmd_req(opt); break;
   case 'res': yield cmd_res(opt); break;
@@ -1379,6 +1395,8 @@ describe('peer-relay', function(){
           res(pong))`);
         t('ab>res(id:r1 body:pong)', `ab>res(id(r1) body(pong))`);
         t('a>fail(id:r1 error:timeout)', `a>fail(id(r1) error(timeout))`);
+        t('ab>msg_req_find:a', `ab>msg(type(req) cmd(find) body(a))`);
+        t('ab>msg_res_find:a', `ab>msg(type(res) cmd(find) body(a))`);
       });
     });
   });
@@ -1750,7 +1768,6 @@ describe('peer-relay', function(){
         cba<fwd(ca<msg(type:res cmd:conn_info body:ws)) ca>connect(wss)
         ac>msg(type:req cmd:find body:a) ac<msg(type:res cmd:find body:abc)
         ac<msg(type:req cmd:find body:c) ac>msg(type:res cmd:find body:cab)`);
-      // XXX derry: msg-req-find(a)
       // XXX derry: unite req/msg/msg,req together (ingnore req/msg per test)
       t('msg,req', `mode(msg req) node(a wrtc) node(b wrtc wss)
         node(c wrtc wss) - ab>!connect
