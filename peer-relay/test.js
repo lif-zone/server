@@ -1717,19 +1717,51 @@ describe('peer-relay', function(){
         ac>msg(type:res cmd:find body:cab) ac>find_r(cab)`);
     });
     if (true) return; // XXX: TODO
-    t('linear_wss', `node(a wss) node(b wss) node(c wss) -
-      ab>!connect(find(a ba)) - bc>!connect(find(b cab)) cba>conn_info(r:ws)
-      ca>connect(find(cab abc))`);
     t('star', `node(s wss) node:a node(b wss) as>!connect(find(a sa)) -
       bs>!connect(find(bas sab)) bsa>conn_info:r`);
     t('star_wss', `node(s wss) node(a wss) node(b wss) -
       as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>conn_info(r:ws)
       ab<connect(find(bas abs))`);
   });
-  if (true) return; // XXX: TODO
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
-    t('linear', `setup:3_nodes_linear node(d wss) cd>!connect(find(c dcba))
+    describe('linear', ()=>{
+      t('req', `mode:req setup:3_nodes_linear node(d wss)
+        cd>!connect(find(c dcba)) db>conn_info db<conn_info_r(ws)
+        db>connect(find(dcba badc)) da>conn_info da<conn_info_r`);
+      t('msg', `mode:msg setup:3_nodes_linear node(d wss)
+        cd>!connect
+        cd>msg(type:req cmd:find body:c) cd<msg(type:res cmd:find body:c)
+        cd<msg(type:req cmd:find body:d) cd>msg(type:res cmd:find body:dcba)
+        dcb>fwd(db>msg(type:req cmd:conn_info))
+        dcb<fwd(bd>msg(type:res cmd:conn_info body:ws))
+        db>connect
+        db>msg(type:req cmd:find body:d) db<msg(type:res cmd:find body:dcba)
+        db<msg(type:req cmd:find body:b) db>msg(type:res cmd:find body:badc)
+        ab<fwd(bd>msg(type:res cmd:conn_info body:ws))
+        dba>fwd(da>msg(type:req cmd:conn_info))
+        dba<fwd(da<msg(type:res cmd:conn_info))
+        dcb>fwd(da>msg(type:req cmd:conn_info))`);
+      t('msg,req', `mode(msg req) setup:3_nodes_linear node(d wss)
+        cd>!connect
+        cd>msg(type:req cmd:find body:c) cd>find(c)
+        cd<msg(type:res cmd:find body:c) cd<find_r(c)
+        cd<msg(type:req cmd:find body:d) cd<find(d)
+        cd>msg(type:res cmd:find body:dcba) cd>find_r(dcba)
+        dcb>fwd(db>msg(type:req cmd:conn_info)) db>conn_info
+        dcb<fwd(bd>msg(type:res cmd:conn_info body:ws))
+        ab<fwd(bd>msg(type:res cmd:conn_info body:ws)) db<conn_info_r:ws
+        db>connect db>msg(type:req cmd:find body:d) db>find(d)
+        db<msg(type:res cmd:find body:dcba) db<find_r(dcba)
+        db<msg(type:req cmd:find body:b) db<find(b)
+        db>msg(type:res cmd:find body:badc) db>find_r(badc)
+        dba>fwd(da>msg(type:req cmd:conn_info))
+        dcb>fwd(da>msg(type(req) cmd(conn_info))) da>conn_info
+        dba<fwd(da<msg(type:res cmd:conn_info)) da<conn_info_r`);
+    });
+    if (true) return; // XXX: TODO
+    t('linear', `setup:3_nodes_linear node(d wss)
+      cd>!connect(find(c dcba))
       dcb>conn_info(r:ws) db>connect(find(dcba badc))
       ab<bd>conn_info_r:ws dba>conn_info:r dcb>fwd(ad<conn_info)`);
     t('linear_msg', `setup:4_nodes_linear ab>!msg:hi - abc>!msg:hi -
