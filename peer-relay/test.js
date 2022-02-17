@@ -1768,7 +1768,7 @@ describe('peer-relay', function(){
           ab>!req(body:ping res:pong) ab>msg(type:req body:ping)
           ab<msg(type:res body:pong) - ac>!req(body:ping res:pong)
           abc>msg(type:req body:ping) abc<msg(type:res body:pong)
-          cdb>fwd(ca>msg(type:res body:pong)) - ad>!req(body:ping res:pong)
+          cdb>fwd(ac<msg(type:res body:pong)) - ad>!req(body:ping res:pong)
           abd>fwd(ad>msg(type:req body:ping))
           abd<fwd(ad<msg(type:res body:pong))
           dcb>fwd(ad<msg(type:res body:pong)) - bc>!req(body:ping res:pong)
@@ -1776,13 +1776,25 @@ describe('peer-relay', function(){
           bd>!req(body:ping res:pong) bd>msg(type:req body:ping)
           bd<msg(type:res body:pong) - cd>!req(body:ping res:pong)
           cd>msg(type:req body:ping) cd<msg(type:res body:pong)`);
+        t('msg,req', `mode(msg req) setup:4_nodes_linear
+          ab>!req(body:ping res:pong) ab>msg(type:req body:ping)
+          ab>req(body:ping) ab<msg(type:res body:pong) ab<res(body:pong) -
+          ac>!req(body:ping res:pong) abc>msg(type:req body:ping)
+          ac>req(body:ping) abc<msg(type:res body:pong)
+          cdb>fwd(ac<msg(type:res body:pong)) ac<res(body:pong) -
+          ad>!req(body:ping res:pong) abd>fwd(ad>msg(type:req body:ping))
+          ad>req(body:ping) abd<fwd(ad<msg(type:res body:pong))
+          dcb>fwd(ad<msg(type:res body:pong)) ad<res(body:pong) -
+          bc>!req(body:ping res:pong) bc>msg(type:req body:ping)
+          bc>req(body:ping)
+          bc<msg(type:res body:pong) bc<res(body:pong) -
+          bd>!req(body:ping res:pong) bd>msg(type:req body:ping)
+          bd>req(body:ping) bd<msg(type:res body:pong) bd<res(body:pong) -
+          cd>!req(body:ping res:pong) cd>msg(type:req body:ping)
+          cd>req(body:ping) cd<msg(type:res body:pong) cd<res(body:pong)`);
       });
     });
     if (true) return; // XXX: TODO
-    t('linear_msg', `setup:4_nodes_linear ab>!msg:hi - abc>!msg:hi -
-      abd>!msg:hi - ab<!msg:hi - ab>!msg:hi - bc>!msg:hi - bd>!msg:hi -
-      cba>!msg:hi cd>ca>msg:hi db>ca>msg:hi - dba>!msg:hi
-      dcb>fwd(da>msg:hi) - db>!msg:hi - dc>!msg:hi`);
     t('linear_wss', `setup:3_nodes_wss node(d wss) - cd>!connect(find(c dcba))
       dcb>conn_info(r:ws) db>connect(find(dcba badc))
       dba>conn_info dca>conn_info(r:ws) da>connect(find(dcba abcd))
