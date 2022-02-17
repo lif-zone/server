@@ -1490,6 +1490,18 @@ describe('peer-relay', function(){
         abc>fwd(ac>msg(id:r0 type:req body:ping)) ac>req(id:r0 body:ping)
         abc<fwd(ac<msg(id:r0 type:res body:pong)) ac<res(id:r0 body:pong)`);
     });
+    describe('failure', ()=>{
+      describe('timeout', ()=>{
+        t('req', `mode:req setup:2_nodes ab>!req(id:r0 body:ping)
+          ab>req(id:r0 body:ping) 19999ms - 1ms a>fail(id:r0 error:timeout)`);
+        if (0) // XXX: TODO
+        t('msg', `mode:msg setup:2_nodes ab>!req(id:r0 body:ping)
+          ab>msg(id:r0 type:req body:ping) - 1ms a>fail(id:r0 error:timeout)`);
+        t('msg,req', `mode(msg req) setup:2_nodes ab>!req(id:r0 body:ping)
+          ab>msg(id:r0 type:req body:ping)
+          ab>req(id:r0 body:ping) 19999ms - 1ms a>fail(id:r0 error:timeout)`);
+      });
+    });
   });
   if (0)
   describe('req', function(){
@@ -1508,12 +1520,6 @@ describe('peer-relay', function(){
       ab>req(id:r0 body:ping) ab<res(id:r0 body:pong)
       ab>!req(id:r1 body:ping res:pong) ab>req(id:r1 body:ping)
       ab<res(id:r1 body:pong)`);
-    t('fwd', `setup:3_nodes_linear ac>!req(id:r0 body:ping res:pong)
-      abc>req(id:r0 body:ping) abc<fwd(ac<res(id:r0 body:pong))`);
-    // XXX: codding: setup:2_nodes(cd)
-    t('timeout', `setup:2_nodes node:c node(d wss)
-      ab>!req(id:r0 body:ping)ab>req(id:r0 body:ping) - 19999ms -
-      1ms a>fail(id:r0 error:timeout)`);
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
       cd>!connect(find(c dc)) - cb>!req(id:r0 body:ping)
       cd>cb>req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
