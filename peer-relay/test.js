@@ -1494,9 +1494,9 @@ describe('peer-relay', function(){
       describe('timeout', ()=>{
         t('req', `mode:req setup:2_nodes ab>!req(id:r0 body:ping)
           ab>req(id:r0 body:ping) 19999ms - 1ms a>fail(id:r0 error:timeout)`);
-        if (0) // XXX: TODO
         t('msg', `mode:msg setup:2_nodes ab>!req(id:r0 body:ping)
-          ab>msg(id:r0 type:req body:ping) - 1ms a>fail(id:r0 error:timeout)`);
+          ab>msg(id:r0 type:req body:ping) 19999ms -
+          1ms a>fail(id:r0 error:timeout)`);
         t('msg,req', `mode(msg req) setup:2_nodes ab>!req(id:r0 body:ping)
           ab>msg(id:r0 type:req body:ping)
           ab>req(id:r0 body:ping) 19999ms - 1ms a>fail(id:r0 error:timeout)`);
