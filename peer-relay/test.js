@@ -1730,21 +1730,20 @@ describe('peer-relay', function(){
         cd>!connect(find(c dcba)) db>conn_info db<conn_info_r(ws)
         db>connect(find(dcba badc)) da>conn_info da<conn_info_r`);
       t('msg', `mode:msg setup:3_nodes_linear node(d wss)
-        cd>!connect
-        cd>msg(type:req cmd:find body:c) cd<msg(type:res cmd:find body:c)
-        cd<msg(type:req cmd:find body:d) cd>msg(type:res cmd:find body:dcba)
+        cd>!connect cd>msg(type:req cmd:find body:c)
+        cd<msg(type:res cmd:find body:c) cd<msg(type:req cmd:find body:d)
+        cd>msg(type:res cmd:find body:dcba)
         dcb>fwd(db>msg(type:req cmd:conn_info))
         dcb<fwd(bd>msg(type:res cmd:conn_info body:ws))
-        db>connect
-        db>msg(type:req cmd:find body:d) db<msg(type:res cmd:find body:dcba)
-        db<msg(type:req cmd:find body:b) db>msg(type:res cmd:find body:badc)
         ab<fwd(bd>msg(type:res cmd:conn_info body:ws))
+        db>connect db>msg(type:req cmd:find body:d)
+        db<msg(type:res cmd:find body:dcba) db<msg(type:req cmd:find body:b)
+        db>msg(type:res cmd:find body:badc)
         dba>fwd(da>msg(type:req cmd:conn_info))
-        dba<fwd(da<msg(type:res cmd:conn_info))
-        dcb>fwd(da>msg(type:req cmd:conn_info))`);
+        dcb>fwd(da>msg(type(req) cmd(conn_info)))
+        dba<fwd(da<msg(type:res cmd:conn_info))`);
       t('msg,req', `mode(msg req) setup:3_nodes_linear node(d wss)
-        cd>!connect
-        cd>msg(type:req cmd:find body:c) cd>find(c)
+        cd>!connect cd>msg(type:req cmd:find body:c) cd>find(c)
         cd<msg(type:res cmd:find body:c) cd<find_r(c)
         cd<msg(type:req cmd:find body:d) cd<find(d)
         cd>msg(type:res cmd:find body:dcba) cd>find_r(dcba)
