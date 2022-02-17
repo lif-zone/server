@@ -1560,6 +1560,7 @@ describe('peer-relay', function(){
           1ms a>fail(id:r0 error:timeout)`);
       });
       describe('no_route', ()=>{
+        // XXX: no_route should fail with error(no_route)
         if (0) // XXX: fixme
         t('req', `mode:req setup:2_nodes node:c cb>!req(id:r0 body:ping) -
         19999ms - 1ms c>fail(id:r0 error:timeout)`);
@@ -1580,9 +1581,6 @@ describe('peer-relay', function(){
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
       cd>!connect(find(c dc)) - cb>!req(id:r0 body:ping)
       cd>cb>req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
-    // XXX: no_route should fail with error(no_route)
-    t('no_route', `setup:2_nodes node:c
-      cb>!req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
     if (false) // XXX: TODO (add disconnect api)
     t(`ab!>req(id:r1 body:ping) ab>req(id:r1 body:ping) ab>!disconnect
       ab>disconnect ab<disconnect - 9.9s - 0.1s a>fail(id:r1 err:timeout)`);
