@@ -1626,8 +1626,7 @@ describe('peer-relay', function(){
         ac>!req(body:ping res:pong)
         abc>fwd(ac>msg(type:req body:ping)) abc<fwd(ac<msg(type:res body:pong))
         bc>!req(body:ping res:pong)
-        bc>msg(type:req body:ping) bc<msg(type:res body:pong)
-      `);
+        bc>msg(type:req body:ping) bc<msg(type:res body:pong)`);
       t('msg,req', `mode(msg req) setup:3_nodes_linear
         ab>!req(body:ping res:pong)
         ab>msg(type:req body:ping) ab>req(body:ping)
