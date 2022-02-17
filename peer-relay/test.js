@@ -1816,8 +1816,7 @@ describe('peer-relay', function(){
         bd>fwd(ad>msg(type:res cmd:conn_info body:ws)) da>connect(wss)
         da>msg(type:req cmd:find body:d) da<msg(type:res cmd:find body:dcba)
         da<msg(type:req cmd:find body:a) da>msg(type:res cmd:find body:abcd)
-        dca>fwd(da>msg(type:req cmd:conn_info))
-        `);
+        dca>fwd(da>msg(type:req cmd:conn_info))`);
       t('msg,req', `mode(msg req) setup:3_nodes_wss node(d wss) -
         cd>!connect
         cd>msg(type:req cmd:find body:c) cd>find(c)
