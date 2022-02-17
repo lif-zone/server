@@ -1522,6 +1522,21 @@ describe('peer-relay', function(){
           ab>msg(id:r0 type:req body:ping)
           ab>req(id:r0 body:ping) 19999ms - 1ms a>fail(id:r0 error:timeout)`);
       });
+      describe('timeout_wrong_id', ()=>{
+        t('req', `mode:req setup:2_nodes
+          ab>!req(id:r0 body:ping) ab>req(id:r0 body:ping)
+          ab<!res(id:r1 body:pong) ab<res(id:r1 body:pong) - 19999ms -
+          1ms a>fail(id:r0 error:timeout)`);
+        t('msg', `mode:msg setup:2_nodes
+          ab>!req(id:r0 body:ping) ab>msg(id:r0 type:req body:ping)
+          ab<!res(id:r1 body:pong) ab<msg(id:r1 type:res body:pong) - 19999ms -
+          1ms a>fail(id:r0 error:timeout)`);
+        t('msg,req', `mode(msg req) setup:2_nodes
+          ab>!req(id:r0 body:ping) ab>msg(id:r0 type:req body:ping)
+          ab>req(id:r0 body:ping) ab<!res(id:r1 body:pong)
+          ab<msg(id:r1 type:res body:pong) ab<res(id:r1 body:pong) - 19999ms -
+          1ms a>fail(id:r0 error:timeout)`);
+      });
     });
   });
   if (0)
@@ -1533,10 +1548,6 @@ describe('peer-relay', function(){
     t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
       cd>!connect(find(c dc)) - cb>!req(id:r0 body:ping)
       cd>cb>req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
-    t('timeout_wrong_id', `setup:2_nodes
-      ab>!req(id:r0 body:ping) ab>req(id:r0 body:ping)
-      ab<!res(id:r1 body:pong) ab<res(id:r1 body:pong) - 19999ms -
-      1ms a>fail(id:r0 error:timeout)`);
     // XXX: no_route should fail with error(no_route)
     t('no_route', `setup:2_nodes node:c
       cb>!req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
