@@ -556,8 +556,12 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   assert(!event, 'unexpected event '+event);
   if (t_pre_process)
     return;
-  yield xsinon.tick();
-  yield xsinon.wait();
+  if (0) // XXX HACK: make test very slow
+    yield xsinon.wait();
+  else {
+    for (let i=0; i<100; i++)
+      yield xsinon.tick();
+  }
 });
 
 function cmd_mode(opt){
