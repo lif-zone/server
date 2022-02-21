@@ -21,15 +21,15 @@ function res_handler(body, from, msg){
     return xerr.notice('req not found %s', req_id);
   let req = reqs[req_id];
   delete reqs[req_id];
-  if (req.timeout)
-    req.timeout.return();
+  if (req.et_timeout)
+    req.et_timeout.return();
   req.emit('res', msg);
 }
 
 export default class Req extends EventEmitter {
   constructor(opt){
     super();
-    let {node, dst, stream, req_id, cmd} = opt;
+    let {node, dst, stream, req_id, cmd, timeout} = opt;
     assert(node, 'must provide node');
     assert(dst, 'must provide dst');
     this.node = node;
@@ -37,27 +37,28 @@ export default class Req extends EventEmitter {
     this.dst = dst;
     this.cmd = cmd;
     this.stream = stream;
+    this.timeout = timeout = timeout||REQ_TIMEOUT;
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
     reqs[req_id] = this;
     this.req_id = req_id; // XXX: change to id
-    this.timeout = etask({'this': this}, function*req_timeout(){
-      yield etask.sleep(REQ_TIMEOUT);
-      delete reqs[req_id];
-      this.this.emit('fail', {error: 'timeout', req_id});
-    });
     if (!router.res_handler_attached){
       router.on('message', res_handler);
       router.res_handler_attached = true;
     }
   }
   send(body){
-    let ts=date.monotonic(), path=[], router = this.router;
-    let nonce=''+Math.floor(1e15*Math.random());
-    let msg = {req_id: this.req_id, ts, type: 'req', to: this.dst,
+    let ts=date.monotonic(), path=[], nonce=''+Math.floor(1e15*Math.random());
+    let {router, req_id} = this;
+    let msg = {req_id, ts, type: 'req', to: this.dst,
       from: b2s(router.id), nonce, cmd: this.cmd, body, path};
     router._touched[nonce] = true; // XXX: mv out of here (and path)
     msg.sign = router.wallet.sign(msg); // XXX: mv out of here
+    this.et_timeout = etask({'this': this}, function*req_timeout(){
+      yield etask.sleep(this.this.timeout);
+      delete reqs[req_id];
+      this.this.emit('fail', {error: 'timeout', req_id});
+    });
     this.router._send(msg);
     if (Req.t_new_hook)
       Req.t_new_hook(msg);
