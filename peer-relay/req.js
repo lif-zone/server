@@ -29,47 +29,39 @@ function res_handler(body, from, msg){
 export default class Req extends EventEmitter {
   constructor(opt){
     super();
-    let {hdr, body, node, dst, stream} = opt;
+    let {node, dst, stream, req_id, cmd} = opt;
     assert(node, 'must provide node');
     assert(dst, 'must provide dst');
-    let {req_id, cmd} = hdr;
     this.node = node;
     let router = this.router = node.router;
     this.dst = dst;
     this.cmd = cmd;
-    let from=b2s(node.id), path=[];
+    this.stream = stream;
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
-    let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
-    let msg = {req_id, ts, type: 'req', to: dst, from, nonce, cmd, body, path};
-    router._touched[nonce] = true; // XXX: mv out of here
-    msg.sign = router.wallet.sign(msg); // XXX: mv out of here
     reqs[req_id] = this;
-    this.hdr = hdr;
-    this.body = body;
     this.req_id = req_id; // XXX: change to id
     this.timeout = etask({'this': this}, function*req_timeout(){
       yield etask.sleep(REQ_TIMEOUT);
       delete reqs[req_id];
       this.this.emit('fail', {error: 'timeout', req_id});
     });
-    // XXX HACK
-    this.test_send = ()=>{
-      if (!util.is_mocha())
-        return this;
-      router._send(msg);
-      if (Req.t_new_hook)
-        Req.t_new_hook(msg);
-      return this;
-    };
-    if (!util.is_mocha())
-      router._send(msg);
     if (!router.res_handler_attached){
       router.on('message', res_handler);
       router.res_handler_attached = true;
     }
   }
-  test_send(){ return this.req.test_send(); }
+  send(body){
+    let ts=date.monotonic(), path=[], router = this.router;
+    let nonce=''+Math.floor(1e15*Math.random());
+    let msg = {req_id: this.req_id, ts, type: 'req', to: this.dst,
+      from: b2s(router.id), nonce, cmd: this.cmd, body, path};
+    router._touched[nonce] = true; // XXX: mv out of here (and path)
+    msg.sign = router.wallet.sign(msg); // XXX: mv out of here
+    this.router._send(msg);
+    if (Req.t_new_hook)
+      Req.t_new_hook(msg);
+  }
 }
 
 Req.t = {reqs, res_handler};

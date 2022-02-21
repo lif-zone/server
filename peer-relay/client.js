@@ -110,10 +110,9 @@ export default class Client extends EventEmitter {
       return;
     this.pending[id] = true;
     // XXX: allow empty body
-    let req = new Req({node: this, dst: id, hdr: {cmd: 'conn_info'},
-      body: {}});
+    let req = new Req({node: this, dst: id, cmd: 'conn_info'});
     req.on('res', msg=>this._on_conn_info_r(msg));
-    req.test_send();
+    req.send({});
   };
   disconnect(id){
     if (this.destroyed)
@@ -125,17 +124,16 @@ export default class Client extends EventEmitter {
   send = function(dst, body){
     if (this.destroyed)
       return;
-    let req = new Req({node: this, dst, hdr: {}, body});
-    req.test_send();
+    let req = new Req({node: this, dst});
+    req.send(body);
   }
   find(id){
     let _this = this;
     if (this.destroyed)
       return;
-    let req = new Req({node: this, dst: id, hdr: {cmd: 'find'},
-      body: {id: b2s(this.id)}});
+    let req = new Req({node: this, dst: id, cmd: 'find'});
     req.on('res', msg=>_this._on_find_r(msg.body.ids));
-    req.test_send();
+    req.send({id: b2s(this.id)});
   }
   _on_find_r(ids){
     for (var canidate of ids)

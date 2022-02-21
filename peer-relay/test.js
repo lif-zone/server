@@ -941,10 +941,10 @@ const cmd_req = opt=>etask(function*req(){
     assert(!t_req[id], 'request already exists '+id);
     t_req[id] = {id, body, res, s: c.s, d: c.d};
     if (!s.t.fake){
-      let req = new Req({node: s, dst: b2s(d.id), hdr: {req_id: id}, body});
+      let req = new Req({node: s, dst: b2s(d.id), req_id: id});
       req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error))));
-      req.test_send();
+      req.send(body);
       assert.equal(req.req_id, id, 'req_id mismatch');
     }
     if (!d.t.fake && res){
