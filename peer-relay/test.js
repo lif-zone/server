@@ -1607,8 +1607,9 @@ describe('peer-relay', function(){
       req.on('res_next', (req, res)=>{});
       req.on('res_end', (req, res)=>{});
       req.on('fail', err=>{});
+      // req.send_end() - to terminate requte from client side
 
-      server:
+      // server:
       let req_handler = new ReqHandler({node, cmd});
       req_handler.on('req_start', (req, res)=>{
         xerr.notice('got msg seq % body %s', req.seq, req.body);
@@ -1619,43 +1620,44 @@ describe('peer-relay', function(){
       });
       req_handler.on('req_next', (req, res)=>{});
       req_handler.on('req_end', (req, res)=>{});
+      // res.send_end() - to terminate requte from server side
       if (true)
         return;
       t('stream', `setup:2_nodes setup:req
-        ab>!req_start(id:r0 stream body:ping)
-        ab>req_start(id:r0 seq:0 body:ping)
-        ab>!res_start(id:r0 body:pong) ab>res_start(id:r0 seq:0 body:pong)
+        ab>!req_start(id:r0 stream cmd:find body:ping)
+        ab>req_start(id:r0 seq:0 cmd:find body:ping)
+        ab<!res_start(id:r0 body:pong) ab<res_start(id:r0 seq:0 body:pong)
         ab>!req_next(id:r0 body:ping2) ab>req_next(id:r0 seq:1 body:ping2)
-        ab>!res_next(id:r0 body:pong2) ab>res_next(id:r0 seq:1 body:pong2)
+        ab<!res_next(id:r0 body:pong2) ab<res_next(id:r0 seq:1 body:pong2)
         ab>!req_end(id:r0 body:ping3) ab>req_end(id:r0 seq:2 body:ping3)
-        ab>!res_end(id:r0 body:pong3) ab>res_end(id:r0 seq:2 body:pong3)
+        ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:2 body:pong3)
       `);
       t('stream2', `setup:2_nodes setup:req
-        ab>!req_start(id:r0 stream body:ping)
-        ab>req_start(id:r0 seq:0 body:ping)
-        ab>!res_start(id:r0 body:pong) ab>res_start(id:r0 seq:0 body:pong)
-        ab>!res_next(id:r0 body:pong2) ab>res_next(id:r0 seq:1 body:pong2)
-        ab>!res_end(id:r0 body:pong3) ab>res_end(id:r0 seq:2 body:pong3)
+        ab>!req_start(id:r0 stream cmd:find body:ping)
+        ab>req_start(id:r0 seq:0 cmd:find body:ping)
+        ab<!res_start(id:r0 body:pong) ab<res_start(id:r0 seq:0 body:pong)
+        ab<!res_next(id:r0 body:pong2) ab<res_next(id:r0 seq:1 body:pong2)
+        ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:2 body:pong3)
       `);
       t('stream3', `setup:2_nodes setup(req msg)
-        ab>!req_start(id:r0 stream body:ping)
-        ab>msg(type:req_start id:r0 seq:0 body:ping)
-        ab>req_start(id:r0 seq:0 body:ping)
-        ab>!msg(type:res_start id:r0 seq:0 body:pong)
-        ab>msg(type:res_start id:r0 seq:0 body:pong)
-        ab>res_start(id:r0 seq:0 body:pong)
+        ab>!req_start(id:r0 stream cmf:find body:ping)
+        ab>msg(type:req_start id:r0 seq:0 cmd:find body:ping)
+        ab>req_start(id:r0 seq:0 cmd:find body:ping)
+        ab<!msg(type:res_start id:r0 seq:0 body:pong)
+        ab<msg(type:res_start id:r0 seq:0 body:pong)
+        ab<res_start(id:r0 seq:0 body:pong)
         ...
       `);
       t('stream-invalid order', `setup:2_nodes setup(req msg)
-        ab>!req_start(id:r0 stream body:ping)
-        ab>msg(type:req_start id:r0 seq:0 body:ping)
-        ab>req_start(id:r0 seq:0 body:ping)
-        ab>!msg(type:res_next id:r0 seq:1 body:pong2)
-        ab>msg(type:res_next id:r0 seq:1 body:pong2)
-        ab>!msg(type:res_start id:r0 seq:0 body:pong)
-        ab>msg(type:res_start id:r0 seq:0 body:pong)
-        ab>res_start(id:r0 seq:0 body:pong)
-        ab>res_next(id:r0 seq:1 body:pong2)
+        ab>!req_start(id:r0 stream cmd:find body:ping)
+        ab>msg(type:req_start id:r0 seq:0 cmd:find body:ping)
+        ab>req_start(id:r0 seq:0 cmd:find body:ping)
+        ab<!msg(type:res_next id:r0 seq:1 body:pong2)
+        ab<msg(type:res_next id:r0 seq:1 body:pong2)
+        ab<!msg(type:res_start id:r0 seq:0 body:pong)
+        ab<msg(type:res_start id:r0 seq:0 body:pong)
+        ab<res_start(id:r0 seq:0 body:pong)
+        ab<res_next(id:r0 seq:1 body:pong2)
         ...
       `);
       */
