@@ -29,7 +29,7 @@ function res_handler(body, from, msg){
 export default class Req extends EventEmitter {
   constructor(opt){
     super();
-    let {hdr, body, node, dst} = opt;
+    let {hdr, body, node, dst, stream} = opt;
     assert(node, 'must provide node');
     assert(dst, 'must provide dst');
     let {req_id, cmd} = hdr;
