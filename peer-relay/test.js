@@ -1398,6 +1398,12 @@ describe('peer-relay', function(){
         t('a>fail(id:r1 error:timeout)', `a>fail(id(r1) error(timeout))`);
         t('ab>msg_req_find:a', `ab>msg(type(req) cmd(find) body(a))`);
         t('ab>msg_res_find:a', `ab>msg(type(res) cmd(find) body(a))`);
+        if (true) // XXX: TODO
+          return;
+        t('ab>msg_req_find(a id:r0)', `ab>msg(id(r0) type(req) cmd(find)
+          body(a))`);
+        t('ab>msg_res_find(a id:r0)', `ab>msg(id(r0) type(res) cmd(find)
+          body(a))`);
       });
     });
   });
