@@ -37,6 +37,7 @@ export default class Req extends EventEmitter {
     this.cmd = cmd;
     this.stream = stream;
     this.timeout = timeout = timeout||REQ_TIMEOUT;
+    this.seq = 0;
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
     reqs[req_id] = this;
@@ -48,7 +49,9 @@ export default class Req extends EventEmitter {
   }
   send(body){
     let ts=date.monotonic(), req_id = this.req_id;
-    let msg = {req_id, ts, type: 'req', cmd: this.cmd, body};
+    let type = !this.stream ? 'req' : !this.seq ? 'req_start' : 'req_next';
+    let seq = this.seq++;
+    let msg = {ts, type, req_id, seq, cmd: this.cmd, body};
     this.et_timeout = etask({'this': this}, function*req_timeout(){
       yield etask.sleep(this.this.timeout);
       delete reqs[req_id];
