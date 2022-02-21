@@ -1578,6 +1578,12 @@ describe('peer-relay', function(){
       });
     });
   });
+  describe('stream', function(){
+    const t = (name, test)=>t_roles(name, 'abc', test);
+    if (true) return; // XXX: WIP
+    t('req', `setup:2_nodes setup:req
+      ab>!req_start(id:r0 stream cmd:ping body:b0)`);
+  });
   if (0)
   describe('req', function(){
     // XXX: temporary till fixing req api
