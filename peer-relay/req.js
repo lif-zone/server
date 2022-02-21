@@ -7,7 +7,6 @@ import date from '../util/date.js';
 import etask from '../util/etask.js';
 import util from '../util/util.js';
 const REQ_TIMEOUT = 20*date.ms.SEC;
-const b2s = util.buf_to_str;
 
 const reqs = {};
 let free_req_id = date.monotonic();
@@ -48,18 +47,14 @@ export default class Req extends EventEmitter {
     }
   }
   send(body){
-    let ts=date.monotonic(), path=[], nonce=''+Math.floor(1e15*Math.random());
-    let {router, req_id} = this;
-    let msg = {req_id, ts, type: 'req', to: this.dst,
-      from: b2s(router.id), nonce, cmd: this.cmd, body, path};
-    router._touched[nonce] = true; // XXX: mv out of here (and path)
-    msg.sign = router.wallet.sign(msg); // XXX: mv out of here
+    let ts=date.monotonic(), req_id = this.req_id;
+    let msg = {req_id, ts, type: 'req', cmd: this.cmd, body};
     this.et_timeout = etask({'this': this}, function*req_timeout(){
       yield etask.sleep(this.this.timeout);
       delete reqs[req_id];
       this.this.emit('fail', {error: 'timeout', req_id});
     });
-    this.router._send(msg);
+    this.router.send_msg(this.dst, msg);
     if (Req.t_new_hook)
       Req.t_new_hook(msg);
   }

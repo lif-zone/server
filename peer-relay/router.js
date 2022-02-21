@@ -44,6 +44,15 @@ export default class Router extends EventEmitter {
     msg.sign = this.wallet.sign(msg);
     return this._send(msg);
   }
+  send_msg(dst, msg){
+    let nonce=''+Math.floor(1e15*Math.random());
+    msg.path = [];
+    msg.from = b2s(this.id);
+    msg.to = dst;
+    this._touched[nonce] = true;
+    msg.sign = this.wallet.sign(msg);
+    this._send(msg);
+  }
   _send = msg=>etask({'this': this}, function*(){
     let _this = this.this;
     if (msg.path.length >= _this.maxHops)
