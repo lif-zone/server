@@ -1600,20 +1600,22 @@ describe('peer-relay', function(){
       /*
       client:
       let req = new Req({node, dst, stream: true, cmd, body});
+      // if no cmd/body then need to explicit req.send();
       req.on('res_start', (req, res)=>{
         xerr.notice('got msg seq % body %s', res.seq, res.body);
-        req.send({body2});
+        req.send(body2);
       });
       req.on('res_next', (req, res)=>{});
       req.on('res_end', (req, res)=>{});
       req.on('fail', err=>{});
       // req.send_end() - to terminate requte from client side
+      req.close();
 
       // server:
       let req_handler = new ReqHandler({node, cmd});
       req_handler.on('req_start', (req, res)=>{
         xerr.notice('got msg seq % body %s', req.seq, req.body);
-        res.send({body2});
+        res.send(body2);
         req.on('req_next', (req, res)=>{});
         req.on('req_end', (req, res)=>{});
         req.on('fail', err=>{});
@@ -1660,6 +1662,8 @@ describe('peer-relay', function(){
         ab<res_next(id:r0 seq:1 body:pong2)
         ...
       `);
+      // out_of_order (-- add option to request remit in-order)
+      // add option to creae request that by default emit in-order
       */
     });
   });
