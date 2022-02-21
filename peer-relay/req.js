@@ -42,7 +42,7 @@ export default class Req extends EventEmitter {
     req_id = req_id || ''+free_req_id++;
     reqs[req_id] = this;
     this.req_id = req_id; // XXX: change to id
-    if (!router.res_handler_attached){
+    if (!router.res_handler_attached){ // XXX: cleanup
       router.on('message', res_handler);
       router.res_handler_attached = true;
     }
