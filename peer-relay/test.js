@@ -374,7 +374,7 @@ class FakeChannel extends EventEmitter {
   destroy(){}
 }
 
-function req_new_hook(msg){
+function req_send_hook(msg){
   // XXX: need to filter out only test commands, other should fail test
   if (!t_mode.req)
     return;
@@ -384,7 +384,7 @@ function req_new_hook(msg){
   assert(type=='req', 'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
-  xerr.notice('****** req_new_hook %s %s',
+  xerr.notice('****** req_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, JSON.stringify(msg));
   t_msg[from.t.name+'_'+to.t.name+'_'+type+'_'+cmd] = assign({}, msg);
   switch (cmd){
@@ -406,7 +406,7 @@ function req_new_hook(msg){
   cmd_run(_build_cmd(e, '', '')); // XXX: need yield
 }
 
-function send_res_hook(router, msg){
+function res_send_hook(router, msg){
   if (!t_mode.req)
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
@@ -415,7 +415,7 @@ function send_res_hook(router, msg){
   assert(type=='res', 'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
-  xerr.notice('****** send_res_hook %s %s',
+  xerr.notice('****** res_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, JSON.stringify(msg));
   t_msg[from.t.name+'_'+to.t.name+'_'+type+'_'+cmd] = assign({}, msg);
   switch (cmd){
@@ -1161,13 +1161,13 @@ function test_start(role){
 
 function test_setup_mode(){
   if (t_mode.req) // XXX: use sinon
-    Req.t_new_hook = req_new_hook;
+    Req.t_send_hook = req_send_hook;
   else
-    delete Req.t_new_hook;
+    delete Req.t_send_hook;
   if (t_mode.req) // XXX: use sinon
-    ReqHandler.t_send_res = send_res_hook;
+    ReqHandler.t_send_hook = res_send_hook;
   else
-    delete ReqHandler.t_send_res;
+    delete ReqHandler.t_send_hook;
   Node.t_conn_info_r_hook = msg=>cmd_run_if_next_fake();
 }
 

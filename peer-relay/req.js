@@ -58,8 +58,8 @@ export default class Req extends EventEmitter {
       this.this.emit('fail', {error: 'timeout', req_id});
     });
     this.router.send_msg(this.dst, msg);
-    if (Req.t_new_hook)
-      Req.t_new_hook(msg);
+    if (Req.t_send_hook)
+      Req.t_send_hook(msg);
   }
 }
 

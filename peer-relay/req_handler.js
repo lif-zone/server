@@ -27,8 +27,8 @@ function send_res(router, o){
   router._touched[nonce] = true;
   msg.sign = router.wallet.sign(msg);
   router._send(msg); // XXX: what if error
-  if (ReqHandler.t_send_res)
-    ReqHandler.t_send_res(router, msg);
+  if (ReqHandler.t_send_hook)
+    ReqHandler.t_send_hook(router, msg);
 }
 
 export default class ReqHandler extends EventEmitter {
