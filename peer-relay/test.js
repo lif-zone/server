@@ -381,7 +381,8 @@ function req_send_hook(msg){
   assert(!t_pre_process, 'invalid send during pre_process');
   let p, e;
   let {type, req_id, seq, cmd, body} = msg;
-  assert(['req', 'req_start'].includes(type), 'invalid msg type '+type);
+  assert(['req', 'req_start', 'req_next'].includes(type),
+    'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
   xerr.notice('****** req_send_hook %s %s',
@@ -501,7 +502,7 @@ function fake_emit(c, msg){
   assert(!c.fwd, 'fwd not allowed in fake_emit');
   if (s.t.fake && !d.t.fake)
   {
-    if (['req', 'req_start'].includes(msg.type))
+    if (['req', 'req_start', 'req_next'].includes(msg.type))
     {
       msg.req_id = msg.req_id || ++t_req_id+'';
       log_msg(msg);
@@ -920,12 +921,12 @@ function cmd_msg_res_find(opt){
 }
 
 const cmd_req = opt=>etask(function*req(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
-  let start = c.cmd.includes('start'), seq;
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], seq;
   assert(s && d, 'invalid event '+c.orig);
   let type = c.cmd.replace('!', '');
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
-  assert(['req', 'req_start'].includes(type), 'invalid type '+c.cmd);
+  assert(['req', 'req_start', 'req_next'].includes(type),
+    'invalid type '+c.cmd);
   util.forEach(arg, a=>{ // XXX: proper assert of values
     switch (a.cmd){
     case 'id': id = a.arg; break;
@@ -947,10 +948,13 @@ const cmd_req = opt=>etask(function*req(){
     return yield cmd_run_if_next_fake();
   }
   id = id || ++t_req_id+'';
-  assert(!t_req[id], 'request already exists '+id);
+  if (type=='req_next')
+    assert(t_req[id], 'no request '+id);
+  else
+    assert(!t_req[id], 'request already exists '+id);
   t_req[id] = {id, body, res, s: c.s, d: c.d};
   if (!s.t.fake){
-    if (start){
+    if (type=='req_start'){
       let req = new Req({node: s, stream: true, dst: b2s(d.id), req_id: id,
         cmd});
       req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
@@ -958,13 +962,17 @@ const cmd_req = opt=>etask(function*req(){
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send(body);
     }
-    else {
+    else if (type=='req_next')
+      Req.t.reqs[id].send(body);
+    else if (type=='req'){
       let req = new Req({node: s, dst: b2s(d.id), req_id: id});
       req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error))));
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send(body);
     }
+    else
+      assert(0, 'invalid type '+type);
   }
   if (!d.t.fake && res){
      let req_handler = new ReqHandler({node: d});
@@ -1088,6 +1096,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'res': yield cmd_res(opt); break;
   case '!req_start': yield cmd_req(opt); break;
   case 'req_start': yield cmd_req(opt); break;
+  case '!req_next': yield cmd_req(opt); break;
+  case 'req_next': yield cmd_req(opt); break;
   case '!res': yield cmd_res(opt); break;
   case 'fail': yield cmd_fail(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
@@ -1597,10 +1607,15 @@ describe('peer-relay', function(){
   });
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
-    t('timeout', `mode:req setup:2_nodes
+    t('req_start_timeout', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
-      ab>req_start(id:r0 seq:0 cmd:test body:b0) 19999ms -
-      1ms a>fail(id:r0 error:timeout)`);
+      ab>req_start(id:r0 seq:0 cmd:test body:b0) -
+      19999ms - 1ms a>fail(id:r0 error:timeout)`);
+    t('req_next_timeout', `mode:req setup:2_nodes
+      ab>!req_start(id:r0 cmd:test body:b0)
+      ab>req_start(id:r0 seq:0 cmd:test body:b0)
+      ab>!req_next(id:r0 body:b1) ab>req_next(id:r0 seq:1 cmd:test body:b1) -
+      19999ms - 1ms a>fail(id:r0 error:timeout) a>fail(id:r0 error:timeout)`);
 /* XXX: TODO
       t('stream', `setup:2_nodes setup:req
         ab>!req_start(id:r0 stream cmd:find body:ping)
