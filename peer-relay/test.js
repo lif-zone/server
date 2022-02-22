@@ -1597,10 +1597,21 @@ describe('peer-relay', function(){
   });
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
-    if (true) return; // XXX: WIP
-    t('req', `mode:req setup:2_nodes
+    t('timeout', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
-      ab>req_start(id:r0 seq:0 cmd:test body:b0)`);
+      ab>req_start(id:r0 seq:0 cmd:test body:b0) 19999ms -
+      1ms a>fail(id:r0 error:timeout)`);
+/* XXX: TODO
+      t('stream', `setup:2_nodes setup:req
+        ab>!req_start(id:r0 stream cmd:find body:ping)
+        ab>req_start(id:r0 seq:0 cmd:find body:ping)
+        ab<!res_start(id:r0 body:pong) ab<res_start(id:r0 seq:0 body:pong)
+        ab>!req_next(id:r0 body:ping2) ab>req_next(id:r0 seq:1 body:ping2)
+        ab<!res_next(id:r0 body:pong2) ab<res_next(id:r0 seq:1 body:pong2)
+        ab>!req_end(id:r0 body:ping3) ab>req_end(id:r0 seq:2 body:ping3)
+        ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:2 body:pong3)
+      `);
+*/
   });
   if (0)
   describe('req', function(){
