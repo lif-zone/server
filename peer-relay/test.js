@@ -77,7 +77,7 @@ function _build_cmd(){
   let args = Array.from(arguments), cmd = args[0], fwd = args[1]||'', arg = '';
   assert(cmd);
   for (let i=2; i<args.length; i++){
-    if (args[i])
+    if (args[i] || args[i]===0)
       arg += (arg ? ' ' : '')+args[i];
   }
   let ret = cmd+(arg ? '('+arg+')' : '');
@@ -102,7 +102,7 @@ function build_cmd_o(cmd, fwd, o){
     let val = o[arg];
     if (val===true)
       a.push(arg);
-    else if (val)
+    else if (val || val===0)
       a.push(build_cmd(arg, val));
   }
   return _build_cmd.apply(this, a);
@@ -380,8 +380,8 @@ function req_send_hook(msg){
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
   let p, e;
-  let {req_id, type, cmd, body} = msg;
-  assert(type=='req', 'invalid msg type '+type);
+  let {type, req_id, seq, cmd, body} = msg;
+  assert(['req', 'req_start'].includes(type), 'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
   xerr.notice('****** req_send_hook %s %s',
@@ -396,8 +396,9 @@ function req_send_hook(msg){
     e = build_cmd(from.t.name+to.t.name+'>conn_info', '');
     break;
   case '':
-    e = build_cmd_o(from.t.name+to.t.name+'>req',
-      {id: is_number(req_id) ? undefined : req_id, body});
+  case 'test':
+    e = build_cmd_o(from.t.name+to.t.name+'>'+type,
+      {id: is_number(req_id) ? undefined : req_id, seq, cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
@@ -500,7 +501,7 @@ function fake_emit(c, msg){
   assert(!c.fwd, 'fwd not allowed in fake_emit');
   if (s.t.fake && !d.t.fake)
   {
-    if (msg.type=='req')
+    if (['req', 'req_start'].includes(msg.type))
     {
       msg.req_id = msg.req_id || ++t_req_id+'';
       log_msg(msg);
@@ -920,12 +921,17 @@ function cmd_msg_res_find(opt){
 
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let start = c.cmd.includes('start'), seq;
   assert(s && d, 'invalid event '+c.orig);
-  let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg);
-  util.forEach(arg, a=>{
+  let type = c.cmd.replace('!', '');
+  let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
+  assert(['req', 'req_start'].includes(type), 'invalid type '+c.cmd);
+  util.forEach(arg, a=>{ // XXX: proper assert of values
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case 'body': body = a.arg; break;
+    case 'cmd': cmd = a.arg; break;
+    case 'seq': seq = a.arg; break;
     case 'res':
       assert(call, 'res only valid for !req');
       res = a.arg;
@@ -934,32 +940,40 @@ const cmd_req = opt=>etask(function*req(){
     }
   });
   if (t_pre_process)
-    return set_orig(c, build_cmd_o(c.meta.cmd, {id, body, res}));
+    return set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, cmd, body, res}));
   assert_event_c(c, event, call);
-  if (call){
-    id = id || ++t_req_id+'';
-    assert(!t_req[id], 'request already exists '+id);
-    t_req[id] = {id, body, res, s: c.s, d: c.d};
-    if (!s.t.fake){
+  if (!call){
+    fake_emit(c, {type, req_id: id, seq, cmd, body});
+    return yield cmd_run_if_next_fake();
+  }
+  id = id || ++t_req_id+'';
+  assert(!t_req[id], 'request already exists '+id);
+  t_req[id] = {id, body, res, s: c.s, d: c.d};
+  if (!s.t.fake){
+    if (start){
+      let req = new Req({node: s, stream: true, dst: b2s(d.id), req_id: id,
+        cmd});
+      req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
+        build_cmd('id', o.req_id), build_cmd('error', o.error))));
+      assert.equal(req.req_id, id, 'req_id mismatch');
+      req.send(body);
+    }
+    else {
       let req = new Req({node: s, dst: b2s(d.id), req_id: id});
       req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error))));
-      req.send(body);
       assert.equal(req.req_id, id, 'req_id mismatch');
-    }
-    if (!d.t.fake && res){
-       let req_handler = new ReqHandler({node: d});
-       req_handler.on('req', t_req[id].cb = (msg, res)=>{
-         // XXX: need req_handler.destroy();
-         req_handler.off('req', t_req[id].cb);
-         delete t_req[id].cb;
-         res.send(t_req[id].res);
-      });
+      req.send(body);
     }
   }
-  else {
-    fake_emit(c, {req_id: id, type: 'req', body});
-    yield cmd_run_if_next_fake();
+  if (!d.t.fake && res){
+     let req_handler = new ReqHandler({node: d});
+     req_handler.on('req', t_req[id].cb = (msg, res)=>{
+       // XXX: need req_handler.destroy();
+       req_handler.off('req', t_req[id].cb);
+       delete t_req[id].cb;
+       res.send(t_req[id].res);
+    });
   }
 });
 
@@ -1042,7 +1056,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   let c = opt.c;
   if (t_pre_process){
     let a;
-    if ('<>'.indexOf(c.cmd[2])!=-1){ // XXX: ugly code
+    if ('<>'.includes(c.cmd[2])){ // XXX: ugly code
       // XXX fixme:
       // build_cmd(c.s+c.d+c.dir+'fwd', build_cmd(c.cmd, c.arg)))[0]);
       assign(c, xtest.test_parse(
@@ -1072,6 +1086,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '!req': yield cmd_req(opt); break;
   case 'req': yield cmd_req(opt); break;
   case 'res': yield cmd_res(opt); break;
+  case '!req_start': yield cmd_req(opt); break;
+  case 'req_start': yield cmd_req(opt); break;
   case '!res': yield cmd_res(opt); break;
   case 'fail': yield cmd_fail(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
@@ -1126,7 +1142,8 @@ const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
 
 let t_depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
-  assert(t_i<t_cmds.length, 'invalid t_i '+t_i+' event '+event);
+  assert(t_cmds && t_i<t_cmds.length, event ? 'unexpected event '+event :
+    'invalid t_i '+t_i+' event');
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   if (t_pre_process){
@@ -1581,8 +1598,9 @@ describe('peer-relay', function(){
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     if (true) return; // XXX: WIP
-    t('req', `setup:2_nodes setup:req
-      ab>!req_start(id:r0 stream cmd:ping body:b0)`);
+    t('req', `mode:req setup:2_nodes
+      ab>!req_start(id:r0 cmd:test body:b0)
+      ab>req_start(id:r0 seq:0 cmd:test body:b0)`);
   });
   if (0)
   describe('req', function(){

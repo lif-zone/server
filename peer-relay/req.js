@@ -48,9 +48,10 @@ export default class Req extends EventEmitter {
     }
   }
   send(body){
-    let ts=date.monotonic(), req_id = this.req_id;
+    let ts=date.monotonic(), req_id = this.req_id, seq;
     let type = !this.stream ? 'req' : !this.seq ? 'req_start' : 'req_next';
-    let seq = this.seq++;
+    if (this.stream)
+      seq = this.seq++;
     let msg = {ts, type, req_id, seq, cmd: this.cmd, body};
     this.et_timeout = etask({'this': this}, function*req_timeout(){
       yield etask.sleep(this.this.timeout);
