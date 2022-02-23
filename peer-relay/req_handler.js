@@ -19,14 +19,10 @@ function req_handler(body, from, msg){
 }
 
 function send_res(router, o){
-  // XXX: this api is doing too much low-level. need more generic router api
-  let req_id=o.req_id, to=o.to, from=b2s(router.id), path=[];
-  let nonce=''+Math.floor(1e15*Math.random()), ts=date.monotonic();
-  let msg = {req_id, ts, type: 'res', to, from, nonce, cmd: o.cmd,
-    body: o.body, path};
-  router._touched[nonce] = true;
-  msg.sign = router.wallet.sign(msg);
-  router._send(msg); // XXX: what if error
+  let ts=date.monotonic(), seq = 0, type = 'res';
+  let {to, req_id, cmd, body} = o;
+  let msg = {ts, type, req_id, seq, cmd, body};
+  router.send_msg(to, msg); // XXX: what if error
   if (ReqHandler.t_send_hook)
     ReqHandler.t_send_hook(router, msg);
 }
