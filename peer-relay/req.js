@@ -47,9 +47,17 @@ export default class Req extends EventEmitter {
       router.res_handler_attached = true;
     }
   }
-  send(body){
+  send_end(body){ return this.send({end: true}, body); }
+  send(opt, body){
+    opt = opt||{};
+    if (body===undefined)
+    {
+      body = opt;
+      opt = {};
+    }
     let ts=date.monotonic(), req_id = this.req_id, seq;
-    let type = !this.stream ? 'req' : !this.seq ? 'req_start' : 'req_next';
+    let type = !this.stream ? 'req' : opt.end ? 'req_end' : !this.seq ?
+      'req_start' : 'req_next';
     if (this.stream)
       seq = this.seq++;
     let msg = {ts, type, req_id, seq, cmd: this.cmd, body};
