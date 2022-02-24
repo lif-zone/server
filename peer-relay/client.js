@@ -31,28 +31,21 @@ export default class Client extends EventEmitter {
     this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router({channels: this.peers, id: this.id,
       wallet: this.wallet});
-    this.req_handler = new ReqHandler({node: this});
-    this.req_handler.on('req', (msg, res)=>{
-      let {cmd, from} = msg;
-      cmd = cmd||'';
-      from = s2b(from);
-      switch (cmd){
-      case 'find':
+    this.find_handler = new ReqHandler({node: this, cmd: 'find'})
+    .on('req', (msg, res)=>{
         var target = new Buffer(s2b(msg.body.id));
         var closest = this.canidates.closest(target, 20);
         res.send({ids: closest.map(e=>b2s(e.id))});
-        break;
-      case 'conn_info':
-        if (this.peers.get(from))
-          break;
-        if (this.pending[from] == null || from.compare(this.id) < 0){
-          this.pending[from] = true;
+    });
+    this.conn_handler = new ReqHandler({node: this, cmd: 'conn_info'})
+    .on('req', (msg, res)=>{
+     let from = s2b(msg.from);
+      if (this.peers.get(from))
+          return;
+      if (this.pending[from]==null || from.compare(this.id)<0){
+        this.pending[from] = true;
         res.send({ws: this.wsConnector.url,
           wrtc: this.wrtcConnector.supported});
-        }
-        break;
-      case '': this.emit('message', msg.body, from); break;
-      default: xerr('unknown cmd %s', cmd);
       }
     });
     if (opt.port)

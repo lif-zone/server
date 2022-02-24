@@ -517,8 +517,8 @@ function fake_emit(c, msg){
     msg.sign = node_from_id(from).wallet.sign(msg);
     // XXX: rm body, from from emit
     if (msg.type=='req'){
-      util.forEach(util.get(ReqHandler, 't.req_handler.'+d.id),
-        req_handler=>req_handler(msg.body, msg.from, msg));
+      if (d.router.req_handlers[msg.cmd||''])
+        d.router.req_handlers[msg.cmd||''](msg.body, msg.from, msg);
     }
     else if (msg.type=='res')
       Req.t.res_handler(msg.body, msg.from, msg);
@@ -977,7 +977,11 @@ const cmd_req = opt=>etask(function*req(){
       assert(0, 'invalid type '+type);
   }
   if (!d.t.fake && res){
-     let req_handler = new ReqHandler({node: d});
+     let req_handler = d.t.req_handler;
+     if (!req_handler){
+       req_handler = new ReqHandler({node: d});
+       d.t.req_handler = req_handler;
+     }
      req_handler.on('req', t_req[id].cb = (msg, res)=>{
        // XXX: need req_handler.destroy();
        req_handler.off('req', t_req[id].cb);
