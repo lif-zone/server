@@ -7,7 +7,9 @@ const b2s = util.buf_to_str;
 
 function req_handler(body, from, msg){
   let {req_id, type, cmd} = msg;
-  if (!req_id || type!='req')
+  if (!req_id)
+    return;
+  if (!['req', 'req_start', 'req_next', 'req_end'].includes(type))
     return;
   let res = {router: this.router, from: b2s(from), req_id, cmd,
     send: function(body){
