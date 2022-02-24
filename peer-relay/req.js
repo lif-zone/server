@@ -72,4 +72,5 @@ export default class Req extends EventEmitter {
   }
 }
 
-Req.t = {reqs, res_handler};
+if (util.is_mocha())
+  Req.t = {reqs, res_handler};
