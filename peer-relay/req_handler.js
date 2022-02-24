@@ -17,7 +17,7 @@ function req_handler(body, from, msg){
         cmd: this.cmd, to: this.from, body});
     },
   };
-  this.emit('req', msg, res);
+  this.emit(type, msg, res);
 }
 
 function send_res(router, o){
