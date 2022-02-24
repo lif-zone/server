@@ -45,6 +45,5 @@ export default class ReqHandler extends EventEmitter {
   }
 }
 
-ReqHandler.send_res = send_res;
 if (util.is_mocha())
-  ReqHandler.t = {req_handler: {}};
+  ReqHandler.t = {req_handler: {}, send_res};

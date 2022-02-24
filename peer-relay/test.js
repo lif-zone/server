@@ -1005,7 +1005,7 @@ const cmd_res = opt=>etask(function*req(){
     id = t_msg[d.t.name+'_'+s.t.name+'_req_'].req_id;
   if (call){
     if (!s.t.fake)
-      yield ReqHandler.send_res(s.router, {req_id: id, to: b2s(d.id), body});
+      yield ReqHandler.t.send_res(s.router, {req_id: id, to: b2s(d.id), body});
   }
   else {
     fake_emit(c, {req_id: id, type: 'res', body});
