@@ -1658,8 +1658,8 @@ describe('peer-relay', function(){
     // XXX: also need tests for timeouts on res side
     describe('timeout', function(){
       t('req_start', `mode:req setup:2_nodes
-        ab>!req_start(id:r0 cmd:test body:b0)
-        ab>req_start(id:r0 seq:0 cmd:test body:b0) 19999ms -
+        ab>!req_start(id:r0 cmd:test)
+        ab>req_start(id:r0 seq:0 cmd:test) 19999ms -
         1ms a>fail(id:r0 error(timeout))`);
       t('res_start', `mode:req setup:2_nodes
         ab>!req_start(id:r0 cmd:test body:b0)

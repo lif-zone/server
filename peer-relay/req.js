@@ -68,12 +68,12 @@ export default class Req extends EventEmitter {
   }
   send_end(body){ return this.send({end: true}, body); }
   send(opt, body){
-    opt = opt||{};
     if (body===undefined)
     {
       body = opt;
       opt = {};
     }
+    opt = opt||{};
     let ts=date.monotonic(), req_id = this.req_id, seq;
     let type = !this.stream ? 'req' : opt.end ? 'req_end' : !this.seq ?
       'req_start' : 'req_next';

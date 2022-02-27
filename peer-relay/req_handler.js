@@ -23,12 +23,12 @@ class Res extends EventEmitter {
     this.seq = 0;
   }
   send(opt, body){
-    opt = opt||{};
     if (body===undefined)
     {
       body = opt;
       opt = {};
     }
+    opt = opt||{};
     let ts=date.monotonic(), seq = this.seq++, type;
     let {dst, req_id, cmd} = this;
     if (!this.stream){
