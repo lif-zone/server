@@ -13,13 +13,16 @@ let free_req_id = date.monotonic();
 
 function res_handler(body, from, msg){
   let {req_id, type} = msg;
-  if (!req_id || type!='res')
+  if (!req_id || !['res', 'res_start', 'res_next', 'res_end'].includes(type))
     return;
   // XXX: if final response, remove from this.reqs
   if (!reqs[req_id]) // XXX: change to LERR
     return xerr.notice('req not found %s', req_id);
   let req = reqs[req_id];
-  del_req(req_id);
+  if (type=='res')
+    del_req(req_id);
+  else
+    req.clr_timeout();
   req.emit('res', msg);
 }
 
@@ -28,8 +31,7 @@ function del_req(req_id){
   if (!req)
     return;
   delete reqs[req_id];
-  if (req.et_timeout)
-    req.et_timeout.return();
+  req.clr_timeout();
 }
 
 function destroy_cb(){
@@ -78,16 +80,27 @@ export default class Req extends EventEmitter {
     if (this.stream)
       seq = this.seq++;
     let msg = {ts, type, req_id, seq, cmd: this.cmd, body};
-    if (type=='req'){ // XXX: decide what to do for stream timeout
-      this.et_timeout = etask({'this': this}, function*req_timeout(){
-        yield etask.sleep(this.this.timeout);
-        delete reqs[req_id];
-        this.this.emit('fail', {error: 'timeout', req_id});
-      });
-    }
+    if (!this.et_timeout)
+      this.set_timeout();
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)
       Req.t_send_hook(msg);
+  }
+  set_timeout(){
+    // XXX: find way to update timeout with signal instad of creating new etask
+    this.clr_timeout();
+    let {req_id, timeout} = this;
+    this.et_timeout = etask({'this': this}, function*req_timeout(){
+      yield etask.sleep(timeout);
+      delete reqs[req_id];
+      this.this.emit('fail', {error: 'timeout', req_id});
+    });
+  }
+  clr_timeout(){
+    if (!this.et_timeout)
+      return;
+    this.et_timeout.return();
+    this.et_timeout = null;
   }
 }
 
