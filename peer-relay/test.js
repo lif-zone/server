@@ -515,11 +515,8 @@ function fake_emit(c, msg){
       assert(0, 'invalid type '+msg.type);
     assert(msg.req_id, 'missing req_id');
     msg.sign = node_from_id(from).wallet.sign(msg);
-    // XXX: rm body, from from emit
-    if (msg.type=='req'){
-      if (d.router.req_handlers[msg.cmd||''])
-        d.router.req_handlers[msg.cmd||''](msg.body, msg.from, msg);
-    }
+    if (msg.type=='req')
+      ReqHandler.t.req_handler_cb(msg.body, msg.from, msg);
     else if (msg.type=='res')
       Req.t.res_handler(msg.body, msg.from, msg);
   }
