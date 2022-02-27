@@ -23,8 +23,7 @@ class Res extends EventEmitter {
     this.seq = 0;
   }
   send(opt, body){
-    if (body===undefined)
-    {
+    if (arguments.length<2){
       body = opt;
       opt = {};
     }

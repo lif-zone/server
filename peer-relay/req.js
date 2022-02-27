@@ -68,8 +68,7 @@ export default class Req extends EventEmitter {
   }
   send_end(body){ return this.send({end: true}, body); }
   send(opt, body){
-    if (body===undefined)
-    {
+    if (arguments.length<2){
       body = opt;
       opt = {};
     }
