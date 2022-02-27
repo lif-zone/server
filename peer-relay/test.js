@@ -413,8 +413,9 @@ function res_send_hook(router, msg){
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
   let e, a;
-  let {req_id, type, cmd, body} = msg;
-  assert(type=='res', 'invalid msg type '+type);
+  let {type, req_id, seq, cmd, body} = msg;
+  assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
+    'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
   xerr.notice('****** res_send_hook %s %s',
@@ -433,9 +434,11 @@ function res_send_hook(router, msg){
       a.push('wrtc');
     e = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
     break;
+  case 'test':
   case '':
-    e = build_cmd_o(from.t.name+to.t.name+'>res',
-      {id: is_number(req_id) ? undefined : req_id, body});
+    e = build_cmd_o(from.t.name+to.t.name+'>'+type,
+      {id: is_number(req_id) ? undefined : req_id,
+      seq: type=='res' ? undefined : seq, cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
@@ -502,12 +505,11 @@ function fake_emit(c, msg){
   assert(!c.fwd, 'fwd not allowed in fake_emit');
   if (s.t.fake && !d.t.fake)
   {
-    if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
-    {
+    if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type)){
       msg.req_id = msg.req_id || ++t_req_id+'';
       log_msg(msg);
     }
-    else if (msg.type=='res'){
+    else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
       if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake)
         msg.req_id = get_req_id(msg);
     }
@@ -515,9 +517,9 @@ function fake_emit(c, msg){
       assert(0, 'invalid type '+msg.type);
     assert(msg.req_id, 'missing req_id');
     msg.sign = node_from_id(from).wallet.sign(msg);
-    if (msg.type=='req')
+    if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
       ReqHandler.t.req_handler_cb(msg.body, msg.from, msg);
-    else if (msg.type=='res')
+    else
       Req.t.res_handler(msg.body, msg.from, msg);
   }
 }
@@ -1634,12 +1636,11 @@ describe('peer-relay', function(){
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
       ab>!req_next(id:r0 body:b1) ab>req_next(id:r0 seq:1 cmd:test body:b1) -
       ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:2 cmd:test body:b2)`);
-    if (0) // XXX: WIP
     t('res_start', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
-      ab>!res_start(id:r0 cmd:test body:rb0)
-      ab>res_start(id:r0 seq:0 cmd:test body:rb0)`);
+      ab<!res_start(id:r0 cmd:test body:rb0)
+      ab<res_start(id:r0 seq:0 cmd:test body:rb0)`);
     /* XXX: TODO
       t('stream', `setup:2_nodes setup:req
         ab>!req_start(id:r0 stream cmd:find body:ping)

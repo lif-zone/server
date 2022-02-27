@@ -9,6 +9,33 @@ const b2s = util.buf_to_str;
 
 const nodes = {};
 
+class Res extends EventEmitter {
+  constructor(opt){
+    super();
+    this.req_handler = opt.req_handler;
+    this.router = this.req_handler.router;
+    this.cmd = this.req_handler.cmd;
+    this.dst = b2s(opt.from);
+    this.stream = opt.stream;
+    this.req_id = opt.req_id;
+    this.seq = 0;
+  }
+  send(body){
+    let ts=date.monotonic(), seq = this.seq++, type;
+    let {dst, req_id, cmd} = this;
+    if (!this.stream){
+      type = 'res';
+      if (seq)
+        return xerr('multiple call to res');
+    } else
+      type = !seq ? 'res_start' : 'res_next';
+    let msg = {ts, type, req_id, seq, cmd, body};
+    this.router.send_msg(dst, msg); // XXX: what if error
+    if (ReqHandler.t_send_hook)
+      ReqHandler.t_send_hook(this.router, msg);
+  }
+}
+
 function req_handler_cb(body, from, msg){
   let {req_id, type, cmd} = msg;
   cmd = cmd||'';
@@ -22,24 +49,10 @@ function req_handler_cb(body, from, msg){
   if (!res){
     if (!['req', 'req_start'].includes(type))
       return xerr('req not started '+type);
-    res = {router: req_handler.router, from: b2s(from), req_id, seq: 0, cmd,
-      send: function(body){
-        return send_res(this.router, {req_id: this.req_id, cmd: this.cmd,
-          to: this.from, body});
-      },
-    };
+    res = new Res({req_handler, from: b2s(from), req_id, stream: type!='req'});
     util.set(nodes, [id, 'cmd', cmd, 'req_id', req_id], {res});
   }
   req_handler.emit(type, msg, res);
-}
-
-function send_res(router, o){
-  let ts=date.monotonic(), seq = 0, type = 'res';
-  let {to, req_id, cmd, body} = o;
-  let msg = {ts, type, req_id, seq, cmd, body};
-  router.send_msg(to, msg); // XXX: what if error
-  if (ReqHandler.t_send_hook)
-    ReqHandler.t_send_hook(router, msg);
 }
 
 export default class ReqHandler extends EventEmitter {
@@ -63,4 +76,4 @@ export default class ReqHandler extends EventEmitter {
 }
 
 if (util.is_mocha())
-  ReqHandler.t = {nodes, req_handler_cb, send_res};
+  ReqHandler.t = {nodes, req_handler_cb};
