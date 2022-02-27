@@ -952,6 +952,7 @@ const cmd_req = opt=>etask(function*req(){
     t_req[id] = {id, body, res, s: c.s, d: c.d};
   if (!s.t.fake){
     if (type=='req_start'){
+      assert(!Req.t.reqs[id], 'req already exists '+id);
       let req = new Req({node: s, stream: true, dst: b2s(d.id), req_id: id,
         cmd});
       req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
@@ -964,6 +965,7 @@ const cmd_req = opt=>etask(function*req(){
     else if (type=='req_end')
       Req.t.reqs[id].send_end(body);
     else if (type=='req'){
+      assert(!Req.t.reqs[id], 'req already exists '+id);
       let req = new Req({node: s, dst: b2s(d.id), req_id: id});
       req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
         build_cmd('id', o.req_id), build_cmd('error', o.error))));
@@ -1194,13 +1196,11 @@ const cmd_run = event=>etask(function*cmd_run(){
 function test_start(role){
   t_role = role;
   t_port = 4000;
-  assign(!Object.keys(t_nodes).length, 'nodes exists on test start '+
+  assert(!Object.keys(t_nodes).length, 'nodes exists on test start '+
     JSON.stringify(Object.keys(t_nodes)));
   t_mode = {msg: false, req: false};
   t_mode_prev = [];
   ReqHandler.t.req_handler = {}; // XXX HACK: need auto-cleaup
-  for (let r in Req.t.reqs) // XXX: HACK: need auto-cleanup
-    delete Req.t.reqs[r];
   t_req_id = 0;
   t_msg = {};
   t_cmds = undefined;
@@ -1266,6 +1266,8 @@ const test_end = ()=>etask(function*(){
     delete t_nodes[n];
   }
   t_cmds = t_role = t_i = undefined;
+  assert(!Object.keys(Req.t.reqs).length, 'req exists on test end '+
+    JSON.stringify(Object.keys(Req.t.reqs)));
 });
 
 beforeEach(function(){ xerr.set_buffered(true, 1000); });

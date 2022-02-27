@@ -19,10 +19,26 @@ function res_handler(body, from, msg){
   if (!reqs[req_id]) // XXX: change to LERR
     return xerr.notice('req not found %s', req_id);
   let req = reqs[req_id];
+  del_req(req_id);
+  req.emit('res', msg);
+}
+
+function del_req(req_id){
+  let req = reqs[req_id];
+  if (!req)
+    return;
   delete reqs[req_id];
   if (req.et_timeout)
     req.et_timeout.return();
-  req.emit('res', msg);
+}
+
+function destroy_cb(){
+  for (let id in Req.t.reqs)
+  {
+    let req = Req.t.reqs[id];
+    if (req.node===this)
+      delete Req.t.reqs[id];
+  }
 }
 
 export default class Req extends EventEmitter {
@@ -44,6 +60,7 @@ export default class Req extends EventEmitter {
     this.req_id = req_id; // XXX: change to id
     if (!router.res_handler_attached){ // XXX: cleanup
       router.on('message', res_handler);
+      node.once('destroy', destroy_cb);
       router.res_handler_attached = true;
     }
   }

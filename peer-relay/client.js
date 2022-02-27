@@ -162,6 +162,7 @@ export default class Client extends EventEmitter {
   destroy(cb){
     if (this.destroyed)
       return;
+    this.emit('destroy');
     this.destroyed = true;
     this.wsConnector.destroy(cb);
     this.wrtcConnector.destroy();
