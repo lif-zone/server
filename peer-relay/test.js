@@ -30,7 +30,7 @@ process.on('uncaughtException', err=>xerr.xexit(err));
 process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
-let t_nodes, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
+let t_nodes = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
@@ -1194,7 +1194,8 @@ const cmd_run = event=>etask(function*cmd_run(){
 function test_start(role){
   t_role = role;
   t_port = 4000;
-  t_nodes = {};
+  assign(!Object.keys(t_nodes).length, 'nodes exists on test start '+
+    JSON.stringify(Object.keys(t_nodes)));
   t_mode = {msg: false, req: false};
   t_mode_prev = [];
   ReqHandler.t.req_handler = {}; // XXX HACK: need auto-cleaup
