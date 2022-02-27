@@ -1114,6 +1114,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'res': yield cmd_res(opt); break;
   case '!res_start': yield cmd_res(opt); break;
   case 'res_start': yield cmd_res(opt); break;
+  case 'res_next': yield cmd_res(opt); break;
   case 'fail': yield cmd_fail(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   case 'ms': yield cmd_ms(opt); break;
@@ -1636,11 +1637,14 @@ describe('peer-relay', function(){
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
       ab>!req_next(id:r0 body:b1) ab>req_next(id:r0 seq:1 cmd:test body:b1) -
       ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:2 cmd:test body:b2)`);
-    t('res_start', `mode:req setup:2_nodes
+    t('res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
       ab<!res_start(id:r0 cmd:test body:rb0)
-      ab<res_start(id:r0 seq:0 cmd:test body:rb0)`);
+      ab<res_start(id:r0 seq:0 cmd:test body:rb0)
+      ab<!res(id:r0 cmd:test body:rb1)
+      ab<res_next(id:r0 seq:1 cmd:test body:rb1)
+      `);
     /* XXX: TODO
       t('stream', `setup:2_nodes setup:req
         ab>!req_start(id:r0 stream cmd:find body:ping)
