@@ -3,6 +3,7 @@
 import assert from 'assert';
 import {EventEmitter} from 'events';
 import util from '../util/util.js';
+import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 const b2s = util.buf_to_str;
 
@@ -17,12 +18,18 @@ function req_handler_cb(body, from, msg){
   let req_handler = util.get(nodes, [id, 'cmd', cmd, 'req_handler']);
   if (!req_handler)
     return;
-  let res = {router: req_handler.router, from: b2s(from), req_id, cmd,
-    send: function(body){
-      return send_res(this.router, {req_id: this.req_id, type: 'res',
-        cmd: this.cmd, to: this.from, body});
-    },
-  };
+  let res = util.get(nodes, [id, 'cmd', cmd, 'req_id', req_id]);
+  if (!res){
+    if (!['req', 'req_start'].includes(type))
+      return xerr('req not started '+type);
+    res = {router: req_handler.router, from: b2s(from), req_id, seq: 0, cmd,
+      send: function(body){
+        return send_res(this.router, {req_id: this.req_id, cmd: this.cmd,
+          to: this.from, body});
+      },
+    };
+    util.set(nodes, [id, 'cmd', cmd, 'req_id', req_id], {res});
+  }
   req_handler.emit(type, msg, res);
 }
 
