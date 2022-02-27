@@ -57,6 +57,7 @@ function req_handler_cb(body, from, msg){
       return xerr('req not started '+type);
     res = new Res({req_handler, from: b2s(from), req_id, stream: type!='req'});
     util.set(nodes, [id, 'cmd', cmd, 'req_id', req_id], {res});
+    util.set(nodes, [id, 'req_id', req_id], {res});
   }
   req_handler.emit(type, msg, res);
 }

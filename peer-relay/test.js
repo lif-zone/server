@@ -1019,9 +1019,9 @@ const cmd_res = opt=>etask(function*req(){
   }
   if (!s.t.fake){
     if (type=='res_end')
-      ReqHandler.t.nodes[b2s(s.id)].cmd[cmd].req_id[id].res.send_end(body);
+      ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send_end(body);
     else
-      ReqHandler.t.nodes[b2s(s.id)].cmd[cmd].req_id[id].res.send(body);
+      ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send(body);
   }
 });
 
@@ -1636,27 +1636,19 @@ describe('peer-relay', function(){
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX derry: timeouts on req/res sides
-    t('req_start', `mode:req setup:2_nodes
-      ab>!req_start(id:r0 cmd:test body:b0)
-      ab>req_start(id:r0 seq:0 cmd:test body:b0)`);
-    t('req_next', `mode:req setup:2_nodes
-      ab>!req_start(id:r0 cmd:test body:b0)
-      ab>req_start(id:r0 seq:0 cmd:test body:b0)
-      ab>!req_next(id:r0 body:b1) ab>req_next(id:r0 seq:1 cmd:test body:b1)`);
-    t('req_end', `mode:req setup:2_nodes
-      ab>!req_start(id:r0 cmd:test body:b0)
-      ab>req_start(id:r0 seq:0 cmd:test body:b0)
-      ab>!req_next(id:r0 body:b1) ab>req_next(id:r0 seq:1 cmd:test body:b1) -
-      ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:2 cmd:test body:b2)`);
     t('res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
       ab<!res_start(id:r0 cmd:test body:rb0)
       ab<res_start(id:r0 seq:0 cmd:test body:rb0)
-      ab<!res_next(id:r0 cmd:test body:rb1)
-      ab<res_next(id:r0 seq:1 cmd:test body:rb1)
-      ab<!res_end(id:r0 cmd:test body:rb2)
-      ab<res_end(id:r0 seq:2 cmd:test body:rb2)`);
+      ab>!req_next(id:r0 body:b1) ab>req_next(id:r0 seq:1 cmd:test body:b1) -
+      ab<!res_next(id:r0 body:rb1) ab<res_next(id:r0 seq:1 cmd:test body:rb1)
+      ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:2 cmd:test body:b2)
+      ab<!res_end(id:r0 body:rb2) ab<res_end(id:r0 seq:2 cmd:test body:rb2)`);
+    // XXX TODO:
+    // - out-of-order/in-order
+    // - close (terminate connection)
+    // - timeouts
     /* XXX: TODO
       t('stream', `setup:2_nodes setup:req
         ab>!req_start(id:r0 stream cmd:find body:ping)
