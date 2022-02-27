@@ -61,11 +61,13 @@ export default class Req extends EventEmitter {
     if (this.stream)
       seq = this.seq++;
     let msg = {ts, type, req_id, seq, cmd: this.cmd, body};
-    this.et_timeout = etask({'this': this}, function*req_timeout(){
-      yield etask.sleep(this.this.timeout);
-      delete reqs[req_id];
-      this.this.emit('fail', {error: 'timeout', req_id});
-    });
+    if (type=='req'){ // XXX: decide what to do for stream timeout
+      this.et_timeout = etask({'this': this}, function*req_timeout(){
+        yield etask.sleep(this.this.timeout);
+        delete reqs[req_id];
+        this.this.emit('fail', {error: 'timeout', req_id});
+      });
+    }
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)
       Req.t_send_hook(msg);
