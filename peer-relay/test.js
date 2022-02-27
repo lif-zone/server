@@ -1635,6 +1635,7 @@ describe('peer-relay', function(){
   });
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
+    // XXX: add msg and msg,req versions
     t('res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
