@@ -22,7 +22,13 @@ class Res extends EventEmitter {
     this.req_id = opt.req_id;
     this.seq = 0;
   }
-  send(body){
+  send(opt, body){
+    opt = opt||{};
+    if (body===undefined)
+    {
+      body = opt;
+      opt = {};
+    }
     let ts=date.monotonic(), seq = this.seq++, type;
     let {dst, req_id, cmd} = this;
     if (!this.stream){
@@ -30,16 +36,13 @@ class Res extends EventEmitter {
       if (seq)
         return xerr('multiple call to res');
     } else
-      type = this.end ? 'res_end' : !seq ? 'res_start' : 'res_next';
+      type = opt.end ? 'res_end' : !seq ? 'res_start' : 'res_next';
     let msg = {ts, type, req_id, seq, cmd, body};
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
   }
-  send_end(body){
-    this.end = true;
-    return this.send(body);
-  }
+  send_end(body){ return this.send({end: true}, body); }
 }
 
 function req_handler_cb(body, from, msg){

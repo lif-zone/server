@@ -1635,16 +1635,27 @@ describe('peer-relay', function(){
   });
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
-    // XXX derry: timeouts on req/res sides
     t('res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
-      ab<!res_start(id:r0 cmd:test body:rb0)
-      ab<res_start(id:r0 seq:0 cmd:test body:rb0)
+      ab<!res_start(id:r0 body:c0) ab<res_start(id:r0 seq:0 cmd:test body:c0)
       ab>!req_next(id:r0 body:b1) ab>req_next(id:r0 seq:1 cmd:test body:b1) -
-      ab<!res_next(id:r0 body:rb1) ab<res_next(id:r0 seq:1 cmd:test body:rb1)
+      ab<!res_next(id:r0 body:c1) ab<res_next(id:r0 seq:1 cmd:test body:c1)
       ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:2 cmd:test body:b2)
-      ab<!res_end(id:r0 body:rb2) ab<res_end(id:r0 seq:2 cmd:test body:rb2)`);
+      ab<!res_end(id:r0 body:c2) ab<res_end(id:r0 seq:2 cmd:test body:c2)`);
+    // XXX derry: multiple res_next without req_start
+    // XXX derry: timeouts on req/res sides
+    // XXX derry: do we need to ack req/res?
+    if (true) // XXX: WIP
+      return;
+    t('multi_res', `mode:req setup:2_nodes
+      ab>!req_start(id:r0 cmd:test body:b0)
+      ab>req_start(id:r0 seq:0 cmd:test body:b0)
+      ab<!res_start(id:r0 body:c0) ab<res_start(id:r0 seq:0 cmd:test body:c0)
+      ab<!res_next(id:r0 body:c1) ab<res_next(id:r0 seq:1 cmd:test body:c1)
+      ab<!res_next(id:r0 body:c2) ab<res_next(id:r0 seq:2 cmd:test body:c2)
+      ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:2 cmd:test body:b2)
+      ab<!res_end(id:r0 body:c3) ab<res_end(id:r0 seq:2 cmd:test body:c3)`);
     // XXX TODO:
     // - out-of-order/in-order
     // - close (terminate connection)
