@@ -948,11 +948,8 @@ const cmd_req = opt=>etask(function*req(){
     return yield cmd_run_if_next_fake();
   }
   id = id || ++t_req_id+'';
-  if (['req_next', 'req_end'].includes(type))
-    assert(t_req[id], 'no request '+id);
-  else
-    assert(!t_req[id], 'request already exists '+id);
-  t_req[id] = {id, body, res, s: c.s, d: c.d};
+  if (!t_req[id])
+    t_req[id] = {id, body, res, s: c.s, d: c.d};
   if (!s.t.fake){
     if (type=='req_start'){
       let req = new Req({node: s, stream: true, dst: b2s(d.id), req_id: id,
@@ -1018,8 +1015,12 @@ const cmd_res = opt=>etask(function*req(){
     fake_emit(c, {type, req_id: id, seq, cmd, body});
     return yield cmd_run_if_next_fake();
   }
-  if (!s.t.fake)
-    ReqHandler.t.nodes[b2s(s.id)].cmd[cmd].req_id[id].res.send(body);
+  if (!s.t.fake){
+    if (type=='res_end')
+      ReqHandler.t.nodes[b2s(s.id)].cmd[cmd].req_id[id].res.send_end(body);
+    else
+      ReqHandler.t.nodes[b2s(s.id)].cmd[cmd].req_id[id].res.send(body);
+  }
 });
 
 const cmd_fail = opt=>etask(function*req(){
@@ -1114,7 +1115,10 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'res': yield cmd_res(opt); break;
   case '!res_start': yield cmd_res(opt); break;
   case 'res_start': yield cmd_res(opt); break;
+  case '!res_next': yield cmd_res(opt); break;
   case 'res_next': yield cmd_res(opt); break;
+  case '!res_end': yield cmd_res(opt); break;
+  case 'res_end': yield cmd_res(opt); break;
   case 'fail': yield cmd_fail(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   case 'ms': yield cmd_ms(opt); break;
@@ -1193,7 +1197,9 @@ function test_start(role){
   t_nodes = {};
   t_mode = {msg: false, req: false};
   t_mode_prev = [];
-  ReqHandler.t.req_handler = {}; // XXX TODO: auto-cleanup in req_handler.js
+  ReqHandler.t.req_handler = {}; // XXX HACK: need auto-cleaup
+  for (let r in Req.t.reqs) // XXX: HACK: need auto-cleanup
+    delete Req.t.reqs[r];
   t_req_id = 0;
   t_msg = {};
   t_cmds = undefined;
@@ -1642,9 +1648,10 @@ describe('peer-relay', function(){
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
       ab<!res_start(id:r0 cmd:test body:rb0)
       ab<res_start(id:r0 seq:0 cmd:test body:rb0)
-      ab<!res(id:r0 cmd:test body:rb1)
+      ab<!res_next(id:r0 cmd:test body:rb1)
       ab<res_next(id:r0 seq:1 cmd:test body:rb1)
-      `);
+      ab<!res_end(id:r0 cmd:test body:rb2)
+      ab<res_end(id:r0 seq:2 cmd:test body:rb2)`);
     /* XXX: TODO
       t('stream', `setup:2_nodes setup:req
         ab>!req_start(id:r0 stream cmd:find body:ping)

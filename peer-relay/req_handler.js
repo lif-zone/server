@@ -28,11 +28,15 @@ class Res extends EventEmitter {
       if (seq)
         return xerr('multiple call to res');
     } else
-      type = !seq ? 'res_start' : 'res_next';
+      type = this.end ? 'res_end' : !seq ? 'res_start' : 'res_next';
     let msg = {ts, type, req_id, seq, cmd, body};
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
+  }
+  send_end(body){
+    this.end = true;
+    return this.send(body);
   }
 }
 
