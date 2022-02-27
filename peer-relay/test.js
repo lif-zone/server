@@ -1669,6 +1669,11 @@ describe('peer-relay', function(){
         ab<res_start(id:r0 seq:0 cmd:test) ab>!req_next(id:r0)
         ab>req_next(id:r0 seq:1 cmd:test) 19999ms -
         1ms a>fail(id:r0 error(timeout))`);
+      t('res_next', `mode:req setup:2_nodes ab>!req_start(id:r0 cmd:test)
+        ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
+        ab<res_start(id:r0 seq:0 cmd:test) ab>!req_next(id:r0)
+        ab>req_next(id:r0 seq:1 cmd:test) 19999ms -
+        ab<!res_next(id:r0) ab<res_next(id:r0 seq:1 cmd:test) 19999ms - 20s`);
     });
     // XXX TODO:
     // - out-of-order/in-order
