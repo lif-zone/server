@@ -37,7 +37,7 @@ function destroy_cb(){
   {
     let req = Req.t.reqs[id];
     if (req.node===this)
-      delete Req.t.reqs[id];
+      del_req(id);
   }
 }
 

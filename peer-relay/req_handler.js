@@ -9,6 +9,8 @@ const b2s = util.buf_to_str;
 
 const nodes = {};
 
+function destroy_cb(){ delete nodes[b2s(this.id)]; }
+
 class Res extends EventEmitter {
   constructor(opt){
     super();
@@ -74,6 +76,7 @@ export default class ReqHandler extends EventEmitter {
     nodes[id].cmd[cmd] = {req_handler: this};
     if (!router.req_handler_attached){ // XXX: cleanup
       router.on('message', req_handler_cb);
+      node.once('destroy', destroy_cb);
       router.req_handler_attached = true;
     }
   }

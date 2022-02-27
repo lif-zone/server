@@ -1200,7 +1200,6 @@ function test_start(role){
     JSON.stringify(Object.keys(t_nodes)));
   t_mode = {msg: false, req: false};
   t_mode_prev = [];
-  ReqHandler.t.req_handler = {}; // XXX HACK: need auto-cleaup
   t_req_id = 0;
   t_msg = {};
   t_cmds = undefined;
@@ -1268,6 +1267,9 @@ const test_end = ()=>etask(function*(){
   t_cmds = t_role = t_i = undefined;
   assert(!Object.keys(Req.t.reqs).length, 'req exists on test end '+
     JSON.stringify(Object.keys(Req.t.reqs)));
+  assert(!Object.keys(ReqHandler.t.nodes).length,
+    'req handler node exists on test end '+
+    JSON.stringify(Object.keys(ReqHandler.t.nodes)));
 });
 
 beforeEach(function(){ xerr.set_buffered(true, 1000); });
