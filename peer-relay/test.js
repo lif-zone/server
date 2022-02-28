@@ -1675,13 +1675,18 @@ describe('peer-relay', function(){
       ab>!req_end(id:r0) ab>req_end(id:r0 seq:2 cmd:test)`);
     describe('timeout', function(){
 /* XXX derry:
-   ab>req_start(seq:0)
-   ab<res_start(seq:0)
-   ab>req_next(seq:1)
+   XXX: auto-ack in tests by default
+   1. how to know which req was acked?
+   ab>req_start(seq:0 !ack)
+   ab<res_start(seq:0 ack:0)
+   ab>req_next(seq:1 ack:0)
    ab>req_next(seq:2)
-   ab<res_next(seq:1) // XXX: how to know which req_next was acked?
-   // PROPOSED SOLUTION: add max_req_seq in res_next response. eg
-   // ab<res_next(seq:1 max_req_seq:1)
+   ab<res_next(seq:1 ack:1,2)
+
+   2. how to ack the last req_end/res_end
+   ab>req_end(seq:2)
+   ab<res_end(seq:2) // XXX: how to ack it?
+   // NO need to ack last message
 */
       t('req_start', `mode:req setup:2_nodes
         ab>!req_start(id:r0 cmd:test)
