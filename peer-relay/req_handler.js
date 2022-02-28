@@ -6,6 +6,7 @@ import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 const b2s = util.buf_to_str, assign = Object.assign;
+const RES_TIMEOUT = 20*date.ms.SEC;
 
 const nodes = {};
 
@@ -15,6 +16,7 @@ class Res extends EventEmitter {
   constructor(opt){
     super();
     this.req_handler = opt.req_handler;
+    this.timeout = this.req_handler.timeout;
     this.router = this.req_handler.router;
     this.cmd = this.req_handler.cmd;
     this.dst = b2s(opt.from);
@@ -38,12 +40,16 @@ class Res extends EventEmitter {
       type = opt.end ? 'res_end' : !seq ? 'res_start' : 'res_next';
     if (util.is_mocha() && opt.req_seq)
       req_seq = opt.req_seq;
+    this.set_timeout(seq);
     let msg = {ts, type, req_id, seq, req_seq, cmd, body};
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
   }
   send_end(opt, body){ return this.send(assign({}, opt, {end: true}), body); }
+  set_timeout(seq){
+    // XXX: TODO
+  }
 }
 
 function req_handler_cb(body, from, msg){
@@ -72,11 +78,12 @@ function req_handler_cb(body, from, msg){
 export default class ReqHandler extends EventEmitter {
   constructor(opt){
     super();
-    let {node} = opt;
+    let {node, timeout} = opt;
     let cmd = this.cmd = opt.cmd||'';
     let router = node.router;
     this.node = node;
     this.router = router;
+    this.timeout = timeout||RES_TIMEOUT;
     this.req_seq = -1;
     let id = b2s(router.id);
     // XXX: need unregister + cleanup
