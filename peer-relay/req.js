@@ -21,7 +21,8 @@ function res_handler(body, from, msg){
   let req = reqs[req_id].req;
   if (type=='res')
     del_req(req_id);
-  req.clr_timeout(msg.seq);
+  else
+    req.clr_timeout(msg.req_seq);
   req.emit('res', msg);
 }
 
@@ -29,8 +30,7 @@ function del_req(req_id){
   let req = util.get(reqs, [req_id, 'req']);
   if (!req)
     return;
-  for (let seq in reqs[req_id].seq)
-    req.clr_timeout(seq);
+  req.clr_timeout(Infinity);
   delete reqs[req_id];
 }
 
@@ -91,14 +91,18 @@ export default class Req extends EventEmitter {
       yield etask.sleep(timeout);
       delete reqs[req_id].seq[seq];
       this.this.emit('fail', {error: 'timeout', req_id, seq});
+      // XXX: support per-req timeout and allow to specify if fatal or retry
+      this.this.clr_timeout(Infinity);
     });
   }
-  clr_timeout(seq){
+  clr_timeout(max_seq){
     let {req_id} = this;
-    if (!util.get(reqs, [req_id, 'seq', seq, 'et_timeout']))
-      return;
-    reqs[req_id].seq[seq].et_timeout.return();
-    delete reqs[req_id].seq[seq];
+    for (let seq in reqs[req_id].seq){
+      if (seq<=max_seq){
+        reqs[req_id].seq[seq].et_timeout.return();
+        delete reqs[req_id].seq[seq];
+      }
+    }
   }
 }
 

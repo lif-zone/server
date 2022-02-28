@@ -419,7 +419,7 @@ function res_send_hook(router, msg){
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
   let e, a;
-  let {type, req_id, seq, cmd, body} = msg;
+  let {type, req_id, seq, req_seq, cmd, body} = msg;
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid msg type '+type);
   cmd = cmd||'';
@@ -444,7 +444,8 @@ function res_send_hook(router, msg){
   case '':
     e = build_cmd_o(from.t.name+to.t.name+'>'+type,
       {id: is_number(req_id) ? undefined : req_id,
-      seq: type=='res' ? undefined : seq, cmd, body});
+      seq: type=='res' ? undefined : seq,
+      rseq: req_seq===Infinity ? undefined : req_seq, cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
@@ -1001,7 +1002,7 @@ const cmd_res = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let call = c.cmd[0]=='!', body, id, arg = xtest.test_parse(c.arg);
   assert(s && d, 'invalid event '+c.orig);
-  let type = c.cmd.replace('!', ''), cmd='', seq;
+  let type = c.cmd.replace('!', ''), cmd='', seq, req_seq;
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid type '+c.cmd);
   util.forEach(arg, a=>{
@@ -1010,23 +1011,27 @@ const cmd_res = opt=>etask(function*req(){
     case 'body': body = a.arg; break;
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
+    case 'rseq': req_seq = assert_int(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  if (t_pre_process)
-    return set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, cmd, body}));
+  if (t_pre_process){
+    return set_orig(c, build_cmd_o(c.meta.cmd,
+      {id, seq, rseq: req_seq, cmd, body}));
+  }
+  req_seq = req_seq===undefined ? Infinity : req_seq;
   assert_event_c(c, event, call);
   if (!id && t_msg[d.t.name+'_'+s.t.name+'_req_'])
     id = t_msg[d.t.name+'_'+s.t.name+'_req_'].req_id;
   if (!call){
-    fake_emit(c, {type, req_id: id, seq, cmd, body});
+    fake_emit(c, {type, req_id: id, seq, req_seq, cmd, body});
     return yield cmd_run_if_next_fake();
   }
   if (!s.t.fake){
     if (type=='res_end')
-      ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send_end(body);
+      ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send_end({req_seq}, body);
     else
-      ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send(body);
+      ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send({req_seq}, body);
   }
 });
 
@@ -1659,14 +1664,14 @@ describe('peer-relay', function(){
       ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:1 cmd:test body:b2)
       ab<!res_end(id:r0 body:c3) ab<res_end(id:r0 seq:3 cmd:test body:c3)`);
     // XXX: also need tests for timeouts on res side
-    if (0) // XXX: WIP
     describe('timeout', function(){
       t('req_start', `mode:req setup:2_nodes
         ab>!req_start(id:r0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms -
         1ms a>fail(id:r0 seq:0 error(timeout))`);
       t('res_start', `mode:req setup:2_nodes ab>!req_start(id:r0 cmd:test)
-        ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
+        ab>req_start(id:r0 seq:0 cmd:test) 19999ms -
+        ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) 19999ms - 20s`);
       t('req_next', `mode:req setup:2_nodes ab>!req_start(id:r0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
@@ -1696,11 +1701,14 @@ describe('peer-relay', function(){
         ab<res_start(id:r0 seq:0 cmd:test) -
         ab>!req_next(id:r0) ab>req_next(id:r0 seq:1 cmd:test) 5s -
         ab>!req_next(id:r0) ab>req_next(id:r0 seq:2 cmd:test) 10s -`;
-      t('multi_no_res', `${setup} 4999ms - 1ms a>fail(id(r0) error(timeout))
-        20s`);
+      t('multi_no_res', `${setup} 4999ms -
+        1ms a>fail(id(r0) seq:1 error(timeout)) 20s`);
       t('multi_res_1st', `${setup}
-        ab<!res_next(id:r0) ab<res_next(id:r0 seq:1 cmd:test) 9999ms -
-        1ms a>fail(id:r0 error(timeout))`);
+        ab<!res_next(id:r0 rseq:1) ab<res_next(id:r0 seq:1 rseq:1 cmd:test)
+        9999ms - 1ms a>fail(id:r0 seq:2 error(timeout)) - 20s`);
+      t('multi_res_2nd', `${setup}
+        ab<!res_next(id:r0 rseq:2) ab<res_next(id:r0 seq:1 rseq:2 cmd:test)
+        20s`);
     });
     // XXX TODO:
     // - out-of-order/in-order

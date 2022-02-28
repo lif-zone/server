@@ -5,7 +5,7 @@ import {EventEmitter} from 'events';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import date from '../util/date.js';
-const b2s = util.buf_to_str;
+const b2s = util.buf_to_str, assign = Object.assign;
 
 const nodes = {};
 
@@ -29,19 +29,21 @@ class Res extends EventEmitter {
     }
     opt = opt||{};
     let ts=date.monotonic(), seq = this.seq++, type;
-    let {dst, req_id, cmd} = this;
+    let {dst, req_id, req_seq, cmd} = this;
     if (!this.stream){
       type = 'res';
       if (seq)
         return xerr('multiple call to res');
     } else
       type = opt.end ? 'res_end' : !seq ? 'res_start' : 'res_next';
-    let msg = {ts, type, req_id, seq, cmd, body};
+    if (util.is_mocha() && opt.req_seq)
+      req_seq = opt.req_seq;
+    let msg = {ts, type, req_id, seq, req_seq, cmd, body};
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
   }
-  send_end(body){ return this.send({end: true}, body); }
+  send_end(opt, body){ return this.send(assign({}, opt, {end: true}), body); }
 }
 
 function req_handler_cb(body, from, msg){
@@ -56,6 +58,7 @@ function req_handler_cb(body, from, msg){
   let req_handler = util.get(nodes, [id, 'cmd', cmd, 'req_handler']);
   if (!req_handler)
     return;
+  req_handler.req_seq = Math.max(req_handler.req_seq, seq);
   let res = util.get(nodes, [id, 'cmd', cmd, 'req_id', req_id]);
   if (!res){
     if (!['req', 'req_start'].includes(type))
@@ -75,6 +78,7 @@ export default class ReqHandler extends EventEmitter {
     let router = node.router;
     this.node = node;
     this.router = router;
+    this.req_seq = -1;
     let id = b2s(router.id);
     // XXX: need unregister + cleanup
     nodes[id] = nodes[id]||{cmd: {}};
