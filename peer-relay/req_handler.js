@@ -59,12 +59,11 @@ function req_handler_cb(body, from, msg){
   if (!req_handler)
     return;
   req_handler.req_seq = Math.max(req_handler.req_seq, seq);
-  let res = util.get(nodes, [id, 'cmd', cmd, 'req_id', req_id]);
+  let res = util.get(nodes, [id, 'req_id', req_id]);
   if (!res){
     if (!['req', 'req_start'].includes(type))
       return xerr('req not started '+type);
     res = new Res({req_handler, from: b2s(from), req_id, stream: type!='req'});
-    util.set(nodes, [id, 'cmd', cmd, 'req_id', req_id], {res});
     util.set(nodes, [id, 'req_id', req_id], {res});
   }
   req_handler.emit(type, msg, res);
@@ -81,8 +80,8 @@ export default class ReqHandler extends EventEmitter {
     this.req_seq = -1;
     let id = b2s(router.id);
     // XXX: need unregister + cleanup
+    assert(!util.get(nodes, [id, cmd]), 'handler already exists '+cmd);
     nodes[id] = nodes[id]||{cmd: {}};
-    assert(!nodes[id][cmd], 'handler already exists '+cmd);
     nodes[id].cmd[cmd] = {req_handler: this};
     if (!router.req_handler_attached){ // XXX: cleanup
       router.on('message', req_handler_cb);
