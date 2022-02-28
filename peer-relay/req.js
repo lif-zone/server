@@ -18,7 +18,7 @@ function res_handler(body, from, msg){
   // XXX: if final response, remove from this.reqs
   if (!reqs[req_id]) // XXX: change to LERR
     return xerr.notice('req not found %s', req_id);
-  let req = reqs[req_id];
+  let req = reqs[req_id].req;
   if (type=='res')
     del_req(req_id);
   else
@@ -27,7 +27,7 @@ function res_handler(body, from, msg){
 }
 
 function del_req(req_id){
-  let req = reqs[req_id];
+  let req = util.get(reqs, [req_id, 'req']);
   if (!req)
     return;
   delete reqs[req_id];
@@ -35,9 +35,9 @@ function del_req(req_id){
 }
 
 function destroy_cb(){
-  for (let id in Req.t.reqs)
+  for (let id in reqs)
   {
-    let req = Req.t.reqs[id];
+    let req = reqs[id].req;
     if (req.node===this)
       del_req(id);
   }
@@ -58,7 +58,7 @@ export default class Req extends EventEmitter {
     this.seq = 0;
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
-    reqs[req_id] = this;
+    reqs[req_id] = {req: this, seq: {}};
     this.req_id = req_id; // XXX: change to id
     if (!router.res_handler_attached){ // XXX: cleanup
       router.on('message', res_handler);

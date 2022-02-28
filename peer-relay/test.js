@@ -961,9 +961,9 @@ const cmd_req = opt=>etask(function*req(){
       req.send(body);
     }
     else if (type=='req_next')
-      Req.t.reqs[id].send(body);
+      Req.t.reqs[id].req.send(body);
     else if (type=='req_end')
-      Req.t.reqs[id].send_end(body);
+      Req.t.reqs[id].req.send_end(body);
     else if (type=='req'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
       let req = new Req({node: s, dst: b2s(d.id), req_id: id});
@@ -1685,7 +1685,18 @@ describe('peer-relay', function(){
         ab<res_start(id:r0 seq:0 cmd:test) 19999ms - ab>!req_next(id:r0)
         ab>req_next(id:r0 seq:1 cmd:test) - ab>!req_end(id:r0)
         ab>req_end(id:r0 seq:2 cmd:test) 19999ms -
-        ab<!res_end(id:r0) ab<req_end(id:r0 seq:2 cmd:test) 19999ms - 20s`);
+        ab<!res_end(id:r0) ab<res_end(id:r0 seq:1 cmd:test) 19999ms - 20s`);
+      const setup = `mode:req setup:2_nodes ab>!req_start(id:r0 cmd:test)
+        ab>req_start(id:r0 seq:0 cmd:test) ab<!res_start(id:r0 seq:0)
+        ab<res_start(id:r0 seq:0 cmd:test) -
+        ab>!req_next(id:r0) ab>req_next(id:r0 seq:1 cmd:test) 5s -
+        ab>!req_next(id:r0) ab>req_next(id:r0 seq:2 cmd:test) 10s -`;
+      t('multi_no_res', `${setup} 4999ms - 1ms a>fail(id(r0) error(timeout))
+        20s`);
+      if (0) // XXX: WIP
+      t('multi_res_1st', `${setup}
+        ab<!res_next(id:r0) ab<res_next(id:r0 seq:1 cmd:test) 9999ms -
+        1ms a>fail(id:r0 error(timeout))`);
     });
     // XXX TODO:
     // - out-of-order/in-order
