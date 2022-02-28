@@ -1664,9 +1664,6 @@ describe('peer-relay', function(){
       ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:2 cmd:test body:b2)
       ab<!res_end(id:r0 body:c2) ab<res_end(id:r0 seq:2 cmd:test body:c2)
       ab>!req_end(id:r0) ab>req_end(id:r0 seq:3 cmd:test)`);
-    // XXX derry: multiple res_next without req_start
-    // XXX derry: timeouts on req/res sides
-    // XXX derry: do we need to ack req/res?
     t('multi_res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
@@ -1676,8 +1673,16 @@ describe('peer-relay', function(){
       ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:1 cmd:test body:b2)
       ab<!res_end(id:r0 body:c3) ab<res_end(id:r0 seq:3 cmd:test body:c3)
       ab>!req_end(id:r0) ab>req_end(id:r0 seq:2 cmd:test)`);
-    // XXX: also need tests for timeouts on res side
     describe('timeout', function(){
+/* XXX derry:
+   ab>req_start(seq:0)
+   ab<res_start(seq:0)
+   ab>req_next(seq:1)
+   ab>req_next(seq:2)
+   ab<res_next(seq:1) // XXX: how to know which req_next was acked?
+   // PROPOSED SOLUTION: add max_req_seq in res_next response. eg
+   // ab<res_next(seq:1 max_req_seq:1)
+*/
       t('req_start', `mode:req setup:2_nodes
         ab>!req_start(id:r0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms -
