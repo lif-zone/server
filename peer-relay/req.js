@@ -21,8 +21,7 @@ function res_handler(body, from, msg){
   let req = reqs[req_id].req;
   if (type=='res')
     del_req(req_id);
-  else
-    req.clr_timeout();
+  req.clr_timeout(msg.seq);
   req.emit('res', msg);
 }
 
@@ -30,8 +29,9 @@ function del_req(req_id){
   let req = util.get(reqs, [req_id, 'req']);
   if (!req)
     return;
+  for (let seq in reqs[req_id].seq)
+    req.clr_timeout(seq);
   delete reqs[req_id];
-  req.clr_timeout();
 }
 
 function destroy_cb(){
@@ -73,33 +73,32 @@ export default class Req extends EventEmitter {
       opt = {};
     }
     opt = opt||{};
-    let ts=date.monotonic(), req_id = this.req_id, seq;
-    let type = !this.stream ? 'req' : opt.end ? 'req_end' : !this.seq ?
+    let ts=date.monotonic(), req_id = this.req_id, seq = this.seq++;
+    let type = !this.stream ? 'req' : opt.end ? 'req_end' : !seq ?
       'req_start' : 'req_next';
-    if (this.stream)
-      seq = this.seq++;
     let msg = {ts, type, req_id, seq, cmd: this.cmd, body};
-    if (!this.et_timeout)
-      this.set_timeout();
+    reqs[req_id].seq[seq] = {};
+    this.set_timeout(seq);
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)
       Req.t_send_hook(msg);
   }
-  set_timeout(){
-    // XXX: find way to update timeout with signal instad of creating new etask
-    this.clr_timeout();
+  set_timeout(seq){
     let {req_id, timeout} = this;
-    this.et_timeout = etask({'this': this}, function*req_timeout(){
+    assert(!reqs[req_id].seq[seq].et_timeout, 'timeout already set');
+    reqs[req_id].seq[seq].et_timeout = etask({'this': this},
+      function*req_timeout(){
       yield etask.sleep(timeout);
-      delete reqs[req_id];
-      this.this.emit('fail', {error: 'timeout', req_id});
+      delete reqs[req_id].seq[seq];
+      this.this.emit('fail', {error: 'timeout', req_id, seq});
     });
   }
-  clr_timeout(){
-    if (!this.et_timeout)
+  clr_timeout(seq){
+    let {req_id} = this;
+    if (!util.get(reqs, [req_id, 'seq', seq, 'et_timeout']))
       return;
-    this.et_timeout.return();
-    this.et_timeout = null;
+    reqs[req_id].seq[seq].et_timeout.return();
+    delete reqs[req_id].seq[seq];
   }
 }
 

@@ -147,6 +147,11 @@ function node_from_id(id){
   }
 }
 
+function assert_int(val){
+  assert(/^[0-9]+$/.test(val), 'invalid int '+val);
+  return parseInt(val);
+}
+
 function assert_exist(name){ assert(t_nodes[name], 'node not found '+name); }
 
 function assert_not_exist(name){
@@ -399,7 +404,8 @@ function req_send_hook(msg){
   case '':
   case 'test':
     e = build_cmd_o(from.t.name+to.t.name+'>'+type,
-      {id: is_number(req_id) ? undefined : req_id, seq, cmd, body});
+      {id: is_number(req_id) ? undefined : req_id,
+      seq: type=='req' ? undefined : seq, cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
@@ -931,7 +937,7 @@ const cmd_req = opt=>etask(function*req(){
     case 'id': id = a.arg; break;
     case 'body': body = a.arg; break;
     case 'cmd': cmd = a.arg; break;
-    case 'seq': seq = a.arg; break;
+    case 'seq': seq = assert_int(a.arg); break;
     case 'res':
       assert(call, 'res only valid for !req');
       res = a.arg;
@@ -951,12 +957,19 @@ const cmd_req = opt=>etask(function*req(){
   if (!t_req[id])
     t_req[id] = {id, body, res, s: c.s, d: c.d};
   if (!s.t.fake){
-    if (type=='req_start'){
+    if (type=='req'){
+      assert(!Req.t.reqs[id], 'req already exists '+id);
+      let req = new Req({node: s, dst: b2s(d.id), req_id: id});
+      req.on('fail', o=>cmd_run(build_cmd_o(c.s+'>fail',
+        {id: o.req_id, error: o.error})));
+      assert.equal(req.req_id, id, 'req_id mismatch');
+      req.send(body);
+    } else if (type=='req_start'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
       let req = new Req({node: s, stream: true, dst: b2s(d.id), req_id: id,
         cmd});
-      req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
-        build_cmd('id', o.req_id), build_cmd('error', o.error))));
+      req.on('fail', o=>cmd_run(build_cmd_o(c.s+'>fail',
+        {id: o.req_id, seq: o.seq, error: o.error})));
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send(body);
     }
@@ -964,14 +977,6 @@ const cmd_req = opt=>etask(function*req(){
       Req.t.reqs[id].req.send(body);
     else if (type=='req_end')
       Req.t.reqs[id].req.send_end(body);
-    else if (type=='req'){
-      assert(!Req.t.reqs[id], 'req already exists '+id);
-      let req = new Req({node: s, dst: b2s(d.id), req_id: id});
-      req.on('fail', o=>cmd_run(build_cmd(c.s+'>fail',
-        build_cmd('id', o.req_id), build_cmd('error', o.error))));
-      assert.equal(req.req_id, id, 'req_id mismatch');
-      req.send(body);
-    }
     else
       assert(0, 'invalid type '+type);
   }
@@ -1004,7 +1009,7 @@ const cmd_res = opt=>etask(function*req(){
     case 'id': id = a.arg; break;
     case 'body': body = a.arg; break;
     case 'cmd': cmd = a.arg; break;
-    case 'seq': seq = a.arg; break;
+    case 'seq': seq = assert_int(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
@@ -1028,21 +1033,19 @@ const cmd_res = opt=>etask(function*req(){
 const cmd_fail = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && !d, 'invalid event '+c.orig);
-  let error, id, arg = xtest.test_parse(c.arg);
+  let error, id, seq, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
+    case 'seq': seq = assert_int(a.arg); break;
     case 'error': error = a.arg; break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   assert(id, 'fail missing id');
   assert(error, 'fail missing error');
-  if (t_pre_process){
-    set_orig(c, build_cmd(c.meta.cmd, build_cmd('id', id),
-      build_cmd('error', error)));
-    return;
-  }
+  if (t_pre_process)
+    return set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, error}));
   assert_event_c(c, event);
   yield cmd_run_if_next_fake();
 });
@@ -1656,11 +1659,12 @@ describe('peer-relay', function(){
       ab>!req_end(id:r0 body:b2) ab>req_end(id:r0 seq:1 cmd:test body:b2)
       ab<!res_end(id:r0 body:c3) ab<res_end(id:r0 seq:3 cmd:test body:c3)`);
     // XXX: also need tests for timeouts on res side
+    if (0) // XXX: WIP
     describe('timeout', function(){
       t('req_start', `mode:req setup:2_nodes
         ab>!req_start(id:r0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms -
-        1ms a>fail(id:r0 error(timeout))`);
+        1ms a>fail(id:r0 seq:0 error(timeout))`);
       t('res_start', `mode:req setup:2_nodes ab>!req_start(id:r0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) 19999ms - 20s`);
@@ -1668,7 +1672,7 @@ describe('peer-relay', function(){
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) ab>!req_next(id:r0)
         ab>req_next(id:r0 seq:1 cmd:test) 19999ms -
-        1ms a>fail(id:r0 error(timeout))`);
+        1ms a>fail(id:r0 seq:1 error(timeout))`);
       t('res_next', `mode:req setup:2_nodes ab>!req_start(id:r0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) ab>!req_next(id:r0)
@@ -1677,9 +1681,10 @@ describe('peer-relay', function(){
       t('req_end', `mode:req setup:2_nodes ab>!req_start(id:r0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) 19999ms - ab>!req_next(id:r0)
-        ab>req_next(id:r0 seq:1 cmd:test) - ab>!req_end(id:r0)
-        ab>req_end(id:r0 seq:2 cmd:test) 19999ms -
-        1ms a>fail(id:r0 error(timeout))`);
+        ab>req_next(id:r0 seq:1 cmd:test)
+        ab<!res_next(id:r0) ab<res_next(id:r0 seq:1 cmd:test) 19999ms -
+        ab>!req_end(id:r0) ab>req_end(id:r0 seq:2 cmd:test) 19999ms -
+        1ms a>fail(id:r0 seq:2 error(timeout))`);
       t('res_end', `mode:req setup:2_nodes ab>!req_start(id:r0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) 19999ms - ab>!req_next(id:r0)
@@ -1693,7 +1698,6 @@ describe('peer-relay', function(){
         ab>!req_next(id:r0) ab>req_next(id:r0 seq:2 cmd:test) 10s -`;
       t('multi_no_res', `${setup} 4999ms - 1ms a>fail(id(r0) error(timeout))
         20s`);
-      if (0) // XXX: WIP
       t('multi_res_1st', `${setup}
         ab<!res_next(id:r0) ab<res_next(id:r0 seq:1 cmd:test) 9999ms -
         1ms a>fail(id:r0 error(timeout))`);

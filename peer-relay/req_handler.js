@@ -45,10 +45,13 @@ class Res extends EventEmitter {
 }
 
 function req_handler_cb(body, from, msg){
-  let {req_id, type, cmd} = msg;
+  let {req_id, type, cmd, seq} = msg;
   cmd = cmd||'';
   if (!req_id || !['req', 'req_start', 'req_next', 'req_end'].includes(type))
     return;
+  seq = seq||0;
+  if (!Number.isInteger(seq) || seq<0)
+    return xerr('invalid seq '+seq);
   let id = b2s(msg.to);
   let req_handler = util.get(nodes, [id, 'cmd', cmd, 'req_handler']);
   if (!req_handler)
