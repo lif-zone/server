@@ -101,6 +101,7 @@ export default class Req extends EventEmitter {
       delete this.this.sent[seq];
       this.this.emit('fail', {error: 'timeout', req_id, seq});
       // XXX: support per-req timeout and allow to specify if fatal or retry
+      // XXX: close req
       this.this.clr_timeout(Infinity);
     });
   }
