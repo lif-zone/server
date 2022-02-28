@@ -56,9 +56,10 @@ export default class Req extends EventEmitter {
     this.stream = stream;
     this.timeout = timeout = timeout||REQ_TIMEOUT;
     this.seq = 0;
+    this.sent = {};
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
-    reqs[req_id] = {req: this, seq: {}};
+    reqs[req_id] = {req: this};
     this.req_id = req_id; // XXX: change to id
     if (!router.res_handler_attached){ // XXX: cleanup
       router.on('message', res_handler);
@@ -77,7 +78,6 @@ export default class Req extends EventEmitter {
     let type = !this.stream ? 'req' : opt.end ? 'req_end' : !seq ?
       'req_start' : 'req_next';
     let msg = {ts, type, req_id, seq, cmd: this.cmd, body};
-    reqs[req_id].seq[seq] = {};
     this.set_timeout(seq);
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)
@@ -85,22 +85,21 @@ export default class Req extends EventEmitter {
   }
   set_timeout(seq){
     let {req_id, timeout} = this;
-    assert(!reqs[req_id].seq[seq].et_timeout, 'timeout already set');
-    reqs[req_id].seq[seq].et_timeout = etask({'this': this},
-      function*req_timeout(){
+    assert(!this.sent[seq], 'timeout already set '+seq);
+    this.sent[seq] = {};
+    this.sent[seq].et_timeout = etask({'this': this}, function*req_timeout(){
       yield etask.sleep(timeout);
-      delete reqs[req_id].seq[seq];
+      delete this.this.sent[seq];
       this.this.emit('fail', {error: 'timeout', req_id, seq});
       // XXX: support per-req timeout and allow to specify if fatal or retry
       this.this.clr_timeout(Infinity);
     });
   }
   clr_timeout(max_seq){
-    let {req_id} = this;
-    for (let seq in reqs[req_id].seq){
+    for (let seq in this.sent){
       if (seq<=max_seq){
-        reqs[req_id].seq[seq].et_timeout.return();
-        delete reqs[req_id].seq[seq];
+        this.sent[seq].et_timeout.return();
+        delete this.sent[seq];
       }
     }
   }
