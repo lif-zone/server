@@ -6,19 +6,24 @@ import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 import etask from '../util/etask.js';
 import util from '../util/util.js';
+const assign = Object.assign;
 const REQ_TIMEOUT = 20*date.ms.SEC;
 
 const reqs = {};
 let free_req_id = date.monotonic();
 
 function res_handler(body, from, msg){
-  let {req_id, type} = msg;
+  let {req_id, type, seq} = msg;
+  seq = seq||0;
   if (!req_id || !['res', 'res_start', 'res_next', 'res_end'].includes(type))
     return;
   // XXX: if final response, remove from this.reqs
   if (!reqs[req_id]) // XXX: change to LERR
     return xerr.notice('req not found %s', req_id);
+  if (!Number.isInteger(seq) || seq<0)
+    return xerr('invalid seq '+seq);
   let req = reqs[req_id].req;
+  req.res_seq = Math.max(req.res_seq, seq);
   if (type=='res')
     del_req(req_id);
   else
@@ -56,6 +61,7 @@ export default class Req extends EventEmitter {
     this.stream = stream;
     this.timeout = timeout = timeout||REQ_TIMEOUT;
     this.seq = 0;
+    this.res_seq = -1;
     this.sent = {};
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
@@ -67,7 +73,7 @@ export default class Req extends EventEmitter {
       router.res_handler_attached = true;
     }
   }
-  send_end(body){ return this.send({end: true}, body); }
+  send_end(opt, body){ return this.send(assign({}, opt, {end: true}), body); }
   send(opt, body){
     if (arguments.length<2){
       body = opt;
@@ -77,7 +83,10 @@ export default class Req extends EventEmitter {
     let ts=date.monotonic(), req_id = this.req_id, seq = this.seq++;
     let type = !this.stream ? 'req' : opt.end ? 'req_end' : !seq ?
       'req_start' : 'req_next';
-    let msg = {ts, type, req_id, seq, cmd: this.cmd, body};
+    let res_seq = this.res_seq;
+    if (util.is_mocha() && opt.res_seq)
+      res_seq = opt.res_seq;
+    let msg = {ts, type, req_id, seq, res_seq, cmd: this.cmd, body};
     this.set_timeout(seq);
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)
@@ -105,5 +114,4 @@ export default class Req extends EventEmitter {
   }
 }
 
-if (util.is_mocha())
-  Req.t = {reqs, res_handler};
+Req.t = {reqs, res_handler};
