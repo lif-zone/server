@@ -26,6 +26,7 @@ class Res extends EventEmitter {
     this.req_id = opt.req_id;
     this.seq = 0;
     this.req_seq = -1;
+    this.req_ack = [];
     this.sent = {};
     if (ReqHandler.t_new_res_hook)
       ReqHandler.t_new_res_hook(this);
@@ -49,7 +50,9 @@ class Res extends EventEmitter {
       req_seq = opt.req_seq;
     if (type!='res')
       this.set_timeout(seq);
-    let msg = {ts, type, req_id, seq, req_seq, cmd, body};
+    let msg = {ts, type, req_id, seq, req_seq, req_ack: this.req_ack.join(','),
+      cmd, body};
+    this.req_ack = [];
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
@@ -97,6 +100,7 @@ function req_handler_cb(body, from, msg){
     util.set(nodes, [id, 'req_id', req_id], {res});
   }
   res.req_seq = Math.max(res.req_seq, seq);
+  res.req_ack.push(seq);
   res.clr_timeout(msg.res_seq);
   req_handler.emit(type, msg, res);
 }

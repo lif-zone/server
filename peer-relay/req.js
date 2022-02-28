@@ -24,6 +24,7 @@ function res_handler(body, from, msg){
     return xerr('invalid seq '+seq);
   let req = reqs[req_id].req;
   req.res_seq = Math.max(req.res_seq, seq);
+  req.res_ack.push(seq);
   if (type=='res')
     del_req(req_id);
   else
@@ -62,6 +63,7 @@ export default class Req extends EventEmitter {
     this.timeout = timeout = timeout||REQ_TIMEOUT;
     this.seq = 0;
     this.res_seq = -1;
+    this.res_ack = [];
     this.sent = {};
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
@@ -86,7 +88,9 @@ export default class Req extends EventEmitter {
     let res_seq = this.res_seq;
     if (util.is_mocha() && opt.res_seq)
       res_seq = opt.res_seq;
-    let msg = {ts, type, req_id, seq, res_seq, cmd: this.cmd, body};
+    let msg = {ts, type, req_id, seq, res_seq, res_ack: this.res_ack.join(','),
+      cmd: this.cmd, body};
+    this.res_ack = [];
     this.set_timeout(seq);
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)
