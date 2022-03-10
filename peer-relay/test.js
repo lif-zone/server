@@ -943,7 +943,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       '!msg': call}));
     return;
   }
-  // XXX: assert_event_c(c, event, call);
   if (!call && ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
     'res_next', 'res_end'].includes(type)){
     let nfwd = normalize(c.fwd);
@@ -1108,7 +1107,6 @@ const cmd_res = opt=>etask(function*req(){
   });
   if (t_pre_process)
     return set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}));
-  // XXX assert_event_c(c, event, call);
   if (!call && ack===undefined){
     ack = get_ack({req_id: id || get_req_id({s: d.t.name, d: s.t.name, cmd}),
       s: d.t.name, d: s.t.name});
