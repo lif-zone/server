@@ -23,12 +23,11 @@ function res_handler(body, from, msg){
   if (!Number.isInteger(seq) || seq<0)
     return xerr('invalid seq '+seq);
   let req = reqs[req_id].req;
-  req.res_seq = Math.max(req.res_seq, seq);
-  req.res_ack.push(seq);
+  req.ack.push(seq);
   if (type=='res')
     del_req(req_id);
-  else
-    req.clr_timeout(msg.req_seq);
+  else if (msg.ack)
+    req.clr_timeout(msg.ack);
   req.emit('res', msg);
 }
 
@@ -36,7 +35,7 @@ function del_req(req_id){
   let req = util.get(reqs, [req_id, 'req']);
   if (!req)
     return;
-  req.clr_timeout(Infinity);
+  req.clr_timeout();
   delete reqs[req_id];
 }
 
@@ -62,8 +61,7 @@ export default class Req extends EventEmitter {
     this.stream = stream;
     this.timeout = timeout = timeout||REQ_TIMEOUT;
     this.seq = 0;
-    this.res_seq = -1;
-    this.res_ack = [];
+    this.ack = [];
     this.sent = {};
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
@@ -83,14 +81,13 @@ export default class Req extends EventEmitter {
     }
     opt = opt||{};
     let ts=date.monotonic(), req_id = this.req_id, seq = this.seq++;
+    if (util.is_mocha() && opt.seq)
+      seq = opt.seq;
     let type = !this.stream ? 'req' : opt.end ? 'req_end' : !seq ?
       'req_start' : 'req_next';
-    let res_seq = this.res_seq;
-    if (util.is_mocha() && opt.res_seq)
-      res_seq = opt.res_seq;
-    let msg = {ts, type, req_id, seq, res_seq, res_ack: this.res_ack.join(','),
-      cmd: this.cmd, body};
-    this.res_ack = [];
+    let ack = this.ack, cmd = this.cmd;
+    let msg = {ts, type, req_id, seq, ack, cmd, body};
+    this.ack = [];
     this.set_timeout(seq);
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)
@@ -106,16 +103,17 @@ export default class Req extends EventEmitter {
       this.this.emit('fail', {error: 'timeout', req_id, seq});
       // XXX: support per-req timeout and allow to specify if fatal or retry
       // XXX: close req
-      this.this.clr_timeout(Infinity);
+      del_req(req_id);
     });
   }
-  clr_timeout(max_seq){
-    for (let seq in this.sent){
-      if (seq<=max_seq){
-        this.sent[seq].et_timeout.return();
-        delete this.sent[seq];
-      }
-    }
+  clr_timeout(ack){
+    ack = ack || Object.keys(this.sent);
+    ack.forEach(seq=>{
+      if (!this.sent[seq])
+        return;
+      this.sent[seq].et_timeout.return();
+      delete this.sent[seq];
+    });
   }
 }
 

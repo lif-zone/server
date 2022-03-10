@@ -25,8 +25,7 @@ class Res extends EventEmitter {
     this.stream = opt.stream;
     this.req_id = opt.req_id;
     this.seq = 0;
-    this.req_seq = -1;
-    this.req_ack = [];
+    this.ack = [];
     this.sent = {};
     if (ReqHandler.t_new_res_hook)
       ReqHandler.t_new_res_hook(this);
@@ -39,20 +38,19 @@ class Res extends EventEmitter {
     }
     opt = opt||{};
     let ts=date.monotonic(), seq = this.seq++, type;
-    let {dst, req_id, req_seq, cmd} = this;
+    let {dst, req_id, ack, cmd} = this;
+    if (util.is_mocha() && opt.seq)
+      seq = opt.seq;
     if (!this.stream){
       type = 'res';
       if (seq)
         return xerr('multiple call to res');
     } else
       type = opt.end ? 'res_end' : !seq ? 'res_start' : 'res_next';
-    if (util.is_mocha() && opt.req_seq)
-      req_seq = opt.req_seq;
-    if (type!='res')
+    if (!['res', 'res_end'].includes(type))
       this.set_timeout(seq);
-    let msg = {ts, type, req_id, seq, req_seq, req_ack: this.req_ack.join(','),
-      cmd, body};
-    this.req_ack = [];
+    let msg = {ts, type, req_id, seq, ack, cmd, body};
+    this.ack = [];
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
@@ -67,16 +65,17 @@ class Res extends EventEmitter {
       this.this.emit('fail', {error: 'timeout', req_id, seq});
       // XXX: support per-req timeout and allow to specify if fatal or retry
       // XXX: close req
-      this.this.clr_timeout(Infinity);
+      this.this.clr_timeout();
     });
   }
-  clr_timeout(max_seq){
-    for (let seq in this.sent){
-      if (seq<=max_seq){
-        this.sent[seq].et_timeout.return();
-        delete this.sent[seq];
-      }
-    }
+  clr_timeout(ack){
+    ack = ack || Object.keys(this.sent);
+    ack.forEach(seq=>{
+      if (!this.sent[seq])
+        return;
+      this.sent[seq].et_timeout.return();
+      delete this.sent[seq];
+    });
   }
 }
 
@@ -99,9 +98,9 @@ function req_handler_cb(body, from, msg){
     res = new Res({req_handler, from: b2s(from), req_id, stream: type!='req'});
     util.set(nodes, [id, 'req_id', req_id], {res});
   }
-  res.req_seq = Math.max(res.req_seq, seq);
-  res.req_ack.push(seq);
-  res.clr_timeout(msg.res_seq);
+  res.ack.push(seq);
+  if (msg.ack)
+    res.clr_timeout(msg.ack);
   req_handler.emit(type, msg, res);
 }
 
