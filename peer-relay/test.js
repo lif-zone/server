@@ -421,7 +421,7 @@ class FakeChannel extends EventEmitter {
         case 'conn_info':
           a = [];
           if (body.ws)
-            a.push('ws'); // XXX: assert correct val of ws
+            a.push('ws');
           if (body.wrtc)
             a.push('wrtc');
           body = a.join(' ');
