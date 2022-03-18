@@ -557,10 +557,8 @@ function fake_emit(c, msg){
   let to = d.id.toString('hex'), from = s.id.toString('hex');
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
-  msg.to = to;
-  msg.from = from;
-  msg.nonce = nonce;
-  msg.path = [s.id.toString('hex')];
+  // XXX: rm all id.toString('hex')
+  assign(msg, {to, from, nonce, path: [s.id.toString('hex')]});
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
   assert(!c.fwd, 'fwd not allowed in fake_emit');
