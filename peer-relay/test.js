@@ -57,11 +57,14 @@ let t_keys = {
 function conn_opts(body){
   let a = [];
   if (body.ws)
-    a.push('ws'); // XXX: assert correct val of ws
+    a.push('ws');
   if (body.wrtc)
     a.push('wrtc');
   return a.join(' ');
 }
+
+// non-number req_id is set explicit in test
+function test_req_id(req_id){ return is_number(req_id) ? undefined : req_id; }
 
 function normalize(e){
   if (!e)
@@ -417,9 +420,8 @@ class FakeChannel extends EventEmitter {
         case '': break;
         default: assert(0, 'invalid cmd '+cmd);
         }
-        e = build_cmd_o(from.t.name+to.t.name+'>msg',
-          {id: is_number(req_id) ? undefined : req_id, type, cmd,
-          seq, ack: ack && ack.join(','), body});
+        e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
+          type, cmd, seq, ack: ack && ack.join(','), body});
       }
       else if (type=='res'){
         switch (cmd){
@@ -431,9 +433,8 @@ class FakeChannel extends EventEmitter {
         case '': break;
         default: assert(0, 'invalid cmd ', cmd);
         }
-        e = build_cmd_o(from.t.name+to.t.name+'>msg',
-          {id: is_number(req_id) ? undefined : req_id, type, cmd,
-          seq, ack: ack && ack.join(','), body});
+        e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
+          type, cmd, seq, ack: ack && ack.join(','), body});
       }
       t_nonce[normalize(e)] = msg.nonce;
       track_ack(msg);
@@ -469,8 +470,7 @@ function req_send_hook(msg){
   case '':
   case 'test':
     e = build_cmd_o(from.t.name+to.t.name+'>'+type,
-      {id: is_number(req_id) ? undefined : req_id,
-      seq, ack: ack && ack.join(','), cmd, body});
+      {id: test_req_id(req_id), seq, ack: ack && ack.join(','), cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
@@ -503,8 +503,7 @@ function res_send_hook(router, msg){
     break;
   case 'test':
   case '':
-    e = build_cmd_o(from.t.name+to.t.name+'>'+type,
-      {id: is_number(req_id) ? undefined : req_id,
+    e = build_cmd_o(from.t.name+to.t.name+'>'+type, {id: test_req_id(req_id),
       seq, ack: ack && ack.join(','), cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
