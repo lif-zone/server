@@ -19,11 +19,8 @@ import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
 const assign = Object.assign, s2b = util.buf_from_str, b2s = util.buf_to_str;
-const stringify = JSON.stringify;
+const stringify = JSON.stringify, is_number = util.is_number;
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
-
-// XXX: mv to util
-function is_number(s){ return /^[0-9]+$/.test(s); }
 
 // XXX: make it automatic for all node/browser in proc.js
 xerr.set_exception_catch_all(true);
