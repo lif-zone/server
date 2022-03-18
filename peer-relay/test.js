@@ -54,6 +54,15 @@ let t_keys = {
       '0d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014'},
 };
 
+function conn_opts(body){
+  let a = [];
+  if (body.ws)
+    a.push('ws'); // XXX: assert correct val of ws
+  if (body.wrtc)
+    a.push('wrtc');
+  return a.join(' ');
+}
+
 function normalize(e){
   if (!e)
     return e;
@@ -418,14 +427,7 @@ class FakeChannel extends EventEmitter {
           a = array_id_to_name(body.ids);
           body = a.join('');
           break;
-        case 'conn_info':
-          a = [];
-          if (body.ws)
-            a.push('ws');
-          if (body.wrtc)
-            a.push('wrtc');
-          body = a.join(' ');
-          break;
+        case 'conn_info': body = conn_opts(body); break;
         case '': break;
         default: assert(0, 'invalid cmd ', cmd);
         }
@@ -497,12 +499,7 @@ function res_send_hook(router, msg){
     e = build_cmd(from.t.name+to.t.name+'>find_r', a.join(''));
     break;
   case 'conn_info':
-    a = [];
-    if (body.ws)
-      a.push('ws'); // XXX: assert correct val of ws
-    if (body.wrtc)
-      a.push('wrtc');
-    e = build_cmd(from.t.name+to.t.name+'>conn_info_r', a.join(' '));
+    e = build_cmd(from.t.name+to.t.name+'>conn_info_r', conn_opts(body));
     break;
   case 'test':
   case '':
