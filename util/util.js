@@ -510,3 +510,5 @@ E.ensure_array = function(v, split){
     return [v];
 };
 
+E.is_number = function(s){ return /^[0-9]+$/.test(s); };
+

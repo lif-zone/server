@@ -74,7 +74,7 @@ describe('sinon', function(){
             return etask(function*(){
                 t('2013-08-13 14:00:00');
                 xsinon.tick(10*ms.MIN);
-                yield (wait = etask.wait());
+                yield wait = etask.wait();
                 t('2013-08-13 14:10:00');
                 xsinon.tick(ms.MIN);
                 t('2013-08-13 14:11:00');
@@ -1155,6 +1155,24 @@ promise_test('d', p_api.D);
 promise_test('etask', etask);
 
 describe('util', ()=>{
+    it('is_number', ()=>{
+      let t = (val, exp)=>assert.equal(xutil.is_number(val), exp);
+      t(undefined, false);
+      t(null, false);
+      t('', false);
+      t('0', true);
+      t('01', true);
+      t('1', true);
+      t('12', true);
+      t(0, true);
+      t(1, true);
+      t(12, true);
+      t(' 1', false);
+      t('1 ', false);
+      t('a1', false);
+      t('1a', false);
+      t('1a1', false);
+    });
     it('if_set', ()=>{
         let t = (val, o, name, exp)=>{
             xutil.if_set(val, o, name);
