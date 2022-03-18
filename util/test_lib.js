@@ -273,7 +273,7 @@ if (xutil.is_mocha())
     afterEach(()=>{
         E.seq_uninit();
     });
-    // XXX derry: add sinon.sandbox.create() and this.sinon.restore()
+    // XXX: add sinon.sandbox.create() and this.sinon.restore()
     // and other settings/restores possible
 }
 
