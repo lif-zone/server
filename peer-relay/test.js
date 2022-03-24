@@ -554,11 +554,10 @@ function fake_emit(c, msg){
   if (t_mode.msg) // XXX: TODO
     return;
   let s = t_nodes[c.s], d = t_nodes[c.d], f = s, t = d;
-  let to = d.id.toString('hex'), from = s.id.toString('hex');
+  let to = b2s(d.id), from = b2s(s.id);
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
-  // XXX: rm all id.toString('hex')
-  assign(msg, {to, from, nonce, path: [s.id.toString('hex')]});
+  assign(msg, {to, from, nonce, path: [b2s(s.id)]});
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
   assert(!c.fwd, 'fwd not allowed in fake_emit');
@@ -587,13 +586,14 @@ function fake_emit(c, msg){
 
 const fake_send_msg = (c, msg)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d], f = s, t = d;
-  let to = d.id.toString('hex'), from = s.id.toString('hex');
+  let to = b2s(d.id), from = b2s(s.id);
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
+  // XXX: use assign
   msg.to = to;
   msg.from = from;
   msg.nonce = nonce;
-  msg.path = [s.id.toString('hex')];
+  msg.path = [from];
   if (c.fwd){
     let fwd = normalize(c.fwd);
     s = t_nodes[fwd[0]];
