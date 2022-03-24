@@ -558,9 +558,8 @@ function fake_emit(c, msg){
   assert(!c.fwd, 'fwd not allowed in fake_emit');
   if (s.t.fake && !d.t.fake)
   {
-    if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type)){
+    if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
       msg.req_id = msg.req_id || ++t_req_id+'';
-    }
     else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
       if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake)
         msg.req_id = get_req_id({s: t.t.name, d: f.t.name, cmd: msg.cmd});
