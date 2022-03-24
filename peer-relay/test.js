@@ -1301,11 +1301,11 @@ function test_start(role){
 }
 
 function test_setup_mode(){
-  if (t_mode.req) // XXX: use sinon
+  if (t_mode.req)
     Req.t_send_hook = req_send_hook;
   else
     delete Req.t_send_hook;
-  if (t_mode.req) // XXX: use sinon
+  if (t_mode.req)
     ReqHandler.t_send_hook = res_send_hook;
   else
     delete ReqHandler.t_send_hook;
@@ -1572,17 +1572,6 @@ describe('peer-relay', function(){
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
-  // XXX derry: msg format:
-  // CURRENT:
-  // {to, from, nonce, data: {type, data}, path, sign}
-  // eg. {to, from, nonce, data: {type: 'find', data: 'a'}, path, sign}
-  // type: 'find|find_r|conn_info|conn_info_r|user'
-  // PLAN:
-  // {to, from, nonce, nonce, type, id, cmd, data}
-  // eg. {to, from, nonce, nonce, type: 'req', id, cmd: 'find', data: 'a',
-  //  path, sign}
-  // type: 'req|res|req_start|req_next|req_end|res_start|res_next|res_end'
-  // cmd: 'find|conn_info|msg'
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());
     // afterEach(()=>xtest.xerr_level(xerr.L.ERR));
