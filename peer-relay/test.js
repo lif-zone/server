@@ -1160,10 +1160,9 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
   if (t_pre_process)
     return;
   assert(!event, 'unexpected event for ms cmd '+event);
-  // XXX: add assert for ms command and support ms/s
-  yield xsinon.tick(+c.arg);
+  let ms = assert_int(c.arg);
+  yield xsinon.tick(ms);
   yield xsinon.wait();
-  yield cmd_run_if_next_fake(); // XXX: probably can be removed from ms cmd
 });
 
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
