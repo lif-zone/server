@@ -560,7 +560,6 @@ function fake_emit(c, msg){
   {
     if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type)){
       msg.req_id = msg.req_id || ++t_req_id+'';
-      track_msg(msg); // XXX: needed here?!
     }
     else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
       if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake)
