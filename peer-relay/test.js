@@ -483,8 +483,8 @@ function req_send_hook(msg){
   t_nonce[normalize(e)] = msg.nonce; // XXX: rm, mv to track_msg
   track_ack(msg);
   track_msg(msg);
-  cmd_run_if_next_fake(); // XXX: need yield
-  cmd_run(_build_cmd(e, '', '')); // XXX: need yield
+  cmd_run_if_next_fake();
+  cmd_run(_build_cmd(e, '', ''));
 }
 
 function res_send_hook(router, msg){
@@ -517,8 +517,8 @@ function res_send_hook(router, msg){
   t_nonce[normalize(e)] = msg.nonce; // XXX: rm
   track_ack(msg);
   track_msg(msg);
-  cmd_run_if_next_fake(); // XXX: need yield
-  cmd_run(_build_cmd(e, '', '')); // XXX: need yield
+  cmd_run_if_next_fake();
+  cmd_run(_build_cmd(e, '', ''));
 }
 
 function new_res_hook(res){
