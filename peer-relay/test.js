@@ -355,7 +355,7 @@ class FakeWsConnector extends EventEmitter {
   constructor(id, port, host){
     super();
     this.id = id;
-    if (port || host){ // XXX: what if no host?
+    if (port || host){
       assert(host, 'missing host');
       assert(port, 'missing port');
       this.url = 'wss://'+host+':'+port;
