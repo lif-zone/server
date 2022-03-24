@@ -831,10 +831,9 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
   let {c, event} = opt;
   if (t_pre_process)
     return set_orig(c, build_cmd(c.meta.cmd, c.arg));
-  // XXX: assert c.arg
+  let ids = array_name_to_id(c.arg.split(''));
   assert_event_c(c, event);
-  fake_emit(c, {type: 'res', cmd: 'find',
-    body: {ids: array_name_to_id(c.arg.split(''))}});
+  fake_emit(c, {type: 'res', cmd: 'find', body: {ids}});
   yield cmd_run_if_next_fake();
 });
 
