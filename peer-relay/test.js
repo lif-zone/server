@@ -296,36 +296,28 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
 
 function ack_hash(s, d, req_id){ return s+'_'+d+'_'+req_id; }
 
-// XXX: unite with track_ack and track also nonce
+// XXX: unite with nonce and use t_req instead of t_ack/t_msg
 function track_msg(msg){
   if (!msg.req_id)
     return;
   let s = node_from_id(msg.from).t.name, d = node_from_id(msg.to).t.name;
-  let {type, req_id, cmd} = msg;
+  let {type, req_id, cmd, seq} = msg;
+  assert(is_number(msg.seq), 'req/res must have seq '+stringify(msg));
   cmd = cmd||'';
   xerr.notice('XXX track_msg %s%s> id:%s type:%s cmd:%s', s, d, req_id, type,
     cmd);
   let h = s+'_'+d+'_'+cmd;
   t_msg[h] = req_id;
+  xerr.notice('XXX track_ack %s%s> id:%s seq:%s', s, d, req_id, seq);
+  h = ack_hash(s, d, req_id);
+  t_ack[h] = t_ack[h]||[];
+  if (!t_ack[h].includes(seq))
+    t_ack[h].push(seq);
 }
 
 function get_req_id(o){
   let {s, d, cmd} = o, h = s+'_'+d+'_'+cmd;
   return t_msg[h];
-}
-
-// XXX: unite wiht track_msg
-function track_ack(msg){
-  if (!msg.req_id)
-    return;
-  assert(is_number(msg.seq), 'req/res must have seq '+stringify(msg));
-  let s = node_from_id(msg.from).t.name, d = node_from_id(msg.to).t.name;
-  let {req_id, seq} = msg;
-  xerr.notice('XXX track_ack %s%s> id:%s seq:%s', s, d, req_id, seq);
-  let h = ack_hash(s, d, req_id);
-  t_ack[h] = t_ack[h]||[];
-  if (!t_ack[h].includes(seq))
-    t_ack[h].push(seq);
 }
 
 function get_ack(o){
@@ -443,7 +435,6 @@ class FakeChannel extends EventEmitter {
           type, cmd, seq, ack: ack && ack.join(','), body});
       }
       t_nonce[normalize(e)] = msg.nonce;
-      track_ack(msg);
       track_msg(msg);
       yield cmd_run_if_next_fake();
       yield cmd_run(_build_cmd(e, fwd, ''));
@@ -481,7 +472,6 @@ function req_send_hook(msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   t_nonce[normalize(e)] = msg.nonce; // XXX: rm, mv to track_msg
-  track_ack(msg);
   track_msg(msg);
   cmd_run_if_next_fake();
   cmd_run(_build_cmd(e, '', ''));
@@ -515,7 +505,6 @@ function res_send_hook(router, msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   t_nonce[normalize(e)] = msg.nonce; // XXX: rm
-  track_ack(msg);
   track_msg(msg);
   cmd_run_if_next_fake();
   cmd_run(_build_cmd(e, '', ''));
@@ -581,7 +570,6 @@ function fake_emit(c, msg){
       assert(0, 'invalid type '+msg.type);
     assert(msg.req_id, 'missing req_id');
     msg.sign = node_from_id(from).wallet.sign(msg);
-    track_ack(msg);
     track_msg(msg);
     if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
       ReqHandler.t.req_handler_cb(msg.body, msg.from, msg);
@@ -611,7 +599,6 @@ const fake_send_msg = (c, msg)=>etask(function*(){
         msg.req_id = get_req_id({s: t.t.name, d: f.t.name, cmd: msg.cmd});
     }
     msg.sign = node_from_id(from).wallet.sign(msg);
-    track_ack(msg);
     track_msg(msg);
     yield send_msg(s.t.name, d.t.name, msg);
   }
