@@ -147,7 +147,8 @@ function node_from_url(url){
   }
 }
 
-function support_wrtc(name){ return false; } // XXX: TODO
+function support_wss(node){ return !!wss_from_node(node); }
+function support_wrtc(node){ return node.wrtcConnector.supported; }
 
 function node_from_id(id){
   for (let name in t_nodes){
@@ -188,6 +189,11 @@ function assert_port(port){
 function assert_host(host){
   assert.ok(xurl.is_valid_domain(host), 'invalid host '+host);
   return host;
+}
+
+function assert_support_wrtc(name){
+  assert(support_wrtc(t_nodes[name]), 'node '+name+' does not support wrtc');
+  return true;
 }
 
 function assert_wss(val){
@@ -340,7 +346,7 @@ class FakeNode extends EventEmitter {
     this.wallet = new Wallet({keys: opt.keys});
     this.id = opt.keys.pub;
     this.wsConnector = new FakeWsConnector(this.id, opt.port, opt.host);
-    this.wrtcConnector = new FakeWrtcConnector(this.id);
+    this.wrtcConnector = new FakeWrtcConnector(this.id, null, opt.wrtc);
   }
   destroy(){}
 }
@@ -725,14 +731,8 @@ const cmd_connect = opt=>etask(function*(){
   let r = true;
   util.forEach(arg, a=>{
     switch (a.cmd){
-    case 'wss':
-      assert(wss===undefined, 'multiple '+a.cmd);
-      wss = assert_wss_url(c.d, a.arg);
-      break;
-    case 'wrtc':
-      assert(!call, 'wrtc only in connect');
-      wrtc = true; // XXX: assert destination has wrtc support
-      break;
+    case 'wss': wss = assert_wss_url(c.d, a.arg); break;
+    case 'wrtc': wrtc = assert_support_wrtc(d.t.name); break;
     case 'find':
       find = a.arg.split(' ');
       // XXX: need full validation
@@ -743,12 +743,12 @@ const cmd_connect = opt=>etask(function*(){
     }
   });
   assert(d, 'not node found '+c.d);
-  if (!wss && !wrtc && util.xor(wss_from_node(d), support_wrtc(d.t.name))){
+  if (!wss && !wrtc && util.xor(support_wss(d), support_wrtc(d))){
     wss = wss_from_node(d);
-    wrtc = support_wrtc(d.t.name);
+    wrtc = support_wrtc(d);
   }
   assert_exist(c.s);
-  assert(util.xor(wss, wrtc), 'must specify wss or wrtc');
+  assert(wss || wrtc, 'must specify wss or wrtc');
   assert(find ? r : true, 'find must be used together with find');
   if (t_pre_process){
     if (call)
@@ -1975,12 +1975,12 @@ describe('peer-relay', function(){
       ab>!req(body:ping res:pong) ab>req(body:ping) ab<res(body:pong)
       ab<!req(body:ping res:pong) ab<req(body:ping) ab>res(body:pong)`);
     t('msg', `mode:msg mode:req node(a wrtc) node(b wrtc wss) -
-      ab>!connect(find(a ba)) - mode:pop ab>!req(body:ping res:pong)
+      ab>!connect(wrtc find(a ba)) - mode:pop ab>!req(body:ping res:pong)
       ab>msg(type:req body:ping) ab<msg(type:res body:pong)
       ab<!req(body:ping res:pong)
       ab<msg(type:req body:ping) ab>msg(type:res body:pong)`);
     t('msg,req', `mode(msg req) mode:req node(a wrtc) node(b wrtc wss) -
-      ab>!connect(find(a ba)) - mode:pop
+      ab>!connect(wrtc find(a ba)) - mode:pop
       ab>!req(body:ping res:pong) ab>msg(type:req body:ping) ab>req(body:ping)
       ab<msg(type:res body:pong) ab<res(body:pong)
       ab<!req(body:ping res:pong) ab<msg(type:req body:ping) ab<req(body:ping)
@@ -2012,20 +2012,20 @@ describe('peer-relay', function(){
     });
     describe('linear_wrtc', ()=>{
       t('req', `mode:req node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
-        ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<conn_info
-        ac>conn_info_r:wrtc ca>connect(wrtc find(cab abc))`);
+        ab>!connect(wss find(a ba)) - bc>!connect(wrtc find(b cab))
+        ac<conn_info ac>conn_info_r:wrtc ca>connect(wrtc find(cab abc))`);
       t('msg', `mode:msg node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
-        ab>!connect ab>msg_req_find:a ab<msg_res_find:a
-        ab<msg_req_find:b ab>msg_res_find:ba - bc>!connect
+        ab>!connect:wss ab>msg_req_find:a ab<msg_res_find:a
+        ab<msg_req_find:b ab>msg_res_find:ba - bc>!connect:wrtc
         bc>msg_req_find:b bc<msg_res_find:b bc<msg_req_find:c
         bc>msg_res_find:cab cba>fwd(ca>msg(type:req cmd:conn_info))
         cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc)) ca>connect(wrtc)
         ac>msg_req_find:a ac<msg_res_find:abc
         ac<msg_req_find:c ac>msg_res_find:cab`);
       t('msg,req', `mode(msg req) node(a wrtc) node(b wrtc wss)
-        node(c wrtc wss) - ab>!connect ab>msg_req_find:a ab>find:a
+        node(c wrtc wss) - ab>!connect:wss ab>msg_req_find:a ab>find:a
         ab<msg_res_find:a ab<find_r:a ab<msg_req_find:b ab<find:b
-        ab>msg_res_find:ba ab>find_r(ba) - bc>!connect bc>msg_req_find:b
+        ab>msg_res_find:ba ab>find_r(ba) - bc>!connect:wrtc bc>msg_req_find:b
         bc>find:b bc<msg_res_find:b bc<find_r:b bc<msg_req_find:c bc<find:c
         bc>msg_res_find:cab bc>find_r(cab)
         cba>fwd(ca>msg(type:req cmd:conn_info)) ca>conn_info
@@ -2048,15 +2048,15 @@ describe('peer-relay', function(){
         ac>msg_req_find:a ac<msg_res_find:abc
         ac<msg_req_find:c ac>msg_res_find:cab`);
       // XXX derry: unite req/msg/msg,req together (ingnore req/msg per test)
-      t('msg,req', `mode(msg req) node(a wrtc) node(b wrtc wss)
-        node(c wrtc wss) - ab>!connect ab>msg_req_find:a ab>find:a
+      t('msg,req', `mode(msg req) node(a wss) node(b wss)
+        node(c wss) - ab>!connect ab>msg_req_find:a ab>find:a
         ab<msg_res_find:a ab<find_r:a ab<msg_req_find:b ab<find:b
         ab>msg_res_find:ba ab>find_r(ba) - bc>!connect
         bc>msg_req_find:b bc>find:b bc<msg_res_find:b bc<find_r:b
         bc<msg_req_find:c bc<find:c bc>msg_res_find:cab bc>find_r(cab)
         cba>fwd(ca>msg(type:req cmd:conn_info)) ca>conn_info
-        cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc)) ca<conn_info_r:wrtc
-        ca>connect(wrtc) ac>msg_req_find:a ac>find:a
+        cba<fwd(ca<msg(type:res cmd:conn_info body:ws)) ca<conn_info_r:ws
+        ca>connect:wss ac>msg_req_find:a ac>find:a
         ac<msg_res_find:abc ac<find_r(abc) ac<msg_req_find:c ac<find:c
         ac>msg_res_find:cab ac>find_r(cab)`);
     });
