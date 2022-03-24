@@ -1717,7 +1717,6 @@ describe('peer-relay', function(){
       });
     });
   });
-  if (1) // XXX: fix test
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: add msg and msg,req versions
@@ -1760,20 +1759,6 @@ describe('peer-relay', function(){
       ab<!res_end(id:r0 seq:3 body:c3) ab<res_end(id:r0 seq:3 cmd:test body:c3)
       ab>!req_end(id:r0 seq:2) ab>req_end(id:r0 seq:2 cmd:test)`);
     describe('timeout', function(){
-/* XXX derry:
-   XXX: auto-ack in tests by default
-   1. how to know which req was acked?
-   ab>req_start(seq:0 !ack)
-   ab<res_start(seq:0 ack:0)
-   ab>req_next(seq:1 ack:0)
-   ab>req_next(seq:2)
-   ab<res_next(seq:1 ack:1,2)
-
-   2. how to ack the last req_end/res_end
-   ab>req_end(seq:2)
-   ab<res_end(seq:2) // XXX: how to ack it?
-   // NO need to ack last message
-*/
       t('req_start', `mode:req setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms -
@@ -1783,7 +1768,6 @@ describe('peer-relay', function(){
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms -
         ab<!res_start(id:r0 seq:0) ab<res_start(id:r0 seq:0 cmd:test) 19999ms -
         1ms b>fail(id:r0 seq:0 error:timeout)`);
-      //  19999ms -
       t('req_next', `mode:req setup:2_nodes ab>!req_start(id:r0 seq:0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) ab>!req_next(id:r0 seq:0)
