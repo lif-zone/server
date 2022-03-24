@@ -1825,7 +1825,7 @@ describe('peer-relay', function(){
         ab>!req_end(id:r0 body:ping3) ab>req_end(id:r0 seq:2 body:ping3)
         ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:2 body:pong3)
       `);
-*/
+    */
   });
   if (0)
   describe('req', function(){
