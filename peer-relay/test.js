@@ -557,7 +557,7 @@ function fake_emit(c, msg){
   let to = b2s(d.id), from = b2s(s.id);
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
-  assign(msg, {to, from, nonce, path: [b2s(s.id)]});
+  assign(msg, {to, from, nonce, path: [from]});
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
   assert(!c.fwd, 'fwd not allowed in fake_emit');
@@ -589,11 +589,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
   let to = b2s(d.id), from = b2s(s.id);
   let nonce = t_nonce[normalize(c.orig)]||
     '' + Math.floor(1e15 * Math.random());
-  // XXX: use assign
-  msg.to = to;
-  msg.from = from;
-  msg.nonce = nonce;
-  msg.path = [from];
+  assign(msg, {to, from, nonce, path: [from]});
   if (c.fwd){
     let fwd = normalize(c.fwd);
     s = t_nodes[fwd[0]];
