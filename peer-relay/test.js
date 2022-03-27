@@ -396,7 +396,7 @@ class FakeChannel extends EventEmitter {
     // XXX: need to filter out only test commands, other should fail test
     if (!t_mode.msg)
       return;
-    let p, a, fwd, e;
+    let fwd, e;
     let {req_id, type, cmd, ack, seq, body} = msg;
     cmd = cmd||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
@@ -410,10 +410,7 @@ class FakeChannel extends EventEmitter {
       if (type=='req')
       {
         switch (cmd){
-        case 'find':
-          p = node_from_id(body.id);
-          body = p.t.name;
-          break;
+        case 'find': body = node_from_id(body.id).t.name; break;
         case 'conn_info': body= ''; break;
         case '': break;
         default: assert(0, 'invalid cmd '+cmd);
@@ -421,10 +418,7 @@ class FakeChannel extends EventEmitter {
       }
       else if (type=='res'){
         switch (cmd){
-        case 'find':
-          a = array_id_to_name(body.ids);
-          body = a.join('');
-          break;
+        case 'find': body = array_id_to_name(body.ids).join(''); break;
         case 'conn_info': body = conn_opts(body); break;
         case '': break;
         default: assert(0, 'invalid cmd ', cmd);
