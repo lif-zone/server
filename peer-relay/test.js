@@ -304,11 +304,11 @@ function track_msg(msg){
   let {type, req_id, cmd, seq} = msg;
   assert(is_number(msg.seq), 'req/res must have seq '+stringify(msg));
   cmd = cmd||'';
-  xerr.notice('XXX track_msg %s%s> id:%s type:%s cmd:%s', s, d, req_id, type,
+  xerr.notice('*** track_msg %s%s> id:%s type:%s cmd:%s', s, d, req_id, type,
     cmd);
   let h = s+'_'+d+'_'+cmd;
   t_msg[h] = req_id;
-  xerr.notice('XXX track_ack %s%s> id:%s seq:%s', s, d, req_id, seq);
+  xerr.notice('*** track_ack %s%s> id:%s seq:%s', s, d, req_id, seq);
   h = ack_hash(s, d, req_id);
   t_ack[h] = t_ack[h]||[];
   if (!t_ack[h].includes(seq))
@@ -325,7 +325,7 @@ function get_ack(o){
   let h = ack_hash(s, d, req_id), ack = t_ack[h];
   if (!ack)
     return;
-  xerr.notice('XXX get_ack %s%s> id:%s ack:%s keep %s',
+  xerr.notice('*** get_ack %s%s> id:%s ack:%s keep %s',
     s, d, req_id, ack.join(','), keep);
   if (!keep)
     delete t_ack[h];
@@ -403,7 +403,7 @@ class FakeChannel extends EventEmitter {
     let s = node_from_id(this.localID), d = node_from_id(this.id);
     if (s!=from || d!=to)
       fwd = s.t.name+d.t.name+'>';
-    xerr.notice('****** send%s msg %s %s', fwd ? ' '+fwd : '',
+    xerr.notice('*** send%s msg %s %s', fwd ? ' '+fwd : '',
       from.t.name+to.t.name+'>'+cmd, stringify(msg));
     return etask(function*send(){
       assert(type, 'unexpected msg type '+type);
@@ -446,7 +446,7 @@ function req_send_hook(msg){
     'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
-  xerr.notice('****** req_send_hook %s %s',
+  xerr.notice('*** req_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, stringify(msg));
   switch (cmd){
   case 'find':
@@ -479,7 +479,7 @@ function res_send_hook(router, msg){
     'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
-  xerr.notice('****** res_send_hook %s %s',
+  xerr.notice('*** res_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, stringify(msg));
   switch (cmd){
   case 'find':
@@ -1725,7 +1725,7 @@ describe('peer-relay', function(){
         ab<!res_next(id:r0 seq:1 ack:1 body:c1)
         ab<msg(id:r0 type:res_next cmd:test seq:1 ack:1 body:c1)
         ab>!req_end(id:r0 seq:2 ack:1 body:b2)
-        ab>msg(id:r0 type:req_end cmd:test seq:2 ack:1 body:b2)
+        ab>msg(id:r0 type:req_end cmd:test ack:1 seq:2 body:b2)
         ab<!res_end(id:r0 seq:2 ack:2 body:c2)
         ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)`);
       if (0)
