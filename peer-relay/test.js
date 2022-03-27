@@ -902,7 +902,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
     else
       assert(!msg);
-    set_orig(c, build_cmd_o(c.meta.cmd, {id, type, cmd, ack, body,
+    set_orig(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body,
       '!msg': call}));
     return;
   }
@@ -1512,6 +1512,8 @@ describe('peer-relay', function(){
         t('ab>cd<msg(body:hi)', `ab>fwd(cd<msg(body(hi)))`);
         t('ab<cd>msg(body:hi)', `ab<fwd(cd>msg(body(hi)))`);
         t('ab<cd<msg(body:hi)', `ab<fwd(cd<msg(body(hi)))`);
+        t('ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)',
+          `ab>msg(id(r0) type(req_start) cmd(test) seq(0) body(b0))`);
         t('ab>!req(body:hi)', `ab>!req(body(hi))`);
         t('ab>!req(id(r0) body:hi)', `ab>!req(id(r0) body(hi))`);
         if (0) // XXX: fixme
@@ -1713,10 +1715,10 @@ describe('peer-relay', function(){
         ab>req_end(id:r0 seq:2 ack:1 cmd:test body:b2)
         ab<!res_end(id:r0 seq:2 ack:2 body:c2)
         ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
-      if (0) // XXX: WIP ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
+      if (0) // XXX: WIP
       t('msg', `setup:msg setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test body:b0)
-        ab>req_start(id:r0 seq:0 cmd:test body:b0)
+        ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
         ab<!res_start(id:r0 seq:0 ack:0 body:c0)
         ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
         ab>!req_next(id:r0 seq:0 ack:0 body:b1)
