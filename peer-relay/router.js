@@ -32,10 +32,10 @@ export default class Router extends EventEmitter {
     let {req_id, type} = msg;
     if (!req_id)
       return;
-    if (type=='req');
-    else if (type=='res');
-    else
-      return xerr('invalid msg type %s %s', type, req_id);
+    if (!['req', 'req_start', 'req_next', 'req_end', 'res', 'res_start',
+      'res_next', 'res_end'].includes(type)){
+      xerr('invalid msg type %s %s', type, req_id);
+    }
   }
   send(dst, body){
     let msg = {to: b2s(dst), from: b2s(this.id),
