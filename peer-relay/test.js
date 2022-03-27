@@ -418,8 +418,6 @@ class FakeChannel extends EventEmitter {
         case '': break;
         default: assert(0, 'invalid cmd '+cmd);
         }
-        e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
-          type, cmd, seq, ack: ack && ack.join(','), body});
       }
       else if (type=='res'){
         switch (cmd){
@@ -431,9 +429,9 @@ class FakeChannel extends EventEmitter {
         case '': break;
         default: assert(0, 'invalid cmd ', cmd);
         }
-        e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
-          type, cmd, seq, ack: ack && ack.join(','), body});
       }
+      e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
+        type, cmd, seq, ack: ack && ack.join(','), body});
       t_nonce[normalize(e)] = msg.nonce;
       track_msg(msg);
       yield cmd_run_if_next_fake();
@@ -1350,7 +1348,8 @@ const test_end = ()=>etask(function*(){
     stringify(Object.keys(ReqHandler.t.nodes)));
 });
 
-beforeEach(function(){ xerr.set_buffered(true, 1000); });
+if (!util.is_inspect())
+  beforeEach(function(){ xerr.set_buffered(true, 1000); });
 
 afterEach(function(){
   xerr.clear();
@@ -1705,19 +1704,36 @@ describe('peer-relay', function(){
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: add msg and msg,req versions
-    t('manual_ack', `mode:req setup:2_nodes
-      ab>!req_start(id:r0 seq:0 cmd:test body:b0)
-      ab>req_start(id:r0 seq:0 cmd:test body:b0)
-      ab<!res_start(id:r0 seq:0 ack:0 body:c0)
-      ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-      ab>!req_next(id:r0 seq:0 ack:0 body:b1)
-      ab>req_next(id:r0 seq:1 ack:0 cmd:test body:b1) -
-      ab<!res_next(id:r0 seq:1 ack:1 body:c1)
-      ab<res_next(id:r0 seq:1 ack:1 cmd:test body:c1)
-      ab>!req_end(id:r0 seq:2 ack:1 body:b2)
-      ab>req_end(id:r0 seq:2 ack:1 cmd:test body:b2)
-      ab<!res_end(id:r0 seq:2 ack:2 body:c2)
-      ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
+    describe('manual_ack', ()=>{
+      t('req', `setup:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test body:b0)
+        ab>req_start(id:r0 seq:0 cmd:test body:b0)
+        ab<!res_start(id:r0 seq:0 ack:0 body:c0)
+        ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
+        ab>!req_next(id:r0 seq:0 ack:0 body:b1)
+        ab>req_next(id:r0 seq:1 ack:0 cmd:test body:b1) -
+        ab<!res_next(id:r0 seq:1 ack:1 body:c1)
+        ab<res_next(id:r0 seq:1 ack:1 cmd:test body:c1)
+        ab>!req_end(id:r0 seq:2 ack:1 body:b2)
+        ab>req_end(id:r0 seq:2 ack:1 cmd:test body:b2)
+        ab<!res_end(id:r0 seq:2 ack:2 body:c2)
+        ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
+      if (0) // XXX WIP
+      t('msg', `setup:msg setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test body:b0)
+        ab>req_start(id:r0 seq:0 cmd:test body:b0)
+        ab<!res_start(id:r0 seq:0 ack:0 body:c0)
+        ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
+        ab>!req_next(id:r0 seq:0 ack:0 body:b1)
+        ab>req_next(id:r0 seq:1 ack:0 cmd:test body:b1) -
+        ab<!res_next(id:r0 seq:1 ack:1 body:c1)
+        ab<res_next(id:r0 seq:1 ack:1 cmd:test body:c1)
+        ab>!req_end(id:r0 seq:2 ack:1 body:b2)
+        ab>req_end(id:r0 seq:2 ack:1 cmd:test body:b2)
+        ab<!res_end(id:r0 seq:2 ack:2 body:c2)
+        ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
+      t('msg,req', `setup(msg req)`);
+    });
     // XXX: need auto seq without speciying it
     t('res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 seq:0 cmd:test body:b0)
