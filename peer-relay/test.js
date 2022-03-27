@@ -294,6 +294,28 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
     yield cmd_run(d.t.name+s.t.name+'<connected');
 });
 
+// XXX: unite with track_msg
+function track_seq_req(id, type, seq, call){
+  if (!t_req[id])
+    t_req[id] = {id, req: {seq: 0}};
+  else if (/req_next|req_end/.test(type) && !t_req[id].req.call)
+    t_req[id].req.seq++;
+  t_req[id].req.call = call;
+  return seq===undefined ? t_req[id].req.seq : seq;
+}
+
+// XXX: unite with track_msg
+function track_seq_res(id, type, seq, call){
+  if (!t_req[id])
+    return;
+  if (!t_req[id].res)
+    t_req[id].res = {seq: 0};
+  else if (/res_next|res_end/.test(type) && !t_req[id].res.call)
+    t_req[id].res.seq++;
+  t_req[id].res.call = call;
+  return seq===undefined ? t_req[id].res.seq : seq;
+}
+
 function ack_hash(s, d, req_id){ return s+'_'+d+'_'+req_id; }
 
 // XXX: unite with nonce and use t_req instead of t_ack/t_msg
@@ -999,20 +1021,16 @@ const cmd_req = opt=>etask(function*req(){
     ack = get_ack({req_id: id || get_req_id({s: d.t.name, d: s.t.name, cmd}),
       s: d.t.name, d: s.t.name});
   }
-  if (type=='req') // XXX: need auto-mode for seq
-    seq = seq||0;
+  if (call)
+    id = id || ++t_req_id+'';
+  seq = track_seq_req(id, type, seq, call);
   assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}), c.fwd,
     event, call);
   if (!call){
     fake_emit(c, {type, req_id: id, seq, ack, cmd, body});
     return yield cmd_run_if_next_fake();
   }
-  id = id || ++t_req_id+'';
-  if (!t_req[id])
-    t_req[id] = {id, body, res, s: c.s, d: c.d, seq: 0};
-  if (seq===undefined)
-    seq = t_req[id].seq
-  assert(seq!==undefined, 'must have seq');
+  seq = t_req[id].seq;
   if (!s.t.fake){
     if (type=='req'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
@@ -1044,11 +1062,11 @@ const cmd_req = opt=>etask(function*req(){
       d.t.req_handler = req_handler;
     }
     if (res){
-      req_handler.on('req', t_req[id].cb = (msg, res)=>{
+      req_handler.on('req', t_req[id].cb = (msg, _res)=>{
         // XXX: need req_handler.destroy();
         req_handler.off('req', t_req[id].cb);
         delete t_req[id].cb;
-        res.send(t_req[id].res);
+        _res.send(res);
       });
     }
   }
@@ -1056,7 +1074,7 @@ const cmd_req = opt=>etask(function*req(){
 
 const cmd_res = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
-  let call = c.cmd[0]=='!', body, id, arg = xtest.test_parse(c.arg);
+  let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
   assert(s && d, 'invalid event '+c.orig);
   let type = c.cmd.replace('!', ''), cmd='', seq, ack;
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
@@ -1077,16 +1095,12 @@ const cmd_res = opt=>etask(function*req(){
     ack = get_ack({req_id: id || get_req_id({s: d.t.name, d: s.t.name, cmd}),
       s: d.t.name, d: s.t.name});
   }
-  if (type=='res') // XXX: need auto-mode for seq
-    seq = seq||0;
+  _id = id||get_req_id({s: d.t.name, d: s.t.name, cmd});
+  seq = track_seq_res(id, type, seq, call);
   assert(seq!==undefined, 'must have seq');
   assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}), c.fwd,
     event, call);
-  if (type=='res') // XXX: need auto-mode for seq
-    seq = seq||0;
-  assert(seq!==undefined, 'must have seq');
-  if (!id)
-    id = get_req_id({s: d.t.name, d: s.t.name, cmd});
+  id = _id;
   if (!call){
     fake_emit(c, {type, req_id: id, seq, ack, cmd, body});
     return yield cmd_run_if_next_fake();
@@ -1709,7 +1723,7 @@ describe('peer-relay', function(){
         ab>req_start(id:r0 seq:0 cmd:test body:b0)
         ab<!res_start(id:r0 seq:0 ack:0 body:c0)
         ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-        ab>!req_next(id:r0 seq:0 ack:0 body:b1)
+        ab>!req_next(id:r0 seq:1 ack:0 body:b1)
         ab>req_next(id:r0 seq:1 ack:0 cmd:test body:b1) -
         ab<!res_next(id:r0 seq:1 ack:1 body:c1)
         ab<res_next(id:r0 seq:1 ack:1 cmd:test body:c1)
@@ -1722,7 +1736,7 @@ describe('peer-relay', function(){
         ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
         ab<!res_start(id:r0 seq:0 ack:0 body:c0)
         ab<msg(id:r0 type:res_start cmd:test seq:0 ack:0 body:c0)
-        ab>!req_next(id:r0 seq:0 ack:0 body:b1)
+        ab>!req_next(id:r0 seq:1 ack:0 body:b1)
         ab>msg(id:r0 type:req_next cmd:test seq:1 ack:0 body:b1)
         ab<!res_next(id:r0 seq:1 ack:1 body:c1)
         ab<msg(id:r0 type:res_next cmd:test seq:1 ack:1 body:c1)
@@ -1737,7 +1751,7 @@ describe('peer-relay', function(){
         ab<!res_start(id:r0 seq:0 ack:0 body:c0)
         ab<msg(id:r0 type:res_start cmd:test seq:0 ack:0 body:c0)
         ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-        ab>!req_next(id:r0 seq:0 ack:0 body:b1)
+        ab>!req_next(id:r0 seq:1 ack:0 body:b1)
         ab>msg(id:r0 type:req_next cmd:test seq:1 ack:0 body:b1)
         ab>req_next(id:r0 seq:1 ack:0 cmd:test body:b1) -
         ab<!res_next(id:r0 seq:1 ack:1 body:c1)
@@ -1750,7 +1764,7 @@ describe('peer-relay', function(){
         ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)
         ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
     });
-    if (0) // XXX: TODO
+    if (1) // XXX WIP
     describe('auto', ()=>{
       t('req', `setup:req setup:2_nodes
         ab>!req_start(id:r0 cmd:test body:b0)
@@ -1766,7 +1780,7 @@ describe('peer-relay', function(){
         ab<!res_end(id:r0 body:c2)
         ab<res_end(id:r0 cmd:test body:c2)`);
     });
-    // XXX: need auto seq without speciying it
+    // XXX: rm all uneeded seq (we have auto-mode
     t('res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 seq:0 cmd:test body:b0)
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
