@@ -38,6 +38,9 @@ E.wait = function(){
 E.buf_to_str = function(b){ return b ? b.toString('hex') : ''; };
 E.buf_from_str = function(s){ return Buffer.from(s, 'hex'); };
 
+E.is_inspect = function(){
+  return !!process.execArgv.find(s=>/inspect/.test(s)); };
+
 E._is_mocha = undefined;
 E.is_mocha = function(){
     if (E._is_mocha!==undefined)
