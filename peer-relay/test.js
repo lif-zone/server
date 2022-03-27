@@ -867,7 +867,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse(c.arg), body, call = c.cmd[0]=='!';
-  let msg = call ? true : false, id, type, cmd, seq, ack;
+  let msg = call ? true : false, id, type, cmd, seq, ack, a;
   util.forEach(arg, a=>{
     switch (a.cmd){
     case '!msg': msg = false; break;
@@ -920,38 +920,39 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   if (call){
     if (!s.t.fake)
       yield s.send(d.id, body);
+    return;
   }
-  else {
-    if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
-      seq = seq||0;
-    // XXX: wrap it nicely
+  if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
+    seq = seq||0;
+  if (type=='req'){
     switch (cmd){
-    case 'find':
-      if (type=='req')
-        body = {id: _str(t_nodes[body].id)};
-      else if (type=='res')
-        body = {ids: array_name_to_id(body.split(''))};
-      break;
+    case 'find': body = {id: _str(t_nodes[body].id)}; break;
+    case 'conn_info': break;
+    case '': break;
+    default: assert(0, 'invalid cmd '+cmd);
+    }
+  }
+  else if (type=='res'){
+    switch (cmd){
+    case 'find': body = {ids: array_name_to_id(body.split(''))}; break;
     case 'conn_info':
-      if (type=='res'){
-        let a = body ? body.split(' ') : [];
-        body = {};
-        a.forEach(connector=>{
-          if (connector=='wrtc')
-            body.wrtc = true;
-          else if (connector=='ws')
-            body.ws = wss_from_node(s);
-          else
-            assert(0, 'invalid connector '+connector);
-        });
-      }
+      a = body ? body.split(' ') : [];
+      body = {};
+      a.forEach(connector=>{
+        if (connector=='wrtc')
+          body.wrtc = true;
+        else if (connector=='ws')
+          body.ws = wss_from_node(s);
+        else
+          assert(0, 'invalid connector '+connector);
+      });
       break;
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
     }
-    yield fake_send_msg(c, {req_id: id, type, seq, ack, cmd, body});
-    yield cmd_run_if_next_fake();
   }
+  yield fake_send_msg(c, {req_id: id, type, seq, ack, cmd, body});
+  yield cmd_run_if_next_fake();
 });
 
 function cmd_msg_req_find(opt){
@@ -1712,7 +1713,7 @@ describe('peer-relay', function(){
         ab>req_end(id:r0 seq:2 ack:1 cmd:test body:b2)
         ab<!res_end(id:r0 seq:2 ack:2 body:c2)
         ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
-      if (0) // XXX WIP
+      if (0) // XXX: WIP ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
       t('msg', `setup:msg setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test body:b0)
         ab>req_start(id:r0 seq:0 cmd:test body:b0)
@@ -1726,6 +1727,7 @@ describe('peer-relay', function(){
         ab>req_end(id:r0 seq:2 ack:1 cmd:test body:b2)
         ab<!res_end(id:r0 seq:2 ack:2 body:c2)
         ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
+      if (0)
       t('msg,req', `setup(msg req)`);
     });
     // XXX: need auto seq without speciying it
