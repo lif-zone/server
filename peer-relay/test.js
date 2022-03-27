@@ -1764,7 +1764,6 @@ describe('peer-relay', function(){
         ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)
         ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
     });
-    if (1) // XXX WIP
     describe('auto', ()=>{
       t('req', `setup:req setup:2_nodes
         ab>!req_start(id:r0 cmd:test body:b0)
