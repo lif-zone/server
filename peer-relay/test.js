@@ -1748,6 +1748,21 @@ describe('peer-relay', function(){
         ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)
         ab<res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
     });
+    describe('auto', ()=>{
+      t('req', `setup:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test body:b0)
+        ab>req_start(id:r0 seq:0 cmd:test body:b0)
+        ab<!res_start(id:r0 seq:0 body:c0)
+        ab<res_start(id:r0 seq:0 cmd:test body:c0)
+        ab>!req_next(id:r0 seq:0 body:b1)
+        ab>req_next(id:r0 seq:1 cmd:test body:b1) -
+        ab<!res_next(id:r0 seq:1 body:c1)
+        ab<res_next(id:r0 seq:1 cmd:test body:c1)
+        ab>!req_end(id:r0 seq:2 body:b2)
+        ab>req_end(id:r0 seq:2 cmd:test body:b2)
+        ab<!res_end(id:r0 seq:2 body:c2)
+        ab<res_end(id:r0 seq:2 cmd:test body:c2)`);
+    });
     // XXX: need auto seq without speciying it
     t('res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 seq:0 cmd:test body:b0)
