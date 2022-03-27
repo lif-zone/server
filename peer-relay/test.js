@@ -1701,7 +1701,7 @@ describe('peer-relay', function(){
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: add msg and msg,req versions
-    describe('manual_ack', ()=>{
+    describe('manual', ()=>{
       t('req', `setup:req setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test body:b0)
         ab>req_start(id:r0 seq:0 cmd:test body:b0)
@@ -1754,13 +1754,13 @@ describe('peer-relay', function(){
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
       ab<!res_start(id:r0 seq:0 body:c0)
       ab<res_start(id:r0 seq:0 cmd:test body:c0)
-      ab>!req_next(id:r0 seq:0 body:b1)
+      ab>!req_next(id:r0 seq:1 body:b1)
       ab>req_next(id:r0 seq:1 cmd:test body:b1) -
       ab<!res_next(id:r0 seq:1 body:c1)
       ab<res_next(id:r0 seq:1 cmd:test body:c1)
       ab>!req_end(id:r0 seq:2 body:b2) ab>req_end(id:r0 seq:2 cmd:test body:b2)
       ab<!res_end(id:r0 seq:2 body:c2) ab<res_end(id:r0 seq:2 cmd:test body:c2)
-      ab>!req_end(id:r0 seq:3) ab>req_end(id:r0 seq:3 cmd:test)`);
+      `);
     t('multi_res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 seq:0 cmd:test body:b0)
       ab>req_start(id:r0 seq:0 cmd:test body:b0)
@@ -1772,7 +1772,7 @@ describe('peer-relay', function(){
       ab<res_next(id:r0 seq:2 cmd:test body:c2)
       ab>!req_end(id:r0 seq:1 body:b2) ab>req_end(id:r0 seq:1 cmd:test body:b2)
       ab<!res_end(id:r0 seq:3 body:c3) ab<res_end(id:r0 seq:3 cmd:test body:c3)
-      ab>!req_end(id:r0 seq:2) ab>req_end(id:r0 seq:2 cmd:test)`);
+      `);
     describe('timeout', function(){
       t('req_start', `mode:req setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test)
