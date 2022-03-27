@@ -1778,7 +1778,38 @@ describe('peer-relay', function(){
         ab>req_end(id:r0 cmd:test body:b2)
         ab<!res_end(id:r0 body:c2)
         ab<res_end(id:r0 cmd:test body:c2)`);
-      // XXX: missing msg/msg,req tests
+      t('msg', `setup:msg setup:2_nodes
+        ab>!req_start(id:r0 cmd:test body:b0)
+        ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
+        ab<!res_start(id:r0 ack:0 body:c0)
+        ab<msg(id:r0 type:res_start cmd:test seq:0 ack:0 body:c0)
+        ab>!req_next(id:r0 ack:0 body:b1)
+        ab>msg(id:r0 type:req_next cmd:test seq:1 ack:0 body:b1)
+        ab<!res_next(id:r0 ack:1 body:c1)
+        ab<msg(id:r0 type:res_next cmd:test seq:1 ack:1 body:c1)
+        ab>!req_end(id:r0 ack:1 body:b2)
+        ab>msg(id:r0 type:req_end cmd:test ack:1 seq:2 body:b2)
+        ab<!res_end(id:r0 ack:2 body:c2)
+        ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)`);
+      t('msg,req', `setup(msg req) setup:2_nodes
+        ab>!req_start(id:r0 cmd:test body:b0)
+        ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
+        ab>req_start(id:r0 cmd:test body:b0)
+        ab<!res_start(id:r0 ack:0 body:c0)
+        ab<msg(id:r0 type:res_start cmd:test seq:0 ack:0 body:c0)
+        ab<res_start(id:r0 cmd:test body:c0)
+        ab>!req_next(id:r0 ack:0 body:b1)
+        ab>msg(id:r0 type:req_next cmd:test seq:1 ack:0 body:b1)
+        ab>req_next(id:r0 cmd:test body:b1) -
+        ab<!res_next(id:r0 ack:1 body:c1)
+        ab<msg(id:r0 type:res_next cmd:test seq:1 ack:1 body:c1)
+        ab<res_next(id:r0 cmd:test body:c1)
+        ab>!req_end(id:r0 ack:1 body:b2)
+        ab>msg(id:r0 type:req_end cmd:test ack:1 seq:2 body:b2)
+        ab>req_end(id:r0 cmd:test body:b2)
+        ab<!res_end(id:r0 ack:2 body:c2)
+        ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)
+        ab<res_end(id:r0 cmd:test body:c2)`);
     });
     t('res', `mode:req setup:2_nodes
       ab>!req_start(id:r0 cmd:test body:b0)
