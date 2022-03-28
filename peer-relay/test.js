@@ -575,8 +575,10 @@ function fake_emit(c, msg){
     if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
       msg.req_id = msg.req_id || ++t_req_id+'';
     else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
-      if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake)
-        msg.req_id = get_req_id({s: t.t.name, d: f.t.name, cmd: msg.cmd});
+      if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake){
+        msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
+          cmd: msg.cmd});
+      }
     }
     else
       assert(0, 'invalid type '+msg.type);
@@ -607,8 +609,10 @@ const fake_send_msg = (c, msg)=>etask(function*(){
       msg.req_id = msg.req_id || ++t_req_id+'';
     else if (msg.type=='res')
     {
-      if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake)
-        msg.req_id = get_req_id({s: t.t.name, d: f.t.name, cmd: msg.cmd});
+      if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake){
+        msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
+          cmd: msg.cmd});
+      }
     }
     msg.sign = node_from_id(from).wallet.sign(msg);
     track_msg(msg);
@@ -931,7 +935,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   if (!call && ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
     'res_next', 'res_end'].includes(type)){
     let nfwd = normalize(c.fwd);
-    ack = get_ack({req_id: id || get_req_id({s: d.t.name, d: s.t.name, cmd}),
+    ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
       s: d.t.name, d: s.t.name,
       keep: t_mode.req && t_mode.msg || !nfwd || nfwd[1]!=d.t.name});
   }
@@ -1018,7 +1022,7 @@ const cmd_req = opt=>etask(function*req(){
       build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body, res}));
   }
   if (!call && ack===undefined){
-    ack = get_ack({req_id: id || get_req_id({s: d.t.name, d: s.t.name, cmd}),
+    ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
       s: d.t.name, d: s.t.name});
   }
   if (call)
@@ -1091,11 +1095,9 @@ const cmd_res = opt=>etask(function*req(){
   });
   if (t_pre_process)
     return set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}));
-  if (!call && ack===undefined){
-    ack = get_ack({req_id: id || get_req_id({s: d.t.name, d: s.t.name, cmd}),
-      s: d.t.name, d: s.t.name});
-  }
   _id = id||get_req_id({s: d.t.name, d: s.t.name, cmd});
+  if (!call && ack===undefined)
+    ack = get_ack({req_id: _id, s: d.t.name, d: s.t.name});
   seq = track_seq_res(id, type, seq, call);
   assert(seq!==undefined, 'must have seq');
   assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}), c.fwd,
@@ -1341,11 +1343,14 @@ const test_run = (role, test)=>etask(function*test_run(){
 });
 
 const test_end = ()=>etask(function*(){
+  xerr.notice('*** test_end');
   yield cmd_ensure_no_events();
   assert(t_cmds, 'test not running');
   assert.equal(t_i, t_cmds.length, 'not all cmds run');
-  if (!t_pre_process)
-    xsinon.tick(date.ms.YEAR);
+  if (!t_pre_process){
+    yield xsinon.tick(date.ms.YEAR);
+    yield xsinon.wait();
+  }
   yield cmd_ensure_no_events();
   for (let n in t_nodes){
     yield t_nodes[n].destroy();
@@ -1357,6 +1362,7 @@ const test_end = ()=>etask(function*(){
   assert(!Object.keys(ReqHandler.t.nodes).length,
     'req handler node exists on test end '+
     stringify(Object.keys(ReqHandler.t.nodes)));
+  xerr.notice('*** test_done');
 });
 
 if (!util.is_inspect())
@@ -1863,30 +1869,21 @@ describe('peer-relay', function(){
         ab<!res_next(id:r0 seq:1) ab<res_next(id:r0 seq:1 cmd:test) 19999ms -
         ab>!req_end(id:r0 seq:2) ab>req_end(id:r0 seq:2 cmd:test) 19999ms -
         1ms a>fail(id:r0 seq:2 error(timeout))`);
-      if (0) // XXX: check it out - need to rm test. no ack for res_end
-      t('res_end', `mode:req setup:2_nodes ab>!req_start(id:r0 seq:0 cmd:test)
-        ab>req_start(id:r0 seq:0 cmd:test) 19999ms - ab<!res_start(id:r0 seq:0)
-        ab<res_start(id:r0 seq:0 cmd:test) 19999ms - ab>!req_next(id:r0 seq:1)
-        ab>req_next(id:r0 seq:1 cmd:test) - ab>!req_end(id:r0 seq:2)
-        ab>req_end(id:r0 seq:2 cmd:test) 19999ms -
-        ab<!res_end(id:r0 seq:1) ab<res_end(id:r0 seq:1 cmd:test) 19999ms -
-        1ms b>fail(id:r0 seq:1 error:timeout)`);
       const setup = `mode:req setup:2_nodes ab>!req_start(id:r0 seq:0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) -
         ab>!req_next(id:r0 seq:1) ab>req_next(id:r0 seq:1 cmd:test) 5s -
         ab>!req_next(id:r0 seq:2) ab>req_next(id:r0 seq:2 cmd:test) 10s -`;
       t('multi_no_res', `${setup} 4999ms -
-        1ms a>fail(id(r0) seq:1 error(timeout)) 20s`);
-      if (0) // XXX: fixme
-      t('multi_res_1st', `${setup}
-        ab<!res_next(id:r0 seq:1) ab<res_next(id:r0 seq:1 cmd:test)
-        9999ms - 1ms a>fail(id:r0 seq:2 error(timeout)) 9999ms -
-        1ms b>fail(id:r0 seq:1 error:timeout)`);
-      if (0) // XXX: fixme
-      t('multi_res_2nd', `${setup}
-        ab<!res_next(id:r0 seq:2) ab<res_next(id:r0 seq:2 cmd:test)
-        19999ms - 1ms b>fail(id:r0 seq:1 error:timeout)`);
+        1ms a>fail(id(r0) seq:1 error(timeout)) - 20s`);
+      t('multi_res_1st', `${setup} ab<!res_next(id:r0 seq:1 ack:1)
+        ab<res_next(id:r0 seq:1 ack:1 cmd:test) 9999ms - 1ms
+        a>fail(id:r0 seq:2 error:timeout) 9999ms - 1ms
+        b>fail(id(r0) seq:1 error:timeout)`);
+      t('multi_res_2nd', `${setup} ab<!res_next(id:r0 seq:1 ack:2)
+        ab<res_next(id:r0 seq:1 ack:2 cmd:test) 4999ms - 1ms
+        a>fail(id:r0 seq:1 error:timeout) 14999ms - 1ms
+        b>fail(id(r0) seq:1 error:timeout)`);
     });
     // XXX TODO:
     // - out-of-order/in-order

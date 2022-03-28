@@ -4,6 +4,7 @@ import assert from 'assert';
 import {EventEmitter} from 'events';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
+import xescape from '../util/escape.js';
 import date from '../util/date.js';
 import etask from '../util/etask.js';
 const b2s = util.buf_to_str, assign = Object.assign;
@@ -39,6 +40,13 @@ class Res extends EventEmitter {
     opt = opt||{};
     let ts=date.monotonic(), seq = this.seq++, type;
     let {dst, req_id, ack, cmd} = this;
+    if (opt.ack){
+      ack = opt.ack;
+      this.ack = this.ack.filter(s=>!ack.find(
+        s2=>new RegExp('^'+xescape.regex(''+s)+'$').test(s2)));
+    }
+    else
+      this.ack = [];
     if (util.is_mocha() && opt.seq)
       seq = opt.seq;
     if (!this.stream){
@@ -50,7 +58,6 @@ class Res extends EventEmitter {
     if (!['res', 'res_end'].includes(type))
       this.set_timeout(seq);
     let msg = {ts, type, req_id, seq, ack, cmd, body};
-    this.ack = [];
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
