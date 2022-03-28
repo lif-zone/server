@@ -29,7 +29,8 @@ function res_handler(body, from, msg){
     del_req(req_id);
   else if (msg.ack)
     req.clr_timeout(msg.ack);
-  req.emit('res', msg);
+  req.emit_ooo(msg);
+  req.emit_ooo_queue();
 }
 
 function del_req(req_id){
@@ -64,6 +65,7 @@ export default class Req extends EventEmitter {
     this.seq = 0;
     this.ack = [];
     this.sent = {};
+    this.ooo = {};
     assert(util.is_mocha() || !req_id, 'manual req_id only in tests '+req_id);
     req_id = req_id || ''+free_req_id++;
     reqs[req_id] = {req: this};
@@ -121,6 +123,38 @@ export default class Req extends EventEmitter {
       this.sent[seq].et_timeout.return();
       delete this.sent[seq];
     });
+  }
+  push_ooo(msg){
+    // XXX: do we wwant to limit queue max size
+    if (this[msg.seq]) // XXX: how to handle duplicated messages
+      return xerr('duplicated msg req_id %s seq %s', msg.req_id, msg.seq);
+    this.ooo[msg.seq] = msg;
+  }
+  emit_ooo(msg){
+    let ooo = false, {type, seq} = msg;
+    if (this.res_seq===undefined){
+      if (seq==0)
+        this.res_seq = 0;
+      else {
+        this.push_ooo(msg);
+        ooo = true;
+      }
+    }
+    else {
+      if (seq==this.res_seq+1)
+        this.res_seq++;
+      else {
+        this.push_ooo(msg);
+        ooo = true;
+      }
+    }
+    this.emit(type, msg, {ooo});
+  }
+  emit_ooo_queue(){
+    for (let msg, seq; seq=this.res_seq+1, msg=this.ooo[seq];){
+      delete this.ooo[seq];
+      this.emit_ooo(msg);
+    }
   }
 }
 
