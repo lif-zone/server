@@ -1925,16 +1925,14 @@ describe('peer-relay', function(){
         20s a>fail(id:r0 seq:2 error:timeout) -`);
     });
     describe('out_of_order', ()=>{
+      if (0) // XXX: WIP
       t('req', `setup:req setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test body:b0 e)
-        ab<!res_start(id:r0 seq:0 ack:0 body:c0 e)
-        ab>!req_next(id:r0 seq:1 ack:0 body:b1 e)
-        ab<!res_next(id:r0 seq:1 ack:1 body:c1 e)
-        ab>!req_end(id:r0 seq:2 ack:1 body:b2 e)
-        ab<!res_end(id:r0 seq:2 ack:2 body:c2 e)`);
+        ab>!req_end(id:r0 seq:2 body:b2 e)
+        ab>!req_next(id:r0 seq:1 body:b1 e)
+        ab<!res_end(id:r0 seq:2 ack:0,1,2 body:c2 e)`);
     });
     // XXX TODO:
-    // - out-of-order/in-order
     // - close (terminate connection)
     // - timeouts
   });
