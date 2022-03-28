@@ -4,6 +4,7 @@ import {EventEmitter} from 'events';
 import assert from 'assert';
 import xerr from '../util/xerr.js';
 import date from '../util/date.js';
+import xescape from '../util/escape.js';
 import etask from '../util/etask.js';
 import util from '../util/util.js';
 const assign = Object.assign;
@@ -86,8 +87,14 @@ export default class Req extends EventEmitter {
     let type = !this.stream ? 'req' : opt.end ? 'req_end' : !seq ?
       'req_start' : 'req_next';
     let ack = this.ack, cmd = this.cmd;
+    if (opt.ack){
+      ack = opt.ack;
+      this.ack = this.ack.filter(s=>!ack.find(
+        s2=>new RegExp('^'+xescape.regex(''+s)+'$').test(s2)));
+    }
+    else
+      this.ack = [];
     let msg = {ts, type, req_id, seq, ack, cmd, body};
-    this.ack = [];
     this.set_timeout(seq);
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)

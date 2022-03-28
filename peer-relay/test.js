@@ -1869,21 +1869,40 @@ describe('peer-relay', function(){
         ab<!res_next(id:r0 seq:1) ab<res_next(id:r0 seq:1 cmd:test) 19999ms -
         ab>!req_end(id:r0 seq:2) ab>req_end(id:r0 seq:2 cmd:test) 19999ms -
         1ms a>fail(id:r0 seq:2 error(timeout))`);
-      const setup = `mode:req setup:2_nodes ab>!req_start(id:r0 seq:0 cmd:test)
+      let setup = `mode:req setup:2_nodes ab>!req_start(id:r0 seq:0 cmd:test)
         ab>req_start(id:r0 seq:0 cmd:test) ab<!res_start(id:r0 seq:0)
         ab<res_start(id:r0 seq:0 cmd:test) -
         ab>!req_next(id:r0 seq:1) ab>req_next(id:r0 seq:1 cmd:test) 5s -
         ab>!req_next(id:r0 seq:2) ab>req_next(id:r0 seq:2 cmd:test) 10s -`;
       t('multi_no_res', `${setup} 4999ms -
         1ms a>fail(id(r0) seq:1 error(timeout)) - 20s`);
-      t('multi_res_1st', `${setup} ab<!res_next(id:r0 seq:1 ack:1)
-        ab<res_next(id:r0 seq:1 ack:1 cmd:test) 9999ms - 1ms
-        a>fail(id:r0 seq:2 error:timeout) 9999ms - 1ms
-        b>fail(id(r0) seq:1 error:timeout)`);
-      t('multi_res_2nd', `${setup} ab<!res_next(id:r0 seq:1 ack:2)
+      t('multi_no_res_1st', `${setup} ab<!res_next(id:r0 seq:1 ack:2)
         ab<res_next(id:r0 seq:1 ack:2 cmd:test) 4999ms - 1ms
         a>fail(id:r0 seq:1 error:timeout) 14999ms - 1ms
         b>fail(id(r0) seq:1 error:timeout)`);
+      t('multi_no_res_2nd', `${setup} ab<!res_next(id:r0 seq:1 ack:1)
+        ab<res_next(id:r0 seq:1 ack:1 cmd:test) 9999ms - 1ms
+        a>fail(id:r0 seq:2 error:timeout) 9999ms - 1ms
+        b>fail(id(r0) seq:1 error:timeout)`);
+      setup = `mode:req setup:2_nodes ab>!req_start(id:r0 seq:0 cmd:test)
+        ab>req_start(id:r0 seq:0 cmd:test) ab<!res_start(id:r0 seq:0)
+        ab<res_start(id:r0 seq:0 cmd:test) -
+        ab>!req_next(id:r0 seq:1 cmd:test) ab>req_next(id:r0 seq:1 cmd:test)
+        ab<!res_next(id:r0 seq:1) ab<res_next(id:r0 seq:1 cmd:test) 5s -
+        ab<!res_next(id:r0 seq:2) ab<res_next(id:r0 seq:2 cmd:test) 10s -`;
+      t('multi_no_req', `${setup} 4999ms -
+        1ms b>fail(id(r0) seq:1 error(timeout)) - 20s`);
+      t('multi_no_req_1st', `${setup} 4999ms -
+        ab>!req_next(id:r0 seq:2 ack:2 cmd:test)
+        ab>req_next(id:r0 seq:2 ack:2 cmd:test) -
+        1ms b>fail(id(r0) seq:1 error(timeout)) -
+        20s a>fail(id:r0 seq:2 error:timeout) -`);
+      t('multi_no_req_2nd', `${setup} 4999ms -
+        ab>!req_next(id:r0 seq:2 ack:1 cmd:test)
+        ab>req_next(id:r0 seq:2 ack:1 cmd:test) -
+        5s - 1ms b>fail(id(r0) seq:2 error(timeout)) -
+        20s a>fail(id:r0 seq:2 error:timeout) -`);
+
     });
     // XXX TODO:
     // - out-of-order/in-order
