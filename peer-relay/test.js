@@ -158,6 +158,11 @@ function node_from_id(id){
   }
 }
 
+function assert_bool(val){
+  assert(!val)
+  return true;
+}
+
 function assert_int(val){
   assert(/^[0-9]+$/.test(val), 'invalid int '+val);
   return parseInt(val);
@@ -295,9 +300,9 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
 });
 
 // XXX: unite with track_msg
-function track_seq_req(id, type, seq, call){
+function track_seq_req(id, cmd, type, seq, call){
   if (!t_req[id])
-    t_req[id] = {id, req: {seq: 0}};
+    t_req[id] = {id, cmd, req: {seq: 0}};
   else if (/req_next|req_end/.test(type) && !t_req[id].req.call)
     t_req[id].req.seq++;
   t_req[id].req.call = call;
@@ -897,10 +902,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   util.forEach(arg, a=>{
     switch (a.cmd){
     case '!msg': msg = false; break;
-    case 'msg':
-      assert(!a.arg);
-      msg = true;
-      break;
+    case 'msg': msg = assert_bool(a.arg); break;
     case 'id': id = a.arg; break;
     case 'type': type = a.arg; break;
     case 'cmd': cmd = a.arg||''; break;
@@ -997,15 +999,16 @@ function cmd_msg_res_find(opt){
 
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], seq, ack;
-  assert(s && d, 'invalid event '+c.orig);
-  let type = c.cmd.replace('!', '');
+  let type = c.cmd.replace('!', ''), e=false;
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
+  assert(s && d, 'invalid event '+c.orig);
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid type '+c.cmd);
   util.forEach(arg, a=>{ // XXX: proper assert of values
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case 'body': body = a.arg; break;
+    case 'e': e = assert_bool(a.arg); break;
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
     case 'ack': ack = assert_ack(a.arg); break;
@@ -1016,10 +1019,14 @@ const cmd_req = opt=>etask(function*req(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
+  assert(call || !e, 'e only avail for call mode');
   cmd = cmd||'';
   if (t_pre_process){
-    return set_orig(c,
-      build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body, res}));
+    set_orig(c,
+      build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body, res, e}));
+    if (e)
+      push_cmd(build_cmd_o(dir_c(c)+type, {id, seq, ack, cmd, body, res}));
+    return;
   }
   if (!call && ack===undefined){
     ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
@@ -1027,7 +1034,8 @@ const cmd_req = opt=>etask(function*req(){
   }
   if (call)
     id = id || ++t_req_id+'';
-  seq = track_seq_req(id, type, seq, call);
+  seq = track_seq_req(id, cmd, type, seq, call);
+  cmd = cmd || t_req[id].cmd;
   assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}), c.fwd,
     event, call);
   if (!call){
@@ -1079,13 +1087,14 @@ const cmd_req = opt=>etask(function*req(){
 const cmd_res = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
+  let type = c.cmd.replace('!', ''), cmd='', seq, ack, e=false;
   assert(s && d, 'invalid event '+c.orig);
-  let type = c.cmd.replace('!', ''), cmd='', seq, ack;
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid type '+c.cmd);
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
+    case 'e': e = assert_bool(a.arg); break;
     case 'body': body = a.arg; break;
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
@@ -1093,12 +1102,18 @@ const cmd_res = opt=>etask(function*req(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  if (t_pre_process)
-    return set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}));
+  assert(call || !e, 'e only avail for call mode');
+  if (t_pre_process){
+    set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body, e}));
+    if (e)
+      push_cmd(build_cmd_o(dir_c(c)+type, {id, seq, ack, cmd, body}));
+    return;
+  }
   _id = id||get_req_id({s: d.t.name, d: s.t.name, cmd});
   if (!call && ack===undefined)
     ack = get_ack({req_id: _id, s: d.t.name, d: s.t.name});
   seq = track_seq_res(id, type, seq, call);
+  cmd = cmd || t_req[id].cmd;
   assert(seq!==undefined, 'must have seq');
   assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}), c.fwd,
     event, call);
@@ -1548,6 +1563,12 @@ describe('peer-relay', function(){
         t('a>fail(id:r1 error:timeout)', `a>fail(id(r1) error(timeout))`);
         t('ab>msg_req_find:a', `ab>msg(type(req) cmd(find) body(a))`);
         t('ab>msg_res_find:a', `ab>msg(type(res) cmd(find) body(a))`);
+        t('ab>!req_start(id:r1 cmd:test)', `ab>!req_start(id(r1) cmd(test))`);
+        t('ab>!req_start(id:r1 cmd:test e)', `ab>!req_start(id(r1) cmd(test) e)
+          ab>req_start(id(r1) cmd(test))`);
+        t('ab>!res_start(id:r1 cmd:test)', `ab>!res_start(id(r1) cmd(test))`);
+        t('ab>!res_start(id:r1 cmd:test e)', `ab>!res_start(id(r1) cmd(test) e)
+          ab>res_start(id(r1) cmd(test))`);
         if (true) // XXX: TODO
           return;
         t('ab>msg_req_find(a id:r0)', `ab>msg(id(r0) type(req) cmd(find)
@@ -1903,21 +1924,19 @@ describe('peer-relay', function(){
         5s - 1ms b>fail(id(r0) seq:2 error(timeout)) -
         20s a>fail(id:r0 seq:2 error:timeout) -`);
     });
+    describe('out_of_order', ()=>{
+      t('req', `setup:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test body:b0 e)
+        ab<!res_start(id:r0 seq:0 ack:0 body:c0 e)
+        ab>!req_next(id:r0 seq:1 ack:0 body:b1 e)
+        ab<!res_next(id:r0 seq:1 ack:1 body:c1 e)
+        ab>!req_end(id:r0 seq:2 ack:1 body:b2 e)
+        ab<!res_end(id:r0 seq:2 ack:2 body:c2 e)`);
+    });
     // XXX TODO:
     // - out-of-order/in-order
     // - close (terminate connection)
     // - timeouts
-    /* XXX: TODO
-      t('stream', `setup:2_nodes setup:req
-        ab>!req_start(id:r0 stream cmd:find body:ping)
-        ab>req_start(id:r0 seq:0 cmd:find body:ping)
-        ab<!res_start(id:r0 body:pong) ab<res_start(id:r0 seq:0 body:pong)
-        ab>!req_next(id:r0 body:ping2) ab>req_next(id:r0 seq:1 body:ping2)
-        ab<!res_next(id:r0 body:pong2) ab<res_next(id:r0 seq:1 body:pong2)
-        ab>!req_end(id:r0 body:ping3) ab>req_end(id:r0 seq:2 body:ping3)
-        ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:2 body:pong3)
-      `);
-    */
   });
   if (0)
   describe('req', function(){
