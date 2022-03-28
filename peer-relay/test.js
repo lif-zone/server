@@ -1902,7 +1902,6 @@ describe('peer-relay', function(){
         ab>req_next(id:r0 seq:2 ack:1 cmd:test) -
         5s - 1ms b>fail(id(r0) seq:2 error(timeout)) -
         20s a>fail(id:r0 seq:2 error:timeout) -`);
-
     });
     // XXX TODO:
     // - out-of-order/in-order
@@ -1932,82 +1931,6 @@ describe('peer-relay', function(){
     if (false) // XXX: TODO (add disconnect api)
     t(`ab!>req(id:r1 body:ping) ab>req(id:r1 body:ping) ab>!disconnect
       ab>disconnect ab<disconnect - 9.9s - 0.1s a>fail(id:r1 err:timeout)`);
-    // XXX: test continous response and final response (multi-part)
-    describe('stream', ()=>{
-      // XXX: TODO
-      // type: 'req_start|req_next|req_end|res_start|res_next|res_end'
-      // client: req = Req.new(); req.on('res_start|res_next|res_end', ...);
-      // server: ReqRes.on('req_start|req_next|req_end', ...)
-      // managed api/msg
-      /*
-      client:
-      let req = new Req({node, dst, stream: true, cmd, body});
-      // if no cmd/body then need to explicit req.send();
-      req.on('res_start', (req, res)=>{
-        xerr.notice('got msg seq % body %s', res.seq, res.body);
-        req.send(body2);
-      });
-      req.on('res_next', (req, res)=>{});
-      req.on('res_end', (req, res)=>{});
-      req.on('fail', err=>{});
-      // req.send_end() - to terminate requte from client side
-      req.close();
-
-      // server:
-      let req_handler = new ReqHandler({node, cmd});
-      req_handler.on('req_start', (req, res)=>{
-        xerr.notice('got msg seq % body %s', req.seq, req.body);
-        res.send(body2);
-        req.on('req_next', (req, res)=>{});
-        req.on('req_end', (req, res)=>{});
-        req.on('fail', err=>{});
-      });
-      req_handler.on('req_next', (req, res)=>{});
-      req_handler.on('req_end', (req, res)=>{});
-      // res.send_end() - to terminate requte from server side
-      if (true)
-        return;
-      t('stream', `setup:2_nodes setup:req
-        ab>!req_start(id:r0 stream cmd:find body:ping)
-        ab>req_start(id:r0 seq:0 cmd:find body:ping)
-        ab<!res_start(id:r0 body:pong) ab<res_start(id:r0 seq:0 body:pong)
-        ab>!req_next(id:r0 body:ping2) ab>req_next(id:r0 seq:1 body:ping2)
-        ab<!res_next(id:r0 body:pong2) ab<res_next(id:r0 seq:1 body:pong2)
-        ab>!req_end(id:r0 body:ping3) ab>req_end(id:r0 seq:2 body:ping3)
-        ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:2 body:pong3)
-      `);
-      t('stream2', `setup:2_nodes setup:req
-        ab>!req_start(id:r0 stream cmd:find body:ping)
-        ab>req_start(id:r0 seq:0 cmd:find body:ping)
-        ab<!res_start(id:r0 body:pong) ab<res_start(id:r0 seq:0 body:pong)
-        ab<!res_next(id:r0 body:pong2) ab<res_next(id:r0 seq:1 body:pong2)
-        ab<!res_end(id:r0 body:pong3) ab<res_end(id:r0 seq:2 body:pong3)
-      `);
-      t('stream3', `setup:2_nodes setup(req msg)
-        ab>!req_start(id:r0 stream cmf:find body:ping)
-        ab>msg(type:req_start id:r0 seq:0 cmd:find body:ping)
-        ab>req_start(id:r0 seq:0 cmd:find body:ping)
-        ab<!msg(type:res_start id:r0 seq:0 body:pong)
-        ab<msg(type:res_start id:r0 seq:0 body:pong)
-        ab<res_start(id:r0 seq:0 body:pong)
-        ...
-      `);
-      t('stream-invalid order', `setup:2_nodes setup(req msg)
-        ab>!req_start(id:r0 stream cmd:find body:ping)
-        ab>msg(type:req_start id:r0 seq:0 cmd:find body:ping)
-        ab>req_start(id:r0 seq:0 cmd:find body:ping)
-        ab<!msg(type:res_next id:r0 seq:1 body:pong2)
-        ab<msg(type:res_next id:r0 seq:1 body:pong2)
-        ab<!msg(type:res_start id:r0 seq:0 body:pong)
-        ab<msg(type:res_start id:r0 seq:0 body:pong)
-        ab<res_start(id:r0 seq:0 body:pong)
-        ab<res_next(id:r0 seq:1 body:pong2)
-        ...
-      `);
-      // out_of_order (-- add option to request remit in-order)
-      // add option to creae request that by default emit in-order
-      */
-    });
   });
   // XXX: add boostrap support
   // XXX: add setup:req,msg and msg tests
@@ -2111,7 +2034,6 @@ describe('peer-relay', function(){
         cba<fwd(ca<msg(type:res cmd:conn_info body:ws)) ca>connect(wss)
         ac>msg_req_find:a ac<msg_res_find:abc
         ac<msg_req_find:c ac>msg_res_find:cab`);
-      // XXX derry: unite req/msg/msg,req together (ingnore req/msg per test)
       t('msg,req', `mode(msg req) node(a wss) node(b wss)
         node(c wss) - ab>!connect ab>msg_req_find:a ab>find:a
         ab<msg_res_find:a ab<find_r:a ab<msg_req_find:b ab<find:b
