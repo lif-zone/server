@@ -1125,7 +1125,7 @@ const cmd_res = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
   let type = c.cmd.replace('!', ''), cmd='', seq, ack, e=false;
-  let ooo=false, dup=false;
+  let ooo=false, dup=false, close=false;
   assert(s, 'invalid event '+c.orig);
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid type '+c.cmd);
@@ -1135,6 +1135,7 @@ const cmd_res = opt=>etask(function*req(){
     case 'e': e = assert_bool(a.arg); break;
     case 'ooo': ooo = assert_bool(a.arg); break;
     case 'dup': dup = assert_bool(a.arg); break;
+    case 'close': close = assert_bool(a.arg); break;
     case 'body': body = a.arg; break;
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
@@ -1145,14 +1146,14 @@ const cmd_res = opt=>etask(function*req(){
   assert(call || !e, 'e only avail for call mode');
   if (t_pre_process){
     set_orig(c, build_cmd_o(c.meta.cmd,
-      {id, seq, ack, cmd, body, e, ooo, dup}));
+      {id, seq, ack, cmd, body, e, ooo, dup, close}));
     if (e)
       push_cmd(build_cmd_o(dir_c(c)+type, {id, seq, ack, cmd, body}));
     return;
   }
   if (!d){
     assert_event_c2(c, build_cmd_o(c.meta.cmd,
-      {id, seq, ack, cmd, body, ooo, dup}), c.fwd, event, call);
+      {id, seq, ack, cmd, body, ooo, dup, close}), c.fwd, event, call);
     return;
   }
   _id = id||get_req_id({s: d.t.name, d: s.t.name, cmd});
@@ -1169,8 +1170,16 @@ const cmd_res = opt=>etask(function*req(){
     return yield cmd_run_if_next_fake();
   }
   if (!s.t.fake){
-    if (type=='res_end')
-      ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send_end({seq, ack}, body);
+    if (type=='res_end'){
+      if (close){
+        ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send_close({seq, ack},
+          body);
+      }
+      else {
+        ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send_end({seq, ack},
+          body);
+      }
+    }
     else
       ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send({seq, ack}, body);
   }
@@ -1981,6 +1990,11 @@ describe('peer-relay', function(){
       t('req_next', `mode:req setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test e)
         ab>!req_end(id:r0 seq:1 close e) - 20s`);
+      if (0) // XXX WIP
+      t('res_start', `mode:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test e)
+        ab<!res_start(id:r0 seq:0 e)
+        ab<!res_end(id:r0 seq:1 close e) - 20s`);
     });
     describe('out_of_order', ()=>{
       describe('req', ()=>{

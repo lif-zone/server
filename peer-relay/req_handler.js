@@ -12,6 +12,7 @@ const RES_TIMEOUT = 20*date.ms.SEC;
 
 const nodes = {};
 
+// XXX: need to close
 function destroy_cb(){ delete nodes[b2s(this.id)]; }
 
 // XXX: Req/Req_handler are very similar. unite code
@@ -33,6 +34,8 @@ class Res extends EventEmitter {
       ReqHandler.t_new_res_hook(this);
   }
   send_end(opt, body){ return this.send(assign({}, opt, {end: true}), body); }
+  send_close(opt, body){ return this.send(assign({}, opt, {close: true}),
+    body); }
   send(opt, body){
     if (arguments.length<2){
       body = opt;
@@ -55,13 +58,15 @@ class Res extends EventEmitter {
       if (seq)
         return xerr('multiple call to res');
     } else
-      type = opt.end ? 'res_end' : !seq ? 'res_start' : 'res_next';
+      type = opt.end||opt.close ? 'res_end' : !seq ? 'res_start' : 'res_next';
     if (!['res', 'res_end'].includes(type))
       this.set_timeout(seq);
     let msg = {ts, type, req_id, seq, ack, cmd, body};
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
+    if (opt.close)
+      this.req_handler.close();
   }
   set_timeout(seq){
     let {req_id, timeout} = this;
@@ -85,6 +90,7 @@ class Res extends EventEmitter {
       delete this.sent[seq];
     });
   }
+  close(){ this.clr_timeout(); }
 }
 
 function req_handler_cb(body, from, msg){
@@ -166,6 +172,11 @@ export default class ReqHandler extends EventEmitter {
       delete this.ooo[seq];
       this.emit_ooo(msg);
     }
+  }
+  close(){
+    xerr('not implemented yet');
+    // XXX: TODO
+    // util.set(nodes, [id, 'req_id', req_id], {res});
   }
 }
 

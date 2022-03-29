@@ -26,7 +26,7 @@ function res_handler(body, from, msg){
   let req = reqs[req_id].req;
   req.ack.push(seq);
   if (type=='res')
-    del_req(req_id);
+    req.close();
   else if (msg.ack)
     req.clr_timeout(msg.ack);
   req.emit_ooo(msg);
@@ -106,7 +106,7 @@ export default class Req extends EventEmitter {
     if (Req.t_send_hook)
       Req.t_send_hook(msg);
     if (opt.close)
-      del_req(req_id);
+      this.close();
   }
   set_timeout(seq){
     let {req_id, timeout} = this;
@@ -121,6 +121,7 @@ export default class Req extends EventEmitter {
       del_req(req_id);
     });
   }
+  close(){ del_req(this.req_id); }
   clr_timeout(ack){
     ack = ack || Object.keys(this.sent);
     ack.forEach(seq=>{
