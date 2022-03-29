@@ -2102,16 +2102,11 @@ describe('peer-relay', function(){
     // XXX: temporary till fixing req api
     beforeEach(()=>xtest.xerr_level());
     afterEach(()=>xtest.xerr_level(xerr.L.ERR));
-    const t = (name, test)=>t_roles(name, 'abc', test);
-    t('timeout_3_nodes', `setup:2_nodes node:c node(d wss)
-      cd>!connect(find(c dc)) - cb>!req(id:r0 body:ping)
-      cd>cb>req(id:r0 body:ping) - 19999ms - 1ms c>fail(id:r0 error:timeout)`);
     if (false) // XXX: TODO (add disconnect api)
     t(`ab!>req(id:r1 body:ping) ab>req(id:r1 body:ping) ab>!disconnect
       ab>disconnect ab<disconnect - 9.9s - 0.1s a>fail(id:r1 err:timeout)`);
   });
   // XXX: add boostrap support
-  // XXX: add setup:req,msg and msg tests
   describe('2_nodes_ws', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
     t('long', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
