@@ -1116,7 +1116,7 @@ const cmd_res = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
   let type = c.cmd.replace('!', ''), cmd='', seq, ack, e=false;
-  let ooo=false, dup=false
+  let ooo=false, dup=false;
   assert(s, 'invalid event '+c.orig);
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid type '+c.cmd);
