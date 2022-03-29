@@ -2033,8 +2033,6 @@ describe('peer-relay', function(){
       });
       describe('res', ()=>{
         const t = (name, test)=>t_roles(name, 'a', test);
-        // XXX: test duplicate messages
-        // XXX: test req out_of_order/duplicated
         t('res_normal', `setup:req setup:2_nodes
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
           ab<res_start(id:r0 seq:0 ack:0 body:c0)
