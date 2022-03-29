@@ -126,30 +126,30 @@ export default class Req extends EventEmitter {
     });
   }
   push_ooo(msg){
+    let ret = {ooo: true};
     // XXX: do we want to limit queue max size
-    if (this[msg.seq]) // XXX: how to handle duplicated messages
-      return xerr('duplicated msg req_id %s seq %s', msg.req_id, msg.seq);
+    if (this.ooo[msg.seq])
+      ret.dup = true;
     this.ooo[msg.seq] = msg;
+    return ret;
   }
   emit_ooo(msg){
-    let ooo = false, {type, seq} = msg;
+    let opt, {type, seq} = msg;
     if (this.res_seq===undefined){
       if (seq==0)
         this.res_seq = 0;
-      else {
-        this.push_ooo(msg);
-        ooo = true;
-      }
+      else
+        opt = this.push_ooo(msg);
     }
     else {
       if (seq==this.res_seq+1)
         this.res_seq++;
-      else {
-        this.push_ooo(msg);
-        ooo = true;
-      }
+      else if (seq<this.res_seq+1)
+        opt = {dup: true};
+      else
+        opt = this.push_ooo(msg);
     }
-    this.emit(type, msg, {ooo});
+    this.emit(type, msg, opt);
   }
   emit_ooo_queue(){
     for (let msg, seq; seq=this.res_seq+1, msg=this.ooo[seq];){

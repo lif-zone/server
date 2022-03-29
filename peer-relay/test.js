@@ -1001,7 +1001,8 @@ function cmd_msg_res_find(opt){
 
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], seq, ack;
-  let type = c.cmd.replace('!', ''), e=false, emit_api=false, ooo=false;
+  let type = c.cmd.replace('!', ''), e=false;
+  let emit_api=false, ooo=false, dup=false;
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid type '+c.cmd);
@@ -1012,6 +1013,7 @@ const cmd_req = opt=>etask(function*req(){
     case 'e': e = assert_bool(a.arg); break;
     case 'emit_api': emit_api = assert_bool(a.arg); break;
     case 'ooo': ooo = assert_bool(a.arg); break;
+    case 'dup': dup = assert_bool(a.arg); break;
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
     case 'ack': ack = assert_ack(a.arg); break;
@@ -1028,14 +1030,14 @@ const cmd_req = opt=>etask(function*req(){
   cmd = cmd||'';
   if (t_pre_process){
     set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body, res, e,
-      emit_api, ooo}));
+      emit_api, ooo, dup}));
     if (e)
       push_cmd(build_cmd_o(dir_c(c)+type, {id, seq, ack, cmd, body, res}));
     return;
   }
   if (!d){
     assert_event_c2(c, build_cmd_o(c.meta.cmd,
-      {id, seq, ack, cmd, body, ooo}), c.fwd, event, call);
+      {id, seq, ack, cmd, body, ooo, dup}), c.fwd, event, call);
     return;
   }
   if (!call && ack===undefined){
@@ -1070,7 +1072,7 @@ const cmd_req = opt=>etask(function*req(){
       if (emit_api){
         let cb = (o, opt)=>cmd_run(build_cmd_o(c.s+'>'+o.type, {id: o.req_id,
           seq: o.seq, ack: o.ack && o.ack.join(','), cmd: o.cmd,
-          body: o.body, ooo: opt.ooo}));
+          body: o.body, ooo: opt&&opt.ooo, dup: opt&&opt.dup}));
         req.on('res_start', cb);
         req.on('res_next', cb);
         req.on('res_end', cb);
@@ -1093,7 +1095,7 @@ const cmd_req = opt=>etask(function*req(){
       if (emit_api){
         let cb = (o, res, opt)=>cmd_run(build_cmd_o(c.d+'>'+o.type,
           {id: o.req_id, seq: o.seq, ack: o.ack && o.ack.join(','), cmd: o.cmd,
-          body: o.body, ooo: opt.ooo}));
+          body: o.body, ooo: opt&&opt.ooo, dup: opt&&opt.dup}));
         req_handler.on('req_start', cb);
         req_handler.on('req_next', cb);
         req_handler.on('req_end', cb);
@@ -1113,7 +1115,8 @@ const cmd_req = opt=>etask(function*req(){
 const cmd_res = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
-  let type = c.cmd.replace('!', ''), cmd='', seq, ack, e=false, ooo=false;
+  let type = c.cmd.replace('!', ''), cmd='', seq, ack, e=false;
+  let ooo=false, dup=false
   assert(s, 'invalid event '+c.orig);
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid type '+c.cmd);
@@ -1122,6 +1125,7 @@ const cmd_res = opt=>etask(function*req(){
     case 'id': id = a.arg; break;
     case 'e': e = assert_bool(a.arg); break;
     case 'ooo': ooo = assert_bool(a.arg); break;
+    case 'dup': dup = assert_bool(a.arg); break;
     case 'body': body = a.arg; break;
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
@@ -1131,14 +1135,15 @@ const cmd_res = opt=>etask(function*req(){
   });
   assert(call || !e, 'e only avail for call mode');
   if (t_pre_process){
-    set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body, e, ooo}));
+    set_orig(c, build_cmd_o(c.meta.cmd,
+      {id, seq, ack, cmd, body, e, ooo, dup}));
     if (e)
       push_cmd(build_cmd_o(dir_c(c)+type, {id, seq, ack, cmd, body}));
     return;
   }
   if (!d){
     assert_event_c2(c, build_cmd_o(c.meta.cmd,
-      {id, seq, ack, cmd, body, ooo}), c.fwd, event, call);
+      {id, seq, ack, cmd, body, ooo, dup}), c.fwd, event, call);
     return;
   }
   _id = id||get_req_id({s: d.t.name, d: s.t.name, cmd});
@@ -2001,6 +2006,37 @@ describe('peer-relay', function(){
           a>req_next(id:r0 seq:5 cmd:test body:b5)
           ab<req_end(id:r0 seq:6 body:b6)
           a>req_end(id:r0 seq:6 cmd:test body:b6)`);
+        // XXX: the last req_end(dup) should not be emitted. need to close
+        // connection
+        t('req_dup', `setup:req setup:2_nodes
+          ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          a>req_start(id:r0 seq:0 cmd:test body:b0)
+          ab<req_start(id:r0 seq:0 cmd:test body:b0)
+          a>req_start(id:r0 seq:0 cmd:test body:b0 dup)
+          ab<req_next(id:r0 seq:1 body:b1)
+          a>req_next(id:r0 seq:1 cmd:test body:b1)
+          ab<req_next(id:r0 seq:1 body:b1)
+          a>req_next(id:r0 seq:1 cmd:test body:b1 dup)
+          ab<req_end(id:r0 seq:2 body:b2)
+          a>req_end(id:r0 seq:2 cmd:test body:b2)
+          ab<req_end(id:r0 seq:2 body:b2)
+          a>req_end(id:r0 seq:2 cmd:test body:b2 dup)
+          `);
+        t('req_dup_ooo', `setup:req setup:2_nodes
+          ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          a>req_start(id:r0 seq:0 cmd:test body:b0)
+          ab<req_next(id:r0 seq:2 body:b1)
+          a>req_next(id:r0 seq:2 cmd:test body:b1 ooo)
+          ab<req_next(id:r0 seq:2 body:b1)
+          a>req_next(id:r0 seq:2 cmd:test body:b1 ooo dup)
+        `);
+        // XXX: why no timeout error?!
+        t('xxx', `setup:req setup:2_nodes
+          ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          a>req_start(id:r0 seq:0 cmd:test body:b0)
+          ab<req_next(id:r0 seq:1 body:b1)
+          a>req_next(id:r0 seq:1 cmd:test body:b1)
+        `);
       });
       describe('res', ()=>{
         const t = (name, test)=>t_roles(name, 'a', test);
@@ -2043,11 +2079,32 @@ describe('peer-relay', function(){
           a>res_next(id:r0 seq:5 cmd:test body:c5)
           ab<res_end(id:r0 seq:6 ack body:c3)
           a>res_end(id:r0 seq:6 cmd:test body:c3)`);
+        t('res_dup', `setup:req setup:2_nodes
+          ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          ab<res_start(id:r0 seq:0 ack:0 body:c0)
+          a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
+          ab<res_start(id:r0 seq:0 ack:0 body:c0)
+          a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0 dup)
+          ab<res_next(id:r0 seq:1 ack body:c1)
+          a>res_next(id:r0 seq:1 cmd:test body:c1)
+          ab<res_next(id:r0 seq:1 ack body:c1)
+          a>res_next(id:r0 seq:1 cmd:test body:c1 dup)
+          ab<res_end(id:r0 seq:2 ack body:c3)
+          a>res_end(id:r0 seq:2 cmd:test body:c3)
+          ab<res_end(id:r0 seq:2 ack body:c3)
+          a>res_end(id:r0 seq:2 cmd:test body:c3 dup)`);
+        t('req_dup', `setup:req setup:2_nodes
+          ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          ab<res_start(id:r0 seq:0 ack:0 body:c0)
+          a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
+          ab<res_next(id:r0 seq:2 ack body:c1)
+          a>res_next(id:r0 seq:2 cmd:test body:c1 ooo)
+          ab<res_next(id:r0 seq:2 ack body:c1)
+          a>res_next(id:r0 seq:2 cmd:test body:c1 ooo dup)`);
       });
     });
     // XXX TODO:
     // - close (terminate connection)
-    // - timeouts
   });
   if (0)
   describe('req', function(){
