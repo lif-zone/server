@@ -2030,13 +2030,6 @@ describe('peer-relay', function(){
           ab<req_next(id:r0 seq:2 body:b1)
           a>req_next(id:r0 seq:2 cmd:test body:b1 ooo dup)
         `);
-        // XXX: why no timeout error?!
-        t('xxx', `setup:req setup:2_nodes
-          ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
-          a>req_start(id:r0 seq:0 cmd:test body:b0)
-          ab<req_next(id:r0 seq:1 body:b1)
-          a>req_next(id:r0 seq:1 cmd:test body:b1)
-        `);
       });
       describe('res', ()=>{
         const t = (name, test)=>t_roles(name, 'a', test);
