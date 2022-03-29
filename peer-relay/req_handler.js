@@ -14,6 +14,7 @@ const nodes = {};
 
 function destroy_cb(){ delete nodes[b2s(this.id)]; }
 
+// XXX: Res/Req are very similar. unite code
 class Res extends EventEmitter {
   constructor(opt){
     super();

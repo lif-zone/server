@@ -50,6 +50,7 @@ function destroy_cb(){
   }
 }
 
+// XXX: Res/Req are very similar. unite code
 export default class Req extends EventEmitter {
   constructor(opt){
     super();
