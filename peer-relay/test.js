@@ -1001,9 +1001,8 @@ function cmd_msg_res_find(opt){
 
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], seq, ack;
-  let type = c.cmd.replace('!', ''), e=false, emit_api=false;
+  let type = c.cmd.replace('!', ''), e=false, emit_api=false, ooo=false;
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
-  assert(s && d, 'invalid event '+c.orig);
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid type '+c.cmd);
   util.forEach(arg, a=>{ // XXX: proper assert of values
@@ -1012,6 +1011,7 @@ const cmd_req = opt=>etask(function*req(){
     case 'body': body = a.arg; break;
     case 'e': e = assert_bool(a.arg); break;
     case 'emit_api': emit_api = assert_bool(a.arg); break;
+    case 'ooo': ooo = assert_bool(a.arg); break;
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
     case 'ack': ack = assert_ack(a.arg); break;
@@ -1028,9 +1028,14 @@ const cmd_req = opt=>etask(function*req(){
   cmd = cmd||'';
   if (t_pre_process){
     set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body, res, e,
-      emit_api}));
+      emit_api, ooo}));
     if (e)
       push_cmd(build_cmd_o(dir_c(c)+type, {id, seq, ack, cmd, body, res}));
+    return;
+  }
+  if (!d){
+    assert_event_c2(c, build_cmd_o(c.meta.cmd,
+      {id, seq, ack, cmd, body, ooo}), c.fwd, event, call);
     return;
   }
   if (!call && ack===undefined){
@@ -1064,8 +1069,8 @@ const cmd_req = opt=>etask(function*req(){
         {id: o.req_id, seq: o.seq, error: o.error})));
       if (emit_api){
         let cb = (o, opt)=>cmd_run(build_cmd_o(c.s+'>'+o.type, {id: o.req_id,
-            seq: o.seq, ack: o.ack && o.ack.join(','), cmd: o.cmd,
-            body: o.body, ooo: opt.ooo}));
+          seq: o.seq, ack: o.ack && o.ack.join(','), cmd: o.cmd,
+          body: o.body, ooo: opt.ooo}));
         req.on('res_start', cb);
         req.on('res_next', cb);
         req.on('res_end', cb);
@@ -1081,10 +1086,18 @@ const cmd_req = opt=>etask(function*req(){
       assert(0, 'invalid type '+type);
   }
   if (!d.t.fake){
-    let req_handler = d.t.req_handler;
+    let req_handler = d.t.req_handler; // XXX: need to hash it by cmd
     if (!req_handler){
       req_handler = new ReqHandler({node: d, cmd});
       d.t.req_handler = req_handler;
+      if (emit_api){
+        let cb = (o, res, opt)=>cmd_run(build_cmd_o(c.d+'>'+o.type,
+          {id: o.req_id, seq: o.seq, ack: o.ack && o.ack.join(','), cmd: o.cmd,
+          body: o.body, ooo: opt.ooo}));
+        req_handler.on('req_start', cb);
+        req_handler.on('req_next', cb);
+        req_handler.on('req_end', cb);
+      }
     }
     if (res){
       req_handler.on('req', t_req[id].cb = (msg, _res)=>{
@@ -1944,46 +1957,93 @@ describe('peer-relay', function(){
         20s a>fail(id:r0 seq:2 error:timeout) -`);
     });
     describe('out_of_order', ()=>{
-      const t = (name, test)=>t_roles(name, 'a', test);
-      // XXX: test duplicate messages
-      // XXX: test req out_of_order/duplicated
-      t('res_normal', `setup:req setup:2_nodes
-        ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
-        ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-        a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-        ab<res_next(id:r0 seq:1 ack cmd:test body:c1)
-        a>res_next(id:r0 seq:1 cmd:test body:c1)
-        ab<res_end(id:r0 seq:2 ack cmd:test body:c3)
-        a>res_end(id:r0 seq:2 cmd:test body:c3)`);
-      t('res_rev', `setup:req setup:2_nodes
-        ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
-        ab<res_end(id:r0 seq:2 ack cmd:test body:c3)
-        a>res_end(id:r0 seq:2 cmd:test body:c3 ooo)
-        ab<res_next(id:r0 seq:1 ack cmd:test body:c1)
-        a>res_next(id:r0 seq:1 cmd:test body:c1 ooo)
-        ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-        a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-        a>res_next(id:r0 seq:1 cmd:test body:c1)
-        a>res_end(id:r0 seq:2 cmd:test body:c3)`);
-      t('res_multi_next', `setup:req setup:2_nodes
-        ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
-        ab<res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-        a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
-        ab<res_next(id:r0 seq:5 ack cmd:test body:c5)
-        a>res_next(id:r0 seq:5 cmd:test body:c5 ooo)
-        ab<res_next(id:r0 seq:3 ack cmd:test body:c3)
-        a>res_next(id:r0 seq:3 cmd:test body:c3 ooo)
-        ab<res_next(id:r0 seq:1 ack cmd:test body:c1)
-        a>res_next(id:r0 seq:1 cmd:test body:c1)
-        ab<res_next(id:r0 seq:4 ack cmd:test body:c4)
-        a>res_next(id:r0 seq:4 cmd:test body:c4 ooo)
-        ab<res_next(id:r0 seq:2 ack cmd:test body:c2)
-        a>res_next(id:r0 seq:2 cmd:test body:c2)
-        a>res_next(id:r0 seq:3 cmd:test body:c3)
-        a>res_next(id:r0 seq:4 cmd:test body:c4)
-        a>res_next(id:r0 seq:5 cmd:test body:c5)
-        ab<res_end(id:r0 seq:6 ack cmd:test body:c3)
-        a>res_end(id:r0 seq:6 cmd:test body:c3)`);
+      // XXX: need timeout if req/res is not ended
+      describe('req', ()=>{
+        const t = (name, test)=>t_roles(name, 'a', test);
+        // XXX: test duplicate messages
+        // XXX: test req duplicated
+        t('req_normal', `setup:req setup:2_nodes
+          ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          a>req_start(id:r0 seq:0 cmd:test body:b0)
+          ab<req_next(id:r0 seq:1 body:b1)
+          a>req_next(id:r0 seq:1 cmd:test body:b1)
+          ab<req_next(id:r0 seq:2 body:b2)
+          a>req_next(id:r0 seq:2 cmd:test body:b2)
+          ab<req_end(id:r0 seq:3 body:b3)
+          a>req_end(id:r0 seq:3 cmd:test body:b3)`);
+        // XXX: how to test req_start arriving last?
+        t('req_rev', `setup:req setup:2_nodes
+          ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          a>req_start(id:r0 seq:0 cmd:test body:b0)
+          ab<req_end(id:r0 seq:3 body:b3)
+          a>req_end(id:r0 seq:3 cmd:test body:b3 ooo)
+          ab<req_next(id:r0 seq:2 body:b2)
+          a>req_next(id:r0 seq:2 cmd:test body:b2 ooo)
+          ab<req_next(id:r0 seq:1 body:b1)
+          a>req_next(id:r0 seq:1 cmd:test body:b1)
+          a>req_next(id:r0 seq:2 cmd:test body:b2)
+          a>req_end(id:r0 seq:3 cmd:test body:b3)`);
+        t('req_multi_next', `setup:req setup:2_nodes
+          ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          a>req_start(id:r0 seq:0 cmd:test body:b0)
+          ab<req_next(id:r0 seq:5 body:b5)
+          a>req_next(id:r0 seq:5 cmd:test body:b5 ooo)
+          ab<req_next(id:r0 seq:3 body:b3)
+          a>req_next(id:r0 seq:3 cmd:test body:b3 ooo)
+          ab<req_next(id:r0 seq:1 body:b1)
+          a>req_next(id:r0 seq:1 cmd:test body:b1)
+          ab<req_next(id:r0 seq:4 body:b4)
+          a>req_next(id:r0 seq:4 cmd:test body:b4 ooo)
+          ab<req_next(id:r0 seq:2 body:b2)
+          a>req_next(id:r0 seq:2 cmd:test body:b2)
+          a>req_next(id:r0 seq:3 cmd:test body:b3)
+          a>req_next(id:r0 seq:4 cmd:test body:b4)
+          a>req_next(id:r0 seq:5 cmd:test body:b5)
+          ab<req_end(id:r0 seq:6 body:b6)
+          a>req_end(id:r0 seq:6 cmd:test body:b6)`);
+      });
+      describe('res', ()=>{
+        const t = (name, test)=>t_roles(name, 'a', test);
+        // XXX: test duplicate messages
+        // XXX: test req out_of_order/duplicated
+        t('res_normal', `setup:req setup:2_nodes
+          ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          ab<res_start(id:r0 seq:0 ack:0 body:c0)
+          a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
+          ab<res_next(id:r0 seq:1 ack body:c1)
+          a>res_next(id:r0 seq:1 cmd:test body:c1)
+          ab<res_end(id:r0 seq:2 ack body:c3)
+          a>res_end(id:r0 seq:2 cmd:test body:c3)`);
+        t('res_rev', `setup:req setup:2_nodes
+          ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          ab<res_end(id:r0 seq:2 ack body:c3)
+          a>res_end(id:r0 seq:2 cmd:test body:c3 ooo)
+          ab<res_next(id:r0 seq:1 ack body:c1)
+          a>res_next(id:r0 seq:1 cmd:test body:c1 ooo)
+          ab<res_start(id:r0 seq:0 ack:0 body:c0)
+          a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
+          a>res_next(id:r0 seq:1 cmd:test body:c1)
+          a>res_end(id:r0 seq:2 cmd:test body:c3)`);
+        t('res_multi_next', `setup:req setup:2_nodes
+          ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
+          ab<res_start(id:r0 seq:0 ack:0 body:c0)
+          a>res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
+          ab<res_next(id:r0 seq:5 ack body:c5)
+          a>res_next(id:r0 seq:5 cmd:test body:c5 ooo)
+          ab<res_next(id:r0 seq:3 ack body:c3)
+          a>res_next(id:r0 seq:3 cmd:test body:c3 ooo)
+          ab<res_next(id:r0 seq:1 ack body:c1)
+          a>res_next(id:r0 seq:1 cmd:test body:c1)
+          ab<res_next(id:r0 seq:4 ack body:c4)
+          a>res_next(id:r0 seq:4 cmd:test body:c4 ooo)
+          ab<res_next(id:r0 seq:2 ack body:c2)
+          a>res_next(id:r0 seq:2 cmd:test body:c2)
+          a>res_next(id:r0 seq:3 cmd:test body:c3)
+          a>res_next(id:r0 seq:4 cmd:test body:c4)
+          a>res_next(id:r0 seq:5 cmd:test body:c5)
+          ab<res_end(id:r0 seq:6 ack body:c3)
+          a>res_end(id:r0 seq:6 cmd:test body:c3)`);
+      });
     });
     // XXX TODO:
     // - close (terminate connection)

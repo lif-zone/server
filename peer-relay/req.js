@@ -50,7 +50,7 @@ function destroy_cb(){
   }
 }
 
-// XXX: Res/Req are very similar. unite code
+// XXX: Req/Req_handler are very similar. unite code
 export default class Req extends EventEmitter {
   constructor(opt){
     super();
@@ -126,7 +126,7 @@ export default class Req extends EventEmitter {
     });
   }
   push_ooo(msg){
-    // XXX: do we wwant to limit queue max size
+    // XXX: do we want to limit queue max size
     if (this[msg.seq]) // XXX: how to handle duplicated messages
       return xerr('duplicated msg req_id %s seq %s', msg.req_id, msg.seq);
     this.ooo[msg.seq] = msg;

@@ -14,7 +14,7 @@ const nodes = {};
 
 function destroy_cb(){ delete nodes[b2s(this.id)]; }
 
-// XXX: Res/Req are very similar. unite code
+// XXX: Req/Req_handler are very similar. unite code
 class Res extends EventEmitter {
   constructor(opt){
     super();
@@ -109,7 +109,8 @@ function req_handler_cb(body, from, msg){
   res.ack.push(seq);
   if (msg.ack)
     res.clr_timeout(msg.ack);
-  req_handler.emit(type, msg, res);
+  req_handler.emit_ooo(msg, res);
+  req_handler.emit_ooo_queue(res);
 }
 
 export default class ReqHandler extends EventEmitter {
@@ -122,6 +123,7 @@ export default class ReqHandler extends EventEmitter {
     this.router = router;
     this.timeout = timeout||RES_TIMEOUT;
     let id = b2s(router.id);
+    this.ooo = {};
     // XXX: need unregister + cleanup
     assert(!util.get(nodes, [id, cmd]), 'handler already exists '+cmd);
     nodes[id] = nodes[id]||{cmd: {}};
@@ -130,6 +132,38 @@ export default class ReqHandler extends EventEmitter {
       router.on('message', req_handler_cb);
       node.once('destroy', destroy_cb);
       router.req_handler_attached = true;
+    }
+  }
+  push_ooo(msg){
+    // XXX: do we want to limit queue max size
+    if (this[msg.seq]) // XXX: how to handle duplicated messages
+      return xerr('duplicated msg req_id %s seq %s', msg.req_id, msg.seq);
+    this.ooo[msg.seq] = msg;
+  }
+  emit_ooo(msg, res){
+    let ooo = false, {type, seq} = msg;
+    if (this.req_seq===undefined){
+      if (seq==0)
+        this.req_seq = 0;
+      else {
+        this.push_ooo(msg);
+        ooo = true;
+      }
+    }
+    else {
+      if (seq==this.req_seq+1)
+        this.req_seq++;
+      else {
+        this.push_ooo(msg);
+        ooo = true;
+      }
+    }
+    this.emit(type, msg, res, {ooo});
+  }
+  emit_ooo_queue(res){
+    for (let msg, seq; seq=this.req_seq+1, msg=this.ooo[seq];){
+      delete this.ooo[seq];
+      this.emit_ooo(msg);
     }
   }
 }
