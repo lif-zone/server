@@ -78,6 +78,8 @@ export default class Req extends EventEmitter {
     }
   }
   send_end(opt, body){ return this.send(assign({}, opt, {end: true}), body); }
+  send_close(opt, body){
+    return this.send(assign({}, opt, {close: true}), body); }
   send(opt, body){
     if (arguments.length<2){
       body = opt;
@@ -87,7 +89,7 @@ export default class Req extends EventEmitter {
     let ts=date.monotonic(), req_id = this.req_id, seq = this.seq++;
     if (util.is_mocha() && opt.seq)
       seq = opt.seq;
-    let type = !this.stream ? 'req' : opt.end ? 'req_end' : !seq ?
+    let type = !this.stream ? 'req' : opt.end||opt.close ? 'req_end' : !seq ?
       'req_start' : 'req_next';
     let ack = this.ack, cmd = this.cmd;
     if (opt.ack){
@@ -98,10 +100,13 @@ export default class Req extends EventEmitter {
     else
       this.ack = [];
     let msg = {ts, type, req_id, seq, ack, cmd, body};
-    this.set_timeout(seq);
+    if (!opt.close)
+      this.set_timeout(seq);
     this.router.send_msg(this.dst, msg);
     if (Req.t_send_hook)
       Req.t_send_hook(msg);
+    if (opt.close)
+      del_req(req_id);
   }
   set_timeout(seq){
     let {req_id, timeout} = this;

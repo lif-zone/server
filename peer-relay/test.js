@@ -1002,7 +1002,7 @@ function cmd_msg_res_find(opt){
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], seq, ack;
   let type = c.cmd.replace('!', ''), e=false;
-  let emit_api=false, ooo=false, dup=false;
+  let emit_api=false, ooo=false, dup=false, close=false;
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid type '+c.cmd);
@@ -1014,6 +1014,7 @@ const cmd_req = opt=>etask(function*req(){
     case 'emit_api': emit_api = assert_bool(a.arg); break;
     case 'ooo': ooo = assert_bool(a.arg); break;
     case 'dup': dup = assert_bool(a.arg); break;
+    case 'close': close = assert_bool(a.arg); break;
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
     case 'ack': ack = assert_ack(a.arg); break;
@@ -1030,14 +1031,16 @@ const cmd_req = opt=>etask(function*req(){
   cmd = cmd||'';
   if (t_pre_process){
     set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body, res, e,
-      emit_api, ooo, dup}));
-    if (e)
-      push_cmd(build_cmd_o(dir_c(c)+type, {id, seq, ack, cmd, body, res}));
+      emit_api, ooo, dup, close}));
+    if (e){
+      push_cmd(build_cmd_o(dir_c(c)+type, {id, seq, ack, cmd, body, res,
+        close}));
+    }
     return;
   }
   if (!d){
     assert_event_c2(c, build_cmd_o(c.meta.cmd,
-      {id, seq, ack, cmd, body, ooo, dup}), c.fwd, event, call);
+      {id, seq, ack, cmd, body, ooo, dup, close}), c.fwd, event, call);
     return;
   }
   if (!call && ack===undefined){
@@ -1072,7 +1075,8 @@ const cmd_req = opt=>etask(function*req(){
       if (emit_api){
         let cb = (o, opt)=>cmd_run(build_cmd_o(c.s+'>'+o.type, {id: o.req_id,
           seq: o.seq, ack: o.ack && o.ack.join(','), cmd: o.cmd,
-          body: o.body, ooo: opt&&opt.ooo, dup: opt&&opt.dup}));
+          body: o.body, close: o.close, ooo: opt&&opt.ooo,
+          dup: opt&&opt.dup}));
         req.on('res_start', cb);
         req.on('res_next', cb);
         req.on('res_end', cb);
@@ -1082,8 +1086,12 @@ const cmd_req = opt=>etask(function*req(){
     }
     else if (type=='req_next')
       Req.t.reqs[id].req.send({seq, ack}, body);
-    else if (type=='req_end')
-      Req.t.reqs[id].req.send_end({seq, ack}, body);
+    else if (type=='req_end'){
+      if (close)
+          Req.t.reqs[id].req.send_close({seq, ack}, body);
+      else
+        Req.t.reqs[id].req.send_end({seq, ack}, body);
+    }
     else
       assert(0, 'invalid type '+type);
   }
@@ -1095,7 +1103,8 @@ const cmd_req = opt=>etask(function*req(){
       if (emit_api){
         let cb = (o, res, opt)=>cmd_run(build_cmd_o(c.d+'>'+o.type,
           {id: o.req_id, seq: o.seq, ack: o.ack && o.ack.join(','), cmd: o.cmd,
-          body: o.body, ooo: opt&&opt.ooo, dup: opt&&opt.dup}));
+          body: o.body, close: o.close, ooo: opt&&opt.ooo,
+          dup: opt&&opt.dup}));
         req_handler.on('req_start', cb);
         req_handler.on('req_next', cb);
         req_handler.on('req_end', cb);
@@ -1961,12 +1970,21 @@ describe('peer-relay', function(){
         5s - 1ms b>fail(id(r0) seq:2 error(timeout)) -
         20s a>fail(id:r0 seq:2 error:timeout) -`);
     });
+    describe('close', function(){
+      t('req_start', `mode:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test e)
+        ab>!req_end(id:r0 seq:1 close e) - 20s`);
+      t('req_next', `mode:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test e)
+        ab>!req_next(id:r0 seq:1 cmd:test e)
+        ab>!req_end(id:r0 seq:2 close e) - 20s`);
+      t('req_next', `mode:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test e)
+        ab>!req_end(id:r0 seq:1 close e) - 20s`);
+    });
     describe('out_of_order', ()=>{
-      // XXX: need timeout if req/res is not ended
       describe('req', ()=>{
         const t = (name, test)=>t_roles(name, 'a', test);
-        // XXX: test duplicate messages
-        // XXX: test req duplicated
         t('req_normal', `setup:req setup:2_nodes
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
           a>req_start(id:r0 seq:0 cmd:test body:b0)
@@ -2094,17 +2112,6 @@ describe('peer-relay', function(){
           a>res_next(id:r0 seq:2 cmd:test body:c1 ooo dup)`);
       });
     });
-    // XXX TODO:
-    // - close (terminate connection)
-  });
-  if (0)
-  describe('req', function(){
-    // XXX: temporary till fixing req api
-    beforeEach(()=>xtest.xerr_level());
-    afterEach(()=>xtest.xerr_level(xerr.L.ERR));
-    if (false) // XXX: TODO (add disconnect api)
-    t(`ab!>req(id:r1 body:ping) ab>req(id:r1 body:ping) ab>!disconnect
-      ab>disconnect ab<disconnect - 9.9s - 0.1s a>fail(id:r1 err:timeout)`);
   });
   // XXX: add boostrap support
   describe('2_nodes_ws', function(){
