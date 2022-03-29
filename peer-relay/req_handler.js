@@ -30,6 +30,7 @@ class Res extends EventEmitter {
     this.seq = 0;
     this.ack = [];
     this.sent = {};
+    this.ooo = {};
     if (ReqHandler.t_new_res_hook)
       ReqHandler.t_new_res_hook(this);
   }
@@ -91,6 +92,39 @@ class Res extends EventEmitter {
     });
   }
   close(){ this.clr_timeout(); }
+  push_ooo(msg){
+    let ret = {ooo: true};
+    // XXX: do we want to limit queue max size
+    if (this.ooo[msg.seq])
+      ret.dup = true;
+    this.ooo[msg.seq] = msg;
+    return ret;
+  }
+  emit_ooo(msg){
+    let opt, {type, seq} = msg;
+    if (this.req_seq===undefined){
+      if (seq==0)
+        this.req_seq = 0;
+      else
+        opt = this.push_ooo(msg);
+    }
+    else {
+      if (seq==this.req_seq+1)
+        this.req_seq++;
+      else if (seq<this.req_seq+1)
+        opt = {dup: true};
+      else {
+        opt = this.push_ooo(msg);
+      }
+    }
+    this.emit(type, msg, this, opt);
+  }
+  emit_ooo_queue(){
+    for (let msg, seq; seq=this.req_seq+1, msg=this.ooo[seq];){
+      delete this.ooo[seq];
+      this.emit_ooo(msg);
+    }
+  }
 }
 
 function req_handler_cb(body, from, msg){
@@ -109,14 +143,23 @@ function req_handler_cb(body, from, msg){
   if (!res){
     if (!['req', 'req_start'].includes(type))
       return xerr('req not started '+type);
+    if (seq!=0)
+      return xerr('invalid req start seq '+seq);
     res = new Res({req_handler, from: b2s(from), req_id, stream: type!='req'});
     util.set(nodes, [id, 'req_id', req_id], {res});
   }
   res.ack.push(seq);
   if (msg.ack)
     res.clr_timeout(msg.ack);
-  req_handler.emit_ooo(msg, res);
-  req_handler.emit_ooo_queue(res);
+  if (['req', 'req_start'].includes(type)){
+    let dup = res.req_seq==0;
+    res.req_seq = 0;
+    req_handler.emit(type, msg, res, {dup});
+  }
+  else {
+    res.emit_ooo(msg);
+    res.emit_ooo_queue();
+  }
 }
 
 export default class ReqHandler extends EventEmitter {
@@ -129,7 +172,6 @@ export default class ReqHandler extends EventEmitter {
     this.router = router;
     this.timeout = timeout||RES_TIMEOUT;
     let id = b2s(router.id);
-    this.ooo = {};
     // XXX: need unregister + cleanup
     assert(!util.get(nodes, [id, cmd]), 'handler already exists '+cmd);
     nodes[id] = nodes[id]||{cmd: {}};
@@ -138,39 +180,6 @@ export default class ReqHandler extends EventEmitter {
       router.on('message', req_handler_cb);
       node.once('destroy', destroy_cb);
       router.req_handler_attached = true;
-    }
-  }
-  push_ooo(msg){
-    let ret = {ooo: true};
-    // XXX: do we want to limit queue max size
-    if (this.ooo[msg.seq])
-      ret.dup = true;
-    this.ooo[msg.seq] = msg;
-    return ret;
-  }
-  emit_ooo(msg, res){
-    let opt, {type, seq} = msg;
-    if (this.req_seq===undefined){
-      if (seq==0)
-        this.req_seq = 0;
-      else
-        opt = this.push_ooo(msg);
-    }
-    else {
-      if (seq==this.req_seq+1)
-        this.req_seq++;
-      else if (seq<this.req_seq+1)
-        opt = {dup: true};
-      else {
-        opt = this.push_ooo(msg);
-      }
-    }
-    this.emit(type, msg, res, opt);
-  }
-  emit_ooo_queue(res){
-    for (let msg, seq; seq=this.req_seq+1, msg=this.ooo[seq];){
-      delete this.ooo[seq];
-      this.emit_ooo(msg);
     }
   }
   close(){

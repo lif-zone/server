@@ -1107,9 +1107,13 @@ const cmd_req = opt=>etask(function*req(){
           {id: o.req_id, seq: o.seq, ack: o.ack && o.ack.join(','), cmd: o.cmd,
           body: o.body, close: o.close, ooo: opt&&opt.ooo,
           dup: opt&&opt.dup}));
-        req_handler.on('req_start', cb);
-        req_handler.on('req_next', cb);
-        req_handler.on('req_end', cb);
+        req_handler.on('req_start', (msg, res, opt)=>{
+          cb(msg, res, opt);
+          if (opt.dup)
+            return;
+          res.on('req_next', cb);
+          res.on('req_end', cb);
+        });
       }
     }
     if (res){
@@ -2047,10 +2051,10 @@ describe('peer-relay', function(){
           a>req_start(id:r0 seq:0 cmd:test body:b0)
           ab<req_start(id:r0 seq:0 cmd:test body:b0)
           a>req_start(id:r0 seq:0 cmd:test body:b0 dup)
-          ab<req_next(id:r0 seq:1 body:b1)
-          a>req_next(id:r0 seq:1 cmd:test body:b1)
-          ab<req_next(id:r0 seq:1 body:b1)
-          a>req_next(id:r0 seq:1 cmd:test body:b1 dup)
+          ab<req_next(id:r0 seq:1 body:b1_1)
+          a>req_next(id:r0 seq:1 cmd:test body:b1_1)
+          ab<req_next(id:r0 seq:1 body:b1_2)
+          a>req_next(id:r0 seq:1 cmd:test body:b1_2 dup)
           ab<req_end(id:r0 seq:2 body:b2)
           a>req_end(id:r0 seq:2 cmd:test body:b2)
           ab<req_end(id:r0 seq:2 body:b2)
@@ -2064,11 +2068,21 @@ describe('peer-relay', function(){
           ab<req_next(id:r0 seq:2 body:b1)
           a>req_next(id:r0 seq:2 cmd:test body:b1 ooo dup)
         `);
-        if (0) // XXX: fixme
-        t('req_multi', `setup:req setup:3_nodes_wss
+        t('req_many', `setup:req setup:3_nodes_wss
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
           a>req_start(id:r0 seq:0 cmd:test body:b0)
-          ac<!req_start(id:r1 seq:0 cmd:test body:c0 e emit_api)`);
+          ac<!req_start(id:r1 seq:0 cmd:test body:c0 e emit_api)
+          a>req_start(id:r1 seq:0 cmd:test body:c0)
+          ab<req_next(id:r0 seq:2 body:b2)
+          a>req_next(id:r0 seq:2 cmd:test body:b2 ooo)
+          ac<req_next(id:r1 seq:2 body:c2)
+          a>req_next(id:r1 seq:2 cmd:test body:c2 ooo)
+          ab<req_next(id:r0 seq:1 body:b1)
+          a>req_next(id:r0 seq:1 cmd:test body:b1)
+          a>req_next(id:r0 seq:2 cmd:test body:b2)
+          ac<req_next(id:r1 seq:1 body:c1)
+          a>req_next(id:r1 seq:1 cmd:test body:c1)
+          a>req_next(id:r1 seq:2 cmd:test body:c2)`);
       });
       describe('res', ()=>{
         const t = (name, test)=>t_roles(name, 'a', test);
@@ -2131,7 +2145,7 @@ describe('peer-relay', function(){
           a>res_next(id:r0 seq:2 cmd:test body:c1 ooo)
           ab<res_next(id:r0 seq:2 ack body:c1)
           a>res_next(id:r0 seq:2 cmd:test body:c1 ooo dup)`);
-        t('res_multi', `setup:req setup:3_nodes_wss
+        t('res_many', `setup:req setup:3_nodes_wss
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 e emit_api)
           ab<res_start(id:r0 seq:0 ack:0 body:b0)
           a>res_start(id:r0 seq:0 ack:0 cmd:test body:b0)
@@ -2148,7 +2162,6 @@ describe('peer-relay', function(){
           ac<res_next(id:r1 seq:1 ack body:c1)
           a>res_next(id:r1 seq:1 cmd:test body:c1)
           a>res_next(id:r1 seq:2 cmd:test body:c2)`);
-
       });
     });
   });
