@@ -1993,14 +1993,25 @@ describe('peer-relay', function(){
         ab>!req_start(id:r0 seq:0 cmd:test e)
         ab>!req_next(id:r0 seq:1 cmd:test e)
         ab>!req_end(id:r0 seq:2 close e) - 20s`);
-      t('req_next', `mode:req setup:2_nodes
-        ab>!req_start(id:r0 seq:0 cmd:test e)
-        ab>!req_end(id:r0 seq:1 close e) - 20s`);
-      if (0) // XXX WIP
       t('res_start', `mode:req setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test e)
         ab<!res_start(id:r0 seq:0 e)
         ab<!res_end(id:r0 seq:1 close e) - 20s`);
+      t('res_next', `mode:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test e)
+        ab<!res_start(id:r0 seq:0 e)
+        ab>!req_next(id:r0 seq:1 cmd:test e)
+        ab<!res_end(id:r0 seq:2 close e) - 20s`);
+      t('res_close', `mode:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test e)
+        ab<!res_start(id:r0 seq:0 cmd:test e)
+        ab>!req_next(id:r0 seq:1 cmd:test e)
+        ab<!res_end(id:r0 seq:1 cmd:test close e) - 20s`);
+      t('req_close', `mode:req setup:2_nodes
+        ab>!req_start(id:r0 seq:0 cmd:test e)
+        ab<!res_start(id:r0 seq:0 cmd:test e)
+        ab>!req_next(id:r0 seq:1 cmd:test e)
+        ab>!req_end(id:r0 seq:2 cmd:test close e) - 20s`);
     });
     describe('out_of_order', ()=>{
       describe('req', ()=>{

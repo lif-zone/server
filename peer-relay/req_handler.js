@@ -12,7 +12,7 @@ const RES_TIMEOUT = 20*date.ms.SEC;
 
 const nodes = {};
 
-// XXX: need to close
+// XXX: need to close and also proper cleanup when node is destroyed
 function destroy_cb(){ delete nodes[b2s(this.id)]; }
 
 // XXX: Req/Req_handler are very similar. unite code
@@ -67,7 +67,7 @@ class Res extends EventEmitter {
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
     if (opt.close)
-      this.req_handler.close();
+      this.close();
   }
   set_timeout(seq){
     let {req_id, timeout} = this;
@@ -91,7 +91,10 @@ class Res extends EventEmitter {
       delete this.sent[seq];
     });
   }
-  close(){ this.clr_timeout(); }
+  close(){
+    this.clr_timeout();
+    util.unset(nodes, [this.req_handler.id, 'req_id', this.req_id, 'res']);
+  }
   push_ooo(msg){
     let ret = {ooo: true};
     // XXX: do we want to limit queue max size
@@ -127,6 +130,7 @@ class Res extends EventEmitter {
   }
 }
 
+// XXX: rm body and from params
 function req_handler_cb(body, from, msg){
   let {req_id, type, cmd, seq} = msg;
   cmd = cmd||'';
@@ -171,7 +175,7 @@ export default class ReqHandler extends EventEmitter {
     this.node = node;
     this.router = router;
     this.timeout = timeout||RES_TIMEOUT;
-    let id = b2s(router.id);
+    let id = this.id = b2s(router.id);
     // XXX: need unregister + cleanup
     assert(!util.get(nodes, [id, cmd]), 'handler already exists '+cmd);
     nodes[id] = nodes[id]||{cmd: {}};
@@ -181,11 +185,6 @@ export default class ReqHandler extends EventEmitter {
       node.once('destroy', destroy_cb);
       router.req_handler_attached = true;
     }
-  }
-  close(){
-    xerr('not implemented yet');
-    // XXX: TODO
-    // util.set(nodes, [id, 'req_id', req_id], {res});
   }
 }
 
