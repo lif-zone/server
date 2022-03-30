@@ -1,3 +1,4 @@
+// author: derry. coder: arik.
 import Swarm from 'hyperswarm';
 
 start();
