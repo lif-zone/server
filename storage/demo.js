@@ -50,13 +50,6 @@ async function start(){
     console.log(`new connection from ${remoteAddr}`);
     console.log(`starting to replicate`, feed);
     const proto = feed.replicate(isInitiator, {live: true, noise: false});
-    feed.on('error', err=>console.error('feed: error %o', err));
-    feed.on('download', ()=>console.log('feed: download len %s', feed.length));
-    feed.on('upload', ()=>console.log('feed: upload'));
-    feed.on('append', ()=>console.log('feed: append'));
-    feed.on('sync', ()=>console.log('feed: sync'));
-    feed.on('close', ()=>console.log('feed: close'));
-    feed.on('ready', ()=>console.log('feed: ready'));
     proto.pipe(socket).pipe(proto);
     socket.on('close',
       ()=>console.log(`connection closed from ${remoteAddr}`));
