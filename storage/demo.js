@@ -1,7 +1,6 @@
 // author: derry. coder: arik.
-import net from 'net'
-import hypercore from 'hypercore'
-import ram from 'random-access-memory'
+import net from 'net';
+import hypercore from 'hypercore';
 
 const [mode, port, key] = process.argv.slice(2);
 if (['client', 'server'].indexOf(mode)==-1 || !port){
@@ -36,8 +35,8 @@ if (mode=='client'){
   });
 }
 
-function onconnection (socket, isInitiator){
-  const remoteAddr = `${socket.remoteAddress}:${socket.remotePort}`
+function onconnection(socket, isInitiator){
+  const remoteAddr = `${socket.remoteAddress}:${socket.remotePort}`;
   console.log(`new connection from ${remoteAddr}`);
   console.log(`starting to replicate`, feed);
   const proto = feed.replicate(isInitiator, {live: true, noise: false});
@@ -52,7 +51,7 @@ function onconnection (socket, isInitiator){
   socket.on('close', ()=>console.log(`connection closed from ${remoteAddr}`));
 }
 
-function exit (msg){
+function exit(msg){
   console.error(msg);
   process.exit(1);
 }
