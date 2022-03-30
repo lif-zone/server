@@ -28,7 +28,7 @@ export default class Router extends EventEmitter {
     for (let c of this._channels.toArray())
       this._onChannelAdded(c);
   }
-  _on_msg = (body, from, msg)=>{
+  _on_msg = msg=>{
     let {req_id, type} = msg;
     if (!req_id)
       return;
@@ -89,7 +89,7 @@ export default class Router extends EventEmitter {
     assert(typeof msg.to=='string', 'invalid to');
     _this._paths[msg.from] = msg.path[msg.path.length - 1];
     if (to.equals(_this.id))
-      _this.emit('message', msg.body, s2b(msg.from), msg);
+      _this.emit('message', msg);
     else // relay
       yield _this._send(msg);
   });

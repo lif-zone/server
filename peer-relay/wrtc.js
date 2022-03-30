@@ -3,8 +3,11 @@
 import {inherits} from 'util';
 import {EventEmitter} from 'events';
 import SimplePeer from 'simple-peer';
+import xerr from '../util/xerr.js';
 import _debug from 'debug';
 const debug = _debug('peer-relay:wrtc');
+import util from '../util/util.js';
+const s2b = util.buf_from_str;
 
 export default WrtcConnector;
 
@@ -19,9 +22,11 @@ function WrtcConnector(id, router, wrtc){
   self._router = router;
   self._router.on('message', onMessage);
 
-  function onMessage(msg, from){
+  function onMessage(msg){
+    if (!msg.body)
+      return xerr('wrtc: missing body');
     if (msg.cmd === 'signal')
-      self._onSignal(msg.data, from);
+      self._onSignal(msg.body.data, s2b(msg.from));
   }
 }
 

@@ -130,8 +130,7 @@ class Res extends EventEmitter {
   }
 }
 
-// XXX: rm body and from params
-function req_handler_cb(body, from, msg){
+function req_handler_cb(msg){
   let {req_id, type, cmd, seq} = msg;
   cmd = cmd||'';
   if (!req_id || !['req', 'req_start', 'req_next', 'req_end'].includes(type))
@@ -149,7 +148,7 @@ function req_handler_cb(body, from, msg){
       return xerr('req not started '+type);
     if (seq!=0)
       return xerr('invalid req start seq '+seq);
-    res = new Res({req_handler, from: b2s(from), req_id, stream: type!='req'});
+    res = new Res({req_handler, from: msg.from, req_id, stream: type!='req'});
     util.set(nodes, [id, 'req_id', req_id], {res});
   }
   res.ack.push(seq);

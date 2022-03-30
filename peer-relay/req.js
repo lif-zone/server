@@ -13,7 +13,7 @@ const REQ_TIMEOUT = 20*date.ms.SEC;
 const reqs = {};
 let free_req_id = date.monotonic();
 
-function res_handler(body, from, msg){
+function res_handler(msg){
   let {req_id, type, seq} = msg;
   seq = seq||0;
   if (!req_id || !['res', 'res_start', 'res_next', 'res_end'].includes(type))

@@ -597,9 +597,9 @@ function fake_emit(c, msg){
     msg.sign = node_from_id(from).wallet.sign(msg);
     track_msg(msg);
     if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
-      ReqHandler.t.req_handler_cb(msg.body, msg.from, msg);
+      ReqHandler.t.req_handler_cb(msg);
     else
-      Req.t.res_handler(msg.body, msg.from, msg);
+      Req.t.res_handler(msg);
   }
 }
 
