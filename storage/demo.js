@@ -13,7 +13,7 @@ async function start(){
   feed.ready(()=>{
     console.log(`key:  ${feed.key.toString('hex')}`);
     console.log(`dkey: ${feed.discoveryKey.toString('hex')}`);
-    if (!key){
+    if (!is_client){
       console.log('server append len %s', feed.length);
       feed.append('*** '+Date());
       let i=0;
