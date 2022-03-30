@@ -19,6 +19,7 @@ async function start(){
       let i=0;
       setInterval(function(){
         i++;
+        console.log('feed.append %s', i);
         feed.append('item '+i);
       }, 3000);
     }
