@@ -4,9 +4,11 @@ import {inherits} from 'util';
 import {EventEmitter} from 'events';
 import _debug from 'debug';
 import xerr from '../util/xerr.js';
+import util from '../util/util.js';
 import ws_util from '../util/ws.js';
 import fs from 'fs';
 import https from 'https';
+import http from 'http';
 const debug = _debug('peer-relay:ws');
 // XXX HACK: need to add root ca certificate
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -15,7 +17,7 @@ export default WsConnector;
 
 inherits(WsConnector, EventEmitter);
 // XXX: use opts instead of id,port,host
-function WsConnector(id, port, host){
+function WsConnector(id, port, host, is_http){
   var self = this;
   self.id = id;
   // XXX HACK: review tmp_id_n+channels - it's a quick hack to cleanup
@@ -29,14 +31,19 @@ function WsConnector(id, port, host){
   {
     // XXX create: move to nconf
     const https_opts = {
+      port,
       key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
       cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
-    self.https_server = https.createServer(https_opts).listen(port, '0.0.0.0');
-    self._wss = new ws_util.WebSocketServer({server: self.https_server, port});
+    self.https_server = is_http ?
+      http.createServer(https_opts).listen(port, '0.0.0.0') :
+      https.createServer(https_opts).listen(port, '0.0.0.0');
+    self._wss = new ws_util.WebSocketServer({server: self.https_server});
     self._wss.on('connection', onConnection);
     self._wss.on('listening', onListen);
-    if (port !== 0)
-      self.url = 'wss://'+host+':' + port;
+    if (port !== 0){
+      self.url = (is_http ? 'ws://' : 'wss://')+(host||'localhost')+':' + port;
+      xerr.notice('ws.js url %s', self.url);
+    }
   }
 
   function onConnection(ws){ self._onConnection(ws); }
@@ -45,8 +52,7 @@ function WsConnector(id, port, host){
     if (self.destroyed)
       return;
     let port = self._wss._server.address().port;
-    let url = 'wss://'+host+':'+port;
-    self.emit('listen', {port, url});
+    self.emit('listen', {port, url: self.url});
   }
 }
 
@@ -89,7 +95,7 @@ WsConnector.prototype._onConnection = function(ws){
   }
 
   function onError(err){
-    xerr('ws.js error %s %o', err.message, err);
+    xerr('ws.js error %s %s', err.message, util.get(err, 'error.stack'));
     self._debug(err, err.stack);
   }
 };
