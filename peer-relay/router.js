@@ -5,6 +5,9 @@ import assert from 'assert';
 import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import util from '../util/util.js';
+import {dbg_msg} from './util.js';
+import xlog from '../util/xlog.js';
+const log = xlog('router');
 const b2s = util.buf_to_str, s2b = util.buf_from_str;
 
 // XXX: need safe emit support
@@ -32,6 +35,7 @@ export default class Router extends EventEmitter {
     let {req_id, type} = msg;
     if (!req_id)
       return;
+    log.debug('msg %s', dbg_msg(msg));
     if (!['req', 'req_start', 'req_next', 'req_end', 'res', 'res_start',
       'res_next', 'res_end'].includes(type)){
       xerr('invalid msg type %s %s', type, req_id);
@@ -46,9 +50,10 @@ export default class Router extends EventEmitter {
   }
   send_msg(dst, msg){
     let nonce=''+Math.floor(1e15*Math.random());
-    msg.path = [];
     msg.from = b2s(this.id);
     msg.to = dst;
+    msg.nonce = nonce; // XXX: need test that will fail is this is missing
+    msg.path = [];
     this._touched[nonce] = true;
     msg.sign = this.wallet.sign(msg);
     this._send(msg);
@@ -78,13 +83,16 @@ export default class Router extends EventEmitter {
     }
   });
   _on_channel_msg = msg=>etask({'this': this}, function*_on_channel_msg(){
-    let _this = this.this;
-    if (msg.nonce in _this._touched)
-      return;
+    let _this = this.this, nonce = msg.nonce;
+    if (!nonce)
+      return log('invalid message nonce %s', dbg_msg(msg));
+    if (nonce in _this._touched)
+      return log.debug('channel-msg dup %s', dbg_msg(msg));
+    log.debug('channel-msg %s', dbg_msg(msg));
     let from = s2b(msg.from), to = s2b(msg.to);
     if (!_this.wallet.verify(msg, msg.sign, from))
-      return xerr('invalid message signature');
-    _this._touched[msg.nonce] = true;
+      return log('invalid message signature %s', dbg_msg(msg));
+    _this._touched[nonce] = true;
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
     _this._paths[msg.from] = msg.path[msg.path.length - 1];

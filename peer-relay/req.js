@@ -2,11 +2,13 @@
 'use strict'; /*jslint node:true, browser:true*/
 import {EventEmitter} from 'events';
 import assert from 'assert';
-import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 import xescape from '../util/escape.js';
 import etask from '../util/etask.js';
 import util from '../util/util.js';
+import xlog from '../util/xlog.js';
+import {dbg_sd, dbg_msg} from './util.js';
+const log = xlog('req');
 const assign = Object.assign;
 const REQ_TIMEOUT = 20*date.ms.SEC;
 
@@ -20,9 +22,10 @@ function res_handler(msg){
     return;
   // XXX: if final response, remove from this.reqs
   if (!reqs[req_id]) // XXX: change to LERR
-    return xerr.notice('req not found %s', req_id);
+    return log.notice('req not found %s', req_id);
   if (!Number.isInteger(seq) || seq<0)
-    return xerr('invalid seq '+seq);
+    return log('invalid seq '+seq);
+  log.debug('msg %s', dbg_msg(msg));
   let req = reqs[req_id].req;
   req.ack.push(seq);
   if (type=='res')
@@ -59,6 +62,7 @@ export default class Req extends EventEmitter {
     assert(dst, 'must provide dst');
     this.node = node;
     let router = this.router = node.router;
+    this.src = node.id;
     this.dst = dst;
     this.cmd = cmd;
     this.stream = stream;
@@ -99,6 +103,8 @@ export default class Req extends EventEmitter {
     }
     else
       this.ack = [];
+    log.debug('send %s %s %s %s:%s', dbg_sd(this.src, this.dst),
+      cmd, type, req_id, seq);
     let msg = {ts, type, req_id, seq, ack, cmd, body};
     if (!opt.close)
       this.set_timeout(seq);

@@ -35,9 +35,18 @@ export default class Wallet {
     return hcrypto.sign(this.hash_obj(o), this.keys.priv);
   }
   verify(o, sign, pub){
-    pub = pub || this.keys.pub;
-    sign = sign || o.sign;
-    return hcrypto.verify(this.hash_obj(o), sign, pub);
+    try {
+      pub = pub || this.keys.pub;
+      sign = sign || o.sign;
+      // XXX HACK: we need it because Uint8Array is lost when sending buffers
+      // over websocket (we get generic Buffer). Need to fix it at the
+      // websocket/wrtc level
+      if (sign && !(sign instanceof Buffer) &&
+        !(sign.data instanceof Uint8Array)){
+        sign = o.sign = new Uint8Array(sign.data);
+      }
+      return hcrypto.verify(this.hash_obj(o), sign, pub);
+    } catch(err){ return false; }
   }
 }
 

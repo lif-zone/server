@@ -9,9 +9,12 @@ import ReqHandler from './req_handler.js';
 import Wallet from './wallet.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
+import {dbg_id} from './util.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
+import xlog from '../util/xlog.js';
+const log = xlog('node');
 const s2b = util.buf_from_str, b2s = util.buf_to_str;
 
 export default class Client extends EventEmitter {
@@ -50,7 +53,8 @@ export default class Client extends EventEmitter {
     });
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
-    this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host);
+    this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host,
+      opt.http);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
     this.wrtcConnector = new Client.WrtcConnector(this.id, this.router,
       opt.wrtc);
@@ -88,7 +92,7 @@ export default class Client extends EventEmitter {
     if (util.test_on_connection)
       yield util.test_on_connection(channel);
     _this.find(b2s(channel.id));
-    _this.emit('peer', channel.id);
+    _this.emit('peer', b2s(channel.id));
     return channel;
   });
   connect_wrtc(id){ return this.wrtcConnector.connect(id); }
@@ -103,6 +107,7 @@ export default class Client extends EventEmitter {
       return;
     this.pending[id] = true;
     // XXX: allow empty body
+    log.debug('conn_info');
     let req = new Req({node: this, dst: id, cmd: 'conn_info'});
     req.on('res', msg=>this._on_conn_info_r(msg));
     req.send({});
@@ -115,6 +120,8 @@ export default class Client extends EventEmitter {
     this.peers.get(id).destroy();
   }
   send = function(dst, body){
+    assert(typeof dst=='string', 'invalid dst');
+    log.debug('send %s', dbg_id(dst));
     if (this.destroyed)
       return;
     let req = new Req({node: this, dst});
@@ -124,11 +131,13 @@ export default class Client extends EventEmitter {
     let _this = this;
     if (this.destroyed)
       return;
+    log.debug('find %s', dbg_id(id));
     let req = new Req({node: this, dst: id, cmd: 'find'});
     req.on('res', msg=>_this._on_find_r(msg.body.ids));
     req.send({id: b2s(this.id)});
   }
   _on_find_r(ids){
+    log.debug('find_r %s', ids.length);
     for (var canidate of ids)
       this.canidates.add({id: new Buffer(canidate, 'hex')});
     return this._populate();
@@ -137,6 +146,7 @@ export default class Client extends EventEmitter {
     let {from} = msg;
     let _this = this.this;
     from = s2b(from);
+    log.debug('conn_info_r');
     if (_this.peers.get(from))
       return;
     if (msg.body == null)

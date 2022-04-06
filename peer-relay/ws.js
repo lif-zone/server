@@ -2,17 +2,16 @@
 'use strict'; /*jslint node:true, browser:true*/
 import {inherits} from 'util';
 import {EventEmitter} from 'events';
-import _debug from 'debug';
-import xerr from '../util/xerr.js';
-import util from '../util/util.js';
+import xutil from '../util/util.js';
+import {dbg_id, dbg_sd, dbg_msg} from './util.js';
 import ws_util from '../util/ws.js';
 import fs from 'fs';
 import https from 'https';
 import http from 'http';
-const debug = _debug('peer-relay:ws');
+import xlog from '../util/xlog.js';
+const log = xlog('ws');
 // XXX HACK: need to add root ca certificate
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 export default WsConnector;
 
 inherits(WsConnector, EventEmitter);
@@ -42,7 +41,8 @@ function WsConnector(id, port, host, is_http){
     self._wss.on('listening', onListen);
     if (port !== 0){
       self.url = (is_http ? 'ws://' : 'wss://')+(host||'localhost')+':' + port;
-      xerr.notice('ws.js url %s', self.url);
+      log.notice('wss %s', self.url);
+      log.debug('%s wss %s', self.dbg_str(), self.url);
     }
   }
 
@@ -94,10 +94,8 @@ WsConnector.prototype._onConnection = function(ws){
     delete self.channels[channel.tmp_id];
   }
 
-  function onError(err){
-    xerr('ws.js error %s %s', err.message, util.get(err, 'error.stack'));
-    self._debug(err, err.stack);
-  }
+  function onError(err){ log.err('%s error %s %s', self.dbg_str(),
+    err.message, xutil.get(err, 'error.stack')); }
 };
 
 WsConnector.prototype.destroy = function(cb){
@@ -114,12 +112,7 @@ WsConnector.prototype.destroy = function(cb){
   self._wss = null;
 };
 
-WsConnector.prototype._debug = function(){
-  var self = this;
-  var prepend = '[' + self.id.toString('hex', 0, 2) + ']  ';
-  arguments[0] = prepend + arguments[0];
-  debug.apply(null, arguments);
-};
+WsConnector.prototype.dbg_str = function(){ return dbg_id(this.id); };
 
 inherits(WsChannel, EventEmitter);
 function WsChannel(localID, ws){
@@ -155,11 +148,12 @@ WsChannel.prototype.send = function(data){
   var self = this;
   if (self.destroyed)
     return;
-  if (self.ws.readyState === 2)
+  if (self.ws.readyState==2)
     return; // readyState === CLOSING
-  if (self.ws.readyState !== 1)
+  if (self.ws.readyState!=1)
     throw new Error('WebSocket is not ready');
   var str = JSON.stringify(data);
+  log.debug('%s send %s nonce %s', this.dbg_str(), dbg_msg(data), data.nonce);
   self.ws.send(str);
 };
 
@@ -167,11 +161,13 @@ WsChannel.prototype._onMessage = function(data){
   var self = this;
   if (self.destroyed)
     return;
+  // XXX: protect all external JSON.parse
   var json = JSON.parse(data);
+  log.debug('%s msg %s nonce %s', this.dbg_str(), dbg_msg(json), data.nonce);
   if (self.id == null)
   {
     self.id = new Buffer(json, 'hex');
-    self._debug('OPEN');
+    log.debug('%s open', self.dbg_str());
     self.emit('open');
   }
   else
@@ -179,27 +175,22 @@ WsChannel.prototype._onMessage = function(data){
 };
 
 WsChannel.prototype._onError = function(err){
+  log.err('_onError %s', err);
   var self = this;
   if (self.destroyed)
     return;
-  self._debug('ERROR', err);
+  log.err('ERROR', err);
   self.emit('error', err);
 };
 
-WsChannel.prototype._debug = function(){
-  var self = this;
-  var remote = self.id ? self.id.toString('hex', 0, 2) : '?';
-  var prepend = '[' + self.localID.toString('hex', 0, 2) + '->' +
-    remote + ']  ';
-  arguments[0] = prepend + arguments[0];
-  debug.apply(null, arguments);
-};
+WsChannel.prototype.dbg_str = function(){
+  return dbg_sd(this.id, this.localID); };
 
 WsChannel.prototype.destroy = function(){
   var self = this;
   if (self.destroyed)
     return;
-  self._debug('CLOSE');
+  log.debug('%s CLOSE', self.dbg_str());
   self.destroyed = true;
   self.ws.close();
   self.ws = null;
