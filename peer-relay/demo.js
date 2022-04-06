@@ -19,7 +19,7 @@ process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 xerr.set_level('NOTICE');
 
-let start = ()=>etask(function*_start(){
+let start = ()=>etask(function _start(){
   let [mode, port, bootstrap] = process.argv.slice(2);
   if (!mode || !port)
     exit('usage: node demo.js [client|server] [PORT] [BOOTSTRAP]');
@@ -37,8 +37,7 @@ let start = ()=>etask(function*_start(){
   pub = b2s(node.wallet.keys.pub);
   localStorage.setItem(mode+'_wallet_key_priv', priv);
   localStorage.setItem(mode+'_wallet_key_pub', pub);
-  let test_req = new ReqHandler({node, cmd: 'test_req'})
-  .on('req', (msg, res)=>{
+  new ReqHandler({node, cmd: 'test_req'}).on('req', (msg, res)=>{
     log.notice('<req %s', msg.cmd);
     res.send({});
   });
