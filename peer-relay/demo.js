@@ -41,18 +41,34 @@ let start = ()=>etask(function _start(){
     log.notice('<req %s', msg.cmd);
     res.send({});
   });
-  new ReqHandler({node, stream: true, cmd: 'test_stream'}).on('req_start',
-    (type, msg, res)=>{
+  new ReqHandler({node, stream: true, cmd: 'test_stream'})
+  .on('req_start', (msg, res, opt)=>{
     log.notice('<req_start %s', msg.cmd);
+    res.send({});
+    res.on('req_next', (msg, req, opt)=>{
+      log.notice('<req_next %s', msg.cmd);
+      res.send_end({});
+    });
+    res.on('req_end', (msg, req, opt)=>{
+      log.notice('<req_end %s', msg.cmd);
+    });
   });
   node.on('peer', id=>{
     log.notice('new peer %s req>', dbg_id(id));
     new Req({node, dst: id, cmd: 'test_req'})
     .on('res', msg=>log.notice('<test_req_r'))
-    .on('fail', o=>log.notice('test_req_err'))
+    .on('fail', o=>log('test_req_err'))
     .send({});
     new Req({node, dst: id, stream: true, cmd: 'test_stream'})
-    .on('fail', o=>log.notice('test_stream_err')).send({});
+    .on('res_start', function(type, msg){
+      log.notice('<res_start');
+      this.send({});
+    }).on('res_next', function(type, msg){
+      log.notice('<res_next');
+      this.send_end({});
+    }).on('res_end', function(type, msg){
+      log.notice('<res_end');
+    }).on('fail', o=>log('test_stream_err')).send({});
   });
   setInterval(()=>{}, date.ms.HOUR); // XXX HACK: to keep node runnning
   log.notice('node priv %s', b2s(node.wallet.keys.priv));
