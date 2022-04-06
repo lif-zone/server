@@ -41,11 +41,18 @@ let start = ()=>etask(function _start(){
     log.notice('<req %s', msg.cmd);
     res.send({});
   });
+  new ReqHandler({node, stream: true, cmd: 'test_stream'}).on('req_start',
+    (type, msg, res)=>{
+    log.notice('<req_start %s', msg.cmd);
+  });
   node.on('peer', id=>{
     log.notice('new peer %s req>', dbg_id(id));
-    let req = new Req({node, dst: id, cmd: 'test_req'});
-    req.on('res', msg=>log.notice('<test_req_r'));
-    req.send({});
+    new Req({node, dst: id, cmd: 'test_req'})
+    .on('res', msg=>log.notice('<test_req_r'))
+    .on('fail', o=>log.notice('test_req_err'))
+    .send({});
+    new Req({node, dst: id, stream: true, cmd: 'test_stream'})
+    .on('fail', o=>log.notice('test_stream_err')).send({});
   });
   setInterval(()=>{}, date.ms.HOUR); // XXX HACK: to keep node runnning
   log.notice('node priv %s', b2s(node.wallet.keys.priv));
