@@ -3,8 +3,9 @@
 import hcrypto from 'hypercore-crypto';
 import assert from 'assert';
 import hash from 'object-hash';
+import {undefined_to_null2} from './util.js';
 
-let excludeKeys = key=>['path', 'sign'].indexOf(key)!=-1;
+let excludeKeys = key=>['path', 'sign', 'debug'].indexOf(key)!=-1;
 
 export default class Wallet {
   constructor(opt){
@@ -24,11 +25,12 @@ export default class Wallet {
   }
   hash_passthrough(o){
     return hash(o, {respectType: false, excludeKeys,
-      algorithm: 'passthrough'});
+      replacer: undefined_to_null2, algorithm: 'passthrough'});
   }
   hash_obj(o){
     // XXX: need to exclude path/sign only from root, not from sub keys
-    return Uint8Array.from(hash(o, {respectType: false, excludeKeys}));
+    return Uint8Array.from(hash(o, {respectType: false, excludeKeys,
+      replacer: undefined_to_null2}));
   }
   sign(o){
     // XXX: we use sha1 algorithm. need to find a more secured one (blake?)

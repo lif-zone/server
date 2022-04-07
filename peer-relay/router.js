@@ -4,11 +4,11 @@ import {EventEmitter} from 'events';
 import assert from 'assert';
 import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
-import util from '../util/util.js';
+import xutil from '../util/util.js';
 import {dbg_msg} from './util.js';
 import xlog from '../util/xlog.js';
 const log = xlog('router');
-const b2s = util.buf_to_str, s2b = util.buf_from_str;
+const b2s = xutil.buf_to_str, s2b = xutil.buf_from_str;
 
 // XXX: need safe emit support
 export default class Router extends EventEmitter {
@@ -50,11 +50,11 @@ export default class Router extends EventEmitter {
   }
   send_msg(dst, msg){
     let nonce=''+Math.floor(1e15*Math.random());
+    this._touched[nonce] = true;
     msg.from = b2s(this.id);
     msg.to = dst;
     msg.nonce = nonce; // XXX: need test that will fail is this is missing
     msg.path = [];
-    this._touched[nonce] = true;
     msg.sign = this.wallet.sign(msg);
     this._send(msg);
   }

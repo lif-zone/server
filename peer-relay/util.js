@@ -20,3 +20,9 @@ export function dbg_msg(msg){ return sprintf('%s %s %s %s:%s',
   dbg_sd(msg.from, msg.to), msg.cmd, msg.type, msg.req_id, msg.seq); }
 
 export function dbg_sd(s, d){ return dbg_id(s)+'->'+dbg_id(d); }
+
+export function undefined_to_null(key, value){
+  return value===undefined ? null : value; }
+
+export function undefined_to_null2(value){
+  return value===undefined ? null : value; }

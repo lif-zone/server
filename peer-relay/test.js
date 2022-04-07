@@ -1495,6 +1495,8 @@ describe('wallet', ()=>{
   it('hash_obj', ()=>{
     t({}, 'object:0:');
     t({from: 'a'}, 'object:1:string:4:from:string:1:a,');
+    t({from: 'a', body: undefined},
+      'object:2:string:4:body:Null,string:4:from:string:1:a,');
     t({path: []}, 'object:0:');
     t({path: ['a']}, 'object:0:');
     t({sign: 's'}, 'object:0:');
