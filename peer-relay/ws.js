@@ -18,15 +18,15 @@ export default WsConnector;
 inherits(WsConnector, EventEmitter);
 // XXX: use opts instead of id,port,host
 function WsConnector(id, port, host, is_http){
-  var self = this;
-  self.id = id;
+  let _this = this;
+  this.id = id;
   // XXX HACK: review tmp_id_n+channels - it's a quick hack to cleanup
   // open channels - need to properly rewrite everything
-  self.tmp_id_n = 0;
-  self.channels = {};
-  self.destroyed = false;
-  self._wss = null;
-  self.url = null;
+  this.tmp_id_n = 0;
+  this.channels = {};
+  this.destroyed = false;
+  this._wss = null;
+  this.url = null;
   if (port>=0)
   {
     // XXX create: move to nconf
@@ -34,44 +34,41 @@ function WsConnector(id, port, host, is_http){
       port,
       key: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.key'),
       cert: fs.readFileSync('/var/lif/ssl/STAR_lif_zone.crt')};
-    self.https_server = is_http ?
+    this.https_server = is_http ?
       http.createServer(https_opts).listen(port, '0.0.0.0') :
       https.createServer(https_opts).listen(port, '0.0.0.0');
-    self._wss = new ws_util.WebSocketServer({server: self.https_server});
-    self._wss.on('connection', onConnection);
-    self._wss.on('listening', onListen);
+    this._wss = new ws_util.WebSocketServer({server: this.https_server});
+    this._wss.on('connection', onConnection);
+    this._wss.on('listening', onListen);
     if (port !== 0){
-      self.url = (is_http ? 'ws://' : 'wss://')+(host||'localhost')+':' + port;
-      log.notice('wss %s', self.url);
-      log.debug('%s wss %s', self.dbg_str(), self.url);
+      this.url = (is_http ? 'ws://' : 'wss://')+(host||'localhost')+':' + port;
+      log.notice('wss %s', this.url);
+      log.debug('%s wss %s', this.dbg_str(), this.url);
     }
   }
 
-  function onConnection(ws){ self._onConnection(ws); }
+  function onConnection(ws){ _this._onConnection(ws); }
 
   function onListen(){
-    if (self.destroyed)
+    if (_this.destroyed)
       return;
-    let port = self._wss._server.address().port;
-    self.emit('listen', {port, url: self.url});
+    let port = _this._wss._server.address().port;
+    _this.emit('listen', {port, url: _this.url});
   }
 }
 
 WsConnector.prototype.connect = function(url){
-  var self = this;
-  self._onConnection(getWebSocket(url));
-};
+  this._onConnection(getWebSocket(url)); };
 
 WsConnector.prototype._onConnection = function(ws){
-  var self = this;
-  if (self.destroyed)
-  {
+  var _this = this;
+  if (this.destroyed){
     ws.close();
     return;
   }
-  var channel = new WsChannel(self.id, ws);
-  channel.tmp_id = ++self.tmp_id_n;
-  self.channels[channel.tmp_id] = channel;
+  var channel = new WsChannel(this.id, ws);
+  channel.tmp_id = ++this.tmp_id_n;
+  this.channels[channel.tmp_id] = channel;
   channel.on('open', onOpen);
   channel.on('close', onClose);
   channel.on('error', onError);
@@ -80,48 +77,47 @@ WsConnector.prototype._onConnection = function(ws){
     channel.removeListener('open', onOpen);
     channel.removeListener('close', onClose);
     channel.removeListener('error', onError);
-    if (self.destroyed)
+    if (_this.destroyed)
     {
       channel.destroy();
       return;
     }
-    self.emit('connection', channel);
+    _this.emit('connection', channel);
   }
 
   function onClose(){
     channel.removeListener('open', onOpen);
     channel.removeListener('close', onClose);
     channel.removeListener('error', onError);
-    delete self.channels[channel.tmp_id];
+    delete _this.channels[channel.tmp_id];
   }
 
-  function onError(err){ log.err('%s error %s %s', self.dbg_str(),
+  function onError(err){ log.err('%s error %s %s', _this.dbg_str(),
     err.message, xutil.get(err, 'error.stack')); }
 };
 
 WsConnector.prototype.destroy = function(cb){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  self.destroyed = true;
-  for (let i in self.channels)
-    self.channels[i].destroy();
-  if (self._wss)
-    self._wss.close(()=>this.https_server.close(cb));
+  this.destroyed = true;
+  for (let i in this.channels)
+    this.channels[i].destroy();
+  if (this._wss)
+    this._wss.close(()=>this.https_server.close(cb));
   else if (cb)
     cb();
-  self._wss = null;
+  this._wss = null;
 };
 
 WsConnector.prototype.dbg_str = function(){ return dbg_id(this.id); };
 
 inherits(WsChannel, EventEmitter);
 function WsChannel(localID, ws){
-  var self = this;
-  self.localID = localID;
-  self.id = undefined;
-  self.destroyed = false;
-  self.ws = ws;
+  var _this = this;
+  this.localID = localID;
+  this.id = undefined;
+  this.destroyed = false;
+  this.ws = ws;
   ws.onopen = onOpen;
   ws.onmessage = onMessage;
   ws.onclose = onClose;
@@ -129,73 +125,68 @@ function WsChannel(localID, ws){
   if (ws.readyState === 1)
     onOpen(); // if already open
 
-  function onOpen(){ self._onOpen(); }
+  function onOpen(){ _this._onOpen(); }
 
-  function onMessage(data){ self._onMessage(data.data); }
+  function onMessage(data){ _this._onMessage(data.data); }
 
-  function onClose(){ self.destroy(); }
+  function onClose(){ _this.destroy(); }
 
-  function onError(err){ self._onError(err); }
+  function onError(err){ _this._onError(err); }
 }
 
 WsChannel.prototype._onOpen = function(){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  self.ws.send(JSON.stringify(self.localID, undefined_to_null));
+  this.ws.send(JSON.stringify(this.localID, undefined_to_null));
 };
 
 WsChannel.prototype.send = function(data){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  if (self.ws.readyState==2)
+  if (this.ws.readyState==2)
     return; // readyState === CLOSING
-  if (self.ws.readyState!=1)
+  if (this.ws.readyState!=1)
     throw new Error('WebSocket is not ready');
   var str = JSON.stringify(data, undefined_to_null);
   log.debug('%s send %s nonce %s', this.dbg_str(), dbg_msg(data), data.nonce);
-  self.ws.send(str);
+  this.ws.send(str);
 };
 
 WsChannel.prototype._onMessage = function(data){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
   // XXX: protect all external JSON.parse
   var json = JSON.parse(data);
   log.debug('%s msg %s nonce %s', this.dbg_str(), dbg_msg(json), data.nonce);
-  if (self.id == null)
+  if (this.id == null)
   {
-    self.id = new Buffer(json, 'hex');
-    log.debug('%s open', self.dbg_str());
-    self.emit('open');
+    this.id = new Buffer(json, 'hex');
+    log.debug('%s open', this.dbg_str());
+    this.emit('open');
   }
   else
-    self.emit('message', json);
+    this.emit('message', json);
 };
 
 WsChannel.prototype._onError = function(err){
   log.err('_onError %s', err);
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
   log.err('ERROR', err);
-  self.emit('error', err);
+  this.emit('error', err);
 };
 
 WsChannel.prototype.dbg_str = function(){
   return dbg_sd(this.id, this.localID); };
 
 WsChannel.prototype.destroy = function(){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  log.debug('%s CLOSE', self.dbg_str());
-  self.destroyed = true;
-  self.ws.close();
-  self.ws = null;
-  self.emit('close');
+  log.debug('%s CLOSE', this.dbg_str());
+  this.destroyed = true;
+  this.ws.close();
+  this.ws = null;
+  this.emit('close');
 };
 
 function getWebSocket(url){
