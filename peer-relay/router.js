@@ -66,19 +66,19 @@ export default class Router extends EventEmitter {
       _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
     let closests = _this._channels.closest(s2b(msg.to), 20)
-    .filter(c=>msg.path.indexOf(b2s(c.id))===-1)
+    .filter(c=>msg.path.indexOf(b2s(c.id))==-1)
     .filter((_, index) => index < _this.concurrency);
     if (msg.to in _this._paths)
     {
       let preferred = _this._channels.closest(s2b(_this._paths[msg.to]), 1)[0];
-      if (preferred != null && closests.indexOf(preferred) === -1)
+      if (preferred != null && closests.indexOf(preferred)==-1)
         closests.unshift(preferred);
     }
     for (let channel of closests)
     {
       // TODO BUG Sometimes the WS on closest in not in the ready state
       yield channel.send(msg);
-      if (b2s(channel.id)==(typeof msg.to==='string' ? msg.to : b2s(msg.to)))
+      if (b2s(channel.id)==(typeof msg.to=='string' ? msg.to : b2s(msg.to)))
         break; // XXX: why do we break?
     }
   });

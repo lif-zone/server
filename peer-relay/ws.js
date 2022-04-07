@@ -27,8 +27,7 @@ function WsConnector(id, port, host, is_http){
   this.destroyed = false;
   this._wss = null;
   this.url = null;
-  if (port>=0)
-  {
+  if (port>=0){
     // XXX create: move to nconf
     const https_opts = {
       port,
@@ -77,8 +76,7 @@ WsConnector.prototype._onConnection = function(ws){
     channel.removeListener('open', onOpen);
     channel.removeListener('close', onClose);
     channel.removeListener('error', onError);
-    if (_this.destroyed)
-    {
+    if (_this.destroyed){
       channel.destroy();
       return;
     }
@@ -122,7 +120,7 @@ function WsChannel(localID, ws){
   ws.onmessage = onMessage;
   ws.onclose = onClose;
   ws.onerror = onError;
-  if (ws.readyState === 1)
+  if (ws.readyState==1)
     onOpen(); // if already open
 
   function onOpen(){ _this._onOpen(); }
@@ -144,7 +142,7 @@ WsChannel.prototype.send = function(data){
   if (this.destroyed)
     return;
   if (this.ws.readyState==2)
-    return; // readyState === CLOSING
+    return; // readyState==CLOSING
   if (this.ws.readyState!=1)
     throw new Error('WebSocket is not ready');
   var str = JSON.stringify(data, undefined_to_null);
