@@ -28,12 +28,13 @@ describe('indexdb', function(){
       {ssn: "555-55-5555", name: "Donna", age: 32, email: "donna@home.org"}
     ];
     indexedDB.__setConfig('checkOrigin', false);
+    indexedDB.__setConfig('databaseBasePath', '/tmp');
+    indexedDB.__setConfig('sysDatabaseBasePath', '/tmp');
     var request = window.indexedDB.open('mocha_test', 2);
     request.onerror = e=>{
       console.log('error %o', e);
     };
     request.onsuccess = e=>{
-      debugger;
       console.log('success');
       var db = e.target.result;
       let req = db.transaction("customers").objectStore("customers")
