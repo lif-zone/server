@@ -4,7 +4,7 @@
 
 var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
-var Client = require('./client')
+var Node = require('./node')
 
 module.exports = Socket
 
@@ -21,7 +21,7 @@ function Socket (opts) {
   var self = this
   self._port = Math.floor(Math.random() * 9999)
   self._bindState = BIND_STATE_UNBOUND
-  self.peer = new Client(opts)
+  self.peer = new Node(opts)
   self.peer.on('message', onMessage)
   self.peer.on('close', onClose)
   self.peer.on('error', onError)

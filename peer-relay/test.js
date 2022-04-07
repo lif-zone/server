@@ -2,7 +2,7 @@
 'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
 // XXX: need jslint mocha: true
 import assert from 'assert';
-import Node from './client.js';
+import Node from './node.js';
 import Req from './req.js';
 import ReqHandler from './req_handler.js';
 import etask from '../util/etask.js';

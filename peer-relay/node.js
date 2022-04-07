@@ -17,7 +17,7 @@ import xlog from '../util/xlog.js';
 const log = xlog('node');
 const s2b = util.buf_from_str, b2s = util.buf_to_str;
 
-export default class Client extends EventEmitter {
+export default class Node extends EventEmitter {
   constructor(opt){
     super();
     if (!opt)
@@ -53,10 +53,10 @@ export default class Client extends EventEmitter {
     });
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
-    this.wsConnector = new Client.WsConnector(this.id, opt.port, opt.host,
+    this.wsConnector = new Node.WsConnector(this.id, opt.port, opt.host,
       opt.http);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
-    this.wrtcConnector = new Client.WrtcConnector(this.id, this.router,
+    this.wrtcConnector = new Node.WrtcConnector(this.id, this.router,
       opt.wrtc);
     this.wrtcConnector.on('connection', channel=>this._onConnection(channel));
     setTimeout(()=>{ // XXX HACK: rm timeout
@@ -151,8 +151,8 @@ export default class Client extends EventEmitter {
       return;
     if (msg.body == null)
       return;
-    if (Client.t_conn_info_r_hook)
-      yield Client.t_conn_info_r_hook(msg);
+    if (Node.t_conn_info_r_hook)
+      yield Node.t_conn_info_r_hook(msg);
     if (msg.body.wrtc && _this.wrtcConnector.supported)
       yield _this.connect_wrtc(from);
     else if (msg.body.ws)
@@ -182,5 +182,5 @@ export default class Client extends EventEmitter {
   }
   get_peers(){ return this.peers; }
 }
-Client.WsConnector = WsConnector;
-Client.WrtcConnector = WrtcConnector;
+Node.WsConnector = WsConnector;
+Node.WrtcConnector = WrtcConnector;
