@@ -2466,8 +2466,8 @@ describe('peer-relay', function(){
         dba>fwd(da>msg(type:req cmd:conn_info))
         dc>fwd(da>msg(type(req) cmd(conn_info))) da>*conn_info
         dca<fwd(da<msg(type:res cmd:conn_info ack:0 body:ws))
-        ab>fwd(ad>msg(type:res cmd:conn_info body:ws))
-        bd>fwd(ad>msg(type:res cmd:conn_info ack:0 body:ws)) da<*conn_info_r:ws
+        ab>fwd(da<msg(type:res cmd:conn_info body:ws))
+        bd>fwd(da<msg(type:res cmd:conn_info ack:0 body:ws)) da<*conn_info_r:ws
         da>connect(wss) da>msg_find:d da>*find:d
         da<msg_find_r:dcba da<*find_r:dcba da<msg_find:a da<*find:a
         da>msg_find_r:abcd da>*find_r:abcd
