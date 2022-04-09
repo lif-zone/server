@@ -657,8 +657,6 @@ function cmd_mode(opt){
     }
   });
   assert(!pop || !mode.req && !mode.msg, 'invalid pop '+c.orig);
-  if (t_pre_process)
-    return;
   if (pop){
     assert(t_mode_prev.length>0, 'invalid pop');
     t_mode = t_mode_prev.pop();
@@ -763,7 +761,7 @@ const cmd_connect = opt=>etask(function*(){
   }
   assert_exist(c.s);
   assert(wss || wrtc, 'must specify wss or wrtc');
-  assert(find ? r : true, 'find must be used together with find');
+  assert(find ? r : true, 'find must be used together with r');
   if (t_pre_process){
     if (call)
     {
@@ -775,9 +773,29 @@ const cmd_connect = opt=>etask(function*(){
     }
     else {
       if (r){
-        push_cmd(c.s+c.d+'<connected'+(find ? ' '+
-          build_cmd(c.s+c.d+'>*find', c.s+' '+build_cmd('r', find[0]))+' '+
-          build_cmd(c.s+c.d+'<*find', c.d+' '+build_cmd('r', find[1])) : ''));
+        if (t_mode.msg && t_mode.req){
+          let s = c.s+c.d+'<connected '
+          if (find){
+            s += build_cmd_o(c.s+c.d+'>msg', {type: 'req', cmd: 'find',
+              body: c.s});
+            s += build_cmd(c.s+c.d+'>*find', c.s);
+            s += build_cmd_o(c.s+c.d+'<msg', {type: 'res', cmd: 'find',
+              body: find[0]});
+            s += build_cmd(c.s+c.d+'<*find_r', find[0]);
+            s += build_cmd_o(c.s+c.d+'<msg', {type: 'req', cmd: 'find',
+              body: c.d});
+            s += build_cmd(c.s+c.d+'<*find', c.d);
+            s += build_cmd_o(c.s+c.d+'>msg', {type: 'res', cmd: 'find',
+              body: find[1]});
+            s += build_cmd(c.s+c.d+'>*find_r', find[1]);
+          }
+          push_cmd(s)
+        } else {
+          push_cmd(c.s+c.d+'<connected'+(find ? ' '+
+            build_cmd(c.s+c.d+'>*find', c.s+' '+build_cmd('r', find[0]))+' '+
+            build_cmd(c.s+c.d+'<*find', c.d+' '+build_cmd('r', find[1])) :
+            ''));
+        }
       }
       set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
     }
@@ -2478,12 +2496,7 @@ describe('peer-relay', function(){
         ca>fwd(da>msg(type:req cmd:conn_info))`);
       t('xxx_derry_4_nodes', `mode(msg req)
         node(a wss) node(b wss) node(c wss) node(d wss)
-        ab>!connect(wss) ab>msg_find:a ab>*find:a
-        ab<msg_find_r:a ab<*find_r:a ab<msg_find:b ab<*find:b
-        ab>msg_find_r:ba ab>*find_r:ba - bc>!connect(wss)
-        bc>msg_find:b bc>*find:b
-        bc<msg_find_r:b bc<*find_r:b bc<msg_find:c bc<*find:c
-        bc>msg_find_r:cab bc>*find_r:cab
+        ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
         abc<fwd(ac<msg(type:req cmd(conn_info))) ac<*conn_info
         abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ac>*conn_info_r:ws
         ac<connect ac>msg_find:a ac>*find:a ac<msg_find_r:abc ac<*find_r:abc
