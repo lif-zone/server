@@ -2494,6 +2494,15 @@ describe('peer-relay', function(){
         da<msg_find_r:dcba da<*find_r:dcba da<msg_find:a da<*find:a
         da>msg_find_r:abcd da>*find_r:abcd
         ca>fwd(da>msg(type:req cmd:conn_info))`);
+      // XXX TODO derry:
+      // abc<fwd(ac<msg(type:req cmd(conn_info))) ac<*conn_info
+      // abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ac>*conn_info_r:ws
+      // ==> abc<conn_info
+      // ab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
+      // ==>
+      // ab<fwd(bd>conn_info_r) ac>fwd(bd>conn_info_r)
+      // ab>find --> ab>msg(cmd:find ...)
+      // XXX: prepare case of sending 2 packets
       t('xxx_derry_4_nodes', `mode(msg req)
         node(a wss) node(b wss) node(c wss) node(d wss)
         ab>!connect(find(a ba)) - bc>!connect(find(b cab))
