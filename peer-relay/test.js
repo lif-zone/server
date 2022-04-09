@@ -2496,7 +2496,7 @@ describe('peer-relay', function(){
         ca>fwd(da>msg(type:req cmd:conn_info))`);
       t('xxx_derry_4_nodes', `mode(msg req)
         node(a wss) node(b wss) node(c wss) node(d wss)
-        ab>!connect(wss find(a ba)) - bc>!connect(wss find(b cab))
+        ab>!connect(find(a ba)) - bc>!connect(find(b cab))
         abc<fwd(ac<msg(type:req cmd(conn_info))) ac<*conn_info
         abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ac>*conn_info_r:ws
         ac<connect(find(cab abc)) - cd>!connect(find(c dcba))
@@ -2505,18 +2505,12 @@ describe('peer-relay', function(){
         ab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         ac>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         db<*conn_info_r:ws cd>fwd(bd>msg(type:res cmd:conn_info body:ws))
-        db>connect db>msg_find:d db>*find:d
-        db<msg_find_r:dcba db<*find_r:dcba db<msg_find:b db<*find:b
-        db>msg_find_r:badc db>*find_r:badc
-        dba>fwd(da>msg(type:req cmd:conn_info))
+        db>connect(find(dcba badc)) dba>fwd(da>msg(type:req cmd:conn_info))
         cd<fwd(da>msg(type(req) cmd(conn_info))) da>*conn_info
         dca<fwd(da<msg(type:res cmd:conn_info body:ws))
         ab>fwd(da<msg(type:res cmd:conn_info body:ws))
         bd>fwd(da<msg(type:res cmd:conn_info body:ws)) da<*conn_info_r:ws
-        da>connect(wss) da>msg_find:d da>*find:d
-        da<msg_find_r:dcba da<*find_r:dcba da<msg_find:a da<*find:a
-        da>msg_find_r:abcd da>*find_r:abcd
-        ac<fwd(da>msg(type:req cmd:conn_info))`);
+        da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
     });
   });
   // XXX: add disconnect tests
