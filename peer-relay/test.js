@@ -2472,6 +2472,42 @@ describe('peer-relay', function(){
         da<msg_find_r:dcba da<*find_r:dcba da<msg_find:a da<*find:a
         da>msg_find_r:abcd da>*find_r:abcd
         ca>fwd(da>msg(type:req cmd:conn_info))`);
+      t('xxx_4_nodes', `mode(msg req)
+        node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(wss !r)
+        ab>connect(wss !r) ab<connected ab>msg_find:a ab>*find:a
+        ab<msg_find_r:a ab<*find_r:a ab<msg_find:b ab<*find:b
+        ab>msg_find_r:ba ab>*find_r:ba - bc>!connect(wss !r)
+        bc>connect(wss !r) bc<connected bc>msg_find:b bc>*find:b
+        bc<msg_find_r:b bc<*find_r:b bc<msg_find:c bc<*find:c
+        bc>msg_find_r:cab bc>*find_r:cab
+        abc<fwd(ac<msg(type:req cmd(conn_info))) ca>*conn_info
+        abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ca<*conn_info_r:ws
+        ac<connect ac>msg_find:a ac>*find:a ac<msg_find_r:abc ac<*find_r:abc
+        ac<msg_find:c ac<*find:c ac>msg_find_r:cab ac>*find_r:cab
+        cd>!connect cd>msg_find:c cd>*find:c cd<msg_find_r:c cd<*find_r:c
+        cd<msg_find:d cd<*find:d cd>msg_find_r:dcba cd>*find_r:dcba
+        dcb>fwd(db>msg(type:req cmd:conn_info)) db>*conn_info
+        bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
+        ab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
+        ac>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
+        db<*conn_info_r:ws cd>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
+        db>connect db>msg_find:d db>*find:d
+        db<msg_find_r:dcba db<*find_r:dcba db<msg_find:b db<*find:b
+        db>msg_find_r:badc db>*find_r:badc
+        dba>fwd(da>msg(type:req cmd:conn_info))
+        cd<fwd(da>msg(type(req) cmd(conn_info))) da>*conn_info
+        dca<fwd(da<msg(type:res cmd:conn_info ack:0 body:ws))
+        ab>fwd(da<msg(type:res cmd:conn_info body:ws))
+        bd>fwd(da<msg(type:res cmd:conn_info ack:0 body:ws)) da<*conn_info_r:ws
+        da>connect(wss) da>msg_find:d da>*find:d
+        da<msg_find_r:dcba da<*find_r:dcba da<msg_find:a da<*find:a
+        da>msg_find_r:abcd da>*find_r:abcd
+        ca>fwd(da>msg(type:req cmd:conn_info))`);
+        /*
+        ac>!req(id:r0 body:ping res:ping_r)
+        abc>fwd(ac>msg(id:r0 type:req body:ping)) ac>*req(id:r0 body:ping)
+        abc<fwd(ac<msg(id:r0 type:res body:ping_r)) ac<*res(id:r0 body:ping_r)`);
+        */
     });
   });
   // XXX: add disconnect tests
