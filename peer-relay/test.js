@@ -1784,7 +1784,7 @@ describe('peer-relay', function(){
       // + pong -> ping_r
       // + msg_req_find -> msg_find
       // + msg_res_find -> msg_find_r
-      // prepare compelx example and (remove id from it)
+      // + prepare compelx example to work on test-compacting
       t('msg,req', `
         setup(msg req) node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>msg_find:a ab>*find:a
@@ -2472,7 +2472,7 @@ describe('peer-relay', function(){
         da<msg_find_r:dcba da<*find_r:dcba da<msg_find:a da<*find:a
         da>msg_find_r:abcd da>*find_r:abcd
         ca>fwd(da>msg(type:req cmd:conn_info))`);
-      t('xxx_4_nodes', `mode(msg req)
+      t('xxx_derry_4_nodes', `mode(msg req)
         node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>msg_find:a ab>*find:a
         ab<msg_find_r:a ab<*find_r:a ab<msg_find:b ab<*find:b
