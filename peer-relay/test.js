@@ -484,7 +484,7 @@ function req_send_hook(msg){
   switch (cmd){
   case 'find':
     p = node_from_id(body.id);
-    e = build_cmd(from.t.name+to.t.name+'>find', p.t.name);
+    e = build_cmd(from.t.name+to.t.name+'>*find', p.t.name);
     break;
   case 'conn_info':
     e = build_cmd(from.t.name+to.t.name+'>conn_info', '');
@@ -517,7 +517,7 @@ function res_send_hook(router, msg){
   switch (cmd){
   case 'find':
     a = array_id_to_name(body.ids);
-    e = build_cmd(from.t.name+to.t.name+'>find_r', a.join(''));
+    e = build_cmd(from.t.name+to.t.name+'>*find_r', a.join(''));
     break;
   case 'conn_info':
     e = build_cmd(from.t.name+to.t.name+'>conn_info_r', conn_opts(body));
@@ -776,8 +776,8 @@ const cmd_connect = opt=>etask(function*(){
     else {
       if (r){
         push_cmd(c.s+c.d+'<connected'+(find ? ' '+
-          build_cmd(c.s+c.d+'>find', c.s+' '+build_cmd('r', find[0]))+' '+
-          build_cmd(c.s+c.d+'<find', c.d+' '+build_cmd('r', find[1])) : ''));
+          build_cmd(c.s+c.d+'>*find', c.s+' '+build_cmd('r', find[0]))+' '+
+          build_cmd(c.s+c.d+'<*find', c.d+' '+build_cmd('r', find[1])) : ''));
       }
       set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
     }
@@ -832,7 +832,7 @@ const cmd_find = opt=>etask(function*cmd_find(){
   });
   if (t_pre_process){
     if (r)
-      push_cmd(rev_cmd(c.orig, 'find_r', r));
+      push_cmd(rev_cmd(c.orig, '*find_r', r));
     set_orig(c, build_cmd(c.meta.cmd, peers));
     return;
   }
@@ -1260,8 +1260,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '!connect': yield cmd_connect(opt); break;
   case 'connect': yield cmd_connect(opt); break;
   case 'connected': yield cmd_connected(opt); break;
-  case 'find': yield cmd_find(opt); break;
-  case 'find_r': yield cmd_find_r(opt); break;
+  case '*find': yield cmd_find(opt); break;
+  case '*find_r': yield cmd_find_r(opt); break;
   case 'conn_info': yield cmd_conn_info(opt); break;
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '!msg': yield cmd_msg(opt); break;
@@ -1567,24 +1567,24 @@ describe('peer-relay', function(){
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
         t('ab>!connect(find(c d))', `ab>!connect(wss !r) ab>connect(wss !r)
-          ab<connected ab>find(a) ab<find_r(c) ab<find(b) ab>find_r(d)`);
-        t('ab>find(a)', `ab>find(a)`);
-        t('ab>find(a r(c))', `ab>find(a) ab<find_r(c)`);
-        t('ab>fwd(ab>find(a))', `ab>fwd(ab>find(a))`);
-        t('ab>find:a', `ab>find(a)`);
-        t('ab<find_r:a', `ab<find_r(a)`);
-        t('ab,bc>fwd(ac>find(a))', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
-        t('ab,bc<fwd(ac<find(a))', `bc<fwd(ac<find(a)) ab<fwd(ac<find(a))`);
-        t('ab,bc>find(a)', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
-        t('ab,bc<find(a)', `bc<fwd(ac<find(a)) ab<fwd(ac<find(a))`);
-        t('abc>fwd(ac>find(a))', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
-        t('abcd>fwd(ad>find(a))', `ab>fwd(ad>find(a)) bc>fwd(ad>find(a))
-          cd>fwd(ad>find(a))`);
-        t('abc<fwd(ac>find(a))', `bc<fwd(ac>find(a)) ab<fwd(ac>find(a))`);
-        t('abcd<fwd(ad>find(a))', `cd<fwd(ad>find(a)) bc<fwd(ad>find(a))
-          ab<fwd(ad>find(a))`);
-        t('abc>find(a)', `ab>fwd(ac>find(a)) bc>fwd(ac>find(a))`);
-        t('abc<find(a)', `bc<fwd(ac<find(a)) ab<fwd(ac<find(a))`);
+          ab<connected ab>*find(a) ab<*find_r(c) ab<*find(b) ab>*find_r(d)`);
+        t('ab>*find(a)', `ab>*find(a)`);
+        t('ab>*find(a r(c))', `ab>*find(a) ab<*find_r(c)`);
+        t('ab>fwd(ab>*find(a))', `ab>fwd(ab>*find(a))`);
+        t('ab>*find:a', `ab>*find(a)`);
+        t('ab<*find_r:a', `ab<*find_r(a)`);
+        t('ab,bc>fwd(ac>*find(a))', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
+        t('ab,bc<fwd(ac<*find(a))', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
+        t('ab,bc>*find(a)', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
+        t('ab,bc<*find(a)', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
+        t('abc>fwd(ac>*find(a))', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
+        t('abcd>fwd(ad>*find(a))', `ab>fwd(ad>*find(a)) bc>fwd(ad>*find(a))
+          cd>fwd(ad>*find(a))`);
+        t('abc<fwd(ac>*find(a))', `bc<fwd(ac>*find(a)) ab<fwd(ac>*find(a))`);
+        t('abcd<fwd(ad>*find(a))', `cd<fwd(ad>*find(a)) bc<fwd(ad>*find(a))
+          ab<fwd(ad>*find(a))`);
+        t('abc>*find(a)', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
+        t('abc<*find(a)', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
         t('ab>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
           ab<fwd(ac<conn_info_r(ws))`);
         t('ab,bc>fwd(ac>conn_info(r(ws)))', `ab>fwd(ac>conn_info)
@@ -1738,8 +1738,8 @@ describe('peer-relay', function(){
     });
     describe('2_nodes', ()=>{
       t('req', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
-        ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
-        ab>find_r:ba - ab>!req(id:r0 body:ping res:pong)
+        ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
+        ab>*find_r:ba - ab>!req(id:r0 body:ping res:pong)
         ab>req(id:r0 body:ping) ab<res(id:r0 body:pong)`);
       t('msg', `setup:msg node:a node(b wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>msg_req_find:a ab<msg_res_find:a
@@ -1748,8 +1748,8 @@ describe('peer-relay', function(){
         ab<msg(type:res id:r0 body:pong)`);
       t('msg,req', `setup(msg req) node:a node(b wss(port:4000))
         ab>!connect(wss !r) ab>connect(wss !r) ab<connected
-        ab>msg_req_find:a ab>find:a ab<msg_res_find:a ab<find_r:a
-        ab<msg_req_find:b ab<find:b ab>msg_res_find:ba ab>find_r:ba -
+        ab>msg_req_find:a ab>*find:a ab<msg_res_find:a ab<*find_r:a
+        ab<msg_req_find:b ab<*find:b ab>msg_res_find:ba ab>*find_r:ba -
         ab>!req(id:r0 body:ping res:pong) ab>msg(type:req id:r0 body:ping)
         ab>req(id:r0 body:ping) ab<msg(type:res id:r0 body:pong)
         ab<res(id:r0 body:pong)`);
@@ -1760,10 +1760,10 @@ describe('peer-relay', function(){
       //  abc>req(id:r0 body:ping) abc<fwd(ac<res(id:r0 body:pong))`);
       t('req', `
         setup:req node:a node(b wss) ab>!connect(wss !r)
-        ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
-        ab>find_r:ba - node(c wss) bc>!connect(wss !r)
-        bc>connect(wss !r) bc<connected bc>find:b bc<find_r:b bc<find:c
-        bc>find_r:cab ca>conn_info ca<conn_info_r -
+        ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
+        ab>*find_r:ba - node(c wss) bc>!connect(wss !r)
+        bc>connect(wss !r) bc<connected bc>*find:b bc<*find_r:b bc<*find:c
+        bc>*find_r:cab ca>conn_info ca<conn_info_r -
         ac>!req(id:r0 body:ping res:pong) ac>req(id:r0 body:ping)
         ac<res(id:r0 body:pong)`);
       t('msg', `
@@ -1787,12 +1787,12 @@ describe('peer-relay', function(){
       // prepare compelx example and remove id from it
       t('msg,req', `
         setup(msg req) node:a node(b wss) ab>!connect(wss !r)
-        ab>connect(wss !r) ab<connected ab>msg_req_find:a ab>find:a
-        ab<msg_res_find:a ab<find_r:a ab<msg_req_find:b ab<find:b
-        ab>msg_res_find:ba ab>find_r:ba - node(c wss) bc>!connect(wss !r)
-        bc>connect(wss !r) bc<connected bc>msg_req_find:b bc>find:b
-        bc<msg_res_find:b bc<find_r:b bc<msg_req_find:c bc<find:c
-        bc>msg_res_find:cab bc>find_r:cab
+        ab>connect(wss !r) ab<connected ab>msg_req_find:a ab>*find:a
+        ab<msg_res_find:a ab<*find_r:a ab<msg_req_find:b ab<*find:b
+        ab>msg_res_find:ba ab>*find_r:ba - node(c wss) bc>!connect(wss !r)
+        bc>connect(wss !r) bc<connected bc>msg_req_find:b bc>*find:b
+        bc<msg_res_find:b bc<*find_r:b bc<msg_req_find:c bc<*find:c
+        bc>msg_res_find:cab bc>*find_r:cab
         abc<fwd(ac<msg(type:req cmd(conn_info))) ca>conn_info
         abc>fwd(ac>msg(type:res cmd(conn_info))) ca<conn_info_r
         ac>!req(id:r0 body:ping res:pong)
@@ -2217,8 +2217,8 @@ describe('peer-relay', function(){
   describe('2_nodes_ws', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
     t('long', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
-      ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a ab<find:b
-      ab>find_r:ba`);
+      ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
+      ab>*find_r:ba`);
     t('short', `setup:req node:a node(b wss) ab>!connect(find(a ba))`);
     t('req', `setup:req setup:2_nodes
       ab>!req(id:r0 body:ping e res:pong) ab<res(id:r0 body:pong)
@@ -2296,16 +2296,16 @@ describe('peer-relay', function(){
         ac>msg_req_find:a ac<msg_res_find:abc
         ac<msg_req_find:c ac>msg_res_find:cab`);
       t('msg,req', `mode(msg req) node(a wrtc) node(b wrtc wss)
-        node(c wrtc wss) - ab>!connect:wss ab>msg_req_find:a ab>find:a
-        ab<msg_res_find:a ab<find_r:a ab<msg_req_find:b ab<find:b
-        ab>msg_res_find:ba ab>find_r(ba) - bc>!connect:wrtc bc>msg_req_find:b
-        bc>find:b bc<msg_res_find:b bc<find_r:b bc<msg_req_find:c bc<find:c
-        bc>msg_res_find:cab bc>find_r(cab)
+        node(c wrtc wss) - ab>!connect:wss ab>msg_req_find:a ab>*find:a
+        ab<msg_res_find:a ab<*find_r:a ab<msg_req_find:b ab<*find:b
+        ab>msg_res_find:ba ab>*find_r(ba) - bc>!connect:wrtc bc>msg_req_find:b
+        bc>*find:b bc<msg_res_find:b bc<*find_r:b bc<msg_req_find:c bc<*find:c
+        bc>msg_res_find:cab bc>*find_r(cab)
         cba>fwd(ca>msg(type:req cmd:conn_info)) ca>conn_info
         cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc)) ca<conn_info_r:wrtc
-        ca>connect(wrtc) ac>msg_req_find:a ac>find:a ac<msg_res_find:abc
-        ac<find_r(abc) ac<msg_req_find:c ac<find:c
-        ac>msg_res_find:cab ac>find_r(cab)`);
+        ca>connect(wrtc) ac>msg_req_find:a ac>*find:a ac<msg_res_find:abc
+        ac<*find_r(abc) ac<msg_req_find:c ac<*find:c
+        ac>msg_res_find:cab ac>*find_r(cab)`);
     });
     describe('linear_wss', ()=>{
       t('req', `mode:req node(a wss) node(b wss) node(c wss) -
@@ -2321,16 +2321,16 @@ describe('peer-relay', function(){
         ac>msg_req_find:a ac<msg_res_find:abc
         ac<msg_req_find:c ac>msg_res_find:cab`);
       t('msg,req', `mode(msg req) node(a wss) node(b wss)
-        node(c wss) - ab>!connect ab>msg_req_find:a ab>find:a
-        ab<msg_res_find:a ab<find_r:a ab<msg_req_find:b ab<find:b
-        ab>msg_res_find:ba ab>find_r(ba) - bc>!connect
-        bc>msg_req_find:b bc>find:b bc<msg_res_find:b bc<find_r:b
-        bc<msg_req_find:c bc<find:c bc>msg_res_find:cab bc>find_r(cab)
+        node(c wss) - ab>!connect ab>msg_req_find:a ab>*find:a
+        ab<msg_res_find:a ab<*find_r:a ab<msg_req_find:b ab<*find:b
+        ab>msg_res_find:ba ab>*find_r(ba) - bc>!connect
+        bc>msg_req_find:b bc>*find:b bc<msg_res_find:b bc<*find_r:b
+        bc<msg_req_find:c bc<*find:c bc>msg_res_find:cab bc>*find_r(cab)
         cba>fwd(ca>msg(type:req cmd:conn_info)) ca>conn_info
         cba<fwd(ca<msg(type:res cmd:conn_info body:ws)) ca<conn_info_r:ws
-        ca>connect:wss ac>msg_req_find:a ac>find:a
-        ac<msg_res_find:abc ac<find_r(abc) ac<msg_req_find:c ac<find:c
-        ac>msg_res_find:cab ac>find_r(cab)`);
+        ca>connect:wss ac>msg_req_find:a ac>*find:a
+        ac<msg_res_find:abc ac<*find_r(abc) ac<msg_req_find:c ac<*find:c
+        ac>msg_res_find:cab ac>*find_r(cab)`);
     });
     if (true) return; // XXX: TODO
     t('star', `node(s wss) node:a node(b wss) as>!connect(find(a sa)) -
@@ -2359,14 +2359,14 @@ describe('peer-relay', function(){
         ab<fwd(da>msg(type:req cmd:conn_info))
         `);
       t('msg,req', `mode(msg req) setup:3_nodes_linear node(d wss)
-        cd>!connect cd>msg_req_find:c cd>find:c cd<msg_res_find:c cd<find_r:c
-        cd<msg_req_find:d cd<find:d cd>msg_res_find:dcba cd>find_r:dcba
+        cd>!connect cd>msg_req_find:c cd>*find:c cd<msg_res_find:c cd<*find_r:c
+        cd<msg_req_find:d cd<*find:d cd>msg_res_find:dcba cd>*find_r:dcba
         dcb>fwd(db>msg(type:req cmd:conn_info)) db>conn_info
         dcb<fwd(bd>msg(type:res cmd:conn_info body:ws))
         ab<fwd(bd>msg(type:res cmd:conn_info body:ws)) db<conn_info_r:ws
-        db>connect db>msg_req_find:d db>find:d
-        db<msg_res_find:dcba db<find_r:dcba db<msg_req_find:b db<find:b
-        db>msg_res_find:badc db>find_r:badc
+        db>connect db>msg_req_find:d db>*find:d
+        db<msg_res_find:dcba db<*find_r:dcba db<msg_req_find:b db<*find:b
+        db>msg_res_find:badc db>*find_r:badc
         dba>fwd(da>msg(type:req cmd:conn_info))
         dcb>fwd(da>msg(type:req cmd(conn_info))) da>conn_info
         dba<fwd(da<msg(type:res cmd:conn_info)) da<conn_info_r
@@ -2448,24 +2448,24 @@ describe('peer-relay', function(){
         da<msg_req_find:a da>msg_res_find:abcd
         dca>fwd(da>msg(type:req cmd:conn_info))`);
       t('msg,req', `mode(msg req) setup:3_nodes_wss node(d wss) -
-        cd>!connect cd>msg_req_find:c cd>find:c cd<msg_res_find:c cd<find_r:c
-        cd<msg_req_find:d cd<find:d cd>msg_res_find:dcba cd>find_r:dcba
+        cd>!connect cd>msg_req_find:c cd>*find:c cd<msg_res_find:c cd<*find_r:c
+        cd<msg_req_find:d cd<*find:d cd>msg_res_find:dcba cd>*find_r:dcba
         dcb>fwd(db>msg(type:req cmd:conn_info)) db>conn_info
         bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
         ba>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         ac>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         db<conn_info_r:ws cd>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
-        db>connect db>msg_req_find:d db>find:d
-        db<msg_res_find:dcba db<find_r:dcba db<msg_req_find:b db<find:b
-        db>msg_res_find:badc db>find_r:badc
+        db>connect db>msg_req_find:d db>*find:d
+        db<msg_res_find:dcba db<*find_r:dcba db<msg_req_find:b db<*find:b
+        db>msg_res_find:badc db>*find_r:badc
         dba>fwd(da>msg(type:req cmd:conn_info))
         dc>fwd(da>msg(type(req) cmd(conn_info))) da>conn_info
         dca<fwd(da<msg(type:res cmd:conn_info ack:0 body:ws))
         ab>fwd(ad>msg(type:res cmd:conn_info body:ws))
         bd>fwd(ad>msg(type:res cmd:conn_info ack:0 body:ws)) da<conn_info_r:ws
-        da>connect(wss) da>msg_req_find:d da>find:d
-        da<msg_res_find:dcba da<find_r:dcba da<msg_req_find:a da<find:a
-        da>msg_res_find:abcd da>find_r:abcd
+        da>connect(wss) da>msg_req_find:d da>*find:d
+        da<msg_res_find:dcba da<*find_r:dcba da<msg_req_find:a da<*find:a
+        da>msg_res_find:abcd da>*find_r:abcd
         ca>fwd(da>msg(type:req cmd:conn_info))`);
     });
   });
