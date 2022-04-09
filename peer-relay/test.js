@@ -647,7 +647,7 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
 function cmd_mode(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let mode = {req: false, msg: false}, pop;
-  assert(!event);
+  assert(!event, 'got unexpected '+event);
   util.forEach(arg, m=>{
     switch (m.cmd){
     case 'req': mode.req = true; break;
@@ -1664,6 +1664,33 @@ describe('peer-relay', function(){
     // afterEach(()=>xtest.xerr_level(xerr.L.ERR));
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: need auto
+    if (0){ // XXX: test with curcurecny 1 for failing to delivery message
+    t('xxx', `mode:msg mode:req node(a wrtc) node(b wss) node(c wss)
+      node(d wrtc)
+      ad>!connect(find(a da))
+      ab>!connect(find(a bad)) bd>conn_info bd<conn_info_r(wrtc)
+      bc>!connect(find(b cdab)) cd>conn_info cd<conn_info_r(wrtc)
+      ca>conn_info ca<conn_info_r(wrtc)
+      mode:pop
+      ac>!req(id:r0)
+      ad>fwd(ac>msg(id(r0) type(req) seq(0)))
+      20s a>fail(id:r0 error:timeout)
+    `);
+    t('xxx2', `mode(msg req) mode:req node(a wrtc) node(d wss) node(c wss)
+      node(b wrtc)
+      ab>!connect(find(a ba))
+      ad>!connect(find(a dba)) db>conn_info db<conn_info_r(wrtc)
+      dc>!connect(find(d cdab))
+      ca>conn_info ca<conn_info_r(wrtc)
+      cb>conn_info cb<conn_info_r(wrtc)
+      mode:pop
+      ac>!req(id:r0)
+      ad>fwd(ac>msg(id(r0) type(req) seq(0)))
+      dc>fwd(ac>msg(id(r0) type(req) seq(0)))
+      ac>req(id:r0)
+      20s a>fail(id:r0 error:timeout)
+    `);
+    }
     describe('manual', ()=>{
       t('req', `mode:req setup:2_nodes
         ab>!req(id:r0 body:ping) ab>req(id:r0 body:ping) -
@@ -1750,6 +1777,14 @@ describe('peer-relay', function(){
         ac>!req(id:r0 body:ping res:pong)
         abc>fwd(ac>msg(id:r0 type:req body:ping))
         abc<fwd(ac<msg(id:r0 type:res body:pong))`);
+      // XXX TODO derry:
+      // ab>*find/conn_info, ab>*req/res
+      // ab>connect(wss !r) ab<connected ab>msg_req_find:a ab>*find:a
+      // ab<msg_res_find:a ab<*find_r:a ab<msg_req_find:b ab<*find:b
+      // msg_req_find -> msg_find
+      // msg_res_find -> msg_find_r
+      // pong -> ping_r
+      // prepare compelx example and remove id from it
       t('msg,req', `
         setup(msg req) node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>msg_req_find:a ab>find:a
