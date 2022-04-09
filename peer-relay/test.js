@@ -2480,13 +2480,13 @@ describe('peer-relay', function(){
         bc>connect(wss !r) bc<connected bc>msg_find:b bc>*find:b
         bc<msg_find_r:b bc<*find_r:b bc<msg_find:c bc<*find:c
         bc>msg_find_r:cab bc>*find_r:cab
-        abc<fwd(ac<msg(type:req cmd(conn_info))) ca>*conn_info
-        abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ca<*conn_info_r:ws
+        abc<fwd(ac<msg(type:req cmd(conn_info))) ac<*conn_info
+        abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ac>*conn_info_r:ws
         ac<connect ac>msg_find:a ac>*find:a ac<msg_find_r:abc ac<*find_r:abc
         ac<msg_find:c ac<*find:c ac>msg_find_r:cab ac>*find_r:cab
         cd>!connect cd>msg_find:c cd>*find:c cd<msg_find_r:c cd<*find_r:c
         cd<msg_find:d cd<*find:d cd>msg_find_r:dcba cd>*find_r:dcba
-        dcb>fwd(db>msg(type:req cmd:conn_info)) db>*conn_info
+        bcd<fwd(db>msg(type:req cmd:conn_info)) db>*conn_info
         bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
         ab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         ac>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
@@ -2502,8 +2502,8 @@ describe('peer-relay', function(){
         da>connect(wss) da>msg_find:d da>*find:d
         da<msg_find_r:dcba da<*find_r:dcba da<msg_find:a da<*find:a
         da>msg_find_r:abcd da>*find_r:abcd
-        ca>fwd(da>msg(type:req cmd:conn_info))`);
-        /*
+        ac<fwd(da>msg(type:req cmd:conn_info))`);
+        /* XXX: add req/res example
         ac>!req(id:r0 body:ping res:ping_r)
         abc>fwd(ac>msg(id:r0 type:req body:ping)) ac>*req(id:r0 body:ping)
         abc<fwd(ac<msg(id:r0 type:res body:ping_r)) ac<*res(id:r0 body:ping_r)`);
