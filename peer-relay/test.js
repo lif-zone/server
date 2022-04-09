@@ -1800,12 +1800,6 @@ describe('peer-relay', function(){
         ac>!req(id:r0 body:ping res:ping_r)
         abc>fwd(ac>msg(id:r0 type:req body:ping))
         abc<fwd(ac<msg(id:r0 type:res body:ping_r))`);
-      // XXX TODO derry:
-      // + ab>find|conn_info|req|res -> ab>*find|conn_info|req|res
-      // + pong -> ping_r
-      // + msg_req_find -> msg_find
-      // + msg_res_find -> msg_find_r
-      // + prepare compelx example to work on test-compacting
       t('msg,req', `
         setup(msg req) node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>msg_find:a ab>*find:a
