@@ -1622,9 +1622,9 @@ describe('peer-relay', function(){
         t('ab,cd>ef>msg(hi)', `ab>fwd(ef>msg(hi)) cd>fwd(msg(hi))`);
         // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
         t('ab>*req(id:r1 body:ping)', `ab>*req(id(r1) body(ping))`);
-        t('ab>!req(id:r1 body:ping res:pong)', `ab>!req(id(r1) body(ping)
-          res(pong))`);
-        t('ab>*res(id:r1 body:pong)', `ab>*res(id(r1) body(pong))`);
+        t('ab>!req(id:r1 body:ping res:ping_r)', `ab>!req(id(r1) body(ping)
+          res(ping_r))`);
+        t('ab>*res(id:r1 body:ping_r)', `ab>*res(id(r1) body(ping_r))`);
         t('a>*fail(id:r1 error:timeout)', `a>*fail(id(r1) error(timeout))`);
         t('ab>msg_find:a', `ab>msg(type(req) cmd(find) body(a))`);
         t('ab>msg_find_r:a', `ab>msg(type(res) cmd(find) body(a))`);
@@ -1696,78 +1696,78 @@ describe('peer-relay', function(){
     describe('manual', ()=>{
       t('req', `mode:req setup:2_nodes
         ab>!req(id:r0 body:ping) ab>*req(id:r0 body:ping) -
-        ab<!res(id:r0 ack:0 body:pong) ab<*res(id:r0 ack:0 body:pong) 20s -
+        ab<!res(id:r0 ack:0 body:ping_r) ab<*res(id:r0 ack:0 body:ping_r) 20s -
         ab>!req(id:r1 body:ping) ab>*req(id:r1 body:ping) -
-        ab<!res(id:r1 ack:0 body:pong) ab<*res(id:r1 ack:0 body:pong)
+        ab<!res(id:r1 ack:0 body:ping_r) ab<*res(id:r1 ack:0 body:ping_r)
       `);
       t('msg', `mode:msg setup:2_nodes
         ab>!req(id:r0 body:ping) ab>msg(id:r0 type:req body:ping) -
-        ab<!res(id:r0 ack:0 body:pong) ab<msg(id:r0 type:res ack:0 body:pong)
+        ab<!res(id:r0 ack:0 body:ping_r) ab<msg(id:r0 type:res ack:0 body:ping_r)
         20s - ab>!req(id:r1 body:ping) ab>msg(id:r1 type:req body:ping) -
-        ab<!res(id:r1 ack:0 body:pong)
-        ab<msg(id:r1 type:res ack:0 body:pong)`);
+        ab<!res(id:r1 ack:0 body:ping_r)
+        ab<msg(id:r1 type:res ack:0 body:ping_r)`);
       t('msg,req', `mode(msg req) setup:2_nodes
         ab>!req(id:r0 body:ping) ab>msg(id:r0 type:req body:ping)
         ab>*req(id:r0 body:ping) -
-        ab<!res(id:r0 ack:0 body:pong) ab<msg(id:r0 type:res ack:0 body:pong)
-        ab<*res(id:r0 ack:0 body:pong) 20s -
+        ab<!res(id:r0 ack:0 body:ping_r) ab<msg(id:r0 type:res ack:0 body:ping_r)
+        ab<*res(id:r0 ack:0 body:ping_r) 20s -
         ab>!req(id:r1 body:ping) ab>msg(id:r1 type:req body:ping)
         ab>*req(id:r1 body:ping) -
-        ab<!res(id:r1 ack:0 body:pong) ab<msg(id:r1 type:res ack:0 body:pong)
-        ab<*res(id:r1 ack:0 body:pong)`);
+        ab<!res(id:r1 ack:0 body:ping_r) ab<msg(id:r1 type:res ack:0 body:ping_r)
+        ab<*res(id:r1 ack:0 body:ping_r)`);
     });
     describe('wrong_order', ()=>{
       t('req', `mode:req setup:2_nodes
         ab>!req(id:r0 body:ping) ab>*req(id:r0 body:ping) -
         ab>!req(id:r1 body:ping) ab>*req(id:r1 body:ping) -
-        ab<!res(id:r1 body:pong) ab<*res(id:r1 body:pong) -
-        ab<!res(id:r0 body:pong) ab<*res(id:r0 body:pong) -
+        ab<!res(id:r1 body:ping_r) ab<*res(id:r1 body:ping_r) -
+        ab<!res(id:r0 body:ping_r) ab<*res(id:r0 body:ping_r) -
       `);
       t('msg', `mode(msg) setup:2_nodes
         ab>!req(id:r0 body:ping) ab>msg(id:r0 type:req body:ping) -
         ab>!req(id:r1 body:ping) ab>msg(id:r1 type:req body:ping) -
-        ab<!res(id:r1 body:pong) ab<msg(id:r1 type:res body:pong) -
-        ab<!res(id:r0 body:pong) ab<msg(id:r0 type:res body:pong) -
+        ab<!res(id:r1 body:ping_r) ab<msg(id:r1 type:res body:ping_r) -
+        ab<!res(id:r0 body:ping_r) ab<msg(id:r0 type:res body:ping_r) -
       `);
        t('msg,req', `mode(msg req) setup:2_nodes ab>!req(id:r0 body:ping)
         ab>msg(id:r0 type:req body:ping) ab>*req(id:r0 body:ping) -
         ab>!req(id:r1 body:ping) ab>msg(id:r1 type:req body:ping)
-        ab>*req(id:r1 body:ping) - ab<!res(id:r1 body:pong)
-        ab<msg(id:r1 type:res body:pong) ab<*res(id:r1 body:pong) -
-        ab<!res(id:r0 body:pong) ab<msg(id:r0 type:res body:pong)
-        ab<*res(id:r0 body:pong) -
+        ab>*req(id:r1 body:ping) - ab<!res(id:r1 body:ping_r)
+        ab<msg(id:r1 type:res body:ping_r) ab<*res(id:r1 body:ping_r) -
+        ab<!res(id:r0 body:ping_r) ab<msg(id:r0 type:res body:ping_r)
+        ab<*res(id:r0 body:ping_r) -
       `);
     });
     describe('2_nodes', ()=>{
       t('req', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
-        ab>*find_r:ba - ab>!req(id:r0 body:ping res:pong)
-        ab>*req(id:r0 body:ping) ab<*res(id:r0 body:pong)`);
+        ab>*find_r:ba - ab>!req(id:r0 body:ping res:ping_r)
+        ab>*req(id:r0 body:ping) ab<*res(id:r0 body:ping_r)`);
       t('msg', `setup:msg node:a node(b wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>msg_find:a ab<msg_find_r:a
         ab<msg_find:b ab>msg_find_r:ba -
-        ab>!req(id:r0 body:ping res:pong) ab>msg(type:req id:r0 body:ping)
-        ab<msg(type:res id:r0 body:pong)`);
+        ab>!req(id:r0 body:ping res:ping_r) ab>msg(type:req id:r0 body:ping)
+        ab<msg(type:res id:r0 body:ping_r)`);
       t('msg,req', `setup(msg req) node:a node(b wss(port:4000))
         ab>!connect(wss !r) ab>connect(wss !r) ab<connected
         ab>msg_find:a ab>*find:a ab<msg_find_r:a ab<*find_r:a
         ab<msg_find:b ab<*find:b ab>msg_find_r:ba ab>*find_r:ba -
-        ab>!req(id:r0 body:ping res:pong) ab>msg(type:req id:r0 body:ping)
-        ab>*req(id:r0 body:ping) ab<msg(type:res id:r0 body:pong)
-        ab<*res(id:r0 body:pong)`);
+        ab>!req(id:r0 body:ping res:ping_r) ab>msg(type:req id:r0 body:ping)
+        ab>*req(id:r0 body:ping) ab<msg(type:res id:r0 body:ping_r)
+        ab<*res(id:r0 body:ping_r)`);
     });
     describe('3_nodes', ()=>{
       // XXX: missing req test
-      // t('fwd', `setup:3_nodes_linear ac>!req(id:r0 body:ping res:pong)
-      //  abc>*req(id:r0 body:ping) abc<fwd(ac<*res(id:r0 body:pong))`);
+      // t('fwd', `setup:3_nodes_linear ac>!req(id:r0 body:ping res:ping_r)
+      //  abc>*req(id:r0 body:ping) abc<fwd(ac<*res(id:r0 body:ping_r))`);
       t('req', `
         setup:req node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
         ab>*find_r:ba - node(c wss) bc>!connect(wss !r)
         bc>connect(wss !r) bc<connected bc>*find:b bc<*find_r:b bc<*find:c
         bc>*find_r:cab ca>*conn_info ca<*conn_info_r -
-        ac>!req(id:r0 body:ping res:pong) ac>*req(id:r0 body:ping)
-        ac<*res(id:r0 body:pong)`);
+        ac>!req(id:r0 body:ping res:ping_r) ac>*req(id:r0 body:ping)
+        ac<*res(id:r0 body:ping_r)`);
       t('msg', `
         setup:msg node:a node(b wss) ab>!connect(wss !r) ab>connect(wss !r)
         ab<connected ab>msg_find:a ab<msg_find_r:a ab<msg_find:b
@@ -1776,15 +1776,15 @@ describe('peer-relay', function(){
         bc<msg_find:c bc>msg_find_r:cab
         abc<fwd(ac<msg(type:req cmd(conn_info)))
         abc>fwd(ac>msg(type:res cmd(conn_info))) -
-        ac>!req(id:r0 body:ping res:pong)
+        ac>!req(id:r0 body:ping res:ping_r)
         abc>fwd(ac>msg(id:r0 type:req body:ping))
-        abc<fwd(ac<msg(id:r0 type:res body:pong))`);
+        abc<fwd(ac<msg(id:r0 type:res body:ping_r))`);
       // XXX TODO derry:
       // + ab>find|conn_info|req|res -> ab>*find|conn_info|req|res
-      // pong -> ping_r
+      // + pong -> ping_r
       // + msg_req_find -> msg_find
       // + msg_res_find -> msg_find_r
-      // prepare compelx example and remove id from it
+      // prepare compelx example and (remove id from it)
       t('msg,req', `
         setup(msg req) node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>msg_find:a ab>*find:a
@@ -1795,9 +1795,9 @@ describe('peer-relay', function(){
         bc>msg_find_r:cab bc>*find_r:cab
         abc<fwd(ac<msg(type:req cmd(conn_info))) ca>*conn_info
         abc>fwd(ac>msg(type:res cmd(conn_info))) ca<*conn_info_r
-        ac>!req(id:r0 body:ping res:pong)
+        ac>!req(id:r0 body:ping res:ping_r)
         abc>fwd(ac>msg(id:r0 type:req body:ping)) ac>*req(id:r0 body:ping)
-        abc<fwd(ac<msg(id:r0 type:res body:pong)) ac<*res(id:r0 body:pong)`);
+        abc<fwd(ac<msg(id:r0 type:res body:ping_r)) ac<*res(id:r0 body:ping_r)`);
     });
     describe('failure', ()=>{
       describe('timeout', ()=>{
@@ -1815,17 +1815,17 @@ describe('peer-relay', function(){
       if (0)// XXX TODO
       describe('timeout_wrong_id', ()=>{
         t('req', `mode:req setup:2_nodes ab>!req(id:r0 body:ping)
-          ab>*req(id:r0 body:ping) ab<!res(id:r1 body:pong)
-          ab<*res(id:r1 body:pong) - 19999ms -
+          ab>*req(id:r0 body:ping) ab<!res(id:r1 body:ping_r)
+          ab<*res(id:r1 body:ping_r) - 19999ms -
           1ms a>*fail(id:r0 error:timeout)`);
         t('msg', `mode:msg setup:2_nodes ab>!req(id:r0 body:ping)
-          ab>msg(id:r0 type:req body:ping) ab<!res(id:r1 body:pong)
-          ab<msg(id:r1 type:res body:pong) - 19999ms -
+          ab>msg(id:r0 type:req body:ping) ab<!res(id:r1 body:ping_r)
+          ab<msg(id:r1 type:res body:ping_r) - 19999ms -
           1ms a>*fail(id:r0 error:timeout)`);
         t('msg,req', `mode(msg req) setup:2_nodes ab>!req(id:r0 body:ping)
           ab>msg(id:r0 type:req body:ping) ab>*req(id:r0 body:ping)
-          ab<!res(id:r1 body:pong) ab<msg(id:r1 type:res body:pong)
-          ab<*res(id:r1 body:pong) - 19999ms -
+          ab<!res(id:r1 body:ping_r) ab<msg(id:r1 type:res body:ping_r)
+          ab<*res(id:r1 body:ping_r) - 19999ms -
           1ms a>*fail(id:r0 error:timeout)`);
       });
       describe('no_route', ()=>{
@@ -2226,19 +2226,19 @@ describe('peer-relay', function(){
       ab>*find_r:ba`);
     t('short', `setup:req node:a node(b wss) ab>!connect(find(a ba))`);
     t('req', `setup:req setup:2_nodes
-      ab>!req(id:r0 body:ping e res:pong) ab<*res(id:r0 body:pong)
-      ab<!req(id:r1 body:ping e res:pong) ab>*res(id:r1 body:pong)`);
-    t('msg', `setup:msg setup:2_nodes ab>!req(id:r0 body:ping res:pong)
-      ab>msg(id:r0 type:req body:ping) ab<msg(id:r0 type:res body:pong) -
-      ab<!req(id:r1 body:ping res:pong) ab<msg(id:r1 type:req body:ping)
-      ab>msg(id:r1 type:res body:pong)
+      ab>!req(id:r0 body:ping e res:ping_r) ab<*res(id:r0 body:ping_r)
+      ab<!req(id:r1 body:ping e res:ping_r) ab>*res(id:r1 body:ping_r)`);
+    t('msg', `setup:msg setup:2_nodes ab>!req(id:r0 body:ping res:ping_r)
+      ab>msg(id:r0 type:req body:ping) ab<msg(id:r0 type:res body:ping_r) -
+      ab<!req(id:r1 body:ping res:ping_r) ab<msg(id:r1 type:req body:ping)
+      ab>msg(id:r1 type:res body:ping_r)
       `);
     t('msg,req', `setup(msg req) setup:2_nodes
-      ab>!req(id:r0 body:ping res:pong) ab>msg(id:r0 type:req body:ping)
-      ab>*req(id:r0 body:ping) ab<msg(id:r0 type:res body:pong)
-      ab<*res(id:r0 body:pong) - ab<!req(id:r1 body:ping res:pong)
+      ab>!req(id:r0 body:ping res:ping_r) ab>msg(id:r0 type:req body:ping)
+      ab>*req(id:r0 body:ping) ab<msg(id:r0 type:res body:ping_r)
+      ab<*res(id:r0 body:ping_r) - ab<!req(id:r1 body:ping res:ping_r)
       ab<msg(id:r1 type:req body:ping) ab<*req(id:r1 body:ping)
-      ab>msg(id:r1 type:res body:pong) ab>*res(id:r1 body:pong)
+      ab>msg(id:r1 type:res body:ping_r) ab>*res(id:r1 body:ping_r)
     `);
   });
   describe('2_nodes_wrtc', function(){
@@ -2246,20 +2246,20 @@ describe('peer-relay', function(){
     // XXX: check why it doesn't fail without connect?!
     // t('wrtc', `node(a wrtc) node(b wrtc wss) - ab>!connect(find(a ba))`);
     t('req', `mode:req node(a wrtc) node(b wrtc wss) -
-      ab>!req(id:r0 body:ping e res:pong) ab<*res(id:r0 body:pong) -
-      ab<!req(id:r1 body:ping e res:pong) ab>*res(id:r1 body:pong)`);
+      ab>!req(id:r0 body:ping e res:ping_r) ab<*res(id:r0 body:ping_r) -
+      ab<!req(id:r1 body:ping e res:ping_r) ab>*res(id:r1 body:ping_r)`);
     t('msg', `mode:msg mode:req node(a wrtc) node(b wrtc wss) -
-      ab>!connect(wrtc find(a ba)) - mode:pop ab>!req(id:r0 body:ping res:pong)
-      ab>msg(id:r0 type:req body:ping) ab<msg(id:r0 type:res body:pong)
-      ab<!req(id:r1 body:ping res:pong)
-      ab<msg(id:r1 type:req body:ping) ab>msg(id:r1 type:res body:pong)`);
+      ab>!connect(wrtc find(a ba)) - mode:pop ab>!req(id:r0 body:ping res:ping_r)
+      ab>msg(id:r0 type:req body:ping) ab<msg(id:r0 type:res body:ping_r)
+      ab<!req(id:r1 body:ping res:ping_r)
+      ab<msg(id:r1 type:req body:ping) ab>msg(id:r1 type:res body:ping_r)`);
     t('msg,req', `mode(msg req) mode:req node(a wrtc) node(b wrtc wss) -
       ab>!connect(wrtc find(a ba)) - mode:pop
-      ab>!req(id:r0 body:ping res:pong) ab>msg(id:r0 type:req body:ping)
-      ab>*req(id:r0 body:ping) ab<msg(id:r0 type:res body:pong)
-      ab<*res(id:r0 body:pong) - ab<!req(id:r1 body:ping res:pong)
+      ab>!req(id:r0 body:ping res:ping_r) ab>msg(id:r0 type:req body:ping)
+      ab>*req(id:r0 body:ping) ab<msg(id:r0 type:res body:ping_r)
+      ab<*res(id:r0 body:ping_r) - ab<!req(id:r1 body:ping res:ping_r)
       ab<msg(id:r1 type:req body:ping) ab<*req(id:r1 body:ping)
-      ab>msg(id:r1 type:res body:pong) ab>*res(id:r1 body:pong)`);
+      ab>msg(id:r1 type:res body:ping_r) ab>*res(id:r1 body:ping_r)`);
   });
   describe('3_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcs', test);
@@ -2268,25 +2268,25 @@ describe('peer-relay', function(){
     // connect directly
     describe('linear_simple', ()=>{
       t('req', `mode:req setup:3_nodes_linear
-        ab>!req(id:r0 body:ping e res:pong) ab<*res(id:r0 body:pong)
-        ac>!req(id:r1 body:ping e res:pong) ac<*res(id:r1 body:pong)
-        bc>!req(id:r2 body:ping e res:pong) bc<*res(id:r2 body:pong)`);
-      t('msg', `mode:msg setup:3_nodes_linear ab>!req(id:r0 body:ping res:pong)
-        ab>msg(id:r0 type:req body:ping) ab<msg(id:r0 type:res body:pong)
-        ac>!req(id:r1 body:ping res:pong)
+        ab>!req(id:r0 body:ping e res:ping_r) ab<*res(id:r0 body:ping_r)
+        ac>!req(id:r1 body:ping e res:ping_r) ac<*res(id:r1 body:ping_r)
+        bc>!req(id:r2 body:ping e res:ping_r) bc<*res(id:r2 body:ping_r)`);
+      t('msg', `mode:msg setup:3_nodes_linear ab>!req(id:r0 body:ping res:ping_r)
+        ab>msg(id:r0 type:req body:ping) ab<msg(id:r0 type:res body:ping_r)
+        ac>!req(id:r1 body:ping res:ping_r)
         abc>fwd(ac>msg(id:r1 type:req body:ping))
-        abc<fwd(ac<msg(id:r1 type:res body:pong))
-        bc>!req(id:r2 body:ping res:pong) bc>msg(id:r2 type:req body:ping)
-        bc<msg(id:r2 type:res body:pong)`);
+        abc<fwd(ac<msg(id:r1 type:res body:ping_r))
+        bc>!req(id:r2 body:ping res:ping_r) bc>msg(id:r2 type:req body:ping)
+        bc<msg(id:r2 type:res body:ping_r)`);
       t('msg,req', `mode(msg req) setup:3_nodes_linear
-        ab>!req(id:r0 body:ping res:pong) ab>msg(id:r0 type:req body:ping)
-        ab>*req(id:r0 body:ping) ab<msg(id:r0 type:res body:pong)
-        ab<*res(id:r0 body:pong) ac>!req(id:r1 body:ping res:pong)
+        ab>!req(id:r0 body:ping res:ping_r) ab>msg(id:r0 type:req body:ping)
+        ab>*req(id:r0 body:ping) ab<msg(id:r0 type:res body:ping_r)
+        ab<*res(id:r0 body:ping_r) ac>!req(id:r1 body:ping res:ping_r)
         abc>fwd(ac>msg(id:r1 type:req body:ping)) ac>*req(id:r1 body:ping)
-        abc<fwd(ac<msg(id:r1 type:res body:pong))
-        ac<*res(id:r1 body:pong) bc>!req(id:r2 body:ping res:pong)
+        abc<fwd(ac<msg(id:r1 type:res body:ping_r))
+        ac<*res(id:r1 body:ping_r) bc>!req(id:r2 body:ping res:ping_r)
         bc>msg(id:r2 type:req body:ping) bc>*req(id:r2 body:ping)
-        bc<msg(id:r2 type:res body:pong) bc<*res(id:r2 body:pong)`);
+        bc<msg(id:r2 type:res body:ping_r) bc<*res(id:r2 body:ping_r)`);
     });
     describe('linear_wrtc', ()=>{
       t('req', `mode:req node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
@@ -2377,57 +2377,57 @@ describe('peer-relay', function(){
         dba<fwd(da<msg(type:res cmd:conn_info)) da<*conn_info_r
         ab<fwd(da>msg(type:req cmd:conn_info))`);
       describe('req', ()=>{
-        // XXX derry: ab>!req(body:ping res:pong !e)
+        // XXX derry: ab>!req(body:ping res:ping_r !e)
         t('req', `mode:req setup:4_nodes_linear
-          ab>!req(id:r0 body:ping e res:pong) ab<*res(id:r0 body:pong) -
-          ac>!req(id:r1 body:ping e res:pong) ac<*res(id:r1 body:pong) -
-          ad>!req(id:r2 body:ping e res:pong) ad<*res(id:r2 body:pong) -
-          bc>!req(id:r3 body:ping e res:pong) bc<*res(id:r3 body:pong) -
-          bd>!req(id:r4 body:ping e res:pong) bd<*res(id:r4 body:pong) -
-          cd>!req(id:r5 body:ping e res:pong) cd<*res(id:r5 body:pong) -
+          ab>!req(id:r0 body:ping e res:ping_r) ab<*res(id:r0 body:ping_r) -
+          ac>!req(id:r1 body:ping e res:ping_r) ac<*res(id:r1 body:ping_r) -
+          ad>!req(id:r2 body:ping e res:ping_r) ad<*res(id:r2 body:ping_r) -
+          bc>!req(id:r3 body:ping e res:ping_r) bc<*res(id:r3 body:ping_r) -
+          bd>!req(id:r4 body:ping e res:ping_r) bd<*res(id:r4 body:ping_r) -
+          cd>!req(id:r5 body:ping e res:ping_r) cd<*res(id:r5 body:ping_r) -
         `);
         // XXX: rm ack:0 (should be auto)
         t('msg', `mode:msg setup:4_nodes_linear
-          ab>!req(body:ping res:pong) ab>msg(type:req body:ping)
-          ab<msg(type:res body:pong) - ac>!req(body:ping res:pong)
-          abc>msg(type:req body:ping) abc<msg(type:res body:pong)
-          cdb>fwd(ac<msg(type:res ack:0 body:pong))
-          ab<fwd(ac<msg(type:res ack:0 body:pong))
-          - ad>!req(body:ping res:pong)
+          ab>!req(body:ping res:ping_r) ab>msg(type:req body:ping)
+          ab<msg(type:res body:ping_r) - ac>!req(body:ping res:ping_r)
+          abc>msg(type:req body:ping) abc<msg(type:res body:ping_r)
+          cdb>fwd(ac<msg(type:res ack:0 body:ping_r))
+          ab<fwd(ac<msg(type:res ack:0 body:ping_r))
+          - ad>!req(body:ping res:ping_r)
           abd>fwd(ad>msg(type:req body:ping))
-          abd<fwd(ad<msg(type:res body:pong))
-          dcb>fwd(ad<msg(type:res ack:0 body:pong))
-          ab<fwd(ad<msg(type:res ack:0 body:pong))
-          - bc>!req(body:ping res:pong)
-          bc>msg(type:req body:ping) bc<msg(type:res body:pong) -
-          bd>!req(body:ping res:pong) bd>msg(type:req body:ping)
-          bd<msg(type:res body:pong) - cd>!req(body:ping res:pong)
-          cd>msg(type:req body:ping) cd<msg(type:res body:pong)`);
+          abd<fwd(ad<msg(type:res body:ping_r))
+          dcb>fwd(ad<msg(type:res ack:0 body:ping_r))
+          ab<fwd(ad<msg(type:res ack:0 body:ping_r))
+          - bc>!req(body:ping res:ping_r)
+          bc>msg(type:req body:ping) bc<msg(type:res body:ping_r) -
+          bd>!req(body:ping res:ping_r) bd>msg(type:req body:ping)
+          bd<msg(type:res body:ping_r) - cd>!req(body:ping res:ping_r)
+          cd>msg(type:req body:ping) cd<msg(type:res body:ping_r)`);
         // XXX: rm ack:0 (should be auto)
         t('msg,req', `mode(msg req) setup:4_nodes_linear
-          ab>!req(id:r0 body:ping res:pong) ab>msg(id:r0 type:req body:ping)
-          ab>*req(id:r0 body:ping) ab<msg(id:r0 type:res body:pong)
-          ab<*res(id:r0 body:pong) - ac>!req(id:r1 body:ping res:pong)
+          ab>!req(id:r0 body:ping res:ping_r) ab>msg(id:r0 type:req body:ping)
+          ab>*req(id:r0 body:ping) ab<msg(id:r0 type:res body:ping_r)
+          ab<*res(id:r0 body:ping_r) - ac>!req(id:r1 body:ping res:ping_r)
           abc>msg(id:r1 type:req body:ping) ac>*req(id:r1 body:ping)
-          abc<msg(id:r1 type:res body:pong)
-          cdb>fwd(ac<msg(id:r1 type:res ack:0 body:pong))
-          ac<*res(id:r1 body:pong)
-          ab<fwd(ac<msg(id:r1 type:res ack:0 body:pong)) -
-          ad>!req(id:r2 body:ping res:pong)
+          abc<msg(id:r1 type:res body:ping_r)
+          cdb>fwd(ac<msg(id:r1 type:res ack:0 body:ping_r))
+          ac<*res(id:r1 body:ping_r)
+          ab<fwd(ac<msg(id:r1 type:res ack:0 body:ping_r)) -
+          ad>!req(id:r2 body:ping res:ping_r)
           abd>fwd(ad>msg(id:r2 type:req body:ping))
-          ad>*req(id:r2 body:ping) abd<fwd(ad<msg(id:r2 type:res body:pong))
-          dcb>fwd(ad<msg(id:r2 type:res ack:0 body:pong))
-          ad<*res(id:r2 body:pong)
-          ab<fwd(ad<msg(id:r2 type:res ack:0 body:pong)) -
-          bc>!req(id:r3 body:ping res:pong) bc>msg(id:r3 type:req body:ping)
-          bc>*req(id:r3 body:ping) bc<msg(id:r3 type:res body:pong)
-          bc<*res(id:r3 body:pong) -
-          bd>!req(id:r4 body:ping res:pong) bd>msg(id:r4 type:req body:ping)
-          bd>*req(id:r4 body:ping) bd<msg(id:r4 type:res body:pong)
-          bd<*res(id:r4 body:pong) -
-          cd>!req(id:r5 body:ping res:pong) cd>msg(id:r5 type:req body:ping)
-          cd>*req(id:r5 body:ping) cd<msg(id:r5 type:res body:pong)
-          cd<*res(id:r5 body:pong)`);
+          ad>*req(id:r2 body:ping) abd<fwd(ad<msg(id:r2 type:res body:ping_r))
+          dcb>fwd(ad<msg(id:r2 type:res ack:0 body:ping_r))
+          ad<*res(id:r2 body:ping_r)
+          ab<fwd(ad<msg(id:r2 type:res ack:0 body:ping_r)) -
+          bc>!req(id:r3 body:ping res:ping_r) bc>msg(id:r3 type:req body:ping)
+          bc>*req(id:r3 body:ping) bc<msg(id:r3 type:res body:ping_r)
+          bc<*res(id:r3 body:ping_r) -
+          bd>!req(id:r4 body:ping res:ping_r) bd>msg(id:r4 type:req body:ping)
+          bd>*req(id:r4 body:ping) bd<msg(id:r4 type:res body:ping_r)
+          bd<*res(id:r4 body:ping_r) -
+          cd>!req(id:r5 body:ping res:ping_r) cd>msg(id:r5 type:req body:ping)
+          cd>*req(id:r5 body:ping) cd<msg(id:r5 type:res body:ping_r)
+          cd<*res(id:r5 body:ping_r)`);
       });
     });
     describe('linear_wss', ()=>{
