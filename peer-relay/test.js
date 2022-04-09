@@ -2477,11 +2477,11 @@ describe('peer-relay', function(){
         da>msg_find_r:abcd da>*find_r:abcd
         ca>fwd(da>msg(type:req cmd:conn_info))`);
       t('xxx_derry_4_nodes', `mode(msg req)
-        node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(wss !r)
-        ab>connect(wss !r) ab<connected ab>msg_find:a ab>*find:a
+        node(a wss) node(b wss) node(c wss) node(d wss)
+        ab>!connect(wss) ab>msg_find:a ab>*find:a
         ab<msg_find_r:a ab<*find_r:a ab<msg_find:b ab<*find:b
-        ab>msg_find_r:ba ab>*find_r:ba - bc>!connect(wss !r)
-        bc>connect(wss !r) bc<connected bc>msg_find:b bc>*find:b
+        ab>msg_find_r:ba ab>*find_r:ba - bc>!connect(wss)
+        bc>msg_find:b bc>*find:b
         bc<msg_find_r:b bc<*find_r:b bc<msg_find:c bc<*find:c
         bc>msg_find_r:cab bc>*find_r:cab
         abc<fwd(ac<msg(type:req cmd(conn_info))) ac<*conn_info
