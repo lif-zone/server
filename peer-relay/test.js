@@ -2440,15 +2440,15 @@ describe('peer-relay', function(){
         cd>!connect cd>msg_find:c cd<msg_find_r:c cd<msg_find:d
         cd>msg_find_r:dcba dcb>fwd(db>msg(type:req cmd:conn_info))
         bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
-        ba>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
+        ab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         ac>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         cd>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws)) db>connect
         db>msg_find:d db<msg_find_r:dcba
         db<msg_find:b db>msg_find_r:badc
         dba>fwd(da>msg(type:req cmd:conn_info))
         dca<fwd(da<msg(type:res cmd:conn_info ack:0 body:ws))
-        ab>fwd(ad>msg(type:res cmd:conn_info body:ws))
-        bd>fwd(ad>msg(type:res cmd:conn_info ack:0 body:ws)) da>connect(wss)
+        ab>fwd(da<msg(type:res cmd:conn_info body:ws))
+        bd>fwd(da<msg(type:res cmd:conn_info ack:0 body:ws)) da>connect(wss)
         da>msg_find:d da<msg_find_r:dcba
         da<msg_find:a da>msg_find_r:abcd
         dca>fwd(da>msg(type:req cmd:conn_info))`);
@@ -2457,14 +2457,14 @@ describe('peer-relay', function(){
         cd<msg_find:d cd<*find:d cd>msg_find_r:dcba cd>*find_r:dcba
         dcb>fwd(db>msg(type:req cmd:conn_info)) db>*conn_info
         bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
-        ba>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
+        ab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         ac>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         db<*conn_info_r:ws cd>fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
         db>connect db>msg_find:d db>*find:d
         db<msg_find_r:dcba db<*find_r:dcba db<msg_find:b db<*find:b
         db>msg_find_r:badc db>*find_r:badc
         dba>fwd(da>msg(type:req cmd:conn_info))
-        dc>fwd(da>msg(type(req) cmd(conn_info))) da>*conn_info
+        cd<fwd(da>msg(type(req) cmd(conn_info))) da>*conn_info
         dca<fwd(da<msg(type:res cmd:conn_info ack:0 body:ws))
         ab>fwd(da<msg(type:res cmd:conn_info body:ws))
         bd>fwd(da<msg(type:res cmd:conn_info ack:0 body:ws)) da<*conn_info_r:ws
