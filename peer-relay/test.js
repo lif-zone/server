@@ -2510,7 +2510,10 @@ describe('peer-relay', function(){
         dca<fwd(da<msg(type:res cmd:conn_info body:ws))
         ab>fwd(da<msg(type:res cmd:conn_info body:ws))
         bd>fwd(da<msg(type:res cmd:conn_info body:ws)) da<*conn_info_r:ws
-        da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
+        da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))
+        ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
+        ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)
+        `);
     });
   });
   // XXX: add disconnect tests
