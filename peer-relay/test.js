@@ -1702,18 +1702,21 @@ describe('peer-relay', function(){
       `);
       t('msg', `mode:msg setup:2_nodes
         ab>!req(id:r0 body:ping) ab>msg(id:r0 type:req body:ping) -
-        ab<!res(id:r0 ack:0 body:ping_r) ab<msg(id:r0 type:res ack:0 body:ping_r)
+        ab<!res(id:r0 ack:0 body:ping_r)
+        ab<msg(id:r0 type:res ack:0 body:ping_r)
         20s - ab>!req(id:r1 body:ping) ab>msg(id:r1 type:req body:ping) -
         ab<!res(id:r1 ack:0 body:ping_r)
         ab<msg(id:r1 type:res ack:0 body:ping_r)`);
       t('msg,req', `mode(msg req) setup:2_nodes
         ab>!req(id:r0 body:ping) ab>msg(id:r0 type:req body:ping)
         ab>*req(id:r0 body:ping) -
-        ab<!res(id:r0 ack:0 body:ping_r) ab<msg(id:r0 type:res ack:0 body:ping_r)
+        ab<!res(id:r0 ack:0 body:ping_r)
+        ab<msg(id:r0 type:res ack:0 body:ping_r)
         ab<*res(id:r0 ack:0 body:ping_r) 20s -
         ab>!req(id:r1 body:ping) ab>msg(id:r1 type:req body:ping)
         ab>*req(id:r1 body:ping) -
-        ab<!res(id:r1 ack:0 body:ping_r) ab<msg(id:r1 type:res ack:0 body:ping_r)
+        ab<!res(id:r1 ack:0 body:ping_r)
+        ab<msg(id:r1 type:res ack:0 body:ping_r)
         ab<*res(id:r1 ack:0 body:ping_r)`);
     });
     describe('wrong_order', ()=>{
@@ -1797,7 +1800,8 @@ describe('peer-relay', function(){
         abc>fwd(ac>msg(type:res cmd(conn_info))) ca<*conn_info_r
         ac>!req(id:r0 body:ping res:ping_r)
         abc>fwd(ac>msg(id:r0 type:req body:ping)) ac>*req(id:r0 body:ping)
-        abc<fwd(ac<msg(id:r0 type:res body:ping_r)) ac<*res(id:r0 body:ping_r)`);
+        abc<fwd(ac<msg(id:r0 type:res body:ping_r))
+        ac<*res(id:r0 body:ping_r)`);
     });
     describe('failure', ()=>{
       describe('timeout', ()=>{
@@ -2249,9 +2253,9 @@ describe('peer-relay', function(){
       ab>!req(id:r0 body:ping e res:ping_r) ab<*res(id:r0 body:ping_r) -
       ab<!req(id:r1 body:ping e res:ping_r) ab>*res(id:r1 body:ping_r)`);
     t('msg', `mode:msg mode:req node(a wrtc) node(b wrtc wss) -
-      ab>!connect(wrtc find(a ba)) - mode:pop ab>!req(id:r0 body:ping res:ping_r)
-      ab>msg(id:r0 type:req body:ping) ab<msg(id:r0 type:res body:ping_r)
-      ab<!req(id:r1 body:ping res:ping_r)
+      ab>!connect(wrtc find(a ba)) - mode:pop
+      ab>!req(id:r0 body:ping res:ping_r) ab>msg(id:r0 type:req body:ping)
+      ab<msg(id:r0 type:res body:ping_r) ab<!req(id:r1 body:ping res:ping_r)
       ab<msg(id:r1 type:req body:ping) ab>msg(id:r1 type:res body:ping_r)`);
     t('msg,req', `mode(msg req) mode:req node(a wrtc) node(b wrtc wss) -
       ab>!connect(wrtc find(a ba)) - mode:pop
@@ -2271,9 +2275,9 @@ describe('peer-relay', function(){
         ab>!req(id:r0 body:ping e res:ping_r) ab<*res(id:r0 body:ping_r)
         ac>!req(id:r1 body:ping e res:ping_r) ac<*res(id:r1 body:ping_r)
         bc>!req(id:r2 body:ping e res:ping_r) bc<*res(id:r2 body:ping_r)`);
-      t('msg', `mode:msg setup:3_nodes_linear ab>!req(id:r0 body:ping res:ping_r)
-        ab>msg(id:r0 type:req body:ping) ab<msg(id:r0 type:res body:ping_r)
-        ac>!req(id:r1 body:ping res:ping_r)
+      t('msg', `mode:msg setup:3_nodes_linear
+        ab>!req(id:r0 body:ping res:ping_r) ab>msg(id:r0 type:req body:ping)
+        ab<msg(id:r0 type:res body:ping_r) ac>!req(id:r1 body:ping res:ping_r)
         abc>fwd(ac>msg(id:r1 type:req body:ping))
         abc<fwd(ac<msg(id:r1 type:res body:ping_r))
         bc>!req(id:r2 body:ping res:ping_r) bc>msg(id:r2 type:req body:ping)
@@ -2503,11 +2507,6 @@ describe('peer-relay', function(){
         da<msg_find_r:dcba da<*find_r:dcba da<msg_find:a da<*find:a
         da>msg_find_r:abcd da>*find_r:abcd
         ac<fwd(da>msg(type:req cmd:conn_info))`);
-        /* XXX: add req/res example
-        ac>!req(id:r0 body:ping res:ping_r)
-        abc>fwd(ac>msg(id:r0 type:req body:ping)) ac>*req(id:r0 body:ping)
-        abc<fwd(ac<msg(id:r0 type:res body:ping_r)) ac<*res(id:r0 body:ping_r)`);
-        */
     });
   });
   // XXX: add disconnect tests
