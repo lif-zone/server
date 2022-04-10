@@ -2516,7 +2516,7 @@ describe('peer-relay', function(){
         dba<fwd(da<msg(type:res cmd:conn_info)) da<*conn_info_r
         ab<fwd(da>msg(type:req cmd:conn_info))`);
       describe('req', ()=>{
-        // XXX derry: ab>!req(body:ping res:ping_r !e)
+        // XXX derry NOW: ab>!req(body:ping res:ping_r !e)
         t('req', `mode:req setup:4_nodes_linear
           ab>!req(id:r0 body:ping e res:ping_r) ab<*res(id:r0 body:ping_r) -
           ac>!req(id:r1 body:ping e res:ping_r) ac<*res(id:r1 body:ping_r) -
@@ -2625,7 +2625,7 @@ describe('peer-relay', function(){
       dba<msg(type:res cmd:conn_info body:ws)
       da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
   });
-    /* XXX REVIEW derry:
+    /* XXX REVIEW derry TODO:
       ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
       ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)`);
       ==>
