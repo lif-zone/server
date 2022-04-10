@@ -154,16 +154,14 @@ function req_handler_cb(msg){
   res.ack.push(seq);
   if (msg.ack)
     res.clr_timeout(msg.ack);
+  if (ReqHandler.t.req_hook) // XXX NOW: move to emit_ooo
+    ReqHandler.t.req_hook(msg);
   if (['req', 'req_start'].includes(type)){
     let dup = res.req_seq==0;
     res.req_seq = 0;
-    if (ReqHandler.t.req_hook)
-      ReqHandler.t.req_hook(msg);
     req_handler.emit(type, msg, res, {dup});
   }
   else {
-    if (ReqHandler.t.req_hook) // XXX NOW: move to emit_ooo
-      ReqHandler.t.req_hook(msg);
     res.emit_ooo(msg);
     res.emit_ooo_queue();
   }
