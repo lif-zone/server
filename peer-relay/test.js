@@ -990,7 +990,7 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
         // XXX: fix extending loops to be inside cmd_conn_info and cleanup mess
         set_orig(c, build_cmd_o(c.s+c.d+'>msg',
           {type: 'req', cmd: 'conn_info'}));
-        if (c.orig_loop && typeof r!='undefined'){
+        if (c.orig_loop && r!==undefined){
           _push_cmd(extend_loop_rev(c.orig_loop,
             rev_cmd(c.orig, 'msg', build_cmd('type', 'res')+' '+
             build_cmd('cmd', 'conn_info')+(r ? ' '+build_cmd('body', r) : '')))
@@ -1002,7 +1002,7 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
       }
       return;
     }
-    if (typeof r!='undefined'){
+    if (r!==undefined){
       if (c.orig_loop){
         _push_cmd(extend_loop_rev(c.orig_loop,
           rev_cmd(c.orig, '*conn_info_r', r)));
