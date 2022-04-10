@@ -2619,15 +2619,14 @@ describe('peer-relay', function(){
       node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(find(a ba))
       - bc>!connect(find(b cab)) abc<conn_info ac<connect(find(cab abc))
       - cd>!connect(find(c dcba)) bcd<conn_info
-      bacd>msg(type:res cmd:conn_info ack:0 body:ws)
+      bac>fwd(bd>msg(type:res cmd:conn_info body:ws))
       db>connect(find(dcba badc)) dba>conn_info(!r)
       cd<fwd(da>msg(type(req) cmd(conn_info)))
       dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
       dba<msg(type:res cmd:conn_info body:ws)
       da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))
       ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
-      ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)
-      `);
+      ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)`);
   });
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
