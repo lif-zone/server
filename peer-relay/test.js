@@ -63,6 +63,16 @@ function conn_opts(body){
   return a.join(' ');
 }
 
+function conn_opts_from_node(node){
+  let a = [];
+  node = typeof node=='string' ? t_nodes[node] : node;
+  if (support_wss(node))
+    a.push('ws');
+  if (support_wrtc(node))
+    a.push('wrtc');
+  return a.join(' ');
+}
+
 // non-number req_id is set explicit in test
 function test_req_id(req_id){ return is_number(req_id) ? undefined : req_id; }
 
@@ -990,6 +1000,8 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
         // XXX: fix extending loops to be inside cmd_conn_info and cleanup mess
         set_orig(c, build_cmd_o(c.s+c.d+'>msg',
           {type: 'req', cmd: 'conn_info'}));
+        if (!nr && r===undefined)
+          r = conn_opts_from_node(c.d);
         if (c.orig_loop && r!==undefined){
           _push_cmd(extend_loop_rev(c.orig_loop,
             rev_cmd(c.orig, 'msg', build_cmd('type', 'res')+' '+
@@ -1737,7 +1749,7 @@ describe('peer-relay', function(){
         t('abc>*conn_info', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
-        _t('mode(msg req)', 'abc>conn_info', `
+        _t('mode(msg req)', 'abc>conn_info(!r)', `
           ab>fwd(ac>msg(type(req) cmd(conn_info)))
           bc>fwd(ac>msg(type(req) cmd(conn_info))) ac>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(r:ws)', `
@@ -2605,8 +2617,8 @@ describe('peer-relay', function(){
     // XXX: prepare case of sending 2 packets
     t('xxx_derry_4_nodes', `mode(msg req)
       node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(find(a ba))
-      - bc>!connect(find(b cab)) abc<conn_info(r:ws) ac<connect(find(cab abc))
-      - cd>!connect(find(c dcba)) bcd<conn_info(r:ws)
+      - bc>!connect(find(b cab)) abc<conn_info ac<connect(find(cab abc))
+      - cd>!connect(find(c dcba)) bcd<conn_info
       dcab<msg(type:res cmd:conn_info ack:0 body:ws)
       db>connect(find(dcba badc)) dba>conn_info(!r)
       cd<fwd(da>msg(type(req) cmd(conn_info)))
