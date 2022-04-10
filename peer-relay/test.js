@@ -679,7 +679,6 @@ function fake_emit(c, msg){
 }
 
 const fake_send_msg = (c, msg)=>etask(function*(){
-  xerr.notice('XXX fake_send_msg %s', c.orig);
   let s = t_nodes[c.s], d = t_nodes[c.d], f = s, t = d;
   let to = b2s(d.id), from = b2s(s.id);
   let nonce = t_nonce[normalize(c.orig)] = t_nonce[normalize(c.orig)]||
