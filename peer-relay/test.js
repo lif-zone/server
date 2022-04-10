@@ -1643,6 +1643,8 @@ describe('peer-relay', function(){
           bc<fwd(ac<*conn_info_r(ws)) ab<fwd(ac<*conn_info_r(ws))`);
         t('abc>*conn_info', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)`);
         t(`ab>conn_info`, `ab>msg(type(req) cmd(conn_info))`);
+        t(`abc>conn_info`, `ab>fwd(ac>msg(type(req) cmd(conn_info)))
+          bc>fwd(ac>msg(type(req) cmd(conn_info)))`);
         if (0) // XXX TODO
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
