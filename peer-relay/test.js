@@ -2013,7 +2013,6 @@ describe('peer-relay', function(){
         ab>msg(id:r0 type:req_end cmd:test ack:1 seq:2 body:b2)
         ab<!res_end(id:r0 seq:2 ack:2 body:c2)
         ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)`);
-      if (0) // XXX NOW: fixme
       t('msg,req', `setup(msg req) setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test body:b0)
         ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
@@ -2061,7 +2060,6 @@ describe('peer-relay', function(){
         ab>msg(id:r0 type:req_end cmd:test ack:1 seq:2 body:b2)
         ab<!res_end(id:r0 ack:2 body:c2)
         ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)`);
-      if (0) // XXX NOW: fixme
       t('msg,req', `setup(msg req) setup:2_nodes
         ab>!req_start(id:r0 cmd:test body:b0)
         ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)

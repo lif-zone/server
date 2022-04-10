@@ -32,7 +32,7 @@ function res_handler(msg){
     req.close();
   else if (msg.ack)
     req.clr_timeout(msg.ack);
-  if (Req.t.res_hook)
+  if (Req.t.res_hook) // XXX NOW: mv to emit_ooo
     Req.t.res_hook(msg);
   req.emit_ooo(msg);
   req.emit_ooo_queue();

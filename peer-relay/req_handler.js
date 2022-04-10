@@ -162,6 +162,8 @@ function req_handler_cb(msg){
     req_handler.emit(type, msg, res, {dup});
   }
   else {
+    if (ReqHandler.t.req_hook) // XXX NOW: move to emit_ooo
+      ReqHandler.t.req_hook(msg);
     res.emit_ooo(msg);
     res.emit_ooo_queue();
   }
