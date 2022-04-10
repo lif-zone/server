@@ -32,6 +32,8 @@ function res_handler(msg){
     req.close();
   else if (msg.ack)
     req.clr_timeout(msg.ack);
+  if (Req.t.xxx_res_hook)
+    Req.t.xxx_res_hook(msg);
   req.emit_ooo(msg);
   req.emit_ooo_queue();
 }

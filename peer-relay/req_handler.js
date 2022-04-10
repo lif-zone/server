@@ -157,6 +157,8 @@ function req_handler_cb(msg){
   if (['req', 'req_start'].includes(type)){
     let dup = res.req_seq==0;
     res.req_seq = 0;
+    if (ReqHandler.t.xxx_req_hook)
+      ReqHandler.t.xxx_req_hook(msg);
     req_handler.emit(type, msg, res, {dup});
   }
   else {
