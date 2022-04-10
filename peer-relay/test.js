@@ -1635,6 +1635,7 @@ describe('peer-relay', function(){
           ab<fwd(ac<*conn_info_r(ws))`);
         t('abc>*conn_info(r(ws))', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)
           bc<fwd(ac<*conn_info_r(ws)) ab<fwd(ac<*conn_info_r(ws))`);
+        t('abc>*conn_info', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)`);
         t('ba>bd>*conn_info_r:ws', `ba>fwd(bd>*conn_info_r(ws))`);
         t('ab>!msg(body:hi !msg)', `ab>!msg(body(hi) !msg)`);
         t('ab>!msg(body:hi)', `ab>!msg(body(hi) !msg) ab>msg(body(hi))`);
