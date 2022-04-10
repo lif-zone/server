@@ -899,7 +899,7 @@ const cmd_find_r = opt=>etask(function*cmd_find_r(){
 });
 
 const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
-  let {c, event} = opt, r;
+  let {c, event} = opt, r, basic = !/[*!]/.test(c.cmd[0]);
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
@@ -911,6 +911,11 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
     }
   });
   if (t_pre_process){
+    if (basic){
+      set_orig(c, build_cmd_o(c.s+c.d+'>msg',
+        {type: 'req', cmd: 'conn_info'}));
+      return;
+    }
     if (typeof r!=='undefined'){
       if (c.orig_loop){
         _push_cmd(extend_loop_rev(c.orig_loop,
@@ -1299,6 +1304,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*find': yield cmd_find(opt); break;
   case 'find_r': yield cmd_find_r(opt); break;
   case '*find_r': yield cmd_find_r(opt); break;
+  case 'conn_info': yield cmd_conn_info(opt); break;
   case '*conn_info': yield cmd_conn_info(opt); break;
   case '*conn_info_r': yield cmd_conn_info_r(opt); break;
   case '!msg': yield cmd_msg(opt); break;
@@ -1636,6 +1642,10 @@ describe('peer-relay', function(){
         t('abc>*conn_info(r(ws))', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)
           bc<fwd(ac<*conn_info_r(ws)) ab<fwd(ac<*conn_info_r(ws))`);
         t('abc>*conn_info', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)`);
+        t(`ab>conn_info`, `ab>msg(type(req) cmd(conn_info))`);
+        if (0) // XXX TODO
+        t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
+          ac>*conn_info`);
         t('ba>bd>*conn_info_r:ws', `ba>fwd(bd>*conn_info_r(ws))`);
         t('ab>!msg(body:hi !msg)', `ab>!msg(body(hi) !msg)`);
         t('ab>!msg(body:hi)', `ab>!msg(body(hi) !msg) ab>msg(body(hi))`);
