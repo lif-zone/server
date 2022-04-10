@@ -972,10 +972,11 @@ const cmd_find_r = opt=>etask(function cmd_find_r(){
 });
 
 const cmd_conn_info = opt=>etask(function cmd_conn_info(){
-  let {c, event} = opt, r, basic = !/[*!]/.test(c.cmd[0]);
+  let {c, event} = opt, r, nr, basic = !/[*!]/.test(c.cmd[0]);
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
+    case '!r': nr = true; break;
     case 'r':
       assert(!r, 'invalid '+c.orig);
       r = a.arg||'';
@@ -2604,14 +2605,13 @@ describe('peer-relay', function(){
     // XXX: prepare case of sending 2 packets
     t('xxx_derry_4_nodes', `mode(msg req)
       node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(find(a ba))
-      - bc>!connect(find(b cab)) abc<conn_info(r:ws)
-      ac<connect(find(cab abc)) - cd>!connect(find(c dcba))
-      bcd<conn_info(r:ws)
-      dcab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
-      db>connect(find(dcba badc)) dba>conn_info
+      - bc>!connect(find(b cab)) abc<conn_info(r:ws) ac<connect(find(cab abc))
+      - cd>!connect(find(c dcba)) bcd<conn_info(r:ws)
+      dcab<msg(type:res cmd:conn_info ack:0 body:ws)
+      db>connect(find(dcba badc)) dba>conn_info(!r)
       cd<fwd(da>msg(type(req) cmd(conn_info)))
-      dca<fwd(da<msg(type:res cmd:conn_info body:ws)) da<*conn_info_r:ws
-      abd>fwd(da<msg(type:res cmd:conn_info body:ws))
+      dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
+      dba<msg(type:res cmd:conn_info body:ws)
       da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))
       ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
       ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)
