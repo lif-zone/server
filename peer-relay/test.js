@@ -2619,7 +2619,7 @@ describe('peer-relay', function(){
       node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(find(a ba))
       - bc>!connect(find(b cab)) abc<conn_info ac<connect(find(cab abc))
       - cd>!connect(find(c dcba)) bcd<conn_info
-      dcab<msg(type:res cmd:conn_info ack:0 body:ws)
+      bacd>msg(type:res cmd:conn_info ack:0 body:ws)
       db>connect(find(dcba badc)) dba>conn_info(!r)
       cd<fwd(da>msg(type(req) cmd(conn_info)))
       dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
