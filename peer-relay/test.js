@@ -2615,11 +2615,10 @@ describe('peer-relay', function(){
     // ab<fwd(bd>conn_info_r) ac>fwd(bd>conn_info_r)
     // ab>find --> ab>msg(cmd:find ...)
     // XXX: prepare case of sending 2 packets
-    t('xxx_derry_4_nodes', `mode(msg req)
-      node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(find(a ba))
-      - bc>!connect(find(b cab)) abc<conn_info ac<connect(find(cab abc)) -
-      cd>!connect(find(c dcba)) bcd<conn_info
-      bac>fwd(bd>msg(type:res cmd:conn_info body:ws))
+    t('xxx_derry_4_nodes', `mode(msg req) node(a wss) node(b wss) node(c wss)
+      node(d wss) ab>!connect(find(a ba)) bc>!connect(find(b cab))
+      abc<conn_info ac<connect(find(cab abc)) - cd>!connect(find(c dcba))
+      bcd<conn_info bac>fwd(bd>msg(type:res cmd:conn_info body:ws))
       db>connect(find(dcba badc)) dba>conn_info(!r)
       cd<fwd(da>msg(type(req) cmd(conn_info)))
       dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
