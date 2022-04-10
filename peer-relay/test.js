@@ -472,7 +472,7 @@ class FakeChannel extends EventEmitter {
   destroy(){}
 }
 
-function xxx_req_hook(msg){
+function req_hook(msg){
   // XXX: need to filter out only test commands, other should fail test
   if (!t_mode.req || !t_mode.msg)
     return;
@@ -542,7 +542,7 @@ function req_send_hook(msg){
   cmd_run(_build_cmd(e, '', ''));
 }
 
-function xxx_res_hook(msg){
+function res_hook(msg){
   if (!t_mode.req || !t_mode.msg)
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
@@ -1506,14 +1506,14 @@ function test_setup_mode(){
   if (t_mode.req){
     Req.t_send_hook = req_send_hook;
     ReqHandler.t_send_hook = res_send_hook;
-    Req.t.xxx_res_hook = xxx_res_hook;
-    ReqHandler.t.xxx_req_hook = xxx_req_hook;
+    Req.t.res_hook = res_hook;
+    ReqHandler.t.req_hook = req_hook;
   }
   else {
     delete ReqHandler.t_send_hook;
     delete Req.t_send_hook;
-    delete Req.t.xxx_res_hook;
-    delete ReqHandler.t.xxx_req_hook;
+    delete Req.t.res_hook;
+    delete ReqHandler.t.req_hook;
   }
   ReqHandler.t_new_res_hook = new_res_hook;
   Node.t_conn_info_r_hook = msg=>cmd_run_if_next_fake();
