@@ -1581,7 +1581,8 @@ describe('peer-relay', function(){
         ]));
       }));
       describe('shortcut', ()=>{
-        const _t = (mode, test, exp)=>it(test, ()=>etask(function*(){
+        const _t = (mode, test, exp)=>it(mode+(mode ? ' ': '')+test,
+          ()=>etask(function*(){
           test_start();
           let setup = 'node(a wss) node(b wss) node(c wss) node(d wss) '+
             'node(e wss) node(f wss) '+(mode ? mode+' ' : '');
@@ -1664,6 +1665,7 @@ describe('peer-relay', function(){
         _t('mode:msg', 'ab>find:a', `ab>msg(type(req) cmd(find) body(a))`);
         _t('mode(msg req)', 'ab>find:a', `ab>msg(type(req) cmd(find) body(a))
           ab>*find(a)`);
+        _t('mode:req', 'ab>find_r:a', `ab>*find_r(a)`);
         _t('mode:msg', 'ab>find_r:a', `ab>msg(type(res) cmd(find) body(a))`);
         _t('mode(msg req)', 'ab>find_r:a', `ab>msg(type(res) cmd(find) body(a))
           ab>*find_r(a)`);
@@ -2461,8 +2463,7 @@ describe('peer-relay', function(){
         da>find:d da<find_r:dcba da<find:a da>find_r:abcd
         dca>fwd(da>msg(type:req cmd:conn_info))`);
       t('msg,req', `mode(msg req) setup:3_nodes_wss node(d wss) -
-        cd>!connect cd>find:c cd<find_r:c
-        cd<find:d cd>find_r:dcba
+        cd>!connect cd>find:c cd<find_r:c cd<find:d cd>find_r:dcba
         dcb>fwd(db>msg(type:req cmd:conn_info)) db>*conn_info
         bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
         ab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
@@ -2475,8 +2476,7 @@ describe('peer-relay', function(){
         ab>fwd(da<msg(type:res cmd:conn_info body:ws))
         bd>fwd(da<msg(type:res cmd:conn_info ack:0 body:ws)) da<*conn_info_r:ws
         da>connect(wss) da>find:d da<find_r:dcba da<find:a
-        da>find_r:abcd
-        ca>fwd(da>msg(type:req cmd:conn_info))`);
+        da>find_r:abcd ca>fwd(da>msg(type:req cmd:conn_info))`);
       // XXX TODO derry:
       // abc<fwd(ac<msg(type:req cmd(conn_info))) ac<*conn_info
       // abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ac>*conn_info_r:ws
