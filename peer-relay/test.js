@@ -2623,10 +2623,15 @@ describe('peer-relay', function(){
       cd<fwd(da>msg(type(req) cmd(conn_info)))
       dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
       dba<msg(type:res cmd:conn_info body:ws)
-      da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))
+      da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
+  });
+    /* XXX REVIEW derry:
       ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
       ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)`);
-  });
+      ==>
+      ab>!req(body:ping)
+      ab>!req(body:ping !e) ab>msg(type:req body:ping) ab>*req(body:ping) -
+     */
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
