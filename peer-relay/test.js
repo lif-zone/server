@@ -912,8 +912,12 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   });
   if (t_pre_process){
     if (basic){
-      set_orig(c, build_cmd_o(c.s+c.d+'>msg',
-        {type: 'req', cmd: 'conn_info'}));
+      if (t_mode.req && t_mode.msg){
+        if (c.orig_loop || !c.had_loop)
+          push_cmd(build_cmd(c.s+c.d+'>*conn_info'));
+        set_orig(c, build_cmd_o(c.s+c.d+'>msg',
+          {type: 'req', cmd: 'conn_info'}));
+      }
       return;
     }
     if (typeof r!=='undefined'){
@@ -1642,9 +1646,11 @@ describe('peer-relay', function(){
         t('abc>*conn_info(r(ws))', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)
           bc<fwd(ac<*conn_info_r(ws)) ab<fwd(ac<*conn_info_r(ws))`);
         t('abc>*conn_info', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)`);
-        t(`ab>conn_info`, `ab>msg(type(req) cmd(conn_info))`);
-        t(`abc>conn_info`, `ab>fwd(ac>msg(type(req) cmd(conn_info)))
-          bc>fwd(ac>msg(type(req) cmd(conn_info)))`);
+        _t('mode(msg req)',
+          'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
+        _t('mode(msg req)', 'abc>conn_info', `
+          ab>fwd(ac>msg(type(req) cmd(conn_info)))
+          bc>fwd(ac>msg(type(req) cmd(conn_info))) ac>*conn_info`);
         if (0) // XXX TODO
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
