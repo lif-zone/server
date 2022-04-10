@@ -913,14 +913,22 @@ const cmd_conn_info = opt=>etask(function*cmd_conn_info(){
   if (t_pre_process){
     if (basic){
       if (t_mode.req && t_mode.msg){
-        if (c.orig_loop || !c.had_loop)
-          push_cmd(build_cmd(c.s+c.d+'>*conn_info'));
+        // XXX: fix extending loops to be inside cmd_conn_info and cleanup mess
         set_orig(c, build_cmd_o(c.s+c.d+'>msg',
           {type: 'req', cmd: 'conn_info'}));
+        if (c.orig_loop && typeof r!='undefined'){
+          _push_cmd(extend_loop_rev(c.orig_loop,
+            rev_cmd(c.orig, 'msg', build_cmd('type', 'res')+' '+
+            build_cmd('cmd', 'conn_info')+(r ? ' '+build_cmd('body', r) : '')))
+            .concat(xtest.test_parse(build_cmd(c.s+c.d+'<*conn_info_r', r)))
+            );
+        }
+        if (c.orig_loop || !c.had_loop)
+          push_cmd(build_cmd(c.s+c.d+'>*conn_info'));
       }
       return;
     }
-    if (typeof r!=='undefined'){
+    if (typeof r!='undefined'){
       if (c.orig_loop){
         _push_cmd(extend_loop_rev(c.orig_loop,
           rev_cmd(c.orig, '*conn_info_r', r)));
@@ -1651,6 +1659,12 @@ describe('peer-relay', function(){
         _t('mode(msg req)', 'abc>conn_info', `
           ab>fwd(ac>msg(type(req) cmd(conn_info)))
           bc>fwd(ac>msg(type(req) cmd(conn_info))) ac>*conn_info`);
+        _t('mode(msg req)', 'abc>conn_info(r:ws)', `
+          ab>fwd(ac>msg(type(req) cmd(conn_info)))
+          bc>fwd(ac>msg(type(req) cmd(conn_info))) ac>*conn_info
+          bc<fwd(ac<msg(type(res) cmd(conn_info) body(ws)))
+          ab<fwd(ac<msg(type(res) cmd(conn_info) body(ws)))
+          ac<*conn_info_r(ws)`);
         if (0) // XXX TODO
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
@@ -2506,10 +2520,8 @@ describe('peer-relay', function(){
       // ab>find --> ab>msg(cmd:find ...)
       // XXX: prepare case of sending 2 packets
       t('xxx_derry_4_nodes', `mode(msg req)
-        node(a wss) node(b wss) node(c wss) node(d wss)
-        ab>!connect(find(a ba)) - bc>!connect(find(b cab))
-        abc<fwd(ac<msg(type:req cmd(conn_info))) ac<*conn_info
-        abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ac>*conn_info_r:ws
+        node(a wss) node(b wss) node(c wss) node(d wss) ab>!connect(find(a ba))
+        - bc>!connect(find(b cab)) abc<conn_info(r:ws)
         ac<connect(find(cab abc)) - cd>!connect(find(c dcba))
         bcd<fwd(db>msg(type:req cmd:conn_info)) db>*conn_info
         bcd>fwd(bd>msg(type:res cmd:conn_info body:ws))
