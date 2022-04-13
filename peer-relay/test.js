@@ -1052,12 +1052,10 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
-  let arg = xtest.test_parse(c.arg), body, call = c.cmd[0]=='!';
-  let msg = call ? true : false, id, type, cmd, seq, ack, a;
+  let arg = xtest.test_parse(c.arg), body;
+  let id, type, cmd, seq, ack, a;
   util.forEach(arg, a=>{
     switch (a.cmd){
-    case '!msg': msg = false; break;
-    case 'msg': msg = assert_bool(a.arg); break;
     case 'id': id = a.arg; break;
     case 'type': type = a.arg; break;
     case 'cmd': cmd = a.arg||''; break;
@@ -1068,28 +1066,11 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
   });
   cmd = cmd||'';
-  assert(call || !msg, 'msg only avail for call mode');
   if (t_pre_process){
-    if (call){
-      if (c.loop_first){
-        if (msg)
-          push_cmd(build_cmd_o(dir_c(c)+'msg', c.fwd, {body}));
-        c.fwd = '';
-        set_orig(c, build_cmd_o(dir_c(c)+'!msg', {body, '!msg': true}));
-        return;
-      }
-      else if (c.had_loop)
-        return set_orig(c, build_cmd_o(dir_c(c)+'msg', {body}));
-      if (msg)
-        push_cmd(build_cmd_o(dir_c(c)+'msg', {body}));
-    }
-    else
-      assert(!msg);
-    set_orig(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body,
-      '!msg': call}));
+    set_orig(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body}));
     return;
   }
-  if (!call && ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
+  if (ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
     'res_next', 'res_end'].includes(type)){
     let nfwd = normalize(c.fwd);
     ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
@@ -1099,12 +1080,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
     seq = seq||0;
   assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body}),
-    c.fwd, event, call);
-  if (call){
-    if (!s.t.fake)
-      yield s.send(d.id, body);
-    return;
-  }
+    c.fwd, event, false);
   if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
     seq = seq||0;
   if (type=='req'){
@@ -1422,7 +1398,6 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'conn_info': yield cmd_conn_info(opt); break;
   case '*conn_info': yield cmd_conn_info(opt); break;
   case '*conn_info_r': yield cmd_conn_info_r(opt); break;
-  case '!msg': yield cmd_msg(opt); break;
   case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   case '!req': yield cmd_req(opt); break;
@@ -1447,7 +1422,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   }
 });
 
-// XXX: need test
+// XXX NOW: need test
 function extend_loop(c){
   assert(c.loop);
   assert(t_pre_process);
@@ -1502,7 +1477,8 @@ const cmd_run = event=>etask(function*cmd_run(){
     'invalid t_i '+t_i+' event');
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
-  if (t_pre_process){
+  // XXX NOW: rm this temporary cod and move into each cmd
+  if (t_pre_process && c.cmd[0]!='!'){
     assert.equal(t_depth, 0);
     if (c.loop)
       c = extend_loop(c);
@@ -1782,6 +1758,7 @@ describe('peer-relay', function(){
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
         t('ba>bd>*conn_info_r:ws', `ba>fwd(bd>*conn_info_r(ws))`);
+        if (0){ // XXX NOW: create similar tests for !req or rm
         t('ab>!msg(body:hi !msg)', `ab>!msg(body(hi) !msg)`);
         t('ab>!msg(body:hi)', `ab>!msg(body(hi) !msg) ab>msg(body(hi))`);
         t('ab>!msg(body:hi msg)', `ab>!msg(body(hi) !msg) ab>msg(body(hi))`);
@@ -1791,6 +1768,7 @@ describe('peer-relay', function(){
           ab<fwd(ac<msg(body(hi)))`);
         t('ab,bc>!msg(body:hi)', `ac>!msg(body(hi) !msg)
           ab>fwd(ac>msg(body(hi))) bc>fwd(ac>msg(body(hi)))`);
+        }
         t('ab>cd>msg(body:hi)', `ab>fwd(cd>msg(body(hi)))`);
         t('ab>cd<msg(body:hi)', `ab>fwd(cd<msg(body(hi)))`);
         t('ab<cd>msg(body:hi)', `ab<fwd(cd>msg(body(hi)))`);
