@@ -7,6 +7,8 @@ import xerr from '../util/xerr.js';
 import xescape from '../util/escape.js';
 import date from '../util/date.js';
 import etask from '../util/etask.js';
+import xlog from '../util/xlog.js';
+const log = xlog('req_handler');
 const b2s = util.buf_to_str, assign = Object.assign;
 const RES_TIMEOUT = 20*date.ms.SEC;
 
@@ -151,7 +153,10 @@ function req_handler_cb(msg){
     res = new Res({req_handler, from: msg.from, req_id, stream: type!='req'});
     util.set(nodes, [id, 'req_id', req_id], {res});
   }
-  res.ack.push(seq);
+  if (res.ack.find(s=>s==seq)!==undefined)
+    log('duplicated seq '+seq);
+  else
+    res.ack.push(seq);
   if (msg.ack)
     res.clr_timeout(msg.ack);
   if (ReqHandler.t.req_hook) // XXX NOW: move to emit_ooo

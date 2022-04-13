@@ -27,7 +27,10 @@ function res_handler(msg){
     return log('invalid seq '+seq);
   log.debug('msg %s', dbg_msg(msg));
   let req = reqs[req_id].req;
-  req.ack.push(seq);
+  if (req.ack.find(s=>s==seq)!==undefined)
+    log('duplicated seq '+seq);
+  else
+    req.ack.push(seq);
   if (type=='res')
     req.close();
   else if (msg.ack)
