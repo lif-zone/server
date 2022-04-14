@@ -134,6 +134,12 @@ function dir_str(s, d, dir){ return dir=='>' ? s+d+'>' : d+s+'<'; }
 function dir_c(c){ return dir_str(c.s, c.d, c.dir); }
 function rev_c(c){ return rev_trim(dir_str(c.s, c.d, c.dir)); }
 
+function loop_str(loop){
+  let s = loop[0] ? loop[0].s : '';
+  loop.forEach(o=>s+=o.d);
+  return s;
+}
+
 function set_orig(c, orig){
   c.meta.orig = c.orig;
   c.orig = orig;
@@ -1253,7 +1259,16 @@ const cmd_req = opt=>etask(function*req(){
 });
 
 const cmd_res = opt=>etask(function*req(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s, d;
+  if (t_pre_process && c.loop)
+  {
+    c.s = c.loop[0].s;
+    c.d = c.loop[c.loop.length-1].d;
+    c.dir = c.loop[0].dir;
+  }
+  s = t_nodes[c.s];
+  d = t_nodes[c.d];
+  assert(t_pre_process||!c.loop);
   let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
   let type = c.cmd.replace(/[!*]/, ''), cmd='', seq, ack, e=call;
   let ooo=false, dup=false, close=false;
@@ -1275,13 +1290,19 @@ const cmd_res = opt=>etask(function*req(){
     }
   });
   assert(call || !e, 'e only avail for call mode');
-
   if (t_pre_process){
-    set_orig(c, build_cmd_o(c.meta.cmd, {id, cmd, seq, ack, body,
-      '!e': !call ? undefined : true, ooo, dup, close}));
+    set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, cmd, seq, ack,
+      body, '!e': !call ? undefined : true, ooo, dup, close}));
     if (e){
-      let s = t_mode.msg ? build_cmd_o(dir_c(c)+'msg',
-        {type, id, cmd, seq, ack, body}) : '';
+      let s = '';
+      if (c.loop){
+        s = t_mode.msg ? build_cmd(loop_str(c.loop)+'>fwd',
+          build_cmd_o(dir_c(c)+'msg', {type, id, cmd, seq, ack, body})) : '';
+      }
+      else {
+        s = t_mode.msg ? build_cmd_o(dir_c(c)+'msg',
+          {type, id, cmd, seq, ack, body}) : '';
+      }
       s += t_mode.req ? (s ? ' ' : '')+
         build_cmd_o(dir_c(c)+'*'+type, {id, cmd, seq, ack, body, close}) : '';
       push_cmd(s);
@@ -1754,7 +1775,7 @@ describe('peer-relay', function(){
           bc<fwd(ac<msg(type(res) cmd(conn_info) body(ws)))
           ab<fwd(ac<msg(type(res) cmd(conn_info) body(ws)))
           ac<*conn_info_r(ws)`);
-        if (0) // XXX TODO
+        if (0) // XXX NOW: TODO
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
         t('ba>bd>*conn_info_r:ws', `ba>fwd(bd>*conn_info_r(ws))`);
@@ -1817,11 +1838,18 @@ describe('peer-relay', function(){
           `ab>!res(id(r0) cmd(test) seq(1) ack(2) body(ping) !e)
           ab>msg(id(r0) type(res) cmd(test) seq(1) ack(2) body(ping))
            ab>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
-        if (0) // XXX NOW: TODO
+        t('abc>!res(id:r0 !e)', `ac>!res(id(r0) !e)`);
+        t('abc<!res(id:r0 !e)', `ac<!res(id(r0) !e)`);
+        _t('mode(msg req)', 'abc>!res(id:r0)', `ac>!res(id(r0) !e)
+          ab>fwd(ac>msg(id(r0) type(res))) bc>fwd(ac>msg(id(r0) type(res)))
+          ac>*res(id(r0))`);
+        _t('mode(msg req)', 'abc<!res(id:r0)', `ac<!res(id(r0) !e)
+          cb>fwd(ac<msg(id(r0) type(res))) ba>fwd(ac<msg(id(r0) type(res)))
+          ac<*res(id(r0))`);
         _t('mode(msg req)', 'abc>!res(id:r0 cmd:test seq:1 ack:2 body:ping)',
           `ac>!res(id(r0) cmd(test) seq(1) ack(2) body(ping) !e)
           ab>fwd(ac>msg(id(r0) type(res) cmd(test) seq(1) ack(2) body(ping)))
-          bc>fwd(bc>msg(id(r0) type(res) cmd(test) seq(1) ack(2) body(ping)))
+          bc>fwd(ac>msg(id(r0) type(res) cmd(test) seq(1) ack(2) body(ping)))
            ac>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
         t('a>*fail(id:r1 error:timeout)', `a>*fail(id(r1) error(timeout))`);
         _t('mode:req', 'ab>find:a', `ab>*find(a)`);
