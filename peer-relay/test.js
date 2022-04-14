@@ -1259,15 +1259,7 @@ const cmd_req = opt=>etask(function*req(){
 });
 
 const cmd_res = opt=>etask(function*req(){
-  let {c, event} = opt, s, d;
-  if (t_pre_process && c.loop)
-  {
-    c.s = c.loop[0].s;
-    c.d = c.loop[c.loop.length-1].d;
-    c.dir = c.loop[0].dir;
-  }
-  s = t_nodes[c.s];
-  d = t_nodes[c.d];
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(t_pre_process||!c.loop);
   let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
   let type = c.cmd.replace(/[!*]/, ''), cmd='', seq, ack, e=call;
