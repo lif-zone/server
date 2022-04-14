@@ -2020,16 +2020,16 @@ describe('peer-relay', function(){
         ab<connected ab>find:a ab<find_r:a ab<find:b
         ab>find_r:ba - node(c wss) bc>!connect(wss !r)
         bc>connect(wss !r) bc<connected bc>find:b bc<find_r:b bc<find:c
-        bc>find_r:cab abc<fwd(ac<msg(type:req cmd(conn_info)))
-        abc>fwd(ac>msg(type:res cmd(conn_info))) -
+        bc>find_r:cab abc<msg(type:req cmd(conn_info))
+        abc>msg(type:res cmd(conn_info)) -
         abc>!req(id:r0 body:ping res:ping_r)`);
       t('msg,req', `
         setup(msg req) node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a
         ab<find:b ab>find_r:ba - node(c wss) bc>!connect(wss !r)
         bc>connect(wss !r) bc<connected bc>find:b bc<find_r:b bc<find:c
-        bc>find_r:cab abc<fwd(ac<msg(type:req cmd(conn_info)))
-        ca>*conn_info abc>fwd(ac>msg(type:res cmd(conn_info))) ca<*conn_info_r
+        bc>find_r:cab abc<msg(type:req cmd(conn_info))
+        ca>*conn_info abc>msg(type:res cmd(conn_info)) ca<*conn_info_r
         abc>!req(id:r0 body:ping res:ping_r)`);
     });
     describe('failure', ()=>{
@@ -2472,14 +2472,14 @@ describe('peer-relay', function(){
       t('msg', `mode:msg node(a wrtc) node(b wrtc wss) node(c wrtc wss) -
         ab>!connect:wss ab>find:a ab<find_r:a ab<find:b ab>find_r:ba -
         bc>!connect:wrtc bc>find:b bc<find_r:b bc<find:c
-        bc>find_r:cab cba>fwd(ca>msg(type:req cmd:conn_info))
-        cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc)) ca>connect(wrtc)
+        bc>find_r:cab cba>msg(type:req cmd:conn_info)
+        cba<msg(type:res cmd:conn_info body:wrtc) ca>connect(wrtc)
         ac>find:a ac<find_r:abc ac<find:c ac>find_r:cab`);
       t('msg,req', `mode(msg req) node(a wrtc) node(b wrtc wss)
         node(c wrtc wss) - ab>!connect:wss ab>find:a ab<find_r:a
         ab<find:b ab>find_r:ba - bc>!connect:wrtc bc>find:b bc<find_r:b
-        bc<find:c bc>find_r:cab cba>fwd(ca>msg(type:req cmd:conn_info))
-        ca>*conn_info cba<fwd(ca<msg(type:res cmd:conn_info body:wrtc))
+        bc<find:c bc>find_r:cab cba>msg(type:req cmd:conn_info)
+        ca>*conn_info cba<msg(type:res cmd:conn_info body:wrtc)
         ca<*conn_info_r:wrtc ca>connect(wrtc) ac>find:a ac<find_r:abc
         ac<find:c ac>find_r:cab`);
     });
@@ -2491,14 +2491,14 @@ describe('peer-relay', function(){
       t('msg', `mode:msg node(a wss) node(b wss) node(c wss) - ab>!connect
         ab>find:a ab<find_r:a ab<find:b
         ab>find_r:ba - bc>!connect bc>find:b bc<find_r:b
-        bc<find:c bc>find_r:cab cba>fwd(ca>msg(type:req cmd:conn_info))
-        cba<fwd(ca<msg(type:res cmd:conn_info body:ws)) ca>connect(wss)
+        bc<find:c bc>find_r:cab cba>msg(type:req cmd:conn_info)
+        cba<msg(type:res cmd:conn_info body:ws) ca>connect(wss)
         ac>find:a ac<find_r:abc ac<find:c ac>find_r:cab`);
       t('msg,req', `mode(msg req) node(a wss) node(b wss)
         node(c wss) - ab>!connect ab>find:a ab<find_r:a
         ab<find:b ab>find_r:ba - bc>!connect bc>find:b bc<find_r:b
-        bc<find:c bc>find_r:cab cba>fwd(ca>msg(type:req cmd:conn_info))
-        ca>*conn_info cba<fwd(ca<msg(type:res cmd:conn_info body:ws))
+        bc<find:c bc>find_r:cab cba>msg(type:req cmd:conn_info)
+        ca>*conn_info cba<msg(type:res cmd:conn_info body:ws)
         ca<*conn_info_r:ws ca>connect:wss ac>find:a ac<find_r:abc
         ac<find:c ac>find_r:cab`);
     });
@@ -2649,15 +2649,14 @@ describe('peer-relay', function(){
       dba<msg(type:res cmd:conn_info body:ws)
       da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
   });
-    // XXX NOW: conn_info_r should auto-return supported interfaces
-    // XXX NOW: rm all fwd
-    /* XXX REVIEW derry TODO:
-      ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
-      ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)`);
-      ==>
-      ab>!req(body:ping)
-      ab>!req(body:ping !e) ab>msg(type:req body:ping) ab>*req(body:ping) -
-     */
+  /* XXX REVIEW derry TODO:
+    ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
+    ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)`);
+    ==>
+    ab>!req(body:ping)
+    ab>!req(body:ping !e) ab>msg(type:req body:ping) ab>*req(body:ping) -
+   */
+  // XXX NOW: rm all fwd
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
