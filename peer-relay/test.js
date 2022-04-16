@@ -1375,6 +1375,7 @@ const cmd_fail = opt=>etask(function*req(){
 });
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
+  // XXX NOW: simplify implementation
   let {c, event} = opt;
   let a = xtest.test_parse(c.arg);
   assert(a.length==1, 'invalid fwd '+c.orig);
@@ -1515,6 +1516,7 @@ const cmd_run = event=>etask(function*cmd_run(){
     if (c.loop)
       c = extend_loop(c);
   }
+  xerr.notice('XXX orig %s', c.orig);
   xerr.notice('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '');
@@ -1749,6 +1751,7 @@ describe('peer-relay', function(){
         t('ab>fwd(ab>*find(a))', `ab>fwd(ab>*find(a))`);
         t('ab>*find:a', `ab>*find(a)`);
         t('ab<*find_r:a', `ab<*find_r(a)`);
+        if (0){ // XXX NOW: rewrite (and/or make find shortcut for msg
         t('ab,bc>fwd(ac>*find(a))', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
         t('ab,bc<fwd(ac<*find(a))', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
         t('ab,bc>*find(a)', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
@@ -1762,6 +1765,8 @@ describe('peer-relay', function(){
           ab<fwd(ad>*find(a))`);
         t('abc>*find(a)', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
         t('abc<*find(a)', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
+        }
+        if (0){ // XXX NOW: rewrite (and/or make find shortcut for msg
         t('ab>fwd(ac>*conn_info(r(ws)))', `ab>fwd(ac>*conn_info)
           ab<fwd(ac<*conn_info_r(ws))`);
         t('ab,bc>fwd(ac>*conn_info(r(ws)))', `ab>fwd(ac>*conn_info)
@@ -1773,6 +1778,7 @@ describe('peer-relay', function(){
         t('abc>fwd(ac>*conn_info(r(ws)))', `ab>fwd(ac>*conn_info)
           bc>fwd(ac>*conn_info) bc<fwd(ac<*conn_info_r(ws))
           ab<fwd(ac<*conn_info_r(ws))`);
+        }
         t('abc>*conn_info(r(ws))', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)
           bc<fwd(ac<*conn_info_r(ws)) ab<fwd(ac<*conn_info_r(ws))`);
         t('abc>*conn_info', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)`);
@@ -2638,7 +2644,11 @@ describe('peer-relay', function(){
     // ==>
     // ab<fwd(bd>conn_info_r) ac>fwd(bd>conn_info_r)
     // ab>find --> ab>msg(cmd:find ...)
-    // XXX: prepare case of sending 2 packets
+    // XXX derry: during test, allow to use mode:sorted for find response
+    // (default mode will be sorted. create just a few examples unsorted)
+    // XXX: rewrite 3_nodes (and 2_nodes)
+    // XXX derry: support syntax: a=node(wss) b=node(wss) c=node(wss)
+    // XXX derry: rm sending packet thorugh mutliple paths
     t('xxx_derry_4_nodes', `mode(msg req) node(a wss) node(b wss) node(c wss)
       node(d wss) ab>!connect(find(a ba)) bc>!connect(find(b cab))
       abc<conn_info ac<connect(find(cab abc)) - cd>!connect(find(c dcba))
@@ -2648,6 +2658,17 @@ describe('peer-relay', function(){
       dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
       dba<msg(type:res cmd:conn_info body:ws)
       da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
+    if (0) // XXX derry: TODO (4_nodes that is from 3_nodes)
+    t('3_nodes_wss', `setup(3_nodes_wss) d=node(wss)
+      cd>!connect(find(c dcba))
+      bcd<conn_info bac>fwd(bd>msg(type:res cmd:conn_info body:ws))
+      db>connect(find(dcba badc)) dba>conn_info(!r)
+      cd<fwd(da>msg(type(req) cmd(conn_info)))
+      dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
+      dba<msg(type:res cmd:conn_info body:ws)
+      da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
+    if (0) // XXX derry: TODO
+    t('xxx_derry_4_nodes', `mode(msg req) setup(4_nodes_wss)`);
   });
   /* XXX REVIEW derry TODO:
     ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
