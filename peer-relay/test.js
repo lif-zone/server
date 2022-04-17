@@ -2690,9 +2690,9 @@ describe('peer-relay', function(){
       abd<conn_info ad<connect(find(abcd abcd))`);
     if (0) // XXX: NOW FIXME
     t('4_nodes_req', `setup(4_nodes_wss)
-      ab>!req(body:ping res:png_r) -
-      ac>!req(body:ping res:png_r) -
-      ad>!req(body:ping res:png_r) -
+      ab>!req(body:ping res:ping_r) -
+      ac>!req(body:ping res:ping_r) -
+      ad>!req(body:ping res:ping_r) -
     `);
     t = (name, test)=>t_roles(name, 'abcdef', test);
     /* XXX derry BUG: eabc>!req(id:r2 body:ping res:ping_r) -
