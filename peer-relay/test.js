@@ -30,6 +30,7 @@ xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
 let t_nodes = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id, t_ack;
+let t_reprocess;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
     priv: 'ba186102e13ec32e5273a30df6da2b6c9428258b4ea83ac88df7322e7645b864a'+
@@ -158,6 +159,15 @@ function _push_cmd(a){
 }
 
 function push_cmd(cmd){ _push_cmd(xtest.test_parse(cmd)); }
+function set_push_cmd(c, cmd){
+  let a = xtest.test_parse(cmd);
+  if (!a.length)
+    return;
+  t_cmds[t_i-1] = a[0];
+  a.shift();
+  _push_cmd(a);
+  t_reprocess = true;
+}
 
 function is_fake(p){ return t_role!=p; }
 
@@ -1061,12 +1071,18 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
   if (t_pre_process){
     if (basic){
       let o = {ws: !!ws, wrtc: !!wrtc};
-      if (t_mode.req && t_mode.msg){
-        // XXX: fix extending loops to be inside cmd_conn_info and cleanup mess
-        set_orig(c, build_cmd_o(c.s+c.d+'>msg',
-          {type: 'res', cmd: 'conn_info', body: conn_opts(o)}));
-        push_cmd(build_cmd_o(c.s+c.d+'>*conn_info_r', o));
-      }
+      let s = '';
+      if (c.loop){
+        s += t_mode.msg ? build_cmd(loop_str(c.loop)+'>fwd',
+          build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'conn_info',
+          body: conn_opts(o)})) : '';
+      } else {
+       s += t_mode.msg ? build_cmd_o(dir_c(c)+'msg',
+         {type: 'res', cmd: 'conn_info', body: conn_opts(o)}) : '';
+     }
+     s += t_mode.req ? (s ? ' ' : '')+build_cmd_o(c.s+c.d+'>*conn_info_r', o)
+       : '';
+     set_push_cmd(c, s);
     }
     else
       set_orig(c, build_cmd(c.meta.cmd, c.arg));
@@ -1537,8 +1553,14 @@ const cmd_run = event=>etask(function*cmd_run(){
     event ? ' event '+event : '');
   t_i++;
   t_depth++;
+  t_reprocess = false;
   yield cmd_run_single({c, event});
-  t_cmds_processed.push(assign({}, c));
+  if (t_pre_process){
+    if (t_reprocess)
+      t_i--;
+    else
+      t_cmds_processed.push(assign({}, c));
+  }
   t_depth--;
 });
 
@@ -1798,10 +1820,10 @@ describe('peer-relay', function(){
           ac<*conn_info_r(ws)`);
         _t('mode(msg req)', 'ab>conn_info_r(ws wrtc)', `ab>msg(type(res)
           cmd(conn_info) body(ws wrtc)) ab>*conn_info_r(ws wrtc)`);
-        if (0) // XXX TODO NOW
         _t('mode(msg req)', 'abc>conn_info_r(ws)', `
-          ab>fwd(ac>msg(type(res) cmd(conn_info)))
-          bc>fwd(ac>msg(type(res) cmd(conn_info))) ac>*conn_info_r(ws)`);
+          ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws)))
+          bc>fwd(ac>msg(type(res) cmd(conn_info) body(ws)))
+          ac>*conn_info_r(ws)`);
         if (0) // XXX NOW: TODO
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
