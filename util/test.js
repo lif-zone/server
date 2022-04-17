@@ -3503,6 +3503,8 @@ describe('test_lib', ()=>{
       t('bc>!', {cmd: 'bc>!'}, 4);
       t('bc>!d', {cmd: 'bc>!d'}, 5);
       t('bc>()', {cmd: 'bc>'}, 5);
+      t('a=b', {cmd: 'a=b'}, 3);
+      t('a=b(c)', {cmd: 'a=b', arg: 'c'}, 6);
       t('bc>(hc hget)', {cmd: 'bc>', arg: 'hc hget'}, 12);
       t('bc>d(hc hget)', {cmd: 'bc>d', arg: 'hc hget'}, 13);
       t('ab,cd>e', {cmd: 'ab,cd>e'}, 7);
@@ -3645,6 +3647,7 @@ describe('test_lib', ()=>{
       t('ab>!c', {s: 'a', d: 'b', dir: '>', cmd: '!c'});
       t('ab>!c(d)', {s: 'a', d: 'b', dir: '>', cmd: '!c(d)'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
+      t('a=b(c)', {s: 'a', d: '', dir: '=', cmd: 'b(c)'});
       t('ab,bc>d', {s: 'a', d: 'c', dir: '>', loop: [
         {s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>'}], cmd: 'd'});
       t('bc,ab>d', {loop: [{s: 'b', d: 'c', dir: '>'},
@@ -3670,6 +3673,7 @@ describe('test_lib', ()=>{
         {message: exp}); };
       t('>', 'invalid ^^^>');
       t(',a>e', 'invalid ^^^,a>e');
+      t('ab=c', 'invalid ab^^^=c');
       t('ab,c>e', 'invalid ab,c^^^>e');
       t('ab,cde>f', 'invalid ab,cd^^^e>f');
       t('abc,de>f', 'invalid abc^^^,de>f');

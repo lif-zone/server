@@ -836,15 +836,15 @@ E.test_run_plugin = function(a, cb){
 };
 
 E.parse_cmd_dir = function(s){
-  let _d = s.search(/[<>]/);
+  let _d = s.search(/[<>=]/);
   if (_d==-1)
     return {cmd: s};
   let loop = [], dir = s[_d], a='', b='', comma, no_comma;
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
-    assert_invalid(/[a-z,<>]/i.test(ch), s, i);
-    if (/[<>,]/.test(ch))
+    assert_invalid(/[a-z,<>=]/i.test(ch), s, i);
+    if (/[<>=,]/.test(ch))
     {
       if (ch==',')
       {
@@ -857,15 +857,17 @@ E.parse_cmd_dir = function(s){
         assert_invalid(a&&b, s, i);
         assert_invalid(loop[loop.length-1].s && loop[loop.length-1].d, s, i);
       }
-      let sd = dir=='>' ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      assert_invalid(dir!='=' || !b, s, i);
+      let sd = /[>=]/.test(dir) ? {s: a, d: b, dir} : {s: b, d: a, dir};
       loop.push({...sd});
       a = b = '';
     }
     else if (a && b)
     {
-      assert_invalid(!comma, s, i);
       no_comma = true;
-      let sd = dir=='>' ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      assert_invalid(!comma, s, i);
+      assert_invalid(dir!='=' || !b, s, i);
+      let sd = /[>=]/.test(dir) ? {s: a, d: b, dir} : {s: b, d: a, dir};
       loop.push({...sd});
       a = b;
       b = ch;
@@ -898,7 +900,7 @@ E.plugin_cmd_dir = function(o){
   for (let i in o)
     delete o[i];
   assign(o, t, {arg: o2.arg, orig: o2.orig});
-  assign(o.meta||{}, o2.meta);
+  o.meta = assign(o.meta||{}, o2.meta);
   return o;
 };
 
