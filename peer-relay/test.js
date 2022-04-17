@@ -310,9 +310,9 @@ function assert_missing_event(c){
   if (c.fwd)
     s = c.fwd[2]=='>' ? t_nodes[c.fwd[0]] : t_nodes[c.fwd[1]];
   if (c.cmd[0]=='*' && (t_mode.msg || !t_mode.req))
-    assert(!s.t.fake || !d || d.t.fake, 'zzz missing event for '+c.orig);
+    assert(!s.t.fake || !d || d.t.fake, 'missing event for '+c.orig);
   else
-    assert(s.t.fake, 'missing event for '+c.orig);
+    assert(s.t.fake, 'missing event for '+c.fwd+' '+c.orig);
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
@@ -2652,12 +2652,9 @@ describe('peer-relay', function(){
     t('xxx_derry_4_nodes', `mode(msg req) node(a wss) node(b wss) node(c wss)
       node(d wss) ab>!connect(find(a ba)) bc>!connect(find(b cab))
       abc<conn_info ac<connect(find(cab abc)) - cd>!connect(find(c dcba))
-      bcd<conn_info bac>fwd(bd>msg(type:res cmd:conn_info body:ws))
-      db>connect(find(dcba badc)) dba>conn_info(!r)
-      cd<fwd(da>msg(type(req) cmd(conn_info)))
-      dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
-      dba<msg(type:res cmd:conn_info body:ws)
-      da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
+      bcd<conn_info db>connect(find(dcba badc))
+      dba>conn_info(!r) dca<msg(type:res cmd:conn_info body:ws)
+      da<*conn_info_r:ws da>connect(find(dcba abcd))`);
     if (0) // XXX derry: TODO (4_nodes that is from 3_nodes)
     t('3_nodes_wss', `setup(3_nodes_wss) d=node(wss)
       cd>!connect(find(c dcba))

@@ -17,7 +17,7 @@ export default class Router extends EventEmitter {
     let {channels, id, wallet} = opt;
     this.wallet = wallet;
     this.id = id;
-    this.concurrency = 2;
+    this.concurrency = 1;
     this.maxHops = 20;
     // XXX: rm _ from properites + methods
     // XXX: memory leak - no cleanup for all
@@ -66,14 +66,16 @@ export default class Router extends EventEmitter {
       _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
     let closests = _this._channels.closest(s2b(msg.to), 20)
-    .filter(c=>msg.path.indexOf(b2s(c.id))==-1)
-    .filter((_, index) => index < _this.concurrency);
+    .filter(c=>msg.path.indexOf(b2s(c.id))==-1);
     if (msg.to in _this._paths)
     {
       let preferred = _this._channels.closest(s2b(_this._paths[msg.to]), 1)[0];
       if (preferred != null && closests.indexOf(preferred)==-1)
         closests.unshift(preferred);
     }
+    debugger;
+    closests = closests.filter((_, index) => index < _this.concurrency);
+    assert(closests.length<=1);
     for (let channel of closests)
     {
       // TODO BUG Sometimes the WS on closest in not in the ready state
