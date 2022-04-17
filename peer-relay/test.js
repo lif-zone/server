@@ -2706,8 +2706,8 @@ describe('peer-relay', function(){
       cd>!connect(find(c cd)) - bc>!connect(find(bcd abcd)) -
       ef>!connect(find(e ef)) - ea>!connect(find(abe abef)) -
       eab>!req(id:r1 body:ping res:ping_r) -
-      ec>!req(id:r3 body:ping res:ping_r !e)
-      ef>fwd(ec>msg(id:r3 type:req body:ping)) 20s e>*fail(id:r3 error:timeout)
+      ec>!req(id:r2 body:ping res:ping_r !e)
+      ef>fwd(ec>msg(id:r2 type:req body:ping)) 20s e>*fail(id:r2 error:timeout)
     `);
   });
   /* XXX REVIEW derry TODO:
