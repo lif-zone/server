@@ -73,9 +73,7 @@ export default class Router extends EventEmitter {
       if (preferred != null && closests.indexOf(preferred)==-1)
         closests.unshift(preferred);
     }
-    debugger;
-    closests = closests.filter((_, index) => index < _this.concurrency);
-    assert(closests.length<=1);
+    closests = closests.slice(0, 1);
     for (let channel of closests)
     {
       // TODO BUG Sometimes the WS on closest in not in the ready state
