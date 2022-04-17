@@ -67,15 +67,13 @@ export default class Router extends EventEmitter {
     msg.path.push(b2s(_this.id));
     let closests = _this._channels.closest(s2b(msg.to), 20)
     .filter(c=>msg.path.indexOf(b2s(c.id))==-1);
-    if (msg.to in _this._paths)
-    {
+    if (closests[0] && b2s(closests[0].id)!=msg.to && msg.to in _this._paths){
       let preferred = _this._channels.closest(s2b(_this._paths[msg.to]), 1)[0];
-      if (preferred != null && closests.indexOf(preferred)==-1)
+      if (preferred)
         closests.unshift(preferred);
     }
     closests = closests.slice(0, 1);
-    for (let channel of closests)
-    {
+    for (let channel of closests){
       // TODO BUG Sometimes the WS on closest in not in the ready state
       yield channel.send(msg);
       if (b2s(channel.id)==(typeof msg.to=='string' ? msg.to : b2s(msg.to)))

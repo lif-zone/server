@@ -722,6 +722,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     let fwd = normalize(c.fwd);
     s = t_nodes[fwd[0]];
     d = t_nodes[fwd[1]];
+    msg.path = [b2s(s.id)];
   }
   if (s.t.fake && !d.t.fake)
   {
@@ -805,8 +806,7 @@ function cmd_setup(opt){
     case '4_nodes_wss':
       M(`mode(msg req) setup(3_nodes_wss) d=node(wss)
       cd>!connect(find(c dcba)) bcd<conn_info db>connect(find(dcba badc))
-      dba>conn_info(!r) dca<msg(type:res cmd:conn_info body:ws)
-      da<*conn_info_r:ws da>connect(find(dcba abcd))`);
+      dba>conn_info da>connect(find(dcba abcd))`);
       break;
     default: assert(false, 'unknown macro '+m.cmd);
     }
@@ -1547,10 +1547,9 @@ const cmd_run = event=>etask(function*cmd_run(){
     if (c.loop)
       c = extend_loop(c);
   }
-  xerr.notice('XXX orig %s', c.orig);
-  xerr.notice('%scmd %s: %s%s', ' '.repeat(t_depth), t_i,
+  xerr.notice('%scmd %s: %s%s orig %s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
-    event ? ' event '+event : '');
+    event ? ' event '+event : '', c.orig);
   t_i++;
   t_depth++;
   t_reprocess = false;
@@ -2663,9 +2662,9 @@ describe('peer-relay', function(){
     // (default mode will be sorted. create just a few examples unsorted)
     // XXX derry: rm sending packet thorugh mutliple paths
     t('4_nodes_wss', `setup(4_nodes_wss)`);
-    t('xxx_derry', `setup(3_nodes_wss) d=node(wss)
-      cd>!connect(find(c dcba)) bcd<conn_info db>connect(find(dcba badc))
-      dba>conn_info(!r) dca<conn_info_r(ws) da>connect(find(dcba abcd))`);
+    t('xxx_derry', `setup(3_nodes_wss) d=node(wss) cd>!connect(find(c dcba))
+      dcb>conn_info db>connect(find(dcba badc))
+      dba>conn_info da>connect(find(dcba abcd))`);
     if (0) // XXX: NOW FIXME
     t('4_nodes_req', `setup(4_nodes_wss)
       ab>!req(body:ping res:png_r) -
