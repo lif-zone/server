@@ -2714,14 +2714,6 @@ describe('peer-relay', function(){
       ef>fwd(ec>msg(id:r2 type:req body:ping)) 20s e>*fail(id:r2 error:timeout)
     `);
   });
-  /* XXX REVIEW derry TODO:
-    ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -
-    ab<!res(body:ping_r) ab<msg(type:res body:ping_r) ab<*res(body:ping_r)`);
-    ==>
-    ab>!req(body:ping)
-    ab>!req(body:ping !e) ab>msg(type:req body:ping) ab>*req(body:ping) -
-   */
-  // XXX NOW: rm all fwd
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
