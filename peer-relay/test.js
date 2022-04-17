@@ -1527,7 +1527,7 @@ function test_start(role){
   t_port = 4000;
   assert(!Object.keys(t_nodes).length, 'nodes exists on test start '+
     stringify(Object.keys(t_nodes)));
-  t_mode = {msg: false, req: false};
+  t_mode = {msg: true, req: true};
   t_mode_prev = [];
   t_req_id = 0;
   t_ack = {};
@@ -2628,13 +2628,13 @@ describe('peer-relay', function(){
     // (default mode will be sorted. create just a few examples unsorted)
     // XXX derry: support syntax: a=node(wss) b=node(wss) c=node(wss)
     // XXX derry: rm sending packet thorugh mutliple paths
-    t('xxx_derry', `mode(msg req) setup(3_nodes_wss) node(d wss)
+    t('4_nodes_wss', `setup(4_nodes_wss)`);
+    t('xxx_derry', `setup(3_nodes_wss) node(d wss)
       cd>!connect(find(c dcba)) bcd<conn_info db>connect(find(dcba badc))
       dba>conn_info(!r) dca<msg(type:res cmd:conn_info body:ws)
       da<*conn_info_r:ws da>connect(find(dcba abcd))`);
-    t('4_nodes_wss', `mode(msg req) setup(4_nodes_wss)`);
     if (0) // XXX: NOW FIXME
-    t('4_nodes_req', `mode(msg req) setup(4_nodes_wss)
+    t('4_nodes_req', `setup(4_nodes_wss)
       ab>!req(body:ping res:png_r) -
       ac>!req(body:ping res:png_r) -
       ad>!req(body:ping res:png_r) -
