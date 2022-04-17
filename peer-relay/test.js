@@ -2665,8 +2665,7 @@ describe('peer-relay', function(){
     t('4_nodes_wss', `setup(4_nodes_wss)`);
     t('xxx_derry', `setup(3_nodes_wss) d=node(wss)
       cd>!connect(find(c dcba)) bcd<conn_info db>connect(find(dcba badc))
-      dba>conn_info(!r) dca<msg(type:res cmd:conn_info body:ws)
-      da<*conn_info_r:ws da>connect(find(dcba abcd))`);
+      dba>conn_info(!r) dca<conn_info_r(ws) da>connect(find(dcba abcd))`);
     if (0) // XXX: NOW FIXME
     t('4_nodes_req', `setup(4_nodes_wss)
       ab>!req(body:ping res:png_r) -
