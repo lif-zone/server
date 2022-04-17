@@ -2693,9 +2693,6 @@ describe('peer-relay', function(){
       cb>!req(body:ping res:ping_r) - cd>!req(body:ping res:ping_r) -
       da>!req(body:ping res:ping_r) - db>!req(body:ping res:ping_r) -
       dc>!req(body:ping res:ping_r)`);
-    t('xxx_derry', `setup(3_nodes_wss) d=node(wss) cd>!connect(find(c dcba))
-      bcd<conn_info bd<connect(find(dcba badc))
-      abd<conn_info ad<connect(find(dcba abcd))`);
     t('xxx_derry_sorted', `setup(3_nodes_wss) conf:find_sorted d=node(wss)
       cd>!connect(find(c abcd)) bcd<conn_info bd<connect(find(abcd abcd))
       abd<conn_info ad<connect(find(abcd abcd))`);
@@ -2717,4 +2714,35 @@ describe('peer-relay', function(){
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
+  /* XXX derry: TODO
+  XX(`
+    0-1023 (2^10)
+    853
+    bootstrap 53 (+48 +294 385 403 +473 746 940)
+    853>53 connect
+    853>53 get_peer 853 (54-852)
+    53>473 get_peer 853 (473-852)
+    473>746 get_peer 853 (747-852)
+    473<746 found before:746 after:940
+    853>746 connect
+    853>940 connect
+    853>746 online
+    853>940 online
+    853>53 online
+
+    max out conn 10
+    [xxx      x                            x                                 x]
+    23 38 59 104 204 583 593
+    4.5 5.4 6 7 8 9 9.4
+    2^0 -- 2^10
+    ln(0) -- ln(10)
+    router: basic module you wrote
+    ring_connect: connect to left and right, and then update to "online"
+      and send to all connected an "online" msg
+    fast_route: connect up to 10 connections for "jumping" "DHT"
+    isp_route: connect to super nodes...
+
+  `);
+
+  */
 });

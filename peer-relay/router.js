@@ -66,7 +66,7 @@ export default class Router extends EventEmitter {
       _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
     let closests = _this._channels.closest(s2b(msg.to), 20)
-    .filter(c=>msg.path.indexOf(b2s(c.id))==-1);
+    .filter(c=>!msg.path.includes(b2s(c.id)));
     if (closests[0] && b2s(closests[0].id)!=msg.to && msg.to in _this._paths){
       let preferred = _this._channels.closest(s2b(_this._paths[msg.to]), 1)[0];
       if (preferred)
@@ -102,7 +102,7 @@ export default class Router extends EventEmitter {
   _onChannelAdded(channel){
     channel.on('message', this._on_channel_msg);
     // XXX: check if this can happen during test and add yield
-    while (this._queue.length > 0)
+    while (this._queue.length)
       this._send(this._queue.shift());
   }
   _onChannelRemoved = function(channel){
