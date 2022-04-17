@@ -781,10 +781,11 @@ function cmd_mode(opt){
 function cmd_conf(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   assert(!event, 'got unexpected '+event);
-  util.forEach(arg, m=>{
-    switch (m.cmd){
+  util.forEach(arg, a=>{
+    switch (a.cmd){
     case 'find_sorted': set_find_sorted(true); break;
-    default: assert(0, 'invalid conf '+m.cmd);
+    case 'peers_optimal': Node.t_peers_optimal = assert_int(a.arg); break;
+    default: assert(0, 'invalid conf '+a.cmd);
     }
   });
 }
@@ -1590,6 +1591,7 @@ function test_start(role){
   t_nonce = {};
   t_req = {};
   set_find_sorted(false);
+  Node.t_peers_optimal = undefined;
 }
 
 function set_find_sorted(sorted){
@@ -2556,7 +2558,7 @@ describe('peer-relay', function(){
     });
   });
   describe('4_nodes', function(){
-    const t = (name, test)=>t_roles(name, 'abcd', test);
+    let t = (name, test)=>t_roles(name, 'abcd', test);
     if (0) // XXX NOW: fixme
     describe('linear', ()=>{
       // XXX: support da<*conn_info:r
@@ -2683,7 +2685,7 @@ describe('peer-relay', function(){
     t('xxx_derry', `setup(3_nodes_wss) d=node(wss) cd>!connect(find(c dcba))
       bcd<conn_info bd<connect(find(dcba badc))
       abd<conn_info ad<connect(find(dcba abcd))`);
-    t('xxx_derry2', `setup(3_nodes_wss) conf:find_sorted d=node(wss)
+    t('xxx_derry_sorted', `setup(3_nodes_wss) conf:find_sorted d=node(wss)
       cd>!connect(find(c abcd)) bcd<conn_info bd<connect(find(abcd abcd))
       abd<conn_info ad<connect(find(abcd abcd))`);
     if (0) // XXX: NOW FIXME
@@ -2692,8 +2694,22 @@ describe('peer-relay', function(){
       ac>!req(body:ping res:png_r) -
       ad>!req(body:ping res:png_r) -
     `);
-    if (0) // XXX derry: TODO
-    t('xxx_derry_4_nodes', `mode(msg req) setup(4_nodes_wss)`);
+    t = (name, test)=>t_roles(name, 'abcdef', test);
+    /* XXX derry BUG: eabc>!req(id:r2 body:ping res:ping_r) -
+    a -> b -> c -> d
+    |
+    e
+    |
+    f
+    */
+    t('xxx_bug', `conf(peers_optimal(2)) a=node(wss) b=node(wss) c=node(wss)
+      d=node(wss) e=node(wss) f=node(wss) ab>!connect(find(a ba)) -
+      cd>!connect(find(c dc)) - bc>!connect(find(bdc cdab)) -
+      ef>!connect(find(e fe)) - ea>!connect(find(eab abef)) -
+      eab>!req(id:r1 body:ping res:ping_r) -
+      ec>!req(id:r2 body:ping res:ping_r !e)
+      ef>fwd(ec>msg(id:r2 type:req body:ping)) 20s e>*fail(id:r2 error:timeout)
+    `);
   });
   /* XXX REVIEW derry TODO:
     ab>!req(body:ping) ab>msg(type:req body:ping) ab>*req(body:ping) -

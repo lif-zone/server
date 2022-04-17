@@ -162,7 +162,7 @@ export default class Node extends EventEmitter {
   });
   _populate = ()=>etask({'this': this}, function*_populate(){
     let _this = this.this;
-    var optimal = 15;
+    var optimal = Node.t_peers_optimal||15;
     var closest = _this.canidates.closest(_this.id, optimal);
     for (var i = 0; i < closest.length &&
       _this.peers.count() + Object.keys(_this.pending).length < optimal; i++){
