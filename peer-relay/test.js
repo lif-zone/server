@@ -2680,12 +2680,12 @@ describe('peer-relay', function(){
     // XXX derry: during test, allow to use mode:sorted for find response
     // (default mode will be sorted. create just a few examples unsorted)
     t('4_nodes_wss', `setup(4_nodes_wss)`);
-    t('xxx_derry', `setup(3_nodes_wss) d=node(wss) dc<!connect(find(c dcba))
-      dcb>conn_info db>connect(find(dcba badc))
-      dba>conn_info da>connect(find(dcba abcd))`);
+    t('xxx_derry', `setup(3_nodes_wss) d=node(wss) cd>!connect(find(c dcba))
+      bcd<conn_info bd<connect(find(dcba badc))
+      abd<conn_info ad<connect(find(dcba abcd))`);
     t('xxx_derry2', `setup(3_nodes_wss) conf:find_sorted d=node(wss)
-      dc<!connect(find(c abcd)) dcb>conn_info db>connect(find(abcd abcd))
-      dba>conn_info da>connect(find(abcd abcd))`);
+      cd>!connect(find(c abcd)) bcd<conn_info bd<connect(find(abcd abcd))
+      abd<conn_info ad<connect(find(abcd abcd))`);
     if (0) // XXX: NOW FIXME
     t('4_nodes_req', `setup(4_nodes_wss)
       ab>!req(body:ping res:png_r) -
