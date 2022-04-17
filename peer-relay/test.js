@@ -771,38 +771,33 @@ function cmd_setup(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let M = s=>push_cmd(s+' - ');
   assert(!event);
+  if (!t_pre_process)
+    return;
   // XXX: proper assert setup params
   util.forEach(arg, m=>{
     switch (m.cmd){
     case '2_nodes':
-      if (!t_pre_process)
-        break;
       M(`mode:req node(a) node(b wss) - ab>!connect(find(a ba)) mode:pop`);
       break;
+    case '2_nodes_wss':
+      M(`mode(msg req) node(a wss) node(b wss) ab>!connect(find(a ba))
+        mode:pop`);
+      break;
     case '3_nodes_linear':
-      if (!t_pre_process)
-        break;
       M(`mode:req node:a node(b wss) node(c wss)
         ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<*conn_info
         ac>*conn_info_r mode:pop`);
       break;
     case '3_nodes_wss':
-      if (!t_pre_process)
-        break;
-      M(`mode:req node(a wss) node(b wss) node(c wss) -
-        ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<*conn_info
-        ac>*conn_info_r:ws ca>connect(wss find(cab abc)) mode:pop`);
+      M(`mode(msg req) setup(2_nodes_wss) node(c wss) bc>!connect(find(b cab))
+        abc<conn_info ac<connect(find(cab abc)) mode:pop`);
        break;
     case '4_nodes_linear':
-      if (!t_pre_process)
-        break;
       // XXX: support da<*conn_info:r
       M(`mode:req setup:3_nodes_linear node(d wss)
         cd>!connect(find(c dcba)) db>*conn_info db<*conn_info_r(ws)
         db>connect(find(dcba badc)) da>*conn_info da<*conn_info_r mode:pop`);
       break;
-    case 'msg': t_mode.msg = true; break;
-    case 'req': t_mode.req = true; break;
     default: assert(false, 'unknown macro '+m.cmd);
     }
   });
@@ -1995,15 +1990,15 @@ describe('peer-relay', function(){
     });
     // XXX: simplify with moving find to !connect
     describe('2_nodes', ()=>{
-      t('req', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
+      t('req', `mode:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
         ab>*find_r:ba - ab>!req(id:r0 body:ping res:ping_r !e)
         ab>*req(id:r0 body:ping) ab<*res(id:r0 body:ping_r)`);
-      t('msg', `setup:msg node:a node(b wss(port:4000)) ab>!connect(wss !r)
+      t('msg', `mode:msg node:a node(b wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a
         ab<find:b ab>find_r:ba - ab>!req(id:r0 body:ping res:ping_r !e)
         ab>msg(type:req id:r0 body:ping) ab<msg(type:res id:r0 body:ping_r)`);
-      t('msg,req', `setup(msg req) node:a node(b wss(port:4000))
+      t('msg,req', `mode(msg req) node:a node(b wss(port:4000))
         ab>!connect(wss !r) ab>connect(wss !r) ab<connected
         ab>find:a ab<find_r:a ab<find:b ab>find_r:ba -
         ab>!req(id:r0 body:ping res:ping_r !e) ab>msg(type:req id:r0 body:ping)
@@ -2015,14 +2010,14 @@ describe('peer-relay', function(){
       // t('fwd', `setup:3_nodes_linear ac>!req(id:r0 body:ping res:ping_r)
       //  abc>*req(id:r0 body:ping) abc<fwd(ac<*res(id:r0 body:ping_r))`);
       t('req', `
-        setup:req node:a node(b wss) ab>!connect(wss !r)
+        mode:req node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
         ab>*find_r:ba - node(c wss) bc>!connect(wss !r)
         bc>connect(wss !r) bc<connected bc>*find:b bc<*find_r:b bc<*find:c
         bc>*find_r:cab ca>*conn_info ca<*conn_info_r -
         ac>!req(id:r0 body:ping res:ping_r)`);
       t('msg', `
-        setup:msg node:a node(b wss) ab>!connect(wss !r) ab>connect(wss !r)
+        mode:msg node:a node(b wss) ab>!connect(wss !r) ab>connect(wss !r)
         ab<connected ab>find:a ab<find_r:a ab<find:b
         ab>find_r:ba - node(c wss) bc>!connect(wss !r)
         bc>connect(wss !r) bc<connected bc>find:b bc<find_r:b bc<find:c
@@ -2030,7 +2025,7 @@ describe('peer-relay', function(){
         abc>msg(type:res cmd(conn_info)) -
         abc>!req(id:r0 body:ping res:ping_r)`);
       t('msg,req', `
-        setup(msg req) node:a node(b wss) ab>!connect(wss !r)
+        mode(msg req) node:a node(b wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a
         ab<find:b ab>find_r:ba - node(c wss) bc>!connect(wss !r)
         bc>connect(wss !r) bc<connected bc>find:b bc<find_r:b bc<find:c
@@ -2081,7 +2076,7 @@ describe('peer-relay', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: add msg and msg,req versions
     describe('manual', ()=>{
-      t('req', `setup:req setup:2_nodes
+      t('req', `mode:req setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test body:b0 !e)
         ab>*req_start(id:r0 seq:0 cmd:test body:b0)
         ab<!res_start(id:r0 seq:0 ack:0 body:c0 !e)
@@ -2094,7 +2089,7 @@ describe('peer-relay', function(){
         ab>*req_end(id:r0 seq:2 ack:1 cmd:test body:b2)
         ab<!res_end(id:r0 seq:2 ack:2 body:c2 !e)
         ab<*res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
-      t('msg', `setup:msg setup:2_nodes
+      t('msg', `mode:msg setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test body:b0 !e)
         ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
         ab<!res_start(id:r0 seq:0 ack:0 body:c0 !e)
@@ -2107,7 +2102,7 @@ describe('peer-relay', function(){
         ab>msg(id:r0 type:req_end cmd:test ack:1 seq:2 body:b2)
         ab<!res_end(id:r0 seq:2 ack:2 body:c2 !e)
         ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)`);
-      t('msg,req', `setup(msg req) setup:2_nodes
+      t('msg,req', `mode(msg req) setup:2_nodes
         ab>!req_start(id:r0 seq:0 cmd:test body:b0 !e)
         ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
         ab>*req_start(id:r0 seq:0 cmd:test body:b0)
@@ -2128,7 +2123,7 @@ describe('peer-relay', function(){
         ab<*res_end(id:r0 seq:2 ack:2 cmd:test body:c2)`);
     });
     describe('auto', ()=>{
-      t('req', `setup:req setup:2_nodes
+      t('req', `mode:req setup:2_nodes
         ab>!req_start(id:r0 cmd:test body:b0 !e)
         ab>*req_start(id:r0 cmd:test body:b0)
         ab<!res_start(id:r0 body:c0 !e)
@@ -2141,7 +2136,7 @@ describe('peer-relay', function(){
         ab>*req_end(id:r0 cmd:test body:b2)
         ab<!res_end(id:r0 body:c2 !e)
         ab<*res_end(id:r0 cmd:test body:c2)`);
-      t('msg', `setup:msg setup:2_nodes
+      t('msg', `mode:msg setup:2_nodes
         ab>!req_start(id:r0 cmd:test body:b0 !e)
         ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
         ab<!res_start(id:r0 ack:0 body:c0 !e)
@@ -2154,7 +2149,7 @@ describe('peer-relay', function(){
         ab>msg(id:r0 type:req_end cmd:test ack:1 seq:2 body:b2)
         ab<!res_end(id:r0 ack:2 body:c2 !e)
         ab<msg(id:r0 type:res_end cmd:test seq:2 ack:2 body:c2)`);
-      t('msg,req', `setup(msg req) setup:2_nodes
+      t('msg,req', `mode(msg req) setup:2_nodes
         ab>!req_start(id:r0 cmd:test body:b0 !e)
         ab>msg(id:r0 type:req_start cmd:test seq:0 body:b0)
         ab>*req_start(id:r0 cmd:test body:b0)
@@ -2258,7 +2253,7 @@ describe('peer-relay', function(){
     describe('out_of_order', ()=>{
       describe('req', ()=>{
         const t = (name, test)=>t_roles(name, 'a', test);
-        t('req_normal', `setup:req setup:2_nodes
+        t('req_normal', `mode:req setup:2_nodes
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
           ab<*req_next(id:r0 seq:1 body:b1)
@@ -2268,7 +2263,7 @@ describe('peer-relay', function(){
           ab<*req_end(id:r0 seq:3 body:b3)
           a>*req_end(id:r0 seq:3 cmd:test body:b3)`);
         // XXX: how to test req_start arriving last?
-        t('req_rev', `setup:req setup:2_nodes
+        t('req_rev', `mode:req setup:2_nodes
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
           ab<*req_end(id:r0 seq:3 body:b3)
@@ -2279,7 +2274,7 @@ describe('peer-relay', function(){
           a>*req_next(id:r0 seq:1 cmd:test body:b1)
           a>*req_next(id:r0 seq:2 cmd:test body:b2)
           a>*req_end(id:r0 seq:3 cmd:test body:b3)`);
-        t('req_multi_next', `setup:req setup:2_nodes
+        t('req_multi_next', `mode:req setup:2_nodes
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
           ab<*req_next(id:r0 seq:5 body:b5)
@@ -2300,7 +2295,7 @@ describe('peer-relay', function(){
         // XXX: the last req_end(dup) should not be emitted. need to close
         // connection
         if (0) // XXX NOW: fixme (add xerr to expext errors)
-        t('req_dup', `setup:req setup:2_nodes
+        t('req_dup', `mode:req setup:2_nodes
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
           ab<*req_start(id:r0 seq:0 cmd:test body:b0)
@@ -2315,7 +2310,7 @@ describe('peer-relay', function(){
           a>*req_end(id:r0 seq:2 cmd:test body:b2 dup)
           `);
         if (0) // XXX NOW: fixme (add xerr to expext errors)
-        t('req_dup_ooo', `setup:req setup:2_nodes
+        t('req_dup_ooo', `mode:req setup:2_nodes
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
           ab<*req_next(id:r0 seq:2 body:b1)
@@ -2323,7 +2318,7 @@ describe('peer-relay', function(){
           ab<*req_next(id:r0 seq:2 body:b1)
           a>*req_next(id:r0 seq:2 cmd:test body:b1 ooo dup)
         `);
-        t('req_many', `setup:req setup:3_nodes_wss
+        t('req_many', `mode:req setup:3_nodes_wss
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
           ac<!req_start(id:r1 seq:0 cmd:test body:c0 emit_api)
@@ -2341,7 +2336,7 @@ describe('peer-relay', function(){
       });
       describe('res', ()=>{
         const t = (name, test)=>t_roles(name, 'a', test);
-        t('res_normal', `setup:req setup:2_nodes
+        t('res_normal', `mode:req setup:2_nodes
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_start(id:r0 seq:0 ack:0 body:c0)
           a>*res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
@@ -2349,7 +2344,7 @@ describe('peer-relay', function(){
           a>*res_next(id:r0 seq:1 cmd:test body:c1)
           ab<*res_end(id:r0 seq:2 ack body:c3)
           a>*res_end(id:r0 seq:2 cmd:test body:c3)`);
-        t('res_rev', `setup:req setup:2_nodes
+        t('res_rev', `mode:req setup:2_nodes
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_end(id:r0 seq:2 ack body:c3)
           a>*res_end(id:r0 seq:2 cmd:test body:c3 ooo)
@@ -2359,7 +2354,7 @@ describe('peer-relay', function(){
           a>*res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
           a>*res_next(id:r0 seq:1 cmd:test body:c1)
           a>*res_end(id:r0 seq:2 cmd:test body:c3)`);
-        t('res_multi_next', `setup:req setup:2_nodes
+        t('res_multi_next', `mode:req setup:2_nodes
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_start(id:r0 seq:0 ack:0 body:c0)
           a>*res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
@@ -2379,7 +2374,7 @@ describe('peer-relay', function(){
           ab<*res_end(id:r0 seq:6 ack body:c3)
           a>*res_end(id:r0 seq:6 cmd:test body:c3)`);
         if (0) // XXX NOW: fixme (add xerr to expext errors)
-        t('res_dup', `setup:req setup:2_nodes
+        t('res_dup', `mode:req setup:2_nodes
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_start(id:r0 seq:0 ack:0 body:c0)
           a>*res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
@@ -2394,7 +2389,7 @@ describe('peer-relay', function(){
           ab<*res_end(id:r0 seq:2 ack body:c3)
           a>*res_end(id:r0 seq:2 cmd:test body:c3 dup)`);
         if (0) // XXX NOW: fixme (add xerr to expext errors)
-        t('res_dup_ooo', `setup:req setup:2_nodes
+        t('res_dup_ooo', `mode:req setup:2_nodes
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_start(id:r0 seq:0 ack:0 body:c0)
           a>*res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
@@ -2402,7 +2397,7 @@ describe('peer-relay', function(){
           a>*res_next(id:r0 seq:2 cmd:test body:c1 ooo)
           ab<*res_next(id:r0 seq:2 ack body:c1)
           a>*res_next(id:r0 seq:2 cmd:test body:c1 ooo dup)`);
-        t('res_many', `setup:req setup:3_nodes_wss
+        t('res_many', `mode:req setup:3_nodes_wss
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_start(id:r0 seq:0 ack:0 body:b0)
           a>*res_start(id:r0 seq:0 ack:0 cmd:test body:b0)
@@ -2425,15 +2420,15 @@ describe('peer-relay', function(){
   // XXX: add boostrap support
   describe('2_nodes_ws', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
-    t('long', `setup:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
+    t('long', `mode:req node:a node(b wss(port:4000)) ab>!connect(wss !r)
       ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
       ab>*find_r:ba`);
-    t('short', `setup:req node:a node(b wss) ab>!connect(find(a ba))`);
-    t('req', `setup:req setup:2_nodes ab>!req(id:r0 body:ping res:ping_r)
+    t('short', `mode:req node:a node(b wss) ab>!connect(find(a ba))`);
+    t('req', `mode:req setup:2_nodes ab>!req(id:r0 body:ping res:ping_r)
       ab<!req(id:r1 body:ping res:ping_r)`);
-    t('msg', `setup:msg setup:2_nodes ab>!req(id:r0 body:ping res:ping_r)
+    t('msg', `mode:msg setup:2_nodes ab>!req(id:r0 body:ping res:ping_r)
       ab<!req(id:r1 body:ping res:ping_r)`);
-    t('msg,req', `setup(msg req) setup:2_nodes
+    t('msg,req', `mode(msg req) setup:2_nodes
       ab>!req(id:r0 body:ping res:ping_r) - ab<!req(id:r1 body:ping res:ping_r)
     `);
   });
@@ -2452,6 +2447,12 @@ describe('peer-relay', function(){
       ab>!connect(wrtc find(a ba)) - mode:pop
       ab>!req(id:r0 body:ping res:ping_r) - ab<!req(id:r1 body:ping res:ping_r)
     `);
+  });
+  describe('2_nodes_wss', function(){
+    const t = (name, test)=>t_roles(name, 'ab', test);
+    t('req', `mode:req setup:2_nodes_wss`);
+    t('msg', `mode:msg setup:2_nodes_wss`);
+    t('msg,req', `mode(msg req) setup:2_nodes_wss`);
   });
   describe('3_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcs', test);
@@ -2490,30 +2491,16 @@ describe('peer-relay', function(){
         ac<find:c ac>find_r:cab`);
     });
     describe('linear_wss', ()=>{
-      t('req', `mode:req node(a wss) node(b wss) node(c wss) -
-        ab>!connect(find(a ba)) - bc>!connect(find(b cab)) ac<*conn_info
-        ac>*conn_info_r:ws ca>connect(wss find(cab abc))`);
-      t('setup', `setup:3_nodes_wss`);
-      t('msg', `mode:msg node(a wss) node(b wss) node(c wss) - ab>!connect
-        ab>find:a ab<find_r:a ab<find:b
-        ab>find_r:ba - bc>!connect bc>find:b bc<find_r:b
-        bc<find:c bc>find_r:cab cba>msg(type:req cmd:conn_info)
-        cba<msg(type:res cmd:conn_info body:ws) ca>connect(wss)
-        ac>find:a ac<find_r:abc ac<find:c ac>find_r:cab`);
-      t('msg,req', `mode(msg req) node(a wss) node(b wss)
-        node(c wss) - ab>!connect ab>find:a ab<find_r:a
-        ab<find:b ab>find_r:ba - bc>!connect bc>find:b bc<find_r:b
-        bc<find:c bc>find_r:cab cba>msg(type:req cmd:conn_info)
-        ca>*conn_info cba<msg(type:res cmd:conn_info body:ws)
-        ca<*conn_info_r:ws ca>connect:wss ac>find:a ac<find_r:abc
-        ac<find:c ac>find_r:cab`);
+      t('req', `mode:req setup:3_nodes_wss`);
+      t('msg', `mode:msg setup:3_nodes_wss`);
+      t('msg,req', `mode(msg req) setup:3_nodes_wss`);
+      if (true) return; // XXX: TODO
+      t('star', `node(s wss) node:a node(b wss) as>!connect(find(a sa)) -
+        bs>!connect(find(bas sab)) bsa>*conn_info:r`);
+      t('star_wss', `node(s wss) node(a wss) node(b wss) -
+        as>!connect(find(a sa)) - bs>!connect(find(bas sab))
+        bsa>*conn_info(r:ws) ab<connect(find(bas abs))`);
     });
-    if (true) return; // XXX: TODO
-    t('star', `node(s wss) node:a node(b wss) as>!connect(find(a sa)) -
-      bs>!connect(find(bas sab)) bsa>*conn_info:r`);
-    t('star_wss', `node(s wss) node(a wss) node(b wss) -
-      as>!connect(find(a sa)) - bs>!connect(find(bas sab)) bsa>*conn_info(r:ws)
-      ab<connect(find(bas abs))`);
   });
   describe('4_nodes', function(){
     const t = (name, test)=>t_roles(name, 'abcd', test);
@@ -2637,33 +2624,14 @@ describe('peer-relay', function(){
         da>find_r:abcd ca>fwd(da>msg(type:req cmd:conn_info))`);
     });
     // XXX TODO derry:
-    // abc<fwd(ac<msg(type:req cmd(conn_info))) ac<*conn_info
-    // abc>fwd(ac>msg(type:res cmd(conn_info) body:ws)) ac>*conn_info_r:ws
-    // ==> abc<conn_info
-    // ab<fwd(bd>msg(type:res cmd:conn_info ack:0 body:ws))
-    // ==>
-    // ab<fwd(bd>conn_info_r) ac>fwd(bd>conn_info_r)
-    // ab>find --> ab>msg(cmd:find ...)
     // XXX derry: during test, allow to use mode:sorted for find response
     // (default mode will be sorted. create just a few examples unsorted)
-    // XXX: rewrite 3_nodes (and 2_nodes)
     // XXX derry: support syntax: a=node(wss) b=node(wss) c=node(wss)
     // XXX derry: rm sending packet thorugh mutliple paths
-    t('xxx_derry_4_nodes', `mode(msg req) node(a wss) node(b wss) node(c wss)
-      node(d wss) ab>!connect(find(a ba)) bc>!connect(find(b cab))
-      abc<conn_info ac<connect(find(cab abc)) - cd>!connect(find(c dcba))
-      bcd<conn_info db>connect(find(dcba badc))
+    t('xxx_derry_4_nodes', `mode(msg req) setup(3_nodes_wss) node(d wss)
+      cd>!connect(find(c dcba)) bcd<conn_info db>connect(find(dcba badc))
       dba>conn_info(!r) dca<msg(type:res cmd:conn_info body:ws)
       da<*conn_info_r:ws da>connect(find(dcba abcd))`);
-    if (0) // XXX derry: TODO (4_nodes that is from 3_nodes)
-    t('3_nodes_wss', `setup(3_nodes_wss) d=node(wss)
-      cd>!connect(find(c dcba))
-      bcd<conn_info bac>fwd(bd>msg(type:res cmd:conn_info body:ws))
-      db>connect(find(dcba badc)) dba>conn_info(!r)
-      cd<fwd(da>msg(type(req) cmd(conn_info)))
-      dca<msg(type:res cmd:conn_info body:ws) da<*conn_info_r:ws
-      dba<msg(type:res cmd:conn_info body:ws)
-      da>connect(find(dcba abcd)) ac<fwd(da>msg(type:req cmd:conn_info))`);
     if (0) // XXX derry: TODO
     t('xxx_derry_4_nodes', `mode(msg req) setup(4_nodes_wss)`);
   });
