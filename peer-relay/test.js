@@ -2628,7 +2628,7 @@ describe('peer-relay', function(){
     // (default mode will be sorted. create just a few examples unsorted)
     // XXX derry: support syntax: a=node(wss) b=node(wss) c=node(wss)
     // XXX derry: rm sending packet thorugh mutliple paths
-    t('xxx_derry_4_nodes', `mode(msg req) setup(3_nodes_wss) node(d wss)
+    t('xxx_derry', `mode(msg req) setup(3_nodes_wss) node(d wss)
       cd>!connect(find(c dcba)) bcd<conn_info db>connect(find(dcba badc))
       dba>conn_info(!r) dca<msg(type:res cmd:conn_info body:ws)
       da<*conn_info_r:ws da>connect(find(dcba abcd))`);
