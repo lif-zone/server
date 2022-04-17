@@ -778,6 +778,17 @@ function cmd_mode(opt){
   test_setup_mode();
 }
 
+function cmd_conf(opt){
+  let {c, event} = opt, arg = xtest.test_parse(c.arg);
+  assert(!event, 'got unexpected '+event);
+  util.forEach(arg, m=>{
+    switch (m.cmd){
+    case 'find_sorted': set_find_sorted(true); break;
+    default: assert(0, 'invalid conf '+m.cmd);
+    }
+  });
+}
+
 function cmd_setup(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let M = s=>push_cmd(s+' - ');
@@ -1450,6 +1461,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '-': yield cmd_ensure_no_events(opt); break;
   case 'setup': yield cmd_setup(opt); break;
   case 'mode': yield cmd_mode(opt); break;
+  case 'conf': yield cmd_conf(opt); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
   case 'connect': yield cmd_connect(opt); break;
@@ -1577,6 +1589,13 @@ function test_start(role){
   t_cmds_processed = [];
   t_nonce = {};
   t_req = {};
+  set_find_sorted(false);
+}
+
+function set_find_sorted(sorted){
+  Node.t_find_sort = sorted ? function(a, b){
+    return node_from_id(a.id).t.name.localeCompare(node_from_id(b.id).t.name);
+  } : null;
 }
 
 function test_setup_mode(){
@@ -2660,11 +2679,13 @@ describe('peer-relay', function(){
     // XXX TODO derry:
     // XXX derry: during test, allow to use mode:sorted for find response
     // (default mode will be sorted. create just a few examples unsorted)
-    // XXX derry: rm sending packet thorugh mutliple paths
     t('4_nodes_wss', `setup(4_nodes_wss)`);
-    t('xxx_derry', `setup(3_nodes_wss) d=node(wss) cd>!connect(find(c dcba))
+    t('xxx_derry', `setup(3_nodes_wss) d=node(wss) dc<!connect(find(c dcba))
       dcb>conn_info db>connect(find(dcba badc))
       dba>conn_info da>connect(find(dcba abcd))`);
+    t('xxx_derry2', `setup(3_nodes_wss) conf:find_sorted d=node(wss)
+      dc<!connect(find(c abcd)) dcb>conn_info db>connect(find(abcd abcd))
+      dba>conn_info da>connect(find(abcd abcd))`);
     if (0) // XXX: NOW FIXME
     t('4_nodes_req', `setup(4_nodes_wss)
       ab>!req(body:ping res:png_r) -

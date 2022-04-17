@@ -38,6 +38,8 @@ export default class Node extends EventEmitter {
     .on('req', (msg, res)=>{
         var target = new Buffer(s2b(msg.body.id));
         var closest = this.canidates.closest(target, 20);
+        if (Node.t_find_sort)
+          closest.sort(Node.t_find_sort);
         res.send({ids: closest.map(e=>b2s(e.id))});
     });
     this.conn_handler = new ReqHandler({node: this, cmd: 'conn_info'})
