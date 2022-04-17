@@ -1048,18 +1048,30 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
 });
 
 const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
-  let {c, event} = opt, s = t_nodes[c.s], ws, wrtc;
-  let arg = xtest.test_parse(c.arg);
+  let {c, event} = opt, s = t_nodes[c.s], basic = !/[*!]/.test(c.cmd[0]);
+  let arg = xtest.test_parse(c.arg), ws, wrtc;
   util.forEach(arg, a=>{
     switch (a.cmd){
-    case 'wrtc': wrtc = assert_wrtc(a.arg); break;
     // XXX: assert and verify ws is correct url
     case 'ws': ws = wss_from_node(s); break;
+    case 'wrtc': wrtc = assert_wrtc(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  if (t_pre_process)
-    return set_orig(c, build_cmd(c.meta.cmd, c.arg));
+  if (t_pre_process){
+    if (basic){
+      let o = {ws: !!ws, wrtc: !!wrtc};
+      if (t_mode.req && t_mode.msg){
+        // XXX: fix extending loops to be inside cmd_conn_info and cleanup mess
+        set_orig(c, build_cmd_o(c.s+c.d+'>msg',
+          {type: 'res', cmd: 'conn_info', body: conn_opts(o)}));
+        push_cmd(build_cmd_o(c.s+c.d+'>*conn_info_r', o));
+      }
+    }
+    else
+      set_orig(c, build_cmd(c.meta.cmd, c.arg));
+    return;
+  }
   assert_event_c(c, event);
   fake_emit(c, {type: 'res', cmd: 'conn_info', body: {ws, wrtc}});
 });
@@ -1432,6 +1444,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*find_r': yield cmd_find_r(opt); break;
   case 'conn_info': yield cmd_conn_info(opt); break;
   case '*conn_info': yield cmd_conn_info(opt); break;
+  case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '*conn_info_r': yield cmd_conn_info_r(opt); break;
   case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
@@ -1513,7 +1526,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   // XXX NOW: rm this temporary cod and move into each cmd
-  if (t_pre_process && c.cmd[0]!='!'){
+  if (t_pre_process && c.cmd[0]!='!' && c.cmd!='conn_info_r'){
     assert.equal(t_depth, 0);
     if (c.loop)
       c = extend_loop(c);
@@ -1769,19 +1782,6 @@ describe('peer-relay', function(){
         t('abc>*find(a)', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
         t('abc<*find(a)', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
         }
-        if (0){ // XXX NOW: rewrite (and/or make find shortcut for msg
-        t('ab>fwd(ac>*conn_info(r(ws)))', `ab>fwd(ac>*conn_info)
-          ab<fwd(ac<*conn_info_r(ws))`);
-        t('ab,bc>fwd(ac>*conn_info(r(ws)))', `ab>fwd(ac>*conn_info)
-          bc>fwd(ac>*conn_info) bc<fwd(ac<*conn_info_r(ws))
-          ab<fwd(ac<*conn_info_r(ws))`);
-        t('abc>fwd(ac>*conn_info(r(ws)))', `ab>fwd(ac>*conn_info)
-          bc>fwd(ac>*conn_info) bc<fwd(ac<*conn_info_r(ws))
-          ab<fwd(ac<*conn_info_r(ws))`);
-        t('abc>fwd(ac>*conn_info(r(ws)))', `ab>fwd(ac>*conn_info)
-          bc>fwd(ac>*conn_info) bc<fwd(ac<*conn_info_r(ws))
-          ab<fwd(ac<*conn_info_r(ws))`);
-        }
         t('abc>*conn_info(r(ws))', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)
           bc<fwd(ac<*conn_info_r(ws)) ab<fwd(ac<*conn_info_r(ws))`);
         t('abc>*conn_info', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)`);
@@ -1796,10 +1796,15 @@ describe('peer-relay', function(){
           bc<fwd(ac<msg(type(res) cmd(conn_info) body(ws)))
           ab<fwd(ac<msg(type(res) cmd(conn_info) body(ws)))
           ac<*conn_info_r(ws)`);
+        _t('mode(msg req)', 'ab>conn_info_r(ws wrtc)', `ab>msg(type(res)
+          cmd(conn_info) body(ws wrtc)) ab>*conn_info_r(ws wrtc)`);
+        if (0) // XXX TODO NOW
+        _t('mode(msg req)', 'abc>conn_info_r(ws)', `
+          ab>fwd(ac>msg(type(res) cmd(conn_info)))
+          bc>fwd(ac>msg(type(res) cmd(conn_info))) ac>*conn_info_r(ws)`);
         if (0) // XXX NOW: TODO
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
-        t('ba>bd>*conn_info_r:ws', `ba>fwd(bd>*conn_info_r(ws))`);
         if (0){ // XXX NOW: create similar tests for !req or rm
         t('ab>!msg(body:hi !msg)', `ab>!msg(body(hi) !msg)`);
         t('ab>!msg(body:hi)', `ab>!msg(body(hi) !msg) ab>msg(body(hi))`);
