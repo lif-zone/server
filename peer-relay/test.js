@@ -2700,9 +2700,8 @@ describe('peer-relay', function(){
        |
        e---f
     */
-    t('xxx_bug', `conf(peers_optimal(2) find_sorted)
-      a=node(wss) b=node(wss) c=node(wss)
-      d=node(wss) e=node(wss) f=node(wss) ab>!connect(find(a ab)) -
+    t('xxx_bug', `conf(peers_optimal(2) find_sorted) a=node(wss) b=node(wss)
+      c=node(wss) d=node(wss) e=node(wss) f=node(wss) ab>!connect(find(a ab)) -
       cd>!connect(find(c cd)) - bc>!connect(find(bcd abcd)) -
       ef>!connect(find(e ef)) - ea>!connect(find(abe abef)) -
       eab>!req(id:r1 body:ping res:ping_r) -
