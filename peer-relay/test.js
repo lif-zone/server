@@ -2711,6 +2711,25 @@ describe('peer-relay', function(){
       ef>fwd(ec>msg(id:r2 type:req body:ping)) 20s e>*fail(id:r2 error:timeout)
     `);
   });
+  describe('ring_connect', ()=>{
+    let t = ()=>{}, s;
+    // a:48 b:53 c:294 d:385 e:403 f:746 g:940
+    t('b', s=`b=node(id:53)`);
+    t('ab', s=`${s} a=node(id:48 boot:b) ab>connect ab>get_peer(a 54-47)
+      ba<get_peer_r(b) ab>online -`);
+    t('abc', s=`${s} c=node(id:294 boot:b) cb>connect cb>get_peer(c 54-293)
+      cb<get_peer_r(ab) ca>connect ca>online cb>online -`);
+    // XXX: db>fwd(54-384,dd*>get_peer:d) bc>fwd(294-384,dd*>get_peer:d)
+    t('abcd', s=`${s} d=node(id:385 boot:b) db>connect db>get_peer(d 54-384)
+      bc>get_peer(d 295-384) dbc<get_peer_r(ac) da>connect dc>connect
+      dc>online dc>online`);
+    t('abcdg', s=`${s} g=node(id:940 boot:b) gb>connect gb>get_peer(g 54-939)
+      bd>(g 386-939) dbg<(da) gd>connect ga>connect gd>online ga>online`);
+    t('xxx', `setup(ring:abcef) g=node(id:940 boot:b) gb>get_peer(g 54-939)
+      bc>get_peer(g 295-939) cd>get_peer(g 386-939) de>get_peer(g 404-939)
+      ef>get_peer(g 747-939) gbcdef<get_peer_r(af) ga>connect gf>connect
+      ga>online gf>online`);
+  });
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
@@ -2729,7 +2748,6 @@ describe('peer-relay', function(){
     853>746 online
     853>940 online
     853>53 online
-
     max out conn 10
     [xxx      x                            x                                 x]
     23 38 59 104 204 583 593
