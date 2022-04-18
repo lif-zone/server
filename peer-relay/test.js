@@ -2715,19 +2715,20 @@ describe('peer-relay', function(){
     let t = ()=>{}, s;
     // a:48 b:53 c:294 d:385 e:403 f:746 g:940
     t('b', s=`b=node(id:53)`);
-    t('ab', s=`${s} a=node(id:48 boot:b) ab>connect ab>get_peer(a 54-47)
+    t('ab', s+=`a=node(id:48 boot:b) ab>connect ab>get_peer(a 53-48)
       ba<get_peer_r(b) ab>online -`);
-    t('abc', s=`${s} c=node(id:294 boot:b) cb>connect cb>get_peer(c 54-293)
+    t('abc', s+=`c=node(id:294 boot:b) cb>connect cb>get_peer(c 53-294)
       cb<get_peer_r(ab) ca>connect ca>online cb>online -`);
-    // XXX: db>fwd(54-384,dd*>get_peer:d) bc>fwd(294-384,dd*>get_peer:d)
-    t('abcd', s=`${s} d=node(id:385 boot:b) db>connect db>get_peer(d 54-384)
-      bc>get_peer(d 295-384) dbc<get_peer_r(ac) da>connect dc>connect
+    // XXX: db>fwd(53-385,dd*>get_peer:d) bc>fwd(294-385,dd*>get_peer:d)
+    t('abcd', s+=`d=node(id:385 boot:b) db>connect
+      dbcd~>get_peer(d 53-385)
+      bc>get_peer(d 294-385) dbc<get_peer_r(ac) da>connect dc>connect
       dc>online dc>online`);
-    t('abcdg', s=`${s} g=node(id:940 boot:b) gb>connect gb>get_peer(g 54-939)
-      bd>(g 386-939) dbg<(da) gd>connect ga>connect gd>online ga>online`);
-    t('xxx', `setup(ring:abcef) g=node(id:940 boot:b) gb>get_peer(g 54-939)
-      bc>get_peer(g 295-939) cd>get_peer(g 386-939) de>get_peer(g 404-939)
-      ef>get_peer(g 747-939) gbcdef<get_peer_r(af) ga>connect gf>connect
+    t('abcdg', s+=`g=node(id:940 boot:b) gb>connect gb>get_peer(g 53-940)
+      bd>(g 385-940) dbg<(da) gd>connect ga>connect gd>online ga>online`);
+    t('xxx', `setup(ring:abcef) g=node(id:940 boot:b) gb>get_peer(g 53-940)
+      bc>get_peer(g 294-940) cd>get_peer(g 385-940) de>get_peer(g 403-940)
+      ef>get_peer(g 746-940) gbcdef<get_peer_r(af) ga>connect gf>connect
       ga>online gf>online`);
   });
   // XXX: add disconnect tests
