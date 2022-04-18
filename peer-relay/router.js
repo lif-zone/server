@@ -41,13 +41,6 @@ export default class Router extends EventEmitter {
       xerr('invalid msg type %s %s', type, req_id);
     }
   }
-  send(dst, body){
-    let msg = {to: b2s(dst), from: b2s(this.id),
-      nonce: '' + Math.floor(1e15 * Math.random()), body, path: []};
-    this._touched[msg.nonce] = true;
-    msg.sign = this.wallet.sign(msg);
-    return this._send(msg);
-  }
   send_msg(dst, msg){
     let nonce=''+Math.floor(1e15*Math.random());
     this._touched[nonce] = true;
