@@ -54,7 +54,7 @@ export default class Router extends EventEmitter {
     let _this = this.this;
     if (msg.path.length >= _this.maxHops)
       return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
-    if (!_this._channels.count()) // XXX: verify and test it
+    if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
     let channel = _this.get_best_route(s2b(msg.to));

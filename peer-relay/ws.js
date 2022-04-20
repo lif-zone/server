@@ -156,7 +156,7 @@ WsChannel.prototype._onMessage = function(data){
   // XXX: protect all external JSON.parse
   var json = JSON.parse(data);
   log.debug('%s msg %s nonce %s', this.dbg_str(), dbg_msg(json), data.nonce);
-  if (this.id == null)
+  if (!this.id)
   {
     this.id = new Buffer(json, 'hex');
     log.debug('%s open', this.dbg_str());

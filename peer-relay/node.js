@@ -1,9 +1,9 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
-import KBucket from 'k-bucket';
 import {EventEmitter} from 'events';
 import assert from 'assert';
 import Router from './router.js';
+import Channels from './channels.js';
 import Req from './req.js';
 import ReqHandler from './req_handler.js';
 import Wallet from './wallet.js';
@@ -27,7 +27,7 @@ export default class Node extends EventEmitter {
     this.id = this.wallet.keys.pub;
     // XXX: need cleanup for all internal structures
     this.pending = {};
-    this.peers = new KBucket({localNodeId: this.id});
+    this.peers = new Channels();
     this.peers.on('removed', channel=>channel.destroy());
     this.router = new Router({channels: this.peers, id: this.id,
       wallet: this.wallet});
@@ -36,6 +36,7 @@ export default class Node extends EventEmitter {
      let from = s2b(msg.from);
       if (this.peers.get(from))
           return;
+      // XXX: review this logic. looks wrong
       if (this.pending[from]==null || from.compare(this.id)<0){
         this.pending[from] = true;
         res.send({ws: this.wsConnector.url,
