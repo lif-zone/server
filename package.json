@@ -12,6 +12,7 @@
     "test": "mocha peer-relay/test.js --timeout 10000"
   },
   "dependencies": {
+    "buffershift": "0.0.2",
     "indexeddbshim": "9.0.0",
     "@babel/preset-env": "7.16.5",
     "@babel/preset-react": "7.16.5",
