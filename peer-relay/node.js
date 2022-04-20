@@ -27,21 +27,10 @@ export default class Node extends EventEmitter {
     this.id = this.wallet.keys.pub;
     // XXX: need cleanup for all internal structures
     this.pending = {};
-    this.destroyed = false;
     this.peers = new KBucket({localNodeId: this.id});
     this.peers.on('removed', channel=>channel.destroy());
-    // TODO expire canidates after period
-    this.canidates = new KBucket({localNodeId: this.id});
     this.router = new Router({channels: this.peers, id: this.id,
       wallet: this.wallet});
-    this.find_handler = new ReqHandler({node: this, cmd: 'find'})
-    .on('req', (msg, res)=>{
-      var target = new Buffer(s2b(msg.body.id));
-      var closest = this.canidates.closest(target, 20);
-      if (Node.t_find_sort)
-        closest.sort(Node.t_find_sort);
-      res.send({ids: closest.map(e=>b2s(e.id))});
-    });
     this.conn_handler = new ReqHandler({node: this, cmd: 'conn_info'})
     .on('req', (msg, res)=>{
      let from = s2b(msg.from);
@@ -75,7 +64,6 @@ export default class Node extends EventEmitter {
     let _this = this.this;
     const onClose = ()=>{
       delete _this.pending[channel.id];
-      _this.canidates.remove(channel.id);
       _this.peers.remove(channel.id);
     };
     assert(!_this.destroyed, 'node already destroyed');
@@ -83,7 +71,6 @@ export default class Node extends EventEmitter {
     // XXX: decide how to handle errors
     channel.on('error', err=>xerr('Error', err));
     delete _this.pending[channel.id];
-    _this.canidates.add({id: channel.id});
     if (_this.peers.get(channel.id)){
       if (channel.id.compare(_this.id) >= 0)
         channel.destroy();
@@ -93,7 +80,6 @@ export default class Node extends EventEmitter {
     _this.emit('connection', channel);
     if (util.test_on_connection)
       yield util.test_on_connection(channel);
-    _this.find(b2s(channel.id));
     _this.emit('peer', b2s(channel.id));
     return channel;
   });
@@ -129,21 +115,6 @@ export default class Node extends EventEmitter {
     let req = new Req({node: this, dst});
     req.send(body);
   }
-  find(id){
-    let _this = this;
-    if (this.destroyed)
-      return;
-    log.debug('find %s', dbg_id(id));
-    let req = new Req({node: this, dst: id, cmd: 'find'});
-    req.on('res', msg=>_this._on_find_r(msg.body.ids));
-    req.send({id: b2s(this.id)});
-  }
-  _on_find_r(ids){
-    log.debug('find_r %s', ids.length);
-    for (var canidate of ids)
-      this.canidates.add({id: new Buffer(canidate, 'hex')});
-    return this._populate();
-  }
   _on_conn_info_r = msg=>etask({'this': this}, function*(){
     let {from} = msg;
     let _this = this.this;
@@ -159,17 +130,6 @@ export default class Node extends EventEmitter {
       yield _this.connect_wrtc(from);
     else if (msg.body.ws)
       yield _this.wsConnector.connect(msg.body.ws);
-  });
-  _populate = ()=>etask({'this': this}, function*_populate(){
-    let _this = this.this;
-    var optimal = Node.t_peers_optimal||15;
-    var closest = _this.canidates.closest(_this.id, optimal);
-    for (var i = 0; i < closest.length &&
-      _this.peers.count() + Object.keys(_this.pending).length < optimal; i++){
-      if (_this.peers.get(closest[i].id))
-        continue;
-      yield _this.connect(closest[i].id);
-    }
   });
   destroy(cb){
     if (this.destroyed)

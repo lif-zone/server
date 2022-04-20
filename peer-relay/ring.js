@@ -1,8 +1,7 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
+/* XXX TODO:
 import {EventEmitter} from 'events';
-
-/* XXX:
 let node = new Node({bootstrap: a})
 node.on('connect', ()=>{
   let req = new Req({cmd: get_peer, dst: '~'+self.id, body: {id: self.id});
@@ -16,3 +15,4 @@ export default class Ring extends EventEmitter {
       opt = {};
   }
 }
+*/

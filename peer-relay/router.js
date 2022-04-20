@@ -22,7 +22,6 @@ export default class Router extends EventEmitter {
     // XXX: rm _ from properites + methods
     // XXX: memory leak - no cleanup for all
     this._touched = {};
-    this._paths = {};
     this._queue = [];
     this._channels = channels;
     this._channels.on('added', channel=>this._onChannelAdded(channel));
@@ -55,24 +54,30 @@ export default class Router extends EventEmitter {
     let _this = this.this;
     if (msg.path.length >= _this.maxHops)
       return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
-    if (!_this._channels.count())
-      _this._queue.push(msg);
+    if (!_this._channels.count()) // XXX: verify and test it
+      return _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
-    let closests = _this._channels.closest(s2b(msg.to), 20)
-    .filter(c=>!msg.path.includes(b2s(c.id)));
-    if (closests[0] && b2s(closests[0].id)!=msg.to && msg.to in _this._paths){
-      let preferred = _this._channels.closest(s2b(_this._paths[msg.to]), 1)[0];
-      if (preferred)
-        closests.unshift(preferred);
-    }
-    closests = closests.slice(0, 1);
-    for (let channel of closests){
-      // TODO BUG Sometimes the WS on closest in not in the ready state
-      yield channel.send(msg);
-      if (b2s(channel.id)==(typeof msg.to=='string' ? msg.to : b2s(msg.to)))
-        break; // XXX: why do we break?
-    }
+    let channel = _this.get_best_route(s2b(msg.to));
+    if (b2s(channel.id)==msg.from)
+      return;
+    // TODO BUG Sometimes the WS on closest in not in the ready state
+    yield channel.send(msg);
   });
+  get_best_route(dst){
+    let a = this._channels.toArray(), best;
+    for (let i=0; i<a.length; i++){
+      let ch = a[i];
+      if (!ch.id.compare(dst)){
+        best = ch;
+        break;
+      }
+      else if (!best)
+        best = ch;
+      else if (ch.id.compare(dst)<0 && best.id.compare(ch.id)<0)
+        best = ch;
+    }
+    return best;
+  }
   _on_channel_msg = msg=>etask({'this': this}, function*_on_channel_msg(){
     let _this = this.this, nonce = msg.nonce;
     if (!nonce)
@@ -86,7 +91,6 @@ export default class Router extends EventEmitter {
     _this._touched[nonce] = true;
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
-    _this._paths[msg.from] = msg.path[msg.path.length - 1];
     if (to.equals(_this.id))
       _this.emit('message', msg);
     else // relay

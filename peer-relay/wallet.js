@@ -3,6 +3,8 @@
 import hcrypto from 'hypercore-crypto';
 import assert from 'assert';
 import hash from 'object-hash';
+import util from '../util/util.js';
+const b2s = util.buf_to_str;
 import {undefined_to_null2} from './util.js';
 
 let excludeKeys = key=>['path', 'sign', 'debug'].indexOf(key)!=-1;
@@ -16,6 +18,8 @@ export default class Wallet {
       assert(priv && pub, 'must specify both priv/pub keys');
       // XXX assert valid priv/pub keys and that they match
       this.keys = {priv, pub};
+      if (b2s(priv)=='00')
+        this.test = true;
     }
     else
     {
@@ -33,11 +37,15 @@ export default class Wallet {
       replacer: undefined_to_null2}));
   }
   sign(o){
+    if (this.test)
+      return this.hash_passthrough(o);
     // XXX: we use sha1 algorithm. need to find a more secured one (blake?)
     return hcrypto.sign(this.hash_obj(o), this.keys.priv);
   }
   verify(o, sign, pub){
     try {
+      if (this.test)
+        return true;
       pub = pub || this.keys.pub;
       sign = sign || o.sign;
       // XXX HACK: we need it because Uint8Array is lost when sending buffers
