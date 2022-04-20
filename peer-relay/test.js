@@ -5,6 +5,7 @@ import assert from 'assert';
 import BufferShift from 'buffershift';
 import Node from './node.js';
 import Req from './req.js';
+import Channels from './channels.js';
 import ReqHandler from './req_handler.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
@@ -21,6 +22,7 @@ import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
 const assign = Object.assign, s2b = util.buf_from_str, b2s = util.buf_to_str;
 const stringify = JSON.stringify, is_number = util.is_number;
+const ID_BITS = 160; // XXX: check correct value and move to right place
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
 // XXX: make it automatic for all node/browser in proc.js
@@ -855,7 +857,7 @@ function cmd_node(opt){
   if (id){
     assert(id>0 && id<Math.pow(2, t_node_id_bits), 'invalid id '+id+
       ' valid 0-'+Math.pow(2, t_node_id_bits));
-    key = {pub: node_id_from_int(id, t_node_id_bits, 160), priv: '00'};
+    key = {pub: node_id_from_int(id, t_node_id_bits, ID_BITS), priv: '00'};
   }
   else {
     key = t_keys[name];
@@ -1729,6 +1731,36 @@ describe('api', function(){
   });
 });
 
+describe('channels', ()=>{
+  it('get_closest', ()=>{
+    const v = val=>node_id_from_int(val, 8, ID_BITS);
+    const t = (val, exp)=>{
+      let ch = channels.get_closest(v(val));
+      assert.equal(ch ? b2s(ch.id) : '', exp ? v(exp) : '');
+    };
+    let channels = new Channels();
+    t(10, '');
+    channels.add(new FakeWsConnector(s2b(v(10))));
+    t(9, 10);
+    t(10, 10);
+    t(11, 10);
+    channels.add(new FakeWsConnector(s2b(v(15))));
+    t(9, 10);
+    t(10, 10);
+    t(11, 15);
+    t(15, 15);
+    t(16, 10);
+    channels.add(new FakeWsConnector(s2b(v(20))));
+    t(9, 10);
+    t(10, 10);
+    t(11, 15);
+    t(15, 15);
+    t(16, 20);
+    t(20, 20);
+    t(21, 10);
+  });
+});
+
 describe('wallet', ()=>{
   let key = t_keys.a;
   let keys = {priv: s2b(key.priv), pub: s2b(key.pub)};
@@ -2033,13 +2065,13 @@ describe('peer-relay', function(){
     t('3_nodes', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) ab>!connect ac>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r)`);
-    t('3_nodes_route_b', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
-      c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
-      ad>!req(id:r1 body:ping !e) ab>fwd(ad>msg(id:r1 type:req body:ping)) -
-      20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_route_c', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
-      ae>!req(id:r1 body:ping !e) ac>fwd(ae>msg(id:r1 type:req body:ping)) -
+      ad>!req(id:r1 body:ping !e) ac>fwd(ad>msg(id:r1 type:req body:ping)) -
+      20s a>*fail(id:r1 error:timeout)`);
+    t('3_nodes_route_b', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
+      c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
+      ae>!req(id:r1 body:ping !e) ab>fwd(ae>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
   });
   // XXX NOW: review all test below and copy the relevant ones
