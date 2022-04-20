@@ -52,12 +52,17 @@ export default class Channels extends EventEmitter {
         best = ch;
         break;
       }
-      else if (!best)
+      else if (ch.id.compare(id)<0 && (!best || best.id.compare(ch.id)<0))
         best = ch;
-      else if (ch.id.compare(id)<0 && best.id.compare(ch.id)<0)
+    }
+    if (best)
+      return best;
+    // it's a ring, so the minimum is the closest
+    for (let i=1, best = a[0]; i<a.length; i++){
+      let ch = a[i];
+      if (ch.id.compare(best.id)<0)
         best = ch;
     }
     return best;
   }
-
 }
