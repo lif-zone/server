@@ -2059,6 +2059,7 @@ describe('peer-relay', function(){
       xit(name, roles[i], test);
   };
   describe('router', ()=>{
+    // XXX TODO: need framing support (eg. for fwd)
     const t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       ab>!connect ab>!req(body:ping res:ping_r)`);
@@ -2073,6 +2074,17 @@ describe('peer-relay', function(){
       c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
       ae>!req(id:r1 body:ping !e) ab>fwd(ae>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
+    t('3_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
+      c=node(id:30 wss) ab>!connect bc>!connect ca>!connect
+      ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r) -`);
+    t('d_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
+      c=node(id:30 wss) d=node(id:40 wss) ab>!connect bc>!connect cd>!connect
+      da>!connect - ab>!req(body:ping res:ping_r) -
+      adc>!req(id:r1 body:ping res:ping_r !e)
+      adc>fwd(ac>msg(id:r1 type:req body:ping))
+      ac>*req(id:r1 seq(0) body:ping)
+      cba>fwd(ac<msg(id:r1 type:res body:ping_r))
+      ac<*res(id:r1 body:ping_r)`);
   });
   // XXX NOW: review all test below and copy the relevant ones
   if (true) return;
