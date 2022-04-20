@@ -3,7 +3,7 @@
 import {EventEmitter} from 'events';
 import xerr from '../util/xerr.js';
 import xutil from '../util/util.js';
-const b2s = xutil.buf_to_str;
+const b2s = xutil.buf_to_str, s2b = xutil.buf_from_str;
 
 // XXX: need test
 export default class Channels extends EventEmitter {
@@ -43,4 +43,21 @@ export default class Channels extends EventEmitter {
       a.push(this.map[id]);
     return a;
   }
+  get_closest(id){
+    id = typeof id=='string' ? s2b(id) : id;
+    let a = this.toArray(), best;
+    for (let i=0; i<a.length; i++){
+      let ch = a[i];
+      if (!ch.id.compare(id)){
+        best = ch;
+        break;
+      }
+      else if (!best)
+        best = ch;
+      else if (ch.id.compare(id)<0 && best.id.compare(ch.id)<0)
+        best = ch;
+    }
+    return best;
+  }
+
 }

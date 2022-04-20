@@ -57,27 +57,12 @@ export default class Router extends EventEmitter {
     if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
-    let channel = _this.get_best_route(s2b(msg.to));
+    let channel = _this._channels.get_closest(msg.to);
     if (b2s(channel.id)==msg.from)
       return;
     // TODO BUG Sometimes the WS on closest in not in the ready state
     yield channel.send(msg);
   });
-  get_best_route(dst){
-    let a = this._channels.toArray(), best;
-    for (let i=0; i<a.length; i++){
-      let ch = a[i];
-      if (!ch.id.compare(dst)){
-        best = ch;
-        break;
-      }
-      else if (!best)
-        best = ch;
-      else if (ch.id.compare(dst)<0 && best.id.compare(ch.id)<0)
-        best = ch;
-    }
-    return best;
-  }
   _on_channel_msg = msg=>etask({'this': this}, function*_on_channel_msg(){
     let _this = this.this, nonce = msg.nonce;
     if (!nonce)
