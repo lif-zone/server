@@ -2046,33 +2046,22 @@ describe('peer-relay', function(){
         ab>*req(id:r0 body:ping) ab<msg(type:res id:r0 body:ping_r)
         ab<*res(id:r0 body:ping_r)`);
     });
-    if (true) return; // XXX NOW: FIXME
     describe('3_nodes', ()=>{
       // XXX: missing req test
       // t('fwd', `setup:3_nodes_linear ac>!req(id:r0 body:ping res:ping_r)
       //  abc>*req(id:r0 body:ping) abc<fwd(ac<*res(id:r0 body:ping_r))`);
       t('req', `
-        mode:req node:a b=node(wss) ab>!connect(wss !r)
-        ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
-        ab>*find_r:ba - c=node(wss) bc>!connect(wss !r)
-        bc>connect(wss !r) bc<connected bc>*find:b bc<*find_r:b bc<*find:c
-        bc>*find_r:cab ca>*conn_info ca<*conn_info_r -
-        ac>!req(id:r0 body:ping res:ping_r)`);
+        mode:req node:a b=node(wss) ab>!connect(wss !r) ab>connect(wss !r)
+        ab<connected - c=node(wss) bc>!connect(wss !r) bc>connect(wss !r)
+        bc<connected - ac>!req(id:r0 body:ping res:ping_r)`);
       t('msg', `
         mode:msg node:a b=node(wss) ab>!connect(wss !r) ab>connect(wss !r)
-        ab<connected ab>find:a ab<find_r:a ab<find:b
-        ab>find_r:ba - c=node(wss) bc>!connect(wss !r)
-        bc>connect(wss !r) bc<connected bc>find:b bc<find_r:b bc<find:c
-        bc>find_r:cab abc<msg(type:req cmd(conn_info))
-        abc>msg(type:res cmd(conn_info)) -
-        abc>!req(id:r0 body:ping res:ping_r)`);
+        ab<connected - c=node(wss) bc>!connect(wss !r) bc>connect(wss !r)
+        bc<connected - abc>!req(id:r0 body:ping res:ping_r)`);
       t('msg,req', `
         mode(msg req) node:a b=node(wss) ab>!connect(wss !r)
-        ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a
-        ab<find:b ab>find_r:ba - c=node(wss) bc>!connect(wss !r)
-        bc>connect(wss !r) bc<connected bc>find:b bc<find_r:b bc<find:c
-        bc>find_r:cab abc<msg(type:req cmd(conn_info))
-        ca>*conn_info abc>msg(type:res cmd(conn_info)) ca<*conn_info_r
+        ab>connect(wss !r) ab<connected - c=node(wss) bc>!connect(wss !r)
+        bc>connect(wss !r) bc<connected -
         abc>!req(id:r0 body:ping res:ping_r)`);
     });
     describe('failure', ()=>{
