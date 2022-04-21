@@ -1732,10 +1732,32 @@ describe('api', function(){
 });
 
 describe('channels', ()=>{
+  const v = val=>node_id_from_int(val, 8, ID_BITS);
+  const t = (range, id, exp)=>{
+    range = {min: s2b(v(range.min)), max: s2b(v(range.max))};
+    id = s2b(v(id));
+    assert.equal(Channels.in_range(range, id), exp);
+  };
+  it('in_range', ()=>{
+    t({min: 10, max: 20}, 9, false);
+    t({min: 10, max: 20}, 10, false);
+    t({min: 10, max: 20}, 11, true);
+    t({min: 10, max: 20}, 19, true);
+    t({min: 10, max: 20}, 20, false);
+    t({min: 10, max: 20}, 21, false);
+    t({min: 20, max: 10}, 19, false);
+    t({min: 20, max: 10}, 20, false);
+    t({min: 20, max: 10}, 21, true);
+    t({min: 20, max: 10}, 9, true);
+    t({min: 20, max: 10}, 10, false);
+    t({min: 20, max: 10}, 11, false);
+    t({min: 10, max: 10}, 9, true);
+    t({min: 10, max: 10}, 10, false);
+    t({min: 10, max: 10}, 11, true);
+  });
   it('get_closest', ()=>{
-    const v = val=>node_id_from_int(val, 8, ID_BITS);
-    const t = (val, exp)=>{
-      let ch = channels.get_closest(v(val));
+    const t = (val, exp, range)=>{
+      let ch = channels.get_closest(v(val), range);
       assert.equal(ch ? b2s(ch.id) : '', exp ? v(exp) : '');
     };
     let channels = new Channels();
@@ -1750,6 +1772,10 @@ describe('channels', ()=>{
     t(11, 15);
     t(15, 15);
     t(16, 10);
+    t(9, 15, {min: v(10), max: v(16)});
+    t(9, 10, {min: v(15), max: v(15)});
+    t(9, '', {min: v(10), max: v(15)});
+    t(10, 15, {min: v(10), max: v(16)});
     channels.add(new FakeWsConnector(s2b(v(20))));
     t(9, 10);
     t(10, 10);
@@ -2083,7 +2109,7 @@ describe('peer-relay', function(){
       adc>!req(id:r1 body:ping res:ping_r !e)
       adc>fwd(ac>msg(id:r1 type:req body:ping))
       ac>*req(id:r1 seq(0) body:ping)
-      cba>fwd(ac<msg(id:r1 type:res body:ping_r))
+      abc<fwd(ac<msg(id:r1 type:res body:ping_r))
       ac<*res(id:r1 body:ping_r)`);
   });
   // XXX NOW: review all test below and copy the relevant ones

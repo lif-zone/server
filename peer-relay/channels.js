@@ -43,11 +43,16 @@ export default class Channels extends EventEmitter {
       a.push(this.map[id]);
     return a;
   }
-  get_closest(id){
+  get_closest(id, range){
     id = typeof id=='string' ? s2b(id) : id;
+    range = range &&
+      {min: typeof range.min=='string' ? s2b(range.min) : range.min,
+      max: typeof range.max=='string' ? s2b(range.max) : range.max};
     let a = this.toArray(), best;
     for (let i=0; i<a.length; i++){
       let ch = a[i];
+      if (range && !Channels.in_range(range, ch.id))
+        continue;
       if (!ch.id.compare(id)){
         best = ch;
         break;
@@ -60,6 +65,8 @@ export default class Channels extends EventEmitter {
     // it's a ring, so the minimum is the closest
     for (let i=0; i<a.length; i++){
       let ch = a[i];
+      if (range && !Channels.in_range(range, ch.id))
+        continue;
       if (!best)
         best = ch;
       else if (ch.id.compare(best.id)<0)
@@ -68,3 +75,11 @@ export default class Channels extends EventEmitter {
     return best;
   }
 }
+
+// XXX: mv to hash.js/util.js
+Channels.in_range = function(range, id){
+  return range.min.compare(range.max)>=0 ?
+    id.compare(range.min)>0 || id.compare(range.max)<0 :
+    id.compare(range.min)>0 && id.compare(range.max)<0;
+};
+
