@@ -1973,14 +1973,14 @@ describe('peer-relay', function(){
     t('3_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) ab>!connect bc>!connect ca>!connect
       ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r) -`);
+    // XXX: derry: review
+    // conf(id_bits:8 id(a:10 b:20 c:30 d:40)
     t('d_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) d=node(id:40 wss) ab>!connect bc>!connect cd>!connect
       da>!connect - ab>!req(body:ping res:ping_r) -
-      adc>!req(id:r1 body:ping res:ping_r !e)
-      adc>fwd(ac>msg(id:r1 type:req body:ping))
-      ac>*req(id:r1 seq(0) body:ping)
-      abc<fwd(ac<msg(id:r1 type:res body:ping_r))
-      ac<*res(id:r1 body:ping_r)`);
+      ac>!req(id:r1 body:ping res:ping_r !e)
+      adc>fwd(ac>msg(id:r1 type:req body:ping)) ac>*req(id:r1 seq(0) body:ping)
+      abc<fwd(ac<msg(id:r1 type:res body:ping_r)) ac<*res(id:r1 body:ping_r)`);
   });
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());
