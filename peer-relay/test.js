@@ -1639,34 +1639,33 @@ describe('buf_util', ()=>{
 describe('channels', ()=>{
   const v = val=>node_id_from_int(val, 8, ID_BITS);
   it('get_closest', ()=>{
-    const t = (val, exp, range)=>{
+    const t = (a, val, exp, range)=>{
+      let channels = new Channels();
+      a.forEach(id=>channels.add(new FakeWsConnector(s2b(v(id)))));
       let ch = channels.get_closest(v(val), range);
       assert.equal(ch ? b2s(ch.id) : '', exp ? v(exp) : '');
     };
-    let channels = new Channels();
-    t(10, '');
-    channels.add(new FakeWsConnector(s2b(v(10))));
-    t(9, 10);
-    t(10, 10);
-    t(11, 10);
-    channels.add(new FakeWsConnector(s2b(v(15))));
-    t(9, 10);
-    t(10, 10);
-    t(11, 15);
-    t(15, 15);
-    t(16, 10);
-    t(9, 15, {min: v(10), max: v(16)});
-    t(9, 10, {min: v(15), max: v(15)});
-    t(9, '', {min: v(10), max: v(15)});
-    t(10, 15, {min: v(10), max: v(16)});
-    channels.add(new FakeWsConnector(s2b(v(20))));
-    t(9, 10);
-    t(10, 10);
-    t(11, 15);
-    t(15, 15);
-    t(16, 20);
-    t(20, 20);
-    t(21, 10);
+    t([], 10, '');
+    t([10], 9, 10);
+    t([10], 10, 10);
+    t([10], 11, 10);
+    t([10, 15], 9, 15);
+    t([10, 15], 10, 10);
+    t([10, 15], 11, 10);
+    t([10, 15], 15, 15);
+    t([10, 15], 16, 15);
+    t([10, 15], 9, 15, {min: v(10), max: v(16)});
+    t([10, 15], 9, 10, {min: v(15), max: v(15)});
+    t([10, 15], 9, '', {min: v(10), max: v(15)});
+    t([10, 15], 10, 15, {min: v(10), max: v(16)});
+    t([10, 15, 20], 9, 20);
+    t([10, 15, 20], 10, 10);
+    t([10, 15, 20], 11, 10);
+    t([10, 15, 20], 15, 15);
+    t([10, 15, 20], 16, 15);
+    t([10, 15, 20], 20, 20);
+    t([10, 15, 20], 21, 20);
+    t([20, 40], 10, 40);
   });
 });
 
@@ -1962,25 +1961,25 @@ describe('peer-relay', function(){
     t('3_nodes', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) ab>!connect ac>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r)`);
-    t('3_nodes_route_c', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
-      c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
-      ad>!req(id:r1 body:ping !e) ac>fwd(ad>msg(id:r1 type:req body:ping)) -
-      20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_route_b', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
-      ae>!req(id:r1 body:ping !e) ab>fwd(ae>msg(id:r1 type:req body:ping)) -
+      ad>!req(id:r1 body:ping !e) ab>fwd(ad>msg(id:r1 type:req body:ping)) -
+      20s a>*fail(id:r1 error:timeout)`);
+    t('3_nodes_route_c', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
+      c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
+      ae>!req(id:r1 body:ping !e) ac>fwd(ae>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) ab>!connect bc>!connect ca>!connect
       ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r) -`);
     // XXX: derry: review
     // conf(id_bits:8 id(a:10 b:20 c:30 d:40)
-    t('d_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
+    t('4_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) d=node(id:40 wss) ab>!connect bc>!connect cd>!connect
       da>!connect - ab>!req(body:ping res:ping_r) -
       ac>!req(id:r1 body:ping res:ping_r !e)
-      adc>fwd(ac>msg(id:r1 type:req body:ping)) ac>*req(id:r1 seq(0) body:ping)
-      abc<fwd(ac<msg(id:r1 type:res body:ping_r)) ac<*res(id:r1 body:ping_r)`);
+      abc>fwd(ac>msg(id:r1 type:req body:ping)) ac>*req(id:r1 seq(0) body:ping)
+      adc<fwd(ac<msg(id:r1 type:res body:ping_r)) ac<*res(id:r1 body:ping_r)`);
   });
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());

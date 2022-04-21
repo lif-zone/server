@@ -46,6 +46,7 @@ export default class Channels extends EventEmitter {
   }
   get_closest(id, range){
     id = typeof id=='string' ? s2b(id) : id;
+    // XXX: wrap it in buf_util.js
     range = range &&
       {min: typeof range.min=='string' ? s2b(range.min) : range.min,
       max: typeof range.max=='string' ? s2b(range.max) : range.max};
@@ -58,7 +59,7 @@ export default class Channels extends EventEmitter {
         best = ch;
         break;
       }
-      else if (id.compare(ch.id)<0 && (!best || ch.id.compare(best.id)<0))
+      else if (ch.id.compare(id)<0 && (!best || best.id.compare(ch.id)<0))
         best = ch;
     }
     if (best)
@@ -70,7 +71,7 @@ export default class Channels extends EventEmitter {
         continue;
       if (!best)
         best = ch;
-      else if (ch.id.compare(best.id)<0)
+      else if (ch.id.compare(best.id)>0)
         best = ch;
     }
     return best;
