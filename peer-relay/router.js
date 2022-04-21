@@ -57,9 +57,10 @@ export default class Router extends EventEmitter {
     if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
-    let channel = _this._channels.get_closest(msg.to);
+    let channel = _this._channels.get_closest(msg.to, msg.range);
     if (b2s(channel.id)==msg.from)
       return;
+    msg.range = {min: b2s(channel.id), max: msg.dst};
     // TODO BUG Sometimes the WS on closest in not in the ready state
     yield channel.send(msg);
   });
