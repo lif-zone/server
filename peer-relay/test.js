@@ -287,11 +287,13 @@ function assert_bootstrap(val){
   return bootstrap;
 }
 
+/* XXX: decide if to remove
 function assert_peers(peers){
   let a = peers.split(',');
   assert(a.length>0, 'no peers specified');
   a.forEach(name=>assert(t_nodes[name], 'node not found '+name+'/'+peers));
 }
+*/
 
 function assert_event(event, exp){
   assert.equal(normalize(event), normalize(exp)); }
@@ -488,7 +490,6 @@ class FakeChannel extends EventEmitter {
       if (type=='req')
       {
         switch (cmd){
-        case 'find': body = node_from_id(body.id).t.name; break;
         case 'conn_info': body= ''; break;
         case '': break;
         default: assert(0, 'invalid cmd '+cmd);
@@ -496,7 +497,6 @@ class FakeChannel extends EventEmitter {
       }
       else if (type=='res'){
         switch (cmd){
-        case 'find': body = array_id_to_name(body.ids).join(''); break;
         case 'conn_info': body = conn_opts(body); break;
         case '': break;
         default: assert(0, 'invalid cmd ', cmd);
@@ -519,8 +519,7 @@ function req_hook(msg){
   if (!t_mode.req || !t_mode.msg)
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
-  let p, e;
-  let {type, req_id, seq, ack, cmd, body} = msg;
+  let {type, req_id, seq, ack, cmd, body} = msg, e;
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid msg type '+type);
   cmd = cmd||'';
@@ -528,10 +527,6 @@ function req_hook(msg){
   xerr.notice('*** req_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, stringify(msg));
   switch (cmd){
-  case 'find':
-    p = node_from_id(body.id);
-    e = build_cmd(from.t.name+to.t.name+'>*find', p.t.name);
-    break;
   case 'conn_info':
     e = build_cmd(from.t.name+to.t.name+'>*conn_info', '');
     break;
@@ -554,8 +549,7 @@ function req_send_hook(msg){
   if (!t_mode.req || t_mode.msg)
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
-  let p, e;
-  let {type, req_id, seq, ack, cmd, body} = msg;
+  let {type, req_id, seq, ack, cmd, body} = msg, e;
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid msg type '+type);
   cmd = cmd||'';
@@ -563,10 +557,6 @@ function req_send_hook(msg){
   xerr.notice('*** req_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, stringify(msg));
   switch (cmd){
-  case 'find':
-    p = node_from_id(body.id);
-    e = build_cmd(from.t.name+to.t.name+'>*find', p.t.name);
-    break;
   case 'conn_info':
     e = build_cmd(from.t.name+to.t.name+'>*conn_info', '');
     break;
@@ -588,8 +578,7 @@ function res_hook(msg){
   if (!t_mode.req || !t_mode.msg)
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
-  let e, a;
-  let {type, req_id, seq, ack, cmd, body} = msg;
+  let {type, req_id, seq, ack, cmd, body} = msg, e;
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid msg type '+type);
   cmd = cmd||'';
@@ -597,10 +586,6 @@ function res_hook(msg){
   xerr.notice('*** res_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, stringify(msg));
   switch (cmd){
-  case 'find':
-    a = array_id_to_name(body.ids);
-    e = build_cmd(from.t.name+to.t.name+'>*find_r', a.join(''));
-    break;
   case 'conn_info':
     e = build_cmd(from.t.name+to.t.name+'>*conn_info_r', conn_opts(body));
     break;
@@ -622,8 +607,7 @@ function res_send_hook(router, msg){
   if (!t_mode.req || t_mode.msg)
     return;
   assert(!t_pre_process, 'invalid send during pre_process');
-  let e, a;
-  let {type, req_id, seq, ack, cmd, body} = msg;
+  let {type, req_id, seq, ack, cmd, body} = msg, e;
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid msg type '+type);
   cmd = cmd||'';
@@ -631,10 +615,6 @@ function res_send_hook(router, msg){
   xerr.notice('*** res_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, stringify(msg));
   switch (cmd){
-  case 'find':
-    a = array_id_to_name(body.ids);
-    e = build_cmd(from.t.name+to.t.name+'>*find_r', a.join(''));
-    break;
   case 'conn_info':
     e = build_cmd(from.t.name+to.t.name+'>*conn_info_r', conn_opts(body));
     break;
@@ -658,6 +638,7 @@ function new_res_hook(res){
     {id: o.req_id, seq: o.seq, error: o.error})));
 }
 
+/* XXX: decide if to remove
 function array_id_to_name(a){
   let ret = [];
   a.forEach(id=>ret.push(node_from_id(util.buf_from_str(id)).t.name));
@@ -672,6 +653,7 @@ function array_name_to_id(a){
   });
   return ret;
 }
+*/
 
 function node_get_channel(_s, _d){
   let s = t_nodes[_s], d = t_nodes[_d];
@@ -807,7 +789,7 @@ function cmd_setup(opt){
   util.forEach(arg, m=>{
     switch (m.cmd){
     case '2_nodes':
-      M(`mode:req a=node b=node(wss) - ab>!connect(find(a ba)) mode:pop`);
+      M(`a=node(id:10) b=node(id:20 wss) - ab>!connect -`);
       break;
     case '2_nodes_wss':
       M(`mode(msg req) a=node(wss) b=node(wss) ab>!connect(find(a ba))
@@ -877,18 +859,13 @@ function cmd_node(opt){
 // once a gets b.id, it emits 'connection' - we emit ab>connect
 // once b gets a.id, it emits 'connection' - we emit ab<connected
 const cmd_connect = opt=>etask(function*(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], find;
+  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd[0]=='!';
   let r = true;
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'wss': wss = assert_wss_url(c.d, a.arg); break;
     case 'wrtc': wrtc = assert_support_wrtc(d.t.name); break;
-    case 'find':
-      find = a.arg.split(' ');
-      // XXX: need full validation
-      assert(find.length==2, 'invalid find '+a.arg);
-      break;
     case '!r': r = false; break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
@@ -900,42 +877,16 @@ const cmd_connect = opt=>etask(function*(){
   }
   assert_exist(c.s);
   assert(wss || wrtc, 'must specify wss or wrtc');
-  assert(find ? r : true, 'find must be used together with r');
   if (t_pre_process){
     if (call)
     {
-      if (r){
-        push_cmd(build_cmd(c.s+c.d+'>connect', wss&&'wss', wrtc&&'wrtc',
-          find&&build_cmd('find', find.join(' '))));
-      }
+      if (r)
+        push_cmd(build_cmd(c.s+c.d+'>connect', wss&&'wss', wrtc&&'wrtc'));
       set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
     }
     else {
-      if (r){
-        if (t_mode.msg && t_mode.req){
-          let s = c.s+c.d+'<connected ';
-          if (find){
-            s += build_cmd_o(c.s+c.d+'>msg', {type: 'req', cmd: 'find',
-              body: c.s});
-            s += build_cmd(c.s+c.d+'>*find', c.s);
-            s += build_cmd_o(c.s+c.d+'<msg', {type: 'res', cmd: 'find',
-              body: find[0]});
-            s += build_cmd(c.s+c.d+'<*find_r', find[0]);
-            s += build_cmd_o(c.s+c.d+'<msg', {type: 'req', cmd: 'find',
-              body: c.d});
-            s += build_cmd(c.s+c.d+'<*find', c.d);
-            s += build_cmd_o(c.s+c.d+'>msg', {type: 'res', cmd: 'find',
-              body: find[1]});
-            s += build_cmd(c.s+c.d+'>*find_r', find[1]);
-          }
-          push_cmd(s);
-        } else {
-          push_cmd(c.s+c.d+'<connected'+(find ? ' '+
-            build_cmd(c.s+c.d+'>*find', c.s+' '+build_cmd('r', find[0]))+' '+
-            build_cmd(c.s+c.d+'<*find', c.d+' '+build_cmd('r', find[1])) :
-            ''));
-        }
-      }
+      if (r)
+          push_cmd(c.s+c.d+'<connected');
       set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
     }
     return;
@@ -971,68 +922,6 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
   if (t_pre_process)
     return;
   yield cmd_run_if_next_fake();
-});
-
-const cmd_find = opt=>etask(function cmd_find(){
-  let {c, event} = opt, s = t_nodes[c.s];
-  let basic = !/[*!]/.test(c.cmd[0]);
-  let r, peers, arg = xtest.test_parse(c.arg);
-  util.forEach(arg, a=>{
-    if (a.cmd=='r'){
-      assert(!r, 'invalid '+c.orig);
-      r = a.arg||true;
-    }
-    else {
-      assert(!peers, 'invalid '+c.orig);
-      peers = a.cmd;
-      assert_peers(peers);
-    }
-  });
-  if (t_pre_process){
-    if (basic){
-      if (t_mode.req && t_mode.msg){
-        set_orig(c, build_cmd_o(c.s+c.d+'>msg',
-          {type: 'req', cmd: 'find', body: peers}));
-        push_cmd(build_cmd(c.s+c.d+'>*find', peers));
-      } else if (t_mode.msg){
-        set_orig(c, build_cmd_o(c.s+c.d+'>msg',
-          {type: 'req', cmd: 'find', body: peers}));
-      } else
-        set_orig(c, build_cmd(c.s+c.d+'>*find', peers));
-    } else {
-      if (r)
-        push_cmd(rev_cmd(c.orig, '*find_r', r));
-      set_orig(c, build_cmd(c.meta.cmd, peers));
-    }
-    return;
-  }
-  assert_event_c(c, event);
-  fake_emit(c, {type: 'req', cmd: 'find', body: {id: _str(s.id)}});
-});
-
-const cmd_find_r = opt=>etask(function cmd_find_r(){
-  let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
-  if (t_pre_process)
-  {
-    if (basic){
-      if (t_mode.msg && t_mode.req){
-        set_orig(c, build_cmd_o(c.s+c.d+'>msg',
-          {type: 'res', cmd: 'find', body: c.arg}));
-        push_cmd(build_cmd(c.s+c.d+'>*find_r', c.arg));
-      } else if (t_mode.msg){
-        set_orig(c, build_cmd_o(c.s+c.d+'>msg',
-          {type: 'res', cmd: 'find', body: c.arg}));
-      }
-      else
-        set_orig(c, build_cmd(c.s+c.d+'>*find_r', c.arg));
-    }
-    else
-      set_orig(c, build_cmd(c.meta.cmd, c.arg));
-    return;
-  }
-  let ids = array_name_to_id(c.arg.split(''));
-  assert_event_c(c, event);
-  fake_emit(c, {type: 'res', cmd: 'find', body: {ids}});
 });
 
 const cmd_conn_info = opt=>etask(function cmd_conn_info(){
@@ -1156,7 +1045,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     seq = seq||0;
   if (type=='req'){
     switch (cmd){
-    case 'find': body = {id: _str(t_nodes[body].id)}; break;
     case 'conn_info': break;
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
@@ -1164,7 +1052,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   else if (type=='res'){
     switch (cmd){
-    case 'find': body = {ids: array_name_to_id(body.split(''))}; break;
     case 'conn_info':
       a = body ? body.split(' ') : [];
       body = {};
@@ -1483,10 +1370,6 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '!connect': yield cmd_connect(opt); break;
   case 'connect': yield cmd_connect(opt); break;
   case 'connected': yield cmd_connected(opt); break;
-  case 'find': yield cmd_find(opt); break;
-  case '*find': yield cmd_find(opt); break;
-  case 'find_r': yield cmd_find_r(opt); break;
-  case '*find_r': yield cmd_find_r(opt); break;
   case 'conn_info': yield cmd_conn_info(opt); break;
   case '*conn_info': yield cmd_conn_info(opt); break;
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
@@ -1918,13 +1801,6 @@ describe('peer-relay', function(){
         t('ab>!connect(!r)', `ab>!connect(wss !r)`);
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
-        t('ab>!connect(find(c d))', `ab>!connect(wss !r) ab>connect(wss !r)
-          ab<connected ab>*find(a) ab<*find_r(c) ab<*find(b) ab>*find_r(d)`);
-        t('ab>*find(a)', `ab>*find(a)`);
-        t('ab>*find(a r(c))', `ab>*find(a) ab<*find_r(c)`);
-        t('ab>fwd(ab>*find(a))', `ab>fwd(ab>*find(a))`);
-        t('ab>*find:a', `ab>*find(a)`);
-        t('ab<*find_r:a', `ab<*find_r(a)`);
         if (0){ // XXX NOW: rewrite (and/or make find shortcut for msg
         t('ab,bc>fwd(ac>*find(a))', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
         t('ab,bc<fwd(ac<*find(a))', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
@@ -2050,14 +1926,6 @@ describe('peer-relay', function(){
           bc>fwd(ac>msg(id(r0) type(res) cmd(test) seq(1) ack(2) body(ping)))
            ac>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
         t('a>*fail(id:r1 error:timeout)', `a>*fail(id(r1) error(timeout))`);
-        _t('mode:req', 'ab>find:a', `ab>*find(a)`);
-        _t('mode:msg', 'ab>find:a', `ab>msg(type(req) cmd(find) body(a))`);
-        _t('mode(msg req)', 'ab>find:a', `ab>msg(type(req) cmd(find) body(a))
-          ab>*find(a)`);
-        _t('mode:req', 'ab>find_r:a', `ab>*find_r(a)`);
-        _t('mode:msg', 'ab>find_r:a', `ab>msg(type(res) cmd(find) body(a))`);
-        _t('mode(msg req)', 'ab>find_r:a', `ab>msg(type(res) cmd(find) body(a))
-          ab>*find_r(a)`);
         t('a>*req_start(id:r0 cmd:test seq:1 ack:2 body:b0)',
           `a>*req_start(id(r0) cmd(test) seq(1) ack(2) body(b0))`);
         t('ab>!req_start(id:r1 cmd:test !e)',
@@ -2092,7 +1960,9 @@ describe('peer-relay', function(){
   describe('router', ()=>{
     // XXX TODO: need framing support (eg. for fwd)
     const t = (name, test)=>t_roles(name, 'abc', test);
-    t('2_nodes', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
+    t('2_nodes', `conf(id_bits:8) setup:2_nodes
+      ab>!req(body:ping res:ping_r)`);
+    t('2_nodes_wss', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       ab>!connect ab>!req(body:ping res:ping_r)`);
     t('3_nodes', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
       c=node(id:30 wss) ab>!connect ac>!connect ab>!req(body:ping res:ping_r)
@@ -2117,40 +1987,11 @@ describe('peer-relay', function(){
       abc<fwd(ac<msg(id:r1 type:res body:ping_r))
       ac<*res(id:r1 body:ping_r)`);
   });
-  // XXX NOW: review all test below and copy the relevant ones
-  if (true) return;
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());
     // afterEach(()=>xtest.xerr_level(xerr.L.ERR));
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: need auto
-    if (0){ // XXX: test with curcurecny 1 for failing to delivery message
-    t('xxx', `mode:msg mode:req a=node(wrtc) b=node(wss) c=node(wss)
-      d=node(wrtc)
-      ad>!connect(find(a da))
-      ab>!connect(find(a bad)) bd>*conn_info bd<*conn_info_r(wrtc)
-      bc>!connect(find(b cdab)) cd>*conn_info cd<*conn_info_r(wrtc)
-      ca>*conn_info ca<*conn_info_r(wrtc)
-      mode:pop
-      ac>!req(id:r0)
-      ad>fwd(ac>msg(id(r0) type(req) seq(0)))
-      20s a>*fail(id:r0 error:timeout)
-    `);
-    t('xxx2', `mode(msg req) mode:req a=node(wrtc) d=node(wss) c=node(wss)
-      b=node(wrtc)
-      ab>!connect(find(a ba))
-      ad>!connect(find(a dba)) db>*conn_info db<*conn_info_r(wrtc)
-      dc>!connect(find(d cdab))
-      ca>*conn_info ca<*conn_info_r(wrtc)
-      cb>*conn_info cb<*conn_info_r(wrtc)
-      mode:pop
-      ac>!req(id:r0)
-      ad>fwd(ac>msg(id(r0) type(req) seq(0)))
-      dc>fwd(ac>msg(id(r0) type(req) seq(0)))
-      ac>*req(id:r0)
-      20s a>*fail(id:r0 error:timeout)
-    `);
-    }
     describe('manual', ()=>{
       t('req', `mode:req setup:2_nodes
         ab>!req(id:r0 body:ping !e) ab>*req(id:r0 body:ping) -
@@ -2192,20 +2033,20 @@ describe('peer-relay', function(){
     // XXX: simplify with moving find to !connect
     describe('2_nodes', ()=>{
       t('req', `mode:req node:a b=node(wss(port:4000)) ab>!connect(wss !r)
-        ab>connect(wss !r) ab<connected ab>*find:a ab<*find_r:a ab<*find:b
-        ab>*find_r:ba - ab>!req(id:r0 body:ping res:ping_r !e)
+        ab>connect(wss !r) ab<connected -
+        ab>!req(id:r0 body:ping res:ping_r !e)
         ab>*req(id:r0 body:ping) ab<*res(id:r0 body:ping_r)`);
       t('msg', `mode:msg node:a b=node(wss(port:4000)) ab>!connect(wss !r)
-        ab>connect(wss !r) ab<connected ab>find:a ab<find_r:a
-        ab<find:b ab>find_r:ba - ab>!req(id:r0 body:ping res:ping_r !e)
+        ab>connect(wss !r) ab<connected -
+        ab>!req(id:r0 body:ping res:ping_r !e)
         ab>msg(type:req id:r0 body:ping) ab<msg(type:res id:r0 body:ping_r)`);
       t('msg,req', `mode(msg req) node:a b=node(wss(port:4000))
-        ab>!connect(wss !r) ab>connect(wss !r) ab<connected
-        ab>find:a ab<find_r:a ab<find:b ab>find_r:ba -
+        ab>!connect(wss !r) ab>connect(wss !r) ab<connected -
         ab>!req(id:r0 body:ping res:ping_r !e) ab>msg(type:req id:r0 body:ping)
         ab>*req(id:r0 body:ping) ab<msg(type:res id:r0 body:ping_r)
         ab<*res(id:r0 body:ping_r)`);
     });
+    if (true) return; // XXX NOW: FIXME
     describe('3_nodes', ()=>{
       // XXX: missing req test
       // t('fwd', `setup:3_nodes_linear ac>!req(id:r0 body:ping res:ping_r)
@@ -2273,6 +2114,8 @@ describe('peer-relay', function(){
       });
     });
   });
+  // XXX NOW: review all test below and copy the relevant ones
+  if (true) return;
   describe('stream', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: add msg and msg,req versions
