@@ -2,6 +2,7 @@
 'use strict'; /*jslint node:true, browser:true*/
 import {EventEmitter} from 'events';
 import xerr from '../util/xerr.js';
+import buf_util from './buf_util.js';
 import xutil from '../util/util.js';
 const b2s = xutil.buf_to_str, s2b = xutil.buf_from_str;
 
@@ -51,7 +52,7 @@ export default class Channels extends EventEmitter {
     let a = this.toArray(), best;
     for (let i=0; i<a.length; i++){
       let ch = a[i];
-      if (range && !Channels.in_range(range, ch.id))
+      if (range && !buf_util.in_range(range, ch.id))
         continue;
       if (!ch.id.compare(id)){
         best = ch;
@@ -65,7 +66,7 @@ export default class Channels extends EventEmitter {
     // it's a ring, so the minimum is the closest
     for (let i=0; i<a.length; i++){
       let ch = a[i];
-      if (range && !Channels.in_range(range, ch.id))
+      if (range && !buf_util.in_range(range, ch.id))
         continue;
       if (!best)
         best = ch;
@@ -75,11 +76,4 @@ export default class Channels extends EventEmitter {
     return best;
   }
 }
-
-// XXX: mv to hash.js/util.js
-Channels.in_range = function(range, id){
-  return range.min.compare(range.max)>=0 ?
-    id.compare(range.min)>0 || id.compare(range.max)<0 :
-    id.compare(range.min)>0 && id.compare(range.max)<0;
-};
 

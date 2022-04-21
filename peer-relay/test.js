@@ -6,6 +6,7 @@ import BufferShift from 'buffershift';
 import Node from './node.js';
 import Req from './req.js';
 import Channels from './channels.js';
+import buf_util from './buf_util.js';
 import ReqHandler from './req_handler.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
@@ -1731,14 +1732,14 @@ describe('api', function(){
   });
 });
 
-describe('channels', ()=>{
-  const v = val=>node_id_from_int(val, 8, ID_BITS);
-  const t = (range, id, exp)=>{
-    range = {min: s2b(v(range.min)), max: s2b(v(range.max))};
-    id = s2b(v(id));
-    assert.equal(Channels.in_range(range, id), exp);
-  };
+describe('buf_util', ()=>{
+  const v = val=>s2b(node_id_from_int(val, 8, ID_BITS));
   it('in_range', ()=>{
+    const t = (range, id, exp)=>{
+      range = {min: v(range.min), max: v(range.max)};
+      id = v(id);
+      assert.equal(buf_util.in_range(range, id), exp);
+    };
     t({min: 10, max: 20}, 9, false);
     t({min: 10, max: 20}, 10, false);
     t({min: 10, max: 20}, 11, true);
@@ -1755,6 +1756,10 @@ describe('channels', ()=>{
     t({min: 10, max: 10}, 10, false);
     t({min: 10, max: 10}, 11, true);
   });
+});
+
+describe('channels', ()=>{
+  const v = val=>node_id_from_int(val, 8, ID_BITS);
   it('get_closest', ()=>{
     const t = (val, exp, range)=>{
       let ch = channels.get_closest(v(val), range);
