@@ -78,6 +78,17 @@ function conn_opts_from_node(node){
   return a.join(' ');
 }
 
+function parse_range(s){
+  let a = s.match(/^([0-9]+)-([0-9]+)$/);
+  return a && {min: hash_from_int(+a[1], t_node_id_bits, ID_BITS),
+    max: hash_from_int(+a[2], t_node_id_bits, ID_BITS)};
+}
+
+function range_to_str(range){
+  return int_from_hash(range.min, t_node_id_bits, ID_BITS)+'-'+
+    int_from_hash(range.max, t_node_id_bits, ID_BITS);
+}
+
 // non-number req_id is set explicit in test
 function test_req_id(req_id){ return is_number(req_id) ? undefined : req_id; }
 
@@ -234,6 +245,12 @@ function assert_port(port){
 function assert_host(host){
   assert.ok(xurl.is_valid_domain(host), 'invalid host '+host);
   return host;
+}
+
+function assert_range(s){
+  let range = parse_range(s);
+  assert(range, 'invalid range '+s);
+  return range;
 }
 
 function assert_support_wrtc(name){
@@ -835,7 +852,7 @@ function cmd_node(opt){
   if (id){
     assert(id>0 && id<Math.pow(2, t_node_id_bits), 'invalid id '+id+
       ' valid 0-'+Math.pow(2, t_node_id_bits));
-    key = {pub: node_id_from_int(id, t_node_id_bits, ID_BITS), priv: '00'};
+    key = {pub: hash_from_int(id, t_node_id_bits, ID_BITS), priv: '00'};
   }
   else {
     key = t_keys[name];
@@ -1317,17 +1334,28 @@ const cmd_fail = opt=>etask(function*req(){
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   // XXX NOW: simplify implementation
   let {c, event} = opt;
-  let a = xtest.test_parse(c.arg);
-  assert(a.length==1, 'invalid fwd '+c.orig);
-  a[0].fwd = dir_c(c);
+  let arg = xtest.test_parse(c.arg), f = arg.shift(), range;
+  util.forEach(arg, a=>{
+    switch (a.cmd){
+    case 'range': range = assert_range(a.arg); break;
+    default:
+      if (range = parse_range(a.cmd))
+        assert(!a.arg, 'invalid arg for range '+a.arg);
+      else
+        assert(0, 'unknown arg '+a.cmd);
+    }
+  });
+  f.fwd = dir_c(c);
   if (t_pre_process){
-    a[0].orig_loop = c.orig_loop;
-    a[0].had_loop = c.had_loop;
-    a[0].loop_first = c.loop_first;
+    f.orig_loop = c.orig_loop;
+    f.had_loop = c.had_loop;
+    f.loop_first = c.loop_first;
   }
-  yield cmd_run_single({c: a[0], event});
-  if (t_pre_process)
-    return set_orig(c, _build_cmd(a[0].orig, a[0].fwd));
+  yield cmd_run_single({c: f, event});
+  if (t_pre_process){
+    return set_orig(c, _build_cmd(f.orig+
+      (range ? ' '+build_cmd('range', range_to_str(range)) : ''), f.fwd));
+  }
   yield cmd_run_if_next_fake();
 });
 
@@ -1611,7 +1639,7 @@ describe('api', function(){
 });
 
 describe('buf_util', ()=>{
-  const v = val=>s2b(node_id_from_int(val, 8, ID_BITS));
+  const v = val=>s2b(hash_from_int(val, 8, ID_BITS));
   it('in_range', ()=>{
     const t = (range, id, exp)=>{
       range = {min: v(range.min), max: v(range.max)};
@@ -1637,7 +1665,7 @@ describe('buf_util', ()=>{
 });
 
 describe('channels', ()=>{
-  const v = val=>node_id_from_int(val, 8, ID_BITS);
+  const v = val=>hash_from_int(val, 8, ID_BITS);
   it('get_closest', ()=>{
     const t = (a, val, exp, range)=>{
       let channels = new Channels();
@@ -1709,7 +1737,7 @@ describe('wallet', ()=>{
   });
 });
 
-function node_id_from_int(val, bits, total_bits){
+function hash_from_int(val, bits, total_bits){
   assert(val<Math.pow(2, 32), 'val too big '+val);
   assert(bits>=8 && total_bits>=bits, 'invalid '+bits+'/'+total_bits);
   assert(val>0 && val<Math.pow(2, bits), 'invalid '+val+
@@ -1720,6 +1748,12 @@ function node_id_from_int(val, bits, total_bits){
   return b2s(buf);
 }
 
+function int_from_hash(hash, bits, total_bits){
+  let buf = s2b(hash);
+  BufferShift.shr(buf, 32-bits);
+  return buf.readIntBE(1, 3);
+}
+
 describe('peer-relay', function(){
   beforeEach(function(){
     xtest.set(Node, 'WsConnector', FakeWsConnector);
@@ -1727,9 +1761,11 @@ describe('peer-relay', function(){
     xtest.set(util, 'test_on_connection', test_on_connection);
   });
   describe('test_api', function(){
-    it('node_id', function(){
-      let t = (val, bits, exp)=>
-        assert.equal(node_id_from_int(val, bits, 40), exp);
+    it('hash_from_int', function(){
+      let t = (val, bits, exp)=>{
+        assert.equal(hash_from_int(val, bits, 40), exp);
+        assert.equal(int_from_hash(exp, bits, 40), val);
+      };
       t(1, 8, '0100000000');
       t(2, 8, '0200000000');
       t(255, 8, 'ff00000000');
@@ -1830,6 +1866,9 @@ describe('peer-relay', function(){
           ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws)))
           bc>fwd(ac>msg(type(res) cmd(conn_info) body(ws)))
           ac>*conn_info_r(ws)`);
+        t('cd>fwd(ab>msg)', `cd>fwd(ab>msg)`);
+        t('cd>fwd(ab>msg range(10-20))', `cd>fwd(ab>msg range(10-20))`);
+        t('cd>fwd(ab>msg 10-20)', `cd>fwd(ab>msg range(10-20))`);
         if (0) // XXX NOW: TODO
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
@@ -1980,6 +2019,17 @@ describe('peer-relay', function(){
       ac>!req(id:r1 body:ping res:ping_r !e)
       abc>fwd(ac>msg(id:r1 type:req body:ping)) ac>*req(id:r1 seq(0) body:ping)
       adc<fwd(ac<msg(id:r1 type:res body:ping_r)) ac<*res(id:r1 body:ping_r)`);
+    t('4_nodes_ring_range', `conf(id_bits:8) a=node(id:10 wss)
+      b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
+      ab>!connect bc>!connect cd>!connect da>!connect -
+      ab>!req(body:ping res:ping_r) -
+      ac>!req(id:r1 body:ping res:ping_r !e)
+      ab>fwd(ac>msg(id:r1 type:req body:ping) 10-20)
+      bc>fwd(ac>msg(id:r1 type:req body:ping))
+      ac>*req(id:r1 seq(0) body:ping)
+      dc<fwd(ac<msg(id:r1 type:res body:ping_r))
+      ad<fwd(ac<msg(id:r1 type:res body:ping_r))
+      ac<*res(id:r1 body:ping_r)`);
   });
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());
