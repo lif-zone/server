@@ -66,7 +66,7 @@ export default class Router extends EventEmitter {
     if (!channel || b2s(channel.id)==msg.from)
       return;
     _this.track_out(msg, channel);
-    msg.range = {min: b2s(channel.id), max: msg.dst};
+    msg.range = {min: b2s(channel.id), max: msg.to};
     // TODO BUG Sometimes the WS on closest in not in the ready state
     yield channel.send(msg);
   });

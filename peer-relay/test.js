@@ -533,6 +533,8 @@ class FakeChannel extends EventEmitter {
       }
       e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
         type, cmd, seq, ack: ack && ack.join(','), body});
+      // XXX: add range support:
+      // +' '+build_cmd('range', range_to_str(msg.range));
       assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
       t_nonce[normalize(e)] = msg.nonce;
       track_msg(msg);
@@ -2027,6 +2029,7 @@ describe('peer-relay', function(){
     t('3_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30)) a=node(wss)
       b=node(wss) c=node(wss) ab>!connect bc>!connect ca>!connect
       ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r) -`);
+    t = (name, test)=>t_roles(name, 'abcd', test);
     // XXX: derry: review
     // XXX: implement stateful req
     t('4_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
@@ -2046,6 +2049,17 @@ describe('peer-relay', function(){
       abc>!req(id:r1 body:ping res:ping_r) 59s -
       cba>!req(id:r2 body:ping res:ping_r) 60s -
       cda>!req(id:r3 body:ping res:ping_r) -`);
+    if (0) // XXX: WIP
+    t('4_nodes_ring_range', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
+      a=node(id:10 wss) b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
+      ab>!connect bc>!connect cd>!connect da>!connect -
+      ac>!req(id:r1 body:ping res:ping_r !e)
+      ab>fwd(ac>msg(id:r1 type:req body:ping) 20-30)
+      bc>fwd(ac>msg(id:r1 type:req body:ping) 30-30)
+      ac>*req(id:r1 body:ping)
+      bc<fwd(ac<msg(id:r1 type:res body:ping_r) 20-10)
+      ab<fwd(ac<msg(id:r1 type:res body:ping_r) 10-10)
+      ac<*res(id:r1 body:ping_r)`);
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
@@ -2054,17 +2068,29 @@ describe('peer-relay', function(){
       abcd<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
     if (0) // XXX: WIP
-    t('4_nodes_ring_range', `conf(id_bits:8) a=node(id:10 wss)
-      b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
-      ab>!connect bc>!connect cd>!connect da>!connect -
-      ab>!req(body:ping res:ping_r) -
-      ac>!req(id:r1 body:ping res:ping_r !e)
-      ab>fwd(ac>msg(id:r1 type:req body:ping) 10-20)
-      bc>fwd(ac>msg(id:r1 type:req body:ping))
-      ac>*req(id:r1 seq(0) body:ping)
-      dc<fwd(ac<msg(id:r1 type:res body:ping_r))
-      ad<fwd(ac<msg(id:r1 type:res body:ping_r))
-      ac<*res(id:r1 body:ping_r)`);
+    t('5_nodes_ring_range', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
+      a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
+      ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
+      ad>!req(id:r1 body:ping res:ping_r !e)
+      ab>fwd(ad>msg(id:r1 type:req body:ping) 20-40)
+      bc>fwd(ad>msg(id:r1 type:req body:ping) 30-40)
+      cd>fwd(ad>msg(id:r1 type:req body:ping) 40-40)
+      ad>*req(id:r1 body:ping)
+      cd<fwd(ad<msg(id:r1 type:res body:ping_r) 30-10)
+      bc<fwd(ad<msg(id:r1 type:res body:ping_r) 20-10)
+      ab<fwd(ad<msg(id:r1 type:res body:ping_r) 10-10)
+      ad<*res(id:r1 body:ping_r)`);
+    if (0) // XXX: WIP
+    t('5_nodes_ring_range_rev', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
+      a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
+      ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
+      ad<!req(id:r1 body:ping res:ping_r !e)
+      de>fwd(ad<msg(id:r1 type:req body:ping) 50-10)
+      ea>fwd(ad<msg(id:r1 type:req body:ping) 10-10)
+      ad<*req(id:r1 body:ping)
+      ea<fwd(ad>msg(id:r1 type:res body:ping_r) 50-40)
+      de<fwd(ad>msg(id:r1 type:res body:ping_r) 40-40)
+      ad>*res(id:r1 body:ping_r)`);
   });
   describe('get_peer', ()=>{
     if (true) return; // XXX WIP
