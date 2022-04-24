@@ -2038,6 +2038,8 @@ describe('peer-relay', function(){
       cb>!req(body:ping res:ping_r) 60s cd>!req(body:ping res:ping_r) 60s
       da>!req(body:ping res:ping_r) 60s dab>!req(body:ping res:ping_r) 60s
       dc>!req(body:ping res:ping_r)`);
+    // XXX: need to rm explicit req_id. need to fix test req tracking.
+    // without explicit req_id, the test fails
     t('4_nodes_ring_state_timeout', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
       bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) -
