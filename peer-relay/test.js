@@ -682,7 +682,7 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   if (!channel)
     return xerr('no channel '+s+d+'>');
-  yield t_nodes[d].router._on_channel_msg(msg);
+  yield t_nodes[d].router._on_channel_msg(msg, channel);
 });
 
 function fake_emit(c, msg){
@@ -2015,12 +2015,16 @@ describe('peer-relay', function(){
       ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r) -`);
     // XXX: derry: review
     // conf(id_bits:8 id(a:10 b:20 c:30 d:40)
+    // XXX: implement stateful req
     t('4_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
-      c=node(id:30 wss) d=node(id:40 wss) ab>!connect bc>!connect cd>!connect
+      c=node:wss d=node:wss ab>!connect bc>!connect cd>!connect
       da>!connect - ab>!req(body:ping res:ping_r) -
-      ac>!req(id:r1 body:ping res:ping_r !e)
-      abc>fwd(ac>msg(id:r1 type:req body:ping)) ac>*req(id:r1 seq(0) body:ping)
-      adc<fwd(ac<msg(id:r1 type:res body:ping_r)) ac<*res(id:r1 body:ping_r)`);
+      abc>!req(body:ping res:ping_r) - ad>!req(body:ping res:ping_r) -
+      ba>!req(body:ping res:ping_r) - bc>!req(body:ping res:ping_r) -
+      bcd>!req(body:ping res:ping_r) - cda>!req(body:ping res:ping_r) -
+      cb>!req(body:ping res:ping_r) - cd>!req(body:ping res:ping_r) -
+      da>!req(body:ping res:ping_r) - dab>!req(body:ping res:ping_r) -
+      dc>!req(body:ping res:ping_r)`);
     if (0) // XXX: WIP
     t('4_nodes_ring_range', `conf(id_bits:8) a=node(id:10 wss)
       b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)

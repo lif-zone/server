@@ -117,7 +117,7 @@ function WrtcChannel(sp, id){
   function onData(data){
     if (self.destroyed)
       return;
-    self.emit('message', JSON.parse(data));
+    self.emit('message', JSON.parse(data), self);
   }
 
   function onClose(){ self.destroy(); }
