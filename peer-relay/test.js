@@ -34,7 +34,7 @@ xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
 let t_nodes = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id, t_ack;
-let t_reprocess, t_node_id_bits;
+let t_reprocess, t_node_id_bits, t_node_ids;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
     priv: 'ba186102e13ec32e5273a30df6da2b6c9428258b4ea83ac88df7322e7645b864a'+
@@ -215,6 +215,17 @@ function assert_bool(val){
 function assert_int(val){
   assert(/^[0-9]+$/.test(val), 'invalid int '+val);
   return parseInt(val);
+}
+
+function assert_node_ids(val){
+  let ids = val.split(' '), ret = {};
+  ids.forEach(s=>{
+    let a = s.match(/^([a-z]+):([0-9]+)$/);
+    assert(a && a.length==3, 'invaid node_ids '+val+' '+s);
+    assert(!ret[a[1]], 'invalid node_ids '+val);
+    ret[a[1]] = +a[2];
+  });
+  return ret;
 }
 
 function assert_ack(val){
@@ -792,6 +803,7 @@ function cmd_conf(opt){
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'id_bits': set_node_id_bits(assert_int(a.arg)); break;
+    case 'id': set_node_ids(assert_node_ids(a.arg)); break;
     default: assert(0, 'invalid conf '+a.cmd);
     }
   });
@@ -843,6 +855,7 @@ function cmd_node(opt){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
+  id = id||t_node_ids[name];
   let fake = is_fake(name);
   if (t_pre_process){
     let o = {};
@@ -1500,9 +1513,8 @@ const cmd_run = event=>etask(function*cmd_run(){
   t_depth--;
 });
 
-function set_node_id_bits(bits){
-  t_node_id_bits = bits;
-}
+function set_node_id_bits(bits){ t_node_id_bits = bits; }
+function set_node_ids(ids){ t_node_ids = ids||{}; }
 
 function test_start(role){
   t_role = role;
@@ -1519,6 +1531,7 @@ function test_start(role){
   t_nonce = {};
   t_req = {};
   set_node_id_bits(10);
+  set_node_ids();
 }
 
 function test_setup_mode(){
@@ -1997,28 +2010,28 @@ describe('peer-relay', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `conf(id_bits:8) setup:2_nodes
       ab>!req(body:ping res:ping_r)`);
-    t('2_nodes_wss', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
+    t('2_nodes_wss', `conf(id_bits:8) a=node(wss) b=node(wss)
       ab>!connect ab>!req(body:ping res:ping_r)`);
-    t('3_nodes', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
-      c=node(id:30 wss) ab>!connect ac>!connect ab>!req(body:ping res:ping_r)
+    t('3_nodes', `conf(id_bits:8) a=node(wss) b=node(wss)
+      c=node(wss) ab>!connect ac>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r)`);
-    t('3_nodes_route_b', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
-      c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
-      ad>!req(id:r1 body:ping !e) ab>fwd(ad>msg(id:r1 type:req body:ping)) -
+    t('3_nodes_route_b', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
+      a=node(wss) b=node(wss) c=node(wss) d=node e=node ab>!connect
+      ac>!connect ad>!req(id:r1 body:ping !e)
+      ab>fwd(ad>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_route_c', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
-      c=node(id:30 wss) d=node(id:21) e=node(id:31) ab>!connect ac>!connect
+    t('3_nodes_route_c', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
+      a=node(wss) b=node(wss) c=node(wss) d=node e=node ab>!connect ac>!connect
       ae>!req(id:r1 body:ping !e) ac>fwd(ae>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
-      c=node(id:30 wss) ab>!connect bc>!connect ca>!connect
+    t('3_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30)) a=node(wss)
+      b=node(wss) c=node(wss) ab>!connect bc>!connect ca>!connect
       ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r) -`);
     // XXX: derry: review
-    // conf(id_bits:8 id(a:10 b:20 c:30 d:40)
     // XXX: implement stateful req
-    t('4_nodes_ring', `conf(id_bits:8) a=node(id:10 wss) b=node(id:20 wss)
-      c=node:wss d=node:wss ab>!connect bc>!connect cd>!connect
-      da>!connect - ab>!req(body:ping res:ping_r) -
+    t('4_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
+      a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
+      bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) -
       abc>!req(body:ping res:ping_r) - ad>!req(body:ping res:ping_r) -
       ba>!req(body:ping res:ping_r) - bc>!req(body:ping res:ping_r) -
       bcd>!req(body:ping res:ping_r) - cda>!req(body:ping res:ping_r) -
