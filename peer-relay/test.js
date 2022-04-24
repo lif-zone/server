@@ -745,14 +745,13 @@ const fake_send_msg = (c, msg)=>etask(function*(){
   }
   if (s.t.fake && !d.t.fake)
   {
+    // XXX NOW: 1. fix logic (handle req_start/res_start/....)
     if (msg.type=='req')
       msg.req_id = msg.req_id || ++t_req_id+'';
     else if (msg.type=='res')
     {
-      if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake){
-        msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
-          cmd: msg.cmd});
-      }
+      msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
+        cmd: msg.cmd});
     }
     msg.sign = node_from_id(from).wallet.sign(msg);
     track_msg(msg);
@@ -877,6 +876,7 @@ function cmd_node(opt){
     {keys: {priv: s2b(key.priv), pub: s2b(key.pub)}, bootstrap, wrtc},
     wss));
   node.t = {id: _str(node.id), name, fake, wss};
+  xerr.notice('id %s:%s', name, _str(node.id));
   t_nodes[name] = node;
 }
 
@@ -2007,7 +2007,7 @@ describe('peer-relay', function(){
   };
   describe('router', ()=>{
     // XXX TODO: need framing support (eg. for fwd)
-    const t = (name, test)=>t_roles(name, 'abc', test);
+    let t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `conf(id_bits:8) setup:2_nodes
       ab>!req(body:ping res:ping_r)`);
     t('2_nodes_wss', `conf(id_bits:8) a=node(wss) b=node(wss)
@@ -2038,6 +2038,14 @@ describe('peer-relay', function(){
       cb>!req(body:ping res:ping_r) - cd>!req(body:ping res:ping_r) -
       da>!req(body:ping res:ping_r) - dab>!req(body:ping res:ping_r) -
       dc>!req(body:ping res:ping_r)`);
+    t = (name, test)=>t_roles(name, 'abcde', test);
+    // XXX: fix stateful to be by from/to
+    t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
+      a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
+      ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
+      abcd>!req(id:r1 body:ping res:ping_r)
+      aed<!req(id:r2 body:ping res:ping_r)
+      `);
     if (0) // XXX: WIP
     t('4_nodes_ring_range', `conf(id_bits:8) a=node(id:10 wss)
       b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)

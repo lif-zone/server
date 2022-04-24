@@ -63,7 +63,7 @@ export default class Router extends EventEmitter {
     if (channel = _this.get_out_channel(msg));
     else
       channel = _this._channels.get_closest(msg.to, msg.range);
-    if (b2s(channel.id)==msg.from)
+    if (!channel || b2s(channel.id)==msg.from)
       return;
     _this.track_out(msg, channel);
     msg.range = {min: b2s(channel.id), max: msg.dst};
@@ -78,6 +78,7 @@ export default class Router extends EventEmitter {
     if (nonce in _this._touched)
       return log.debug('channel-msg dup %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
+    xerr.notice('channel-msg %s', dbg_msg(msg));
     _this.track_in(msg, channel);
     let from = s2b(msg.from), to = s2b(msg.to);
     // XXX: enable verify
