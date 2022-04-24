@@ -2031,21 +2031,26 @@ describe('peer-relay', function(){
     // XXX: implement stateful req
     t('4_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
-      bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) -
-      abc>!req(body:ping res:ping_r) - ad>!req(body:ping res:ping_r) -
-      ba>!req(body:ping res:ping_r) - bc>!req(body:ping res:ping_r) -
-      bcd>!req(body:ping res:ping_r) - cda>!req(body:ping res:ping_r) -
-      cb>!req(body:ping res:ping_r) - cd>!req(body:ping res:ping_r) -
-      da>!req(body:ping res:ping_r) - dab>!req(body:ping res:ping_r) -
+      bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) 60s
+      abc>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
+      ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
+      bcd>!req(body:ping res:ping_r) 60s cda>!req(body:ping res:ping_r) 60s
+      cb>!req(body:ping res:ping_r) 60s cd>!req(body:ping res:ping_r) 60s
+      da>!req(body:ping res:ping_r) 60s dab>!req(body:ping res:ping_r) 60s
       dc>!req(body:ping res:ping_r)`);
+    t('4_nodes_ring_state_timeout', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
+      a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
+      bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) -
+      abc>!req(id:r1 body:ping res:ping_r) 59s -
+      cba>!req(id:r2 body:ping res:ping_r) 60s -
+      cda>!req(id:r3 body:ping res:ping_r) -`);
     t = (name, test)=>t_roles(name, 'abcde', test);
-    // XXX: fix stateful to be by from/to
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
-      abcd>!req(id:r1 body:ping res:ping_r)
-      aed<!req(id:r2 body:ping res:ping_r)
-      `);
+      abcd>!req(id:r1 body:ping res:ping_r) 59s -
+      abcd<!req(id:r2 body:ping res:ping_r) 60s -
+      aed<!req(id:r3 body:ping res:ping_r) 60s -`);
     if (0) // XXX: WIP
     t('4_nodes_ring_range', `conf(id_bits:8) a=node(id:10 wss)
       b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
