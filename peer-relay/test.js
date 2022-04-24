@@ -2066,6 +2066,42 @@ describe('peer-relay', function(){
       ad<fwd(ac<msg(id:r1 type:res body:ping_r))
       ac<*res(id:r1 body:ping_r)`);
   });
+  describe('get_peer', ()=>{
+    if (true) return; // XXX WIP
+    let t = (name, test)=>t_roles(name, 'abcd', test);
+    let s = 'conf(a:10 b:20 c:30 d:40 e:50';
+    t('a', s+=` a=node:wss`); // XXX: do aa~>get_peer
+    t('a', s+=` b=node:wss ab>!connect bb~>get_peer(b)`);
+  });
+  describe('ring_connect', ()=>{
+    if (true) return; // XXX WIP
+    let t = (name, test)=>t_roles(name, 'abcd', test);
+    let s = 'conf(a:10 b:20 c:30 d:40 e:50';
+    t('a', s+=`a=node:wss`);
+    // XXX: b=node(boot:a) instead of hard-code connect/join and make join
+    // option of connect
+    t('ab', s+=` b=node:wss ab<!connect ab<!join`);
+    /* XXX: WIP
+    let t = ()=>{}, s;
+    // a:48 b:53 c:294 d:385 e:403 f:746 g:940
+    t('b', s=`b=node(id:53)`);
+    t('ab', s+=`a=node(id:48 boot:b) ab>connect ab>get_peer(a 53-48)
+      ba<get_peer_r(b) ab>online -`);
+    t('abc', s+=`c=node(id:294 boot:b) cb>connect cb>get_peer(c 53-294)
+      cb<get_peer_r(ab) ca>connect ca>online cb>online -`);
+    // XXX: db>fwd(53-385,dd*>get_peer:d) bc>fwd(294-385,dd*>get_peer:d)
+    t('abcd', s+=`d=node(id:385 boot:b) db>connect
+      dbcd~>get_peer(d 53-385)
+      bc>get_peer(d 294-385) dbc<get_peer_r(ac) da>connect dc>connect
+      dc>online dc>online`);
+    t('abcdg', s+=`g=node(id:940 boot:b) gb>connect gb>get_peer(g 53-940)
+      bd>(g 385-940) dbg<(da) gd>connect ga>connect gd>online ga>online`);
+    t('xxx', `setup(ring:abcef) g=node(id:940 boot:b) gb>get_peer(g 53-940)
+      bc>get_peer(g 294-940) cd>get_peer(g 385-940) de>get_peer(g 403-940)
+      ef>get_peer(g 746-940) gbcdef<get_peer_r(af) ga>connect gf>connect
+      ga>online gf>online`);
+    */
+  });
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());
     // afterEach(()=>xtest.xerr_level(xerr.L.ERR));
