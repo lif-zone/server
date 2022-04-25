@@ -2067,6 +2067,11 @@ describe('peer-relay', function(){
       abcd>!req(id:r1 body:ping res:ping_r) 59s -
       abcd<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
+    // XXX derry:: once there is a known route, a client may send it with
+    // explicit.
+    // support:
+    // cd>fwd(ad>msg(id:r1 type:req body:ping) rt:40-40)
+    // cd<fwd(ad<msg(id:r1 type:res body:ping_r) rt:abcd)
     if (0) // XXX: WIP
     t('5_nodes_ring_range', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
