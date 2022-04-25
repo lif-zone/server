@@ -3512,6 +3512,7 @@ describe('test_lib', ()=>{
       t('abc>', {cmd: 'abc>'}, 4);
       t('abc>d', {cmd: 'abc>d'}, 5);
       t('abc>d(f)', {cmd: 'abc>d', arg: 'f'}, 8);
+      t('abc~>d', {cmd: 'abc~>d'}, 6);
     });
     it('cmd_single_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
@@ -3642,6 +3643,8 @@ describe('test_lib', ()=>{
       t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
       t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
+      if (0) // XXX: TODO
+      t('ab~>c', {s: 'a', d: 'b~', dir: '>', cmd: 'c'});
       t('a>b(c)', {s: 'a', d: '', dir: '>', cmd: 'b(c)'});
       t('a>!b', {s: 'a', d: '', dir: '>', cmd: '!b'});
       t('ab>!c', {s: 'a', d: 'b', dir: '>', cmd: '!c'});
