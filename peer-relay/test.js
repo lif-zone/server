@@ -26,6 +26,8 @@ const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
+const xxx_wip = false; // XXX WIP
+
 // XXX: make it automatic for all node/browser in proc.js
 xerr.set_exception_catch_all(true);
 process.on('uncaughtException', err=>xerr.xexit(err));
@@ -87,6 +89,11 @@ function parse_range(s){
 function range_to_str(range){
   return int_from_hash(range.min, t_node_id_bits, ID_BITS)+'-'+
     int_from_hash(range.max, t_node_id_bits, ID_BITS);
+}
+
+function rt_to_str(rt){
+  assert(util.xor(rt.range, rt.path));
+  return rt.range ? range_to_str(rt.range) : path_to_str(rt.path);
 }
 
 // non-number req_id is set explicit in test
@@ -258,10 +265,14 @@ function assert_host(host){
   return host;
 }
 
-function assert_range(s){
-  let range = parse_range(s);
-  assert(range, 'invalid range '+s);
-  return range;
+function assert_path(s){ return parse_path(s); }
+
+function assert_rt(s){
+  let range, path;
+  if (!(range = parse_range(s)))
+    path = parse_path(s);
+  assert(range||path, 'invalid rt '+s);
+  return {range, path};
 }
 
 function assert_support_wrtc(name){
@@ -343,7 +354,8 @@ function assert_event_c2(c, orig, fwd, event, call){
     return assert(!event, 'unexpected event '+event+' for call '+orig);
   if (event){
     let expected = fwd ? build_cmd(fwd+'fwd', normalize(orig)+
-      (c.range ? ' '+build_cmd('range', range_to_str(c.range)) : '')) : orig;
+      (xxx_wip&&c.path ? ' '+build_cmd('path', path_to_str(c.path)) : '')+
+      (xxx_wip&&c.rt ? ' '+build_cmd('rt', rt_to_str(c.rt)) : '')) : orig;
     assert_event(event, expected);
   }
   else
@@ -532,9 +544,9 @@ class FakeChannel extends EventEmitter {
         }
       }
       e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
-        type, cmd, seq, ack: ack && ack.join(','), body});
-      // XXX: add range support:
-      // +' '+build_cmd('range', range_to_str(msg.range));
+        type, cmd, seq, ack: ack && ack.join(','), body})+
+        (xxx_wip&&fwd ? ' '+build_cmd('path', path_to_str(msg.path)) : '')+
+        (xxx_wip&&fwd ? ' '+build_cmd('rt', range_to_str(msg.range)) : '');
       assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
       t_nonce[normalize(e)] = msg.nonce;
       track_msg(msg);
@@ -668,6 +680,24 @@ function new_res_hook(res){
   res.on('fail', o=>cmd_run(build_cmd_o(s.t.name+'>*fail',
     {id: o.req_id, seq: o.seq, error: o.error})));
 }
+
+function parse_path(s){
+  let a = (s||'').split(''), ret = [];
+  a.forEach(name=>ret.push(name_to_id(name)));
+  return ret;
+}
+
+function path_to_str(path){
+  let a = [];
+  path.forEach(id=>a.push(id_to_name(id)));
+  return a.join('');
+}
+
+// XXX: cleanup all code
+function id_to_name(id){ return node_from_id(id).t.name; }
+
+// XXX: cleanup all code
+function name_to_id(name){ return t_nodes[name].id; }
 
 /* XXX: decide if to remove
 function array_id_to_name(a){
@@ -1350,19 +1380,17 @@ const cmd_fail = opt=>etask(function*req(){
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   // XXX NOW: simplify implementation
   let {c, event} = opt;
-  let arg = xtest.test_parse(c.arg), f = arg.shift(), range;
+  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, path;
   util.forEach(arg, a=>{
     switch (a.cmd){
-    case 'range': range = assert_range(a.arg); break;
-    default:
-      if (range = parse_range(a.cmd))
-        assert(!a.arg, 'invalid arg for range '+a.arg);
-      else
-        assert(0, 'unknown arg '+a.cmd);
+    case 'rt': rt = assert_rt(a.arg); break;
+    case 'path': path = assert_path(a.arg); break;
+    default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   f.fwd = dir_c(c);
-  f.range = range;
+  f.path = path;
+  f.rt = rt;
   if (t_pre_process){
     f.orig_loop = c.orig_loop;
     f.had_loop = c.had_loop;
@@ -1371,7 +1399,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
     return set_orig(c, _build_cmd(f.orig+
-      (range ? ' '+build_cmd('range', range_to_str(range)) : ''), f.fwd));
+      (path ? ' '+build_cmd('path', path_to_str(path)) : '')+
+      (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : ''), f.fwd));
   }
   yield cmd_run_if_next_fake();
 });
@@ -1884,8 +1913,12 @@ describe('peer-relay', function(){
           bc>fwd(ac>msg(type(res) cmd(conn_info) body(ws)))
           ac>*conn_info_r(ws)`);
         t('cd>fwd(ab>msg)', `cd>fwd(ab>msg)`);
-        t('cd>fwd(ab>msg range(10-20))', `cd>fwd(ab>msg range(10-20))`);
-        t('cd>fwd(ab>msg 10-20)', `cd>fwd(ab>msg range(10-20))`);
+        t('cd>fwd(ab>msg path:abc)', `cd>fwd(ab>msg path(abc))`);
+        t('cd>fwd(ab>msg path(abc))', `cd>fwd(ab>msg path(abc))`);
+        t('cd>fwd(ab>msg rt:10-20)', `cd>fwd(ab>msg rt(10-20))`);
+        t('cd>fwd(ab>msg rt(10-20))', `cd>fwd(ab>msg rt(10-20))`);
+        t('cd>fwd(ab>msg rt:abc)', `cd>fwd(ab>msg rt(abc))`);
+        t('cd>fwd(ab>msg rt(abc))', `cd>fwd(ab>msg rt(abc))`);
         if (0) // XXX NOW: TODO
         t(`abc>conn_info`, `abc>fwd(ac>msg(type:req cmd(conn_info)))
           ac>*conn_info`);
@@ -2049,16 +2082,15 @@ describe('peer-relay', function(){
       abc>!req(id:r1 body:ping res:ping_r) 59s -
       cba>!req(id:r2 body:ping res:ping_r) 60s -
       cda>!req(id:r3 body:ping res:ping_r) -`);
-    if (0) // XXX: WIP
     t('4_nodes_ring_range', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(id:10 wss) b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
       ab>!connect bc>!connect cd>!connect da>!connect -
       ac>!req(id:r1 body:ping res:ping_r !e)
-      ab>fwd(ac>msg(id:r1 type:req body:ping) 20-30)
-      bc>fwd(ac>msg(id:r1 type:req body:ping) 30-30)
+      ab>fwd(ac>msg(id:r1 type:req body:ping) path(a) rt:20-30)
+      bc>fwd(ac>msg(id:r1 type:req body:ping) path(ab) rt:30-30)
       ac>*req(id:r1 body:ping)
-      bc<fwd(ac<msg(id:r1 type:res body:ping_r) 20-10)
-      ab<fwd(ac<msg(id:r1 type:res body:ping_r) 10-10)
+      bc<fwd(ac<msg(id:r1 type:res body:ping_r) path(c) rt:20-10)
+      ab<fwd(ac<msg(id:r1 type:res body:ping_r) path(cb) rt:10-10)
       ac<*res(id:r1 body:ping_r)`);
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
