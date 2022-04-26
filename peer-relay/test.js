@@ -2159,8 +2159,18 @@ describe('peer-relay', function(){
     let t = (name, test)=>t_roles(name, 'abcd', test);
     let s = 'conf(a:10 b:20 c:30 d:40 e:50';
     t('a', s+=` a=node:wss`); // XXX: do aa~>get_peer
-    t('a', s+=` b=node:wss ab>!connect bb~>get_peer(b)`);
+    t('ab', s+=` b=node:wss ab>!connect bb~>get_peer:b ab<get_peer_r:a`);
+    t('abc', s+=` c=node:wss bc>!connect bb~>get_peer:b ab<get_peer_r:a`);
   });
+  // XXX: support: a,b,c,d,e=node(wss) ab,bc,cd,de,ea>!connect
+  // abcDefg dx>connect dxd+e>announce(r:bcfg) dxd-c>announce(r:abef)
+  // dxe,dxc>online
+  // min online: abcdefg dx>connect dx+d.e,dx-dc>announce dxe,dxc>online
+  // more min: abcdefg dx>connect dx+d.e>announce(r:c) dxe,dxc>online
+  // better: abcdefg dx>connect dx+d.e>announce(r:bcfg) dxe,dxc>online
+  // min min: abcdefg dx>connect dx+d.e>announce acd.ed>ping
+  // example route abcde.h ab> bc> cd> dh>
+  // example for finding out (b c d h): ab*e.c.d.he
   describe('ring_connect', ()=>{
     if (true) return; // XXX WIP
     let t = (name, test)=>t_roles(name, 'abcd', test);
