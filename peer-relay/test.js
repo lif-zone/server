@@ -27,8 +27,6 @@ const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
-const xxx_wip = false; // XXX WIP
-
 // XXX: make it automatic for all node/browser in proc.js
 xerr.set_exception_catch_all(true);
 process.on('uncaughtException', err=>xerr.xexit(err));
@@ -38,7 +36,7 @@ xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 let t_nodes = {}, t_msg, t_nonce, t_path;
 let t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id, t_ack;
-let t_reprocess, t_node_id_bits, t_node_ids;
+let t_reprocess, t_node_id_bits, t_node_ids, t_conf;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
     priv: 'ba186102e13ec32e5273a30df6da2b6c9428258b4ea83ac88df7322e7645b864a'+
@@ -361,9 +359,8 @@ function assert_event_c2(c, orig, fwd, event, call){
     return assert(!event, 'unexpected event '+event+' for call '+orig);
   if (event){
     let expected = fwd ? build_cmd(fwd+'fwd', normalize(orig)+
-      (xxx_wip&&c.path ? ' '+build_cmd('path', path_to_str(c.path))
-      : '')+
-      (xxx_wip&&c.rt ? ' '+build_cmd('rt', rt_to_str(c.rt)) : '')) : orig;
+      (c.path ? ' '+build_cmd('path', path_to_str(c.path)) : '')+
+      (c.rt ? ' '+build_cmd('rt', rt_to_str(c.rt)) : '')) : orig;
     assert_event(event, expected);
   }
   else
@@ -554,8 +551,8 @@ class FakeChannel extends EventEmitter {
       }
       e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
         type, cmd, seq, ack: ack && ack.join(','), body})+
-        (xxx_wip&&fwd ? ' '+build_cmd('path', path_to_str(path)) : '')+
-        (xxx_wip&&fwd ? ' '+build_cmd('rt', rt_to_str(msg.rt)) : '');
+        (t_conf.path&&fwd ? ' '+build_cmd('path', path_to_str(path)) : '')+
+        (t_conf.rt&&fwd ? ' '+build_cmd('rt', rt_to_str(msg.rt)) : '');
       assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
       t_nonce[nonce_hash(msg)] = msg.nonce;
       track_msg(msg);
@@ -855,6 +852,8 @@ function cmd_conf(opt){
     switch (a.cmd){
     case 'id_bits': set_node_id_bits(assert_int(a.arg)); break;
     case 'id': set_node_ids(assert_node_ids(a.arg)); break;
+    case 'path': t_conf.path = assert_bool(a.arg); break;
+    case 'rt': t_conf.rt = assert_bool(a.arg); break;
     default: assert(0, 'invalid conf '+a.cmd);
     }
   });
@@ -1584,6 +1583,7 @@ function test_start(role){
   t_nonce = {};
   t_path = {};
   t_req = {};
+  t_conf = {};
   set_node_id_bits(10);
   set_node_ids();
 }
@@ -2106,7 +2106,7 @@ describe('peer-relay', function(){
       abc>!req(id:r1 body:ping res:ping_r) 59s -
       cba>!req(id:r2 body:ping res:ping_r) 60s -
       cda>!req(id:r3 body:ping res:ping_r) -`);
-    t('4_nodes_ring_range', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
+    t('4_nodes_ring_range', `conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(id:10 wss) b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
       ab>!connect bc>!connect cd>!connect da>!connect -
       ac>!req(id:r1 body:ping res:ping_r !e)
@@ -2128,7 +2128,8 @@ describe('peer-relay', function(){
     // support:
     // cd>fwd(ad>msg(id:r1 type:req body:ping) rt:40-40)
     // cd<fwd(ad<msg(id:r1 type:res body:ping_r) rt:abcd)
-    t('5_nodes_ring_range', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
+    t('5_nodes_ring_range', `
+      conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
       ad>!req(id:r1 body:ping res:ping_r !e)
