@@ -63,6 +63,11 @@ let t_keys = {
       '0d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014'},
 };
 
+function nonce_hash(msg){
+  return id_to_name(msg.from)+'_'+id_to_name(msg.to)+'_'+(msg.req_id||'none')+
+    '_'+(msg.type||'none')+'_'+(msg.cmd||'none');
+}
+
 function conn_opts(body){
   let a = [];
   if (body.ws)
@@ -552,7 +557,7 @@ class FakeChannel extends EventEmitter {
         (xxx_wip&&fwd ? ' '+build_cmd('path', path_to_str(path)) : '')+
         (xxx_wip&&fwd ? ' '+build_cmd('rt', rt_to_str(msg.rt)) : '');
       assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
-      t_nonce[normalize(e)] = msg.nonce;
+      t_nonce[nonce_hash(msg)] = msg.nonce;
       track_msg(msg);
       yield cmd_run_if_next_fake();
       yield cmd_run(_build_cmd(e, fwd, ''));
@@ -745,7 +750,9 @@ function fake_emit(c, msg){
     return;
   let s = t_nodes[c.s], d = t_nodes[c.d], f = s, t = d;
   let to = b2s(d.id), from = b2s(s.id);
-  let nonce = t_nonce[normalize(c.orig)];
+  msg.to = to;
+  msg.from = from;
+  let nonce = t_nonce[nonce_hash(msg)];
   assign(msg, {to, from, nonce, path: [from]});
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
@@ -775,7 +782,9 @@ function fake_emit(c, msg){
 const fake_send_msg = (c, msg)=>etask(function*(){
   let s = t_nodes[c.s], d = t_nodes[c.d], f = s, t = d;
   let to = b2s(d.id), from = b2s(s.id);
-  let nonce = t_nonce[normalize(c.orig)] = t_nonce[normalize(c.orig)]||
+  msg.to = to;
+  msg.from = from;
+  let nonce = t_nonce[nonce_hash(msg)] = t_nonce[nonce_hash(msg)]||
     ''+Math.floor(1e15 * Math.random());
   assign(msg, {to, from, nonce, path: [from]});
   if (c.fwd){
