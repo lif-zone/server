@@ -585,7 +585,6 @@ function req_hook(msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
-  t_nonce[normalize(e)] = msg.nonce; // XXX: rm, mv to track_msg
   track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
@@ -615,7 +614,6 @@ function req_send_hook(msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
-  t_nonce[normalize(e)] = msg.nonce; // XXX: rm, mv to track_msg
   track_msg(msg);
   cmd_run_if_next_fake();
   cmd_run(_build_cmd(e, '', ''));
@@ -644,7 +642,6 @@ function res_hook(msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
-  t_nonce[normalize(e)] = msg.nonce; // XXX: rm
   track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
@@ -673,7 +670,6 @@ function res_send_hook(router, msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
-  t_nonce[normalize(e)] = msg.nonce; // XXX: rm
   track_msg(msg);
   cmd_run_if_next_fake();
   cmd_run(_build_cmd(e, '', ''));
@@ -749,8 +745,7 @@ function fake_emit(c, msg){
     return;
   let s = t_nodes[c.s], d = t_nodes[c.d], f = s, t = d;
   let to = b2s(d.id), from = b2s(s.id);
-  let nonce = t_nonce[normalize(c.orig)] = t_nonce[normalize(c.orig)]||
-    ''+Math.floor(1e15 * Math.random());
+  let nonce = t_nonce[normalize(c.orig)];
   assign(msg, {to, from, nonce, path: [from]});
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
