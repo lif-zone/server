@@ -839,10 +839,16 @@ E.parse_cmd_dir = function(s){
   let _d = s.search(/[<>=]/);
   if (_d==-1)
     return {cmd: s};
-  let loop = [], dir = s[_d], a='', b='', comma, no_comma;
+  let loop = [], dir = s[_d], a='', b='', comma, no_comma, fuzzy;
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
+    if (ch=='~'){
+      assert_invalid(!fuzzy, s, i);
+      assert_invalid(dir=='>' && i==_d-1 || dir=='<' && !i, s, i);
+      fuzzy = true;
+      continue;
+    }
     assert_invalid(/[a-z,<>=]/i.test(ch), s, i);
     if (/[<>=,]/.test(ch))
     {
@@ -889,6 +895,8 @@ E.parse_cmd_dir = function(s){
     else if (loop[i-1].d!=loop[i].s)
       seq = false;
   }
+  if (loop.length==1 && fuzzy)
+    loop[0].d = loop[0].d+'~';
   return assign(loop.length>1 ? {loop} : loop[0], {cmd, meta: {cmd: s}},
     seq ? {s: loop[0].s, d: loop[loop.length-1].d,
     dir: loop[0].dir} : undefined);

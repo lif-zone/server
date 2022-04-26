@@ -3643,8 +3643,8 @@ describe('test_lib', ()=>{
       t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
       t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
-      if (0) // XXX: TODO
       t('ab~>c', {s: 'a', d: 'b~', dir: '>', cmd: 'c'});
+      t('~ab<c', {s: 'b', d: 'a~', dir: '<', cmd: 'c'});
       t('a>b(c)', {s: 'a', d: '', dir: '>', cmd: 'b(c)'});
       t('a>!b', {s: 'a', d: '', dir: '>', cmd: '!b'});
       t('ab>!c', {s: 'a', d: 'b', dir: '>', cmd: '!c'});
