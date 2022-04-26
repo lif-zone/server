@@ -46,7 +46,8 @@ class Res extends EventEmitter {
     }
     opt = opt||{};
     let ts=date.monotonic(), seq = this.seq++, type;
-    let {dst, req_id, ack, cmd} = this;
+    let {dst, req_id, ack, cmd, req_handler} = this;
+    let rt = req_handler.rt;
     if (opt.ack){
       ack = opt.ack;
       this.ack = this.ack.filter(s=>!ack.find(
@@ -64,7 +65,7 @@ class Res extends EventEmitter {
       type = opt.end||opt.close ? 'res_end' : !seq ? 'res_start' : 'res_next';
     if (!['res', 'res_end'].includes(type))
       this.set_timeout(seq);
-    let msg = {ts, type, req_id, seq, ack, cmd, body};
+    let msg = {ts, type, req_id, seq, ack, cmd, body, rt};
     this.router.send_msg(dst, msg); // XXX: what if error
     if (ReqHandler.t_send_hook)
       ReqHandler.t_send_hook(this.router, msg);
@@ -144,6 +145,8 @@ function req_handler_cb(msg){
   let req_handler = util.get(nodes, [id, 'cmd', cmd, 'req_handler']);
   if (!req_handler)
     return;
+  req_handler.rt = {path: Array.from(msg.path)};
+  req_handler.rt.path.push(msg.to); // XXX: mv to router
   let res = util.get(nodes, [id, 'req_id', req_id, 'res']);
   if (!res){
     if (!['req', 'req_start'].includes(type))

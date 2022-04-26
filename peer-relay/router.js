@@ -61,12 +61,16 @@ export default class Router extends EventEmitter {
       return _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
     if (channel = _this.get_out_channel(msg));
-    else
-      channel = _this._channels.get_closest(msg.to, msg.range);
+    else {
+      // XXX: use rt instead of rt.range and if rt.path exists channel from it
+      channel = _this._channels.get_closest(msg.to,
+        xutil.get(msg, ['rt', 'range']));
+    }
     if (!channel || b2s(channel.id)==msg.from)
       return;
     _this.track_out(msg, channel);
-    msg.range = {min: b2s(channel.id), max: msg.to};
+    if (!xutil.get(msg, ['rt', 'path']))
+      msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
     // TODO BUG Sometimes the WS on closest in not in the ready state
     yield channel.send(msg);
   });
