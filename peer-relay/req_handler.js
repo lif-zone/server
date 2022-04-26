@@ -147,6 +147,7 @@ function req_handler_cb(msg){
     return;
   req_handler.rt = {path: Array.from(msg.path)};
   req_handler.rt.path.push(msg.to); // XXX: mv to router
+  req_handler.rt.path.reverse();
   let res = util.get(nodes, [id, 'req_id', req_id, 'res']);
   if (!res){
     if (!['req', 'req_start'].includes(type))

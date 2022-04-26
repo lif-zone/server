@@ -96,9 +96,9 @@ function range_to_str(range){
     int_from_hash(range.max, t_conf.id_bits, ID_BITS);
 }
 
-function rt_to_str(rt){
+function rt_to_str(rt, dir){
   assert(util.xor(rt.range, rt.path));
-  return rt.range ? range_to_str(rt.range) : path_to_str(rt.path);
+  return rt.range ? range_to_str(rt.range) : path_to_str(rt.path, dir);
 }
 
 // non-number req_id is set explicit in test
@@ -272,9 +272,9 @@ function assert_host(host){
 
 function assert_path(s, dir){ return parse_path(s, dir); }
 
-function assert_rt(s){
+function assert_rt(s, dir){
   let range, path;
-  if (!(range = parse_range(s)))
+  if (!(range = parse_range(s, dir)))
     path = parse_path(s);
   assert(range||path, 'invalid rt '+s);
   return {range, path};
@@ -360,7 +360,7 @@ function assert_event_c2(c, orig, fwd, event, call){
   if (event){
     let expected = fwd ? build_cmd(fwd+'fwd', normalize(orig)+
       (c.path ? ' '+build_cmd('path', path_to_str(c.path)) : '')+
-      (c.rt ? ' '+build_cmd('rt', rt_to_str(c.rt)) : '')) : orig;
+      (c.rt ? ' '+build_cmd('rt', rt_to_str(c.rt, c.dir)) : '')) : orig;
     assert_event(event, expected);
   }
   else
@@ -709,7 +709,7 @@ function path_to_str(path, dir){
 function id_to_name(id){ return node_from_id(id).t.name; }
 
 // XXX: cleanup all code
-function name_to_id(name){ return t_nodes[name].id; }
+function name_to_id(name){ return b2s(t_nodes[name].id); }
 
 /* XXX: decide if to remove
 function array_id_to_name(a){
@@ -790,7 +790,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     d = t_nodes[fwd[1]];
   }
   t_path[nonce] = t_path[nonce]||[];
-  t_path[nonce].push(s.id);
+  t_path[nonce].push(b2s(s.id));
   msg.path = Array.from(t_path[nonce]);
   if (s.t.fake && !d.t.fake)
   {
@@ -1145,8 +1145,9 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     default: assert(0, 'invalid cmd '+cmd);
     }
   }
-  // XXX: rm this logic. just pass c.rt
-  let rt = xutil.get(c, ['rt', 'path']) ? c.rt : undefined;
+  let rt; // XXX: rm this logic. just pass c.rt
+  if (xutil.get(c, ['rt', 'path']))
+    rt = {path: parse_path(rt_to_str(c.rt), c.dir)};
   yield fake_send_msg(c, {rt, req_id: id, type, seq, ack, cmd, body});
   yield cmd_run_if_next_fake();
 });

@@ -60,7 +60,8 @@ export default class Router extends EventEmitter {
     if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(msg);
     msg.path.push(b2s(_this.id));
-    if (channel = _this.get_out_channel(msg));
+    if (channel = _this.get_channel_from_rt(msg));
+    else if (channel = _this.get_channel_from_state(msg));
     else {
       // XXX: use rt instead of rt.range and if rt.path exists channel from it
       channel = _this._channels.get_closest(msg.to,
@@ -104,7 +105,18 @@ export default class Router extends EventEmitter {
   }
   _onChannelRemoved = function(channel){
     channel.removeListener('message', this._on_channel_msg); }
-  get_out_channel(msg){
+  get_channel_from_rt(msg){
+    let path = xutil.get(msg, ['rt', 'path']);
+    if (!path)
+      return;
+    let id = b2s(this.id);
+    for (let i=0; i<path.length; i++){
+      if (id!=path[i])
+        continue;
+      return this._channels.get(path[i+1]);
+    }
+  }
+  get_channel_from_state(msg){
     let {from, to} = msg, state = this.state[state_hash(from, to)];
     if (!state)
       return;
