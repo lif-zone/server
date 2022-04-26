@@ -36,7 +36,7 @@ xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 let t_nodes = {}, t_msg, t_nonce, t_path;
 let t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id, t_ack;
-let t_reprocess, t_node_id_bits, t_node_ids, t_conf;
+let t_reprocess, t_conf;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
     priv: 'ba186102e13ec32e5273a30df6da2b6c9428258b4ea83ac88df7322e7645b864a'+
@@ -87,13 +87,13 @@ function conn_opts_from_node(node){
 
 function parse_range(s){
   let a = s.match(/^([0-9]+)-([0-9]+)$/);
-  return a && {min: hash_from_int(+a[1], t_node_id_bits, ID_BITS),
-    max: hash_from_int(+a[2], t_node_id_bits, ID_BITS)};
+  return a && {min: hash_from_int(+a[1], t_conf.id_bits, ID_BITS),
+    max: hash_from_int(+a[2], t_conf.id_bits, ID_BITS)};
 }
 
 function range_to_str(range){
-  return int_from_hash(range.min, t_node_id_bits, ID_BITS)+'-'+
-    int_from_hash(range.max, t_node_id_bits, ID_BITS);
+  return int_from_hash(range.min, t_conf.id_bits, ID_BITS)+'-'+
+    int_from_hash(range.max, t_conf.id_bits, ID_BITS);
 }
 
 function rt_to_str(rt){
@@ -850,7 +850,7 @@ function cmd_conf(opt){
   assert(!event, 'got unexpected '+event);
   util.forEach(arg, a=>{
     switch (a.cmd){
-    case 'id_bits': set_node_id_bits(assert_int(a.arg)); break;
+    case 'id_bits': set_id_bits(assert_int(a.arg)); break;
     case 'id': set_node_ids(assert_node_ids(a.arg)); break;
     case 'path': t_conf.path = assert_bool(a.arg); break;
     case 'rt': t_conf.rt = assert_bool(a.arg); break;
@@ -905,7 +905,7 @@ function cmd_node(opt){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  id = id||t_node_ids[name];
+  id = id||t_conf.node_ids[name];
   let fake = is_fake(name);
   if (t_pre_process){
     let o = {};
@@ -914,9 +914,9 @@ function cmd_node(opt){
       assign(o, {id, wss: !!wss, wrtc: !!wrtc})));
   }
   if (id){
-    assert(id>0 && id<Math.pow(2, t_node_id_bits), 'invalid id '+id+
-      ' valid 0-'+Math.pow(2, t_node_id_bits));
-    key = {pub: hash_from_int(id, t_node_id_bits, ID_BITS), priv: '00'};
+    assert(id>0 && id<Math.pow(2, t_conf.id_bits), 'invalid id '+id+
+      ' valid 0-'+Math.pow(2, t_conf.id_bits));
+    key = {pub: hash_from_int(id, t_conf.id_bits, ID_BITS), priv: '00'};
   }
   else {
     key = t_keys[name];
@@ -1565,8 +1565,8 @@ const cmd_run = event=>etask(function*cmd_run(){
   t_depth--;
 });
 
-function set_node_id_bits(bits){ t_node_id_bits = bits; }
-function set_node_ids(ids){ t_node_ids = ids||{}; }
+function set_id_bits(bits){ t_conf.id_bits = bits; }
+function set_node_ids(ids){ t_conf.node_ids = ids||{}; }
 
 function test_start(role){
   t_role = role;
@@ -1584,7 +1584,7 @@ function test_start(role){
   t_path = {};
   t_req = {};
   t_conf = {};
-  set_node_id_bits(10);
+  set_id_bits(10);
   set_node_ids();
 }
 
