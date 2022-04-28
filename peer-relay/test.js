@@ -1035,19 +1035,9 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
         if (c.orig_loop || !c.had_loop)
           push_cmd(build_cmd(c.s+c.d+'>*conn_info'));
       }
-      return;
     }
-    if (r!==undefined){
-      if (c.orig_loop){
-        _push_cmd(extend_loop_rev(c.orig_loop,
-          rev_cmd(c.orig, '*conn_info_r', r)));
-      }
-      else if (!c.had_loop){
-        push_cmd(build_cmd(rev_trim(c.fwd)+'fwd',
-          rev_cmd(c.orig, '*conn_info_r', r)));
-      }
-    }
-    set_orig(c, build_cmd(c.meta.cmd));
+    else
+      set_orig(c, build_cmd(c.meta.cmd));
     return;
   }
   assert_event_c(c, event);
@@ -1855,29 +1845,6 @@ describe('peer-relay', function(){
       t(1023, 10, 'ffc0000000');
     });
     describe('pre_process', function(){
-      it('low_level', ()=>etask(function*(){
-        let t = function*(test, exp){
-          test_start();
-          let cmds = yield test_pre_process(test);
-          cmds = xtest.test_parse_rm_meta_orig(cmds);
-          assert.deepEqual(cmds, exp);
-        };
-        let ab = [{arg: 'a', cmd: 'node'}, {arg: 'b', cmd: 'node'}];
-        yield t('node(a) node(b)', ab);
-        yield t('node(a) node(b) ab>fwd(ab>*conn_info(r))', ab.concat([
-          {s: 'a', d: 'b', dir: '>', cmd: 'fwd', arg: 'ab>*conn_info(r)'},
-          {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<*conn_info_r'},
-        ]));
-        yield t('node(a) node(b) ab,ba>fwd(ab>*conn_info(r))', ab.concat([
-          {cmd: 'fwd', arg: 'ab>*conn_info(r)', s: 'a', d: 'b', dir: '>',
-            had_loop: true},
-          {cmd: 'fwd', arg: 'ab>*conn_info(r)', s: 'b', d: 'a', dir: '>',
-          had_loop: true, orig_loop:
-          [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
-          {s: 'a', d: 'b', dir: '<', cmd: 'fwd', arg: 'ab<*conn_info_r'},
-          {s: 'b', d: 'a', dir: '<', cmd: 'fwd', arg: 'ab<*conn_info_r'},
-        ]));
-      }));
       describe('shortcut', ()=>{
         const _t = (mode, test, exp)=>it(mode+(mode ? ' ': '')+test,
           ()=>etask(function*(){
