@@ -736,7 +736,7 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   if (!channel)
     return xerr('no channel '+s+d+'>');
-  yield t_nodes[d].router._on_channel_msg(msg, channel);
+  yield t_nodes[d].router._on_channel_msg(JSON.stringify(msg), channel);
 });
 
 function fake_emit(c, msg){
@@ -1852,6 +1852,8 @@ describe('peer-relay', function(){
         t('ab>!connect(!r)', `ab>!connect(wss !r)`);
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
+        t('bc>fwd(ab>msg(body:x))', `bc>fwd(ab>msg(body(x)))`);
+        t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
         t('abc>msg(body:x)', `ab>fwd(ac>msg(body(x)))
           bc>fwd(ac>msg(body(x)))`);
         t('abc<msg(body:x)', `bc<fwd(ac<msg(body(x)))

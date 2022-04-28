@@ -75,8 +75,9 @@ export default class Router extends EventEmitter {
     // TODO BUG Sometimes the WS on closest in not in the ready state
     yield channel.send(msg);
   });
-  _on_channel_msg = (msg, channel)=>etask({'this': this},
+  _on_channel_msg = (data, channel)=>etask({'this': this},
     function*_on_channel_msg(){
+    let msg = JSON.parse(data); // XXX: protect against invalid data
     let _this = this.this, nonce = msg.nonce;
     if (!nonce)
       return log('invalid message nonce %s', dbg_msg(msg));
