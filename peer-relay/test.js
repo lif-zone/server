@@ -156,8 +156,6 @@ function build_cmd_o(cmd, fwd, o){
   return _build_cmd.apply(this, a);
 }
 
-function rev_cmd(sd, cmd, arg){ return build_cmd(rev_trim(sd)+cmd, arg); }
-
 function dir_str(s, d, dir){ return dir=='>' ? s+d+'>' : d+s+'<'; }
 function dir_c(c){ return dir_str(c.s, c.d, c.dir); }
 function rev_c(c){ return rev_trim(dir_str(c.s, c.d, c.dir)); }
@@ -1016,25 +1014,23 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
     }
   });
   if (t_pre_process){
-    if (c.loop)
-      return extend_loop(c, true);
     if (basic){
-      if (t_mode.req && t_mode.msg){
-        // XXX: fix extending loops to be inside cmd_conn_info and cleanup mess
-        set_orig(c, build_cmd_o(c.s+c.d+'>msg',
-          {type: 'req', cmd: 'conn_info'}));
-        if (!nr && r===undefined)
-          r = conn_opts_from_node(c.d);
-        if (c.orig_loop && r!==undefined){
-          _push_cmd(extend_loop_rev(c.orig_loop,
-            rev_cmd(c.orig, 'msg', build_cmd('type', 'res')+' '+
-            build_cmd('cmd', 'conn_info')+(r ? ' '+build_cmd('body', r) : '')))
-            .concat(xtest.test_parse(build_cmd(c.s+c.d+'<*conn_info_r', r)))
-            );
-        }
-        if (c.orig_loop || !c.had_loop)
-          push_cmd(build_cmd(c.s+c.d+'>*conn_info'));
+      let s = '';
+      if (c.loop){
+        s += t_mode.msg ? build_cmd(loop_str(c.loop)+'>fwd',
+          build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'conn_info'})) : '';
+      } else {
+        s += t_mode.msg ? build_cmd_o(dir_c(c)+'msg',
+          {type: 'req', cmd: 'conn_info'}) : '';
       }
+      s += t_mode.req ? (s ? ' ' : '')+build_cmd_o(c.s+c.d+'>*conn_info') : '';
+      if (!nr && r===undefined)
+        r = conn_opts_from_node(c.d);
+      if (c.loop && r!==undefined){
+        s += (s ? ' ': '')+
+          build_cmd(rev_loop_str(c.loop)+'>conn_info_r', r);
+      }
+      set_push_cmd(c, s);
     }
     else
       set_orig(c, build_cmd(c.meta.cmd));
@@ -1412,8 +1408,6 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   if (t_pre_process){
     if (c.loop)
       return extend_loop(c, true);
-    f.orig_loop = c.orig_loop;
-    f.had_loop = c.had_loop;
   }
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
@@ -1502,23 +1496,11 @@ function extend_loop(c, set_push){
     }
     assert.equal(o.cmd, 'fwd');
     set_orig(o, _build_cmd(o.arg, dir_c(o)));
-    o.had_loop = true;
   }
-  a[a.length-1].orig_loop = c.loop;
   if (set_push)
     return _set_push_cmd(c, a);
   t_cmds.splice(t_i, 1, ...a);
   return t_cmds[t_i];
-}
-
-function extend_loop_rev(loop, cmd){
-  let a = [];
-  loop = Array.from(loop).reverse();
-  for (let i=0; i<loop.length; i++){
-    let o = loop[i];
-    a.push(xtest.test_parse(build_cmd(o.s+o.d+'<fwd', cmd))[0]);
-  }
-  return a;
 }
 
 const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
@@ -1888,9 +1870,9 @@ describe('peer-relay', function(){
         _t('mode(msg req)', 'abc>conn_info(r:ws)', `
           ab>fwd(ac>msg(type(req) cmd(conn_info)))
           bc>fwd(ac>msg(type(req) cmd(conn_info))) ac>*conn_info
-          bc<fwd(ac<msg(type(res) cmd(conn_info) body(ws)))
-          ab<fwd(ac<msg(type(res) cmd(conn_info) body(ws)))
-          ac<*conn_info_r(ws)`);
+          cb>fwd(ca>msg(type(res) cmd(conn_info) body(ws)))
+          ba>fwd(ca>msg(type(res) cmd(conn_info) body(ws)))
+          ca>*conn_info_r(ws)`);
         _t('mode(msg req)', 'ab>conn_info_r(ws wrtc)', `ab>msg(type(res)
           cmd(conn_info) body(ws wrtc)) ab>*conn_info_r(ws wrtc)`);
         _t('mode(msg req)', 'abc>conn_info_r(ws)', `
