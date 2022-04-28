@@ -1852,16 +1852,16 @@ describe('peer-relay', function(){
         t('ab>!connect(!r)', `ab>!connect(wss !r)`);
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
-        t('abc>msg(body:ping)', `ab>fwd(ac>msg(body(ping)))
-          bc>fwd(ac>msg(body(ping)))`);
-        t('abc<msg(body:ping)', `bc<fwd(ac<msg(body(ping)))
-          ab<fwd(ac<msg(body(ping)))`);
-        t('abc>fwd(ac>msg(body:ping))', `ab>fwd(ac>msg(body(ping)))
-          bc>fwd(ac>msg(body(ping)))`);
-        t('abc<fwd(ac<msg(body:ping))', `bc<fwd(ac<msg(body(ping)))
-          ab<fwd(ac<msg(body(ping)))`);
-        t('abc<fwd(ac>msg(body:ping))', `bc<fwd(ac>msg(body(ping)))
-          ab<fwd(ac>msg(body(ping)))`);
+        t('abc>msg(body:x)', `ab>fwd(ac>msg(body(x)))
+          bc>fwd(ac>msg(body(x)))`);
+        t('abc<msg(body:x)', `bc<fwd(ac<msg(body(x)))
+          ab<fwd(ac<msg(body(x)))`);
+        t('abc>fwd(ac>msg(body:x))', `ab>fwd(ac>msg(body(x)))
+          bc>fwd(ac>msg(body(x)))`);
+        t('abc<fwd(ac<msg(body:x))', `bc<fwd(ac<msg(body(x)))
+          ab<fwd(ac<msg(body(x)))`);
+        t('abc<fwd(ac>msg(body:x))', `bc<fwd(ac>msg(body(x)))
+          ab<fwd(ac>msg(body(x)))`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
