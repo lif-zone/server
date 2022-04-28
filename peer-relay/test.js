@@ -1418,6 +1418,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   f.path = path;
   f.rt = rt;
   if (t_pre_process){
+    if (c.loop)
+      return extend_loop(c, true);
     f.orig_loop = c.orig_loop;
     f.had_loop = c.had_loop;
     f.loop_first = c.loop_first;
@@ -1552,7 +1554,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   // XXX NOW: rm this temporary cod and move into each cmd
   if (t_pre_process && c.cmd[0]!='!' &&
-    !['conn_info_r', 'msg'].includes(c.cmd)){
+    !['conn_info_r', 'msg', 'fwd'].includes(c.cmd)){
     assert.equal(t_depth, 0);
     if (c.loop)
       c = extend_loop(c);
@@ -1912,6 +1914,12 @@ describe('peer-relay', function(){
           bc>fwd(ac>msg(body(ping)))`);
         t('abc<msg(body:ping)', `bc<fwd(ac<msg(body(ping)))
           ab<fwd(ac<msg(body(ping)))`);
+        t('abc>fwd(ac>msg(body:ping))', `ab>fwd(ac>msg(body(ping)))
+          bc>fwd(ac>msg(body(ping)))`);
+        t('abc<fwd(ac<msg(body:ping))', `bc<fwd(ac<msg(body(ping)))
+          ab<fwd(ac<msg(body(ping)))`);
+        t('abc<fwd(ac>msg(body:ping))', `bc<fwd(ac>msg(body(ping)))
+          ab<fwd(ac>msg(body(ping)))`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
