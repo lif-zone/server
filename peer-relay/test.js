@@ -186,15 +186,16 @@ function _push_cmd(a){
 }
 
 function push_cmd(cmd){ _push_cmd(xtest.test_parse(cmd)); }
-function set_push_cmd(c, cmd){
-  let a = xtest.test_parse(cmd);
+function _set_push_cmd(c, a){
   if (!a.length)
-    return;
+    return c;
   t_cmds[t_i-1] = a[0];
   a.shift();
   _push_cmd(a);
   t_reprocess = true;
+  return t_cmds[t_i-1];
 }
+function set_push_cmd(c, cmd){ _set_push_cmd(c, xtest.test_parse(cmd)); }
 
 function is_fake(p){ return t_role!=p; }
 
@@ -1104,7 +1105,10 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   });
   cmd = cmd||'';
   if (t_pre_process){
-    set_orig(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body}));
+    if (c.loop)
+      c = extend_loop(c, true);
+    else
+      set_orig(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body}));
     return;
   }
   if (ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
@@ -1490,7 +1494,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
 });
 
 // XXX NOW: need test
-function extend_loop(c){
+function extend_loop(c, set_push){
   assert(c.loop);
   assert(t_pre_process);
   let a = [];
@@ -1509,6 +1513,8 @@ function extend_loop(c){
   }
   a[0].loop_first = true;
   a[a.length-1].orig_loop = c.loop;
+  if (set_push)
+    return _set_push_cmd(c, a);
   t_cmds.splice(t_i, 1, ...a);
   return t_cmds[t_i];
 }
@@ -1545,7 +1551,8 @@ const cmd_run = event=>etask(function*cmd_run(){
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   // XXX NOW: rm this temporary cod and move into each cmd
-  if (t_pre_process && c.cmd[0]!='!' && c.cmd!='conn_info_r'){
+  if (t_pre_process && c.cmd[0]!='!' &&
+    !['conn_info_r', 'msg'].includes(c.cmd)){
     assert.equal(t_depth, 0);
     if (c.loop)
       c = extend_loop(c);
@@ -1901,24 +1908,10 @@ describe('peer-relay', function(){
         t('ab>!connect(!r)', `ab>!connect(wss !r)`);
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
-        if (0){ // XXX NOW: rewrite (and/or make find shortcut for msg
-        t('ab,bc>fwd(ac>*find(a))', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
-        t('ab,bc<fwd(ac<*find(a))', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
-        t('ab,bc>*find(a)', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
-        t('ab,bc<*find(a)', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
-        // XXX: rm this fwd. fwd only allowed to messages
-        t('abc>fwd(ac>*find(a))', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
-        t('abcd>fwd(ad>*find(a))', `ab>fwd(ad>*find(a)) bc>fwd(ad>*find(a))
-          cd>fwd(ad>*find(a))`);
-        t('abc<fwd(ac>*find(a))', `bc<fwd(ac>*find(a)) ab<fwd(ac>*find(a))`);
-        t('abcd<fwd(ad>*find(a))', `cd<fwd(ad>*find(a)) bc<fwd(ad>*find(a))
-          ab<fwd(ad>*find(a))`);
-        t('abc>*find(a)', `ab>fwd(ac>*find(a)) bc>fwd(ac>*find(a))`);
-        t('abc<*find(a)', `bc<fwd(ac<*find(a)) ab<fwd(ac<*find(a))`);
-        }
-        t('abc>*conn_info(r(ws))', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)
-          bc<fwd(ac<*conn_info_r(ws)) ab<fwd(ac<*conn_info_r(ws))`);
-        t('abc>*conn_info', `ab>fwd(ac>*conn_info) bc>fwd(ac>*conn_info)`);
+        t('abc>msg(body:ping)', `ab>fwd(ac>msg(body(ping)))
+          bc>fwd(ac>msg(body(ping)))`);
+        t('abc<msg(body:ping)', `bc<fwd(ac<msg(body(ping)))
+          ab<fwd(ac<msg(body(ping)))`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
