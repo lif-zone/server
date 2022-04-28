@@ -1016,6 +1016,8 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
     }
   });
   if (t_pre_process){
+    if (c.loop)
+      return extend_loop(c, true);
     if (basic){
       if (t_mode.req && t_mode.msg){
         // XXX: fix extending loops to be inside cmd_conn_info and cleanup mess
@@ -1552,13 +1554,6 @@ const cmd_run = event=>etask(function*cmd_run(){
     'invalid t_i '+t_i+' event');
   let c = t_cmds[t_i];
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
-  // XXX NOW: rm this temporary cod and move into each cmd
-  if (t_pre_process && c.cmd[0]!='!' &&
-    !['conn_info_r', 'msg', 'fwd'].includes(c.cmd)){
-    assert.equal(t_depth, 0);
-    if (c.loop)
-      c = extend_loop(c);
-  }
   xerr.notice('%scmd %s: %s%s orig %s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '', c.orig);
