@@ -1424,7 +1424,6 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
       return extend_loop(c, true);
     f.orig_loop = c.orig_loop;
     f.had_loop = c.had_loop;
-    f.loop_first = c.loop_first;
   }
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
@@ -1515,7 +1514,6 @@ function extend_loop(c, set_push){
     set_orig(o, _build_cmd(o.arg, dir_c(o)));
     o.had_loop = true;
   }
-  a[0].loop_first = true;
   a[a.length-1].orig_loop = c.loop;
   if (set_push)
     return _set_push_cmd(c, a);
@@ -1872,7 +1870,7 @@ describe('peer-relay', function(){
         ]));
         yield t('node(a) node(b) ab,ba>fwd(ab>*conn_info(r))', ab.concat([
           {cmd: 'fwd', arg: 'ab>*conn_info(r)', s: 'a', d: 'b', dir: '>',
-            had_loop: true, loop_first: true},
+            had_loop: true},
           {cmd: 'fwd', arg: 'ab>*conn_info(r)', s: 'b', d: 'a', dir: '>',
           had_loop: true, orig_loop:
           [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'a', dir: '>'}]},
