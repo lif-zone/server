@@ -1681,15 +1681,30 @@ describe('api', function(){
     t(['ab>msg', '', 'x', 'y'], 'ab>msg(x y)');
     t(['ab>msg', 'cd>', 'x', 'y'], 'cd>fwd(ab>msg(x y))');
   });
-  it('lbuffer', ()=>{
-    let lbuffer = new LBuffer();
-    assert.equal(lbuffer.to_str(), '\0');
-    lbuffer.add('a');
-    assert.equal(lbuffer.to_str(), '\0a');
-    lbuffer.add('bb');
-    assert.equal(lbuffer.to_str(), '2\0bba');
-    lbuffer.add('ccc');
-    assert.equal(lbuffer.to_str(), '3 2\0cccbba');
+  describe('lbuffer', ()=>{
+    it ('to_str', ()=>{
+      const t = exp=>assert.equal(lbuffer.to_str(), exp);
+      let lbuffer = new LBuffer();
+      t('\0');
+      lbuffer.add('a');
+      t('\0a');
+      lbuffer.add('bb');
+      t('2 1\0bba');
+      lbuffer.add('ccc');
+      t('3 2 1\0cccbba');
+      lbuffer.add('');
+      t('0 3 2 1\0cccbba');
+      lbuffer.add('abcdefghijk');
+      t('11 0 3 2 1\0abcdefghijkcccbba');
+    });
+    it ('from_str', ()=>{
+      let lbuffer;
+      lbuffer = LBuffer.from('\0');
+      assert.deepEqual(lbuffer.array, []);
+      lbuffer = LBuffer.from('\0a');
+      assert.deepEqual(lbuffer.array, ['a']);
+      // XXX: test invalid
+    });
   });
 });
 
@@ -2143,6 +2158,25 @@ describe('peer-relay', function(){
     cd>fwd(bc>fwd(ab>fwd(ad>msg rt:abc) rt:abc) rt:cd)`);
   t('abc.d>msg', `ab(rt:abc):ad>msg bc(rt:abc):ab(rt:abc):ad>msg
     cd(rt:cd):bc(rt:abc):ab(rt:abc):ad>msg`);
+  // XXX derry
+  t('abc.d>msg', `ab>fwd(ad>msg rt:c) bc>fwd(ab>fwd(ad>msg rt:c))
+    cd>fwd(bc>fwd(ab>fwd(ad>msg rt:c)))`);
+  t('abc.d>msg', `$i=ab>fwd(ad>msg rt:c) bc>fwd($i++) cd>fwd($i++)`);
+  t('abc.d>msg', `ab[c]:ad>msg bc:ab[c]:ad>msg cd:bc:ab[c]:ad>msg`);
+  abcdefghijklmnXYZopqrstuvwxyz
+  b-a = 2^128/26 X=n+(o-n)/2 Y=X+1 Z=X+2
+  a startup, X min conn: aX.o.p.q.~.x.y.z.b-a>get_peer
+  a startup, X good conn: aX.t.w.y.z.b-a>get_peer
+  a startup, X good conn 2nd time: aX.t.w.y.z.b-a>get_peer
+  a startup, X good conn isp hops force: aX.Yt.YZw.ZYy.YZz.ZYb-a>get_peer
+  the isp connections: X:a Y:tyb Z:w (XYZ connected)
+  a startup, X good conn isp hops no-force: aX.Y[t].Zz.ZYb-a>get_peer
+    into a kbucket: aXYZz aXYb
+  ab+> empty a X tbl:
+  full a tbl:
+  a X --> ??? --> Y --> f.
+  t('axyb.yc.def>msg', ``);
+  // end derry
   t('abc.d>msg', `ab[abc]:ad>msg bc[abc]:ab[abc]:ad>msg
     cd[cd]:bc[abc]:ab[abc]:ad>msg`);
   t('abc.d>msg', `ab[abc]:ad>msg bc:ab:ad>msg cd:bc:ab:ad>msg`); // auto rt
