@@ -11,6 +11,7 @@ import ReqHandler from './req_handler.js';
 import etask from '../util/etask.js';
 import xurl from '../util/url.js';
 import date from '../util/date.js';
+import LBuffer from './lbuffer.js';
 import xescape from '../util/escape.js';
 import xutil from '../util/util.js';
 // XXX derry: review fromNodeTimers() and npm package
@@ -1679,6 +1680,16 @@ describe('api', function(){
     t(['ab>msg', '', 'x'], 'ab>msg(x)');
     t(['ab>msg', '', 'x', 'y'], 'ab>msg(x y)');
     t(['ab>msg', 'cd>', 'x', 'y'], 'cd>fwd(ab>msg(x y))');
+  });
+  it('lbuffer', ()=>{
+    let lbuffer = new LBuffer();
+    assert.equal(lbuffer.to_str(), '\0');
+    lbuffer.add('a');
+    assert.equal(lbuffer.to_str(), '\0a');
+    lbuffer.add('bb');
+    assert.equal(lbuffer.to_str(), '2\0bba');
+    lbuffer.add('ccc');
+    assert.equal(lbuffer.to_str(), '3 2\0cccbba');
   });
 });
 
