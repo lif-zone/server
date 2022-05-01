@@ -1,11 +1,8 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
-import {EventEmitter} from 'events';
-import xerr from '../util/xerr.js';
 
-export default class LBuffer extends EventEmitter {
+export default class LBuffer {
   constructor(opt){
-    super();
     this.array = [];
   }
   add(s){ this.array.unshift(s); }
