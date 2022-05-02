@@ -1,19 +1,35 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
+import xutil from '../util/util.js';
 
 export default class LBuffer {
   constructor(opt){
     this.array = [];
   }
-  add(s){ this.array.unshift(s); }
-  add_tail(s){ this.array.push(s); }
+  // XXX: change internal structure. just save long string and indexes to
+  // data start/end to avoid expensive parsing when caling LBuffer.from
+  add(data){
+    let o = {data};
+    this.array.unshift(o);
+  }
+  add_tail(data){
+    let o = {data};
+    this.array.push(o);
+  }
+  add_json(o){ this.add(JSON.stringify(o)); }
+  add_tail_json(o){ this.add_tail(JSON.stringify(o)); }
+  get(i){ return this.array[i].data; }
+  get_json(i){
+    this.array[i].json = this.array[i].json||JSON.parse(this.array[i].data);
+    return this.array[i].json;
+  }
   to_str(){
     let h = '', d='';
     if (this.array.length<=1)
-      return '\0'+(this.array[0]||'');
-    this.array.forEach(s=>{
-      h += (h ? ' ' : '')+s.length;
-      d += s;
+      return '\0'+xutil.get(this, ['array', 0, 'data'], '');
+    this.array.forEach(o=>{
+      h += (h ? ' ' : '')+o.data.length;
+      d += o.data;
     });
     return h+'\0'+d;
   }

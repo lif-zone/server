@@ -1700,6 +1700,7 @@ describe('api', function(){
     it('from_str', ()=>{
       const t = (s, exp)=>{
         let lbuffer = LBuffer.from(s);
+        exp.forEach((data, i)=>exp[i] = {data});
         assert.deepEqual(lbuffer.array, exp);
       };
       t('\0', ['']);
