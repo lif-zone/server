@@ -1489,17 +1489,19 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
 function extend_loop(c){
   assert(c.loop);
   assert(t_pre_process);
-  let a = [];
+  let a = [], prev;
+  assert(['fwd', 'msg'].includes(c.cmd), 'invalid loop '+c.cmd);
+  if (c.cmd=='msg'){
+    prev = build_cmd(dir_str(c.loop[0].s,
+      c.loop[c.loop.length-1].d, c.loop[0].dir)+c.cmd, c.arg);
+  } else
+    prev = c.arg;
   for (let i=0; i<c.loop.length; i++){
     let o = assign({}, c, c.loop[i]);
     a.push(o);
     delete o.loop;
-    if (o.cmd=='msg'){
-      o.arg = build_cmd(
-        dir_str(c.loop[0].s, c.loop[c.loop.length-1].d, o.dir)+o.cmd, o.arg);
-      o.cmd = 'fwd';
-    }
-    assert.equal(o.cmd, 'fwd');
+    o.cmd = 'fwd';
+    o.arg = prev;
     set_orig(o, _build_cmd(o.arg, dir_c(o)));
   }
   return _set_push_cmd(c, a);
