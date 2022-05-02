@@ -1486,7 +1486,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
 });
 
 // XXX NOW: need test
-function extend_loop(c, set_push){
+function extend_loop(c){
   assert(c.loop);
   assert(t_pre_process);
   let a = [];
@@ -1502,10 +1502,7 @@ function extend_loop(c, set_push){
     assert.equal(o.cmd, 'fwd');
     set_orig(o, _build_cmd(o.arg, dir_c(o)));
   }
-  if (set_push)
-    return _set_push_cmd(c, a);
-  t_cmds.splice(t_i, 1, ...a);
-  return t_cmds[t_i];
+  return _set_push_cmd(c, a);
 }
 
 const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
