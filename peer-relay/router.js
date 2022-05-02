@@ -60,12 +60,13 @@ export default class Router extends EventEmitter {
     }
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg
-    msg.path.push(b2s(_this.id));
-    if (!xutil.get(msg, ['rt', 'path']))
-      msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
-    _this.track_out(msg, channel);
+    if (!(b2s(channel.localID)==msg.from && b2s(channel.id)==msg.to)){
+      msg.path.push(b2s(_this.id));
+      if (!xutil.get(msg, ['rt', 'path']))
+        msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
+      _this.track_out(msg, channel);
+    }
     let lbuffer2 = new LBuffer(msg); // XXX: WIP
-    // TODO BUG Sometimes the WS on closest in not in the ready state
     yield channel.send(lbuffer2.to_str());
   });
   _on_channel_msg = (data, channel)=>etask({'this': this},
