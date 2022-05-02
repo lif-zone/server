@@ -3,8 +3,7 @@
 import {inherits} from 'util';
 import {EventEmitter} from 'events';
 import xutil from '../util/util.js';
-import {undefined_to_null} from './util.js';
-import {dbg_id, dbg_sd, dbg_msg} from './util.js';
+import {dbg_id, dbg_sd} from './util.js';
 import ws_util from '../util/ws.js';
 import fs from 'fs';
 import https from 'https';
@@ -135,7 +134,7 @@ function WsChannel(localID, ws){
 WsChannel.prototype._onOpen = function(){
   if (this.destroyed)
     return;
-  this.ws.send(JSON.stringify(this.localID, undefined_to_null));
+  this.ws.send(JSON.stringify(this.localID));
 };
 
 WsChannel.prototype.send = function(data){
@@ -145,9 +144,7 @@ WsChannel.prototype.send = function(data){
     return; // readyState==CLOSING
   if (this.ws.readyState!=1)
     throw new Error('WebSocket is not ready');
-  var str = JSON.stringify(data, undefined_to_null);
-  log.debug('%s send %s nonce %s', this.dbg_str(), dbg_msg(data), data.nonce);
-  this.ws.send(str);
+  this.ws.send(data);
 };
 
 WsChannel.prototype._onMessage = function(data){

@@ -8,6 +8,7 @@ import date from '../util/date.js';
 import xutil from '../util/util.js';
 import {dbg_msg} from './util.js';
 import xlog from '../util/xlog.js';
+import LBuffer from './lbuffer.js';
 const log = xlog('router');
 const b2s = xutil.buf_to_str, s2b = xutil.buf_from_str;
 
@@ -73,11 +74,13 @@ export default class Router extends EventEmitter {
     if (!xutil.get(msg, ['rt', 'path']))
       msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
     // TODO BUG Sometimes the WS on closest in not in the ready state
-    yield channel.send(msg);
+    let lbuffer = new LBuffer(msg); // XXX: WIP
+    yield channel.send(lbuffer.to_str());
   });
   _on_channel_msg = (data, channel)=>etask({'this': this},
     function*_on_channel_msg(){
-    let msg = JSON.parse(data); // XXX: protect against invalid data
+    let lbuffer = LBuffer.from(data); // XXX: WIP
+    let msg = lbuffer.get_json(0);
     let _this = this.this, nonce = msg.nonce;
     if (!nonce)
       return log('invalid message nonce %s', dbg_msg(msg));

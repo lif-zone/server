@@ -5,7 +5,6 @@ import {EventEmitter} from 'events';
 import SimplePeer from 'simple-peer';
 import xerr from '../util/xerr.js';
 import _debug from 'debug';
-import {undefined_to_null} from './util.js';
 import xutil from '../util/util.js';
 const debug = _debug('peer-relay:wrtc');
 const s2b = xutil.buf_from_str;
@@ -133,7 +132,7 @@ WrtcChannel.prototype.send = function(data){
   var self = this;
   if (self.destroyed)
     return;
-  self._sp.send(JSON.stringify(data, undefined_to_null));
+  self._sp.send(data);
 };
 
 WrtcChannel.prototype.destroy = function(){

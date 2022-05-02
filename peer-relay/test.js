@@ -517,7 +517,9 @@ class FakeChannel extends EventEmitter {
     this.localID = opt.localID;
     this.t = {};
   }
-  send = msg=>{
+  send = data=>{
+    let lbuffer = LBuffer.from(data); // XXX WIP
+    let msg = lbuffer.get_json(0);
     assert(!t_pre_process, 'invalid send during pre_process');
     // XXX: need to filter out only test commands, other should fail test
     if (!t_mode.msg)
@@ -737,7 +739,8 @@ const send_msg = (s, d, msg)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   if (!channel)
     return xerr('no channel '+s+d+'>');
-  yield t_nodes[d].router._on_channel_msg(JSON.stringify(msg), channel);
+  let lbuffer = new LBuffer(msg); // XXX: WIP
+  yield t_nodes[d].router._on_channel_msg(lbuffer.to_str(), channel);
 });
 
 function fake_emit(c, msg){

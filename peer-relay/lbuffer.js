@@ -5,6 +5,10 @@ import xutil from '../util/util.js';
 export default class LBuffer {
   constructor(opt){
     this.array = [];
+    if (typeof opt=='object')
+      this.add_json(opt);
+    else if (opt)
+      this.add(opt);
   }
   // XXX: change internal structure. just save long string and indexes to
   // data start/end to avoid expensive parsing when caling LBuffer.from
