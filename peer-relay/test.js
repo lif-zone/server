@@ -772,10 +772,11 @@ function fake_emit(c, msg){
     assert(msg.req_id, 'missing req_id');
     msg.sign = node_from_id(from).wallet.sign(msg);
     track_msg(msg);
+    let lbuffer = new LBuffer(msg); // XXX WIP
     if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
-      ReqHandler.t.req_handler_cb(msg);
+      ReqHandler.t.req_handler_cb(lbuffer);
     else
-      Req.t.res_handler(msg);
+      Req.t.res_handler(lbuffer);
   }
 }
 

@@ -30,19 +30,8 @@ export default class Router extends EventEmitter {
     this._channels = channels;
     this._channels.on('added', channel=>this._onChannelAdded(channel));
     this._channels.on('removed', channel=>this._onChannelRemoved(channel));
-    this.on('message', this._on_msg);
     for (let c of this._channels.toArray())
       this._onChannelAdded(c);
-  }
-  _on_msg = msg=>{
-    let {req_id, type} = msg;
-    if (!req_id)
-      return;
-    log.debug('msg %s', dbg_msg(msg));
-    if (!['req', 'req_start', 'req_next', 'req_end', 'res', 'res_start',
-      'res_next', 'res_end'].includes(type)){
-      xerr('invalid msg type %s %s', type, req_id);
-    }
   }
   send_msg(dst, msg){
     let nonce=''+Math.floor(1e15*Math.random());
@@ -97,7 +86,7 @@ export default class Router extends EventEmitter {
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
     if (to.equals(_this.id))
-      _this.emit('message', msg);
+      _this.emit('message', lbuffer);
     else // relay
       yield _this._send(msg);
   });

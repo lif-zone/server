@@ -133,7 +133,8 @@ class Res extends EventEmitter {
   }
 }
 
-function req_handler_cb(msg){
+function req_handler_cb(lbuffer){
+  let msg = lbuffer.get_json(0); // XXX WIP
   let {req_id, type, cmd, seq} = msg;
   cmd = cmd||'';
   if (!req_id || !['req', 'req_start', 'req_next', 'req_end'].includes(type))
