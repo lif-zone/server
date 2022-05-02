@@ -10,7 +10,7 @@ import {dbg_msg} from './util.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
 const log = xlog('router');
-const b2s = xutil.buf_to_str, s2b = xutil.buf_from_str;
+const b2s = xutil.buf_to_str;
 
 // XXX: need safe emit support
 export default class Router extends EventEmitter {
@@ -46,10 +46,9 @@ export default class Router extends EventEmitter {
   _send = msg=>etask({'this': this}, function*(){
     let _this = this.this, channel;
     if (msg.path.length >= _this.maxHops)
-      return; // throw new Error('Max hops exceeded nonce=' + msg.nonce)
+      return xerr('drop msg max hop reached');
     if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(msg);
-    msg.path.push(b2s(_this.id));
     if (channel = _this.get_channel_from_rt(msg));
     else if (channel = _this.get_channel_from_state(msg));
     else {
@@ -58,10 +57,11 @@ export default class Router extends EventEmitter {
         xutil.get(msg, ['rt', 'range']));
     }
     if (!channel || b2s(channel.id)==msg.from)
-      return;
-    _this.track_out(msg, channel);
+      return; // XXX: add err msg
+    msg.path.push(b2s(_this.id));
     if (!xutil.get(msg, ['rt', 'path']))
       msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
+    _this.track_out(msg, channel);
     // TODO BUG Sometimes the WS on closest in not in the ready state
     let lbuffer = new LBuffer(msg); // XXX: WIP
     yield channel.send(lbuffer.to_str());
@@ -76,16 +76,11 @@ export default class Router extends EventEmitter {
     if (nonce in _this._touched)
       return log.debug('channel-msg dup %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
-    xerr.notice('channel-msg %s', dbg_msg(msg));
     _this.track_in(msg, channel);
-    let from = s2b(msg.from), to = s2b(msg.to);
-    // XXX: enable verify
-    if (false && !_this.wallet.verify(msg, msg.sign, from))
-      return log('invalid message signature %s', dbg_msg(msg));
     _this._touched[nonce] = true;
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
-    if (to.equals(_this.id))
+    if (msg.to==b2s(_this.id))
       _this.emit('message', lbuffer);
     else // relay
       yield _this._send(msg);
