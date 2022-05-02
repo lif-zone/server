@@ -60,14 +60,27 @@ export default class Router extends EventEmitter {
     }
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg
-    if (!(b2s(channel.localID)==msg.from && b2s(channel.id)==msg.to)){
-      msg.path.push(b2s(_this.id));
-      if (!xutil.get(msg, ['rt', 'path']))
-        msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
-      _this.track_out(msg, channel);
+    if (!(b2s(channel.local_id)==msg.from && b2s(channel.id)==msg.to)){
+      if (0){ // XXX: WIP
+        let msg2 = {
+          from: b2s(_this.id),
+          to: b2s(channel.id),
+          type: 'fwd',
+          rt: xutil.get(msg, ['rt', 'path']),
+        };
+        if (!xutil.get(msg2, ['rt', 'path']))
+          msg2.rt = {range: {min: b2s(channel.id), max: msg.to}};
+        _this.track_out(msg2, channel);
+        lbuffer.add_json(msg);
+      } else {
+        msg.path.push(b2s(_this.id));
+        if (!xutil.get(msg, ['rt', 'path']))
+          msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
+        _this.track_out(msg, channel);
+        lbuffer = new LBuffer(msg);
+      }
     }
-    let lbuffer2 = new LBuffer(msg); // XXX: WIP
-    yield channel.send(lbuffer2.to_str());
+    yield channel.send(lbuffer.to_str());
   });
   _on_channel_msg = (data, channel)=>etask({'this': this},
     function*_on_channel_msg(){
