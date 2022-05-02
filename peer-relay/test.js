@@ -1494,7 +1494,7 @@ function extend_loop(c, set_push){
     let o = assign({}, c, c.loop[i]);
     a.push(o);
     delete o.loop;
-    if (o.cmd!='fwd'){
+    if (o.cmd=='msg'){
       o.arg = build_cmd(
         dir_str(c.loop[0].s, c.loop[c.loop.length-1].d, o.dir)+o.cmd, o.arg);
       o.cmd = 'fwd';
