@@ -41,14 +41,16 @@ export default class Router extends EventEmitter {
     msg.nonce = nonce; // XXX: need test that will fail is this is missing
     msg.path = [];
     msg.sign = this.wallet.sign(msg);
-    this._send(msg);
+    let lbuffer = new LBuffer(msg); // XXX: WIP
+    this._send(lbuffer);
   }
-  _send = msg=>etask({'this': this}, function*(){
+  _send = lbuffer=>etask({'this': this}, function*(){
+    let msg = lbuffer.get_json(0); // XXX WIP
     let _this = this.this, channel;
     if (msg.path.length >= _this.maxHops)
       return xerr('drop msg max hop reached');
     if (!_this._channels.count) // XXX: verify and test it
-      return _this._queue.push(msg);
+      return _this._queue.push(lbuffer);
     if (channel = _this.get_channel_from_rt(msg));
     else if (channel = _this.get_channel_from_state(msg));
     else {
@@ -62,9 +64,9 @@ export default class Router extends EventEmitter {
     if (!xutil.get(msg, ['rt', 'path']))
       msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
     _this.track_out(msg, channel);
+    let lbuffer2 = new LBuffer(msg); // XXX: WIP
     // TODO BUG Sometimes the WS on closest in not in the ready state
-    let lbuffer = new LBuffer(msg); // XXX: WIP
-    yield channel.send(lbuffer.to_str());
+    yield channel.send(lbuffer2.to_str());
   });
   _on_channel_msg = (data, channel)=>etask({'this': this},
     function*_on_channel_msg(){
@@ -83,7 +85,7 @@ export default class Router extends EventEmitter {
     if (msg.to==b2s(_this.id))
       _this.emit('message', lbuffer);
     else // relay
-      yield _this._send(msg);
+      yield _this._send(lbuffer);
   });
   _onChannelAdded(channel){
     channel.on('message', this._on_channel_msg);
