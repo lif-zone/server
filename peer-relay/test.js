@@ -378,7 +378,7 @@ function assert_missing_event(c){
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
-  let s = node_from_id(channel.localID), d = node_from_id(channel.id);
+  let s = node_from_id(channel.local_id), d = node_from_id(channel.id);
   if (channel.t.initiaor){
     assert(!s.t.fake, 'src must be real');
     yield cmd_run(build_cmd(s.t.name+d.t.name+'>connect',
@@ -483,7 +483,7 @@ class FakeWsConnector extends EventEmitter {
     let _this = this.this;
     let d = node_from_url(url), s = node_from_id(_this.id);
     assert(d, 'node not found for url '+url);
-    let channel = new FakeChannel({localID: s.id, id: d.id});
+    let channel = new FakeChannel({local_id: s.id, id: d.id});
     channel.wsConnector = _this;
     channel.t.initiaor = true;
     assert(!s.t.fake, 'src must be real');
@@ -501,7 +501,7 @@ class FakeWrtcConnector extends EventEmitter {
   connect = _d=>etask({'this': this}, function*connect(){
     let _this = this.this;
     let d = node_from_id(_d), s = node_from_id(_this.id);
-    let channel = new FakeChannel({localID: s.id, id: d.id});
+    let channel = new FakeChannel({local_id: s.id, id: d.id});
     channel.wrtcConnector = _this;
     channel.t.initiaor = true;
     assert(!s.t.fake, 'src must be real');
@@ -514,7 +514,7 @@ class FakeChannel extends EventEmitter {
   constructor(opt){
     super();
     this.id = opt.id;
-    this.localID = opt.localID;
+    this.local_id = opt.local_id;
     this.t = {};
   }
   send = data=>{
@@ -528,7 +528,7 @@ class FakeChannel extends EventEmitter {
     let {req_id, type, cmd, ack, seq, body, path, nonce} = msg;
     cmd = cmd||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
-    let s = node_from_id(this.localID), d = node_from_id(this.id);
+    let s = node_from_id(this.local_id), d = node_from_id(this.id);
     if (s!=from || d!=to)
       fwd = s.t.name+d.t.name+'>';
     t_path[nonce] = Array.from(path);
@@ -985,7 +985,7 @@ const cmd_connect = opt=>etask(function*(){
     if (s.t.fake && d.t.fake)
       return;
     if (s.t.fake){
-      let channel = new FakeChannel({localID: d.id, id: s.id});
+      let channel = new FakeChannel({local_id: d.id, id: s.id});
       if (wss)
         channel.wsConnector = d.wsConnector;
       else

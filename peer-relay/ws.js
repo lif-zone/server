@@ -109,9 +109,9 @@ WsConnector.prototype.destroy = function(cb){
 WsConnector.prototype.dbg_str = function(){ return dbg_id(this.id); };
 
 inherits(WsChannel, EventEmitter);
-function WsChannel(localID, ws){
+function WsChannel(local_id, ws){
   var _this = this;
-  this.localID = localID;
+  this.local_id = local_id;
   this.id = undefined;
   this.destroyed = false;
   this.ws = ws;
@@ -134,7 +134,7 @@ function WsChannel(localID, ws){
 WsChannel.prototype._onOpen = function(){
   if (this.destroyed)
     return;
-  this.ws.send(JSON.stringify(this.localID));
+  this.ws.send(JSON.stringify(this.local_id));
 };
 
 WsChannel.prototype.send = function(data){
@@ -169,7 +169,7 @@ WsChannel.prototype._onError = function(err){
 };
 
 WsChannel.prototype.dbg_str = function(){
-  return dbg_sd(this.id, this.localID); };
+  return dbg_sd(this.id, this.local_id); };
 
 WsChannel.prototype.destroy = function(){
   if (this.destroyed)
