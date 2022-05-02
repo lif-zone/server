@@ -36,6 +36,8 @@ export default class LBuffer {
 }
 
 LBuffer.from = function(s){
+  if (typeof s!='string')
+    throw new Error('invalid buffer');
   let i = s.search('\0');
   if (i==-1)
     throw new Error('invalid buffer');

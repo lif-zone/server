@@ -1713,6 +1713,10 @@ describe('api', function(){
     });
     it('invalid', ()=>{
       let t = (s, exp)=>assert.throws(()=>LBuffer.from(s), {message: exp});
+      t(undefined, 'invalid buffer');
+      t(null, 'invalid buffer');
+      t([], 'invalid buffer');
+      t({}, 'invalid buffer');
       t('', 'invalid buffer');
       t('a', 'invalid buffer');
       t('a\0abcdefghijk', 'invalid buffer');
