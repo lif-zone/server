@@ -22,6 +22,7 @@ export default class LBuffer {
   }
   add_json(o){ this.add(JSON.stringify(o)); }
   add_tail_json(o){ this.add_tail(JSON.stringify(o)); }
+  count(){ return this.array.length; }
   get(i){ return this.array[i].data; }
   get_json(i){
     this.array[i].json = this.array[i].json||JSON.parse(this.array[i].data);
@@ -36,6 +37,14 @@ export default class LBuffer {
       d += o.data;
     });
     return h+'\0'+d;
+  }
+  path(){
+    if (!LBuffer.xxx_fwd_wrap) // XXX: WIP
+      return Array.from(this.get_json(0).path);
+    let o, p = [];
+    for (let i=0; i<this.count && (o=this.get_json(i)) && o.type=='fwd'; i++)
+      p.unshift(o.from);
+    return p;
   }
 }
 
@@ -62,3 +71,4 @@ LBuffer.from = function(s){
     throw new Error('invalid buffer len');
   return lbuffer;
 };
+
