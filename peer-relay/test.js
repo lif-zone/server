@@ -62,6 +62,16 @@ let t_keys = {
       '0d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014'},
 };
 
+function fwd_s(fwd, i){
+  assert(i<=fwd.length, 'invalid fwd index '+JSON.stringify(fwd)+':'+i);
+  return fwd[i][2]=='>' ? fwd[i][0] : fwd[i][1];
+}
+
+function fwd_d(fwd, i){
+  assert(i<=fwd.length, 'invalid fwd index '+JSON.stringify(fwd)+':'+i);
+  return fwd[i][2]=='>' ? fwd[i][1] : fwd[i][0];
+}
+
 function nonce_hash(msg){
   return id_to_name(msg.from)+'_'+id_to_name(msg.to)+'_'+(msg.req_id||'none')+
     '_'+(msg.type||'none')+'_'+(msg.cmd||'none');
@@ -370,11 +380,12 @@ function assert_event_c2(c, orig, fwd, event, call){
 function assert_missing_event(c){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   if (c.fwd)
-    s = c.fwd[2]=='>' ? t_nodes[c.fwd[0]] : t_nodes[c.fwd[1]];
+    s = t_nodes[fwd_s(c.fwd, 0)];
+  assert(s, 'fwd node not found '+JSON.stringify(c.fwd)+' '+c.orig);
   if (c.cmd[0]=='*' && (t_mode.msg || !t_mode.req))
     assert(!s.t.fake || !d || d.t.fake, 'missing event for '+c.orig);
   else
-    assert(s.t.fake, 'missing event for '+c.fwd+' '+c.orig);
+    assert(s.t.fake, 'missing event '+JSON.stringify(c.fwd)+' '+c.orig);
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
@@ -792,9 +803,8 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     ''+Math.floor(1e15 * Math.random());
   assign(msg, {to, from, nonce, path: [from]});
   if (c.fwd){
-    let fwd = normalize(c.fwd);
-    s = t_nodes[fwd[0]];
-    d = t_nodes[fwd[1]];
+    s = t_nodes[fwd_s(c.fwd, 0)];
+    d = t_nodes[fwd_d(c.fwd, 0)];
   }
   t_path[nonce] = t_path[nonce]||[];
   t_path[nonce].push(b2s(s.id));
@@ -1109,10 +1119,9 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   if (ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
     'res_next', 'res_end'].includes(type)){
-    let nfwd = normalize(c.fwd);
     ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
       s: d.t.name, d: s.t.name,
-      keep: t_mode.req && t_mode.msg || !nfwd || nfwd[1]!=d.t.name});
+      keep: t_mode.req && t_mode.msg || !c.fwd || fwd_d(c.fwd, 0)!=d.t.name});
   }
   if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
     seq = seq||0;
@@ -1410,7 +1419,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  f.fwd = dir_c(c);
+  f.fwd = Array.from(c.fwd||[]);
+  f.fwd.push(dir_c(c));
   f.path = path;
   f.rt = rt;
   if (t_pre_process){
@@ -1907,8 +1917,8 @@ describe('peer-relay', function(){
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
         t('bc>fwd(ab>msg(body:x))', `bc>fwd(ab>msg(body(x)))`);
-        t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
         if (LBuffer.xxx_fwd_wrap){
+        t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
         t('abc>msg(body:x)', `ab>fwd(ac>msg(body(x)))
           bc>fwd(ab>fwd(ac>msg(body(x))))`);
         t('abc<msg(body:x)', `bc<fwd(ac<msg(body(x)))
