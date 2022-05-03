@@ -140,7 +140,11 @@ function _build_cmd(){
       arg += (arg ? ' ' : '')+args[i];
   }
   let ret = cmd+(arg ? '('+arg+')' : '');
-  return fwd ? fwd+'fwd('+ret+')' : ret;
+  if (!fwd)
+    return ret;
+  assert(Array.isArray(fwd), 'invalid fwd '+JSON.stringify(fwd));
+  Array.from(fwd).reverse().forEach(f=>ret=f+'fwd('+ret+')');
+  return ret;
 }
 
 // build_cmd(cmd, ...)
@@ -156,6 +160,7 @@ function build_cmd_o(cmd, fwd, o){
     o = fwd;
     fwd = '';
   }
+  assert(!fwd || Array.isArray(fwd), 'invalid fwd '+JSON.stringify(fwd));
   let a = [cmd, fwd];
   for (let arg in o){
     let val = o[arg];
@@ -573,7 +578,7 @@ class FakeChannel extends EventEmitter {
       t_nonce[nonce_hash(msg)] = msg.nonce;
       track_msg(msg);
       yield cmd_run_if_next_fake();
-      yield cmd_run(_build_cmd(e, fwd, ''));
+      yield cmd_run(_build_cmd(e, fwd && [fwd], ''));
     });
   };
   destroy(){}
@@ -1431,7 +1436,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   if (t_pre_process){
     return set_orig(c, _build_cmd(f.orig+
       (path ? ' '+build_cmd('path', path_to_str(path, c.dir)) : '')+
-      (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : ''), f.fwd));
+      (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : ''), [dir_c(c)]));
   }
   yield cmd_run_if_next_fake();
 });
@@ -1515,8 +1520,8 @@ function extend_loop(c){
     o.cmd = 'fwd';
     o.arg = prev;
     if (LBuffer.xxx_fwd_wrap)
-      prev = _build_cmd(o.arg, dir_c(o));
-    set_orig(o, _build_cmd(o.arg, dir_c(o)));
+      prev = _build_cmd(o.arg, [dir_c(o)]);
+    set_orig(o, _build_cmd(o.arg, [dir_c(o)]));
     a.push(o);
   }
   return _set_push_cmd(c, a);
@@ -1694,10 +1699,12 @@ describe('api', function(){
     t(['a'], 'a');
     t(['ab>'], 'ab>');
     t(['ab>msg'], 'ab>msg');
-    t(['ab>msg', 'cd>'], 'cd>fwd(ab>msg)');
+    t(['ab>msg', ['cd>']], 'cd>fwd(ab>msg)');
+    t(['ab>msg', ['cd>', 'ef>']], 'cd>fwd(ef>fwd(ab>msg))');
     t(['ab>msg', '', 'x'], 'ab>msg(x)');
     t(['ab>msg', '', 'x', 'y'], 'ab>msg(x y)');
-    t(['ab>msg', 'cd>', 'x', 'y'], 'cd>fwd(ab>msg(x y))');
+    t(['ab>msg', ['cd>'], 'x', 'y'], 'cd>fwd(ab>msg(x y))');
+    t(['ab>msg', ['cd>', 'ef>'], 'x', 'y'], 'cd>fwd(ef>fwd(ab>msg(x y)))');
   });
   describe('lbuffer', ()=>{
     it('to_str', ()=>{
@@ -1917,8 +1924,8 @@ describe('peer-relay', function(){
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
         t('bc>fwd(ab>msg(body:x))', `bc>fwd(ab>msg(body(x)))`);
-        if (LBuffer.xxx_fwd_wrap){
         t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
+        if (LBuffer.xxx_fwd_wrap){
         t('abc>msg(body:x)', `ab>fwd(ac>msg(body(x)))
           bc>fwd(ab>fwd(ac>msg(body(x))))`);
         t('abc<msg(body:x)', `bc<fwd(ac<msg(body(x)))
