@@ -62,6 +62,14 @@ let t_keys = {
       '0d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014'},
 };
 
+// XXX: need test
+function fwd_from_lbuffer(lbuffer){
+  let fwd = [], m;
+  for (let i=0; i<lbuffer.count() && (m=lbuffer.get_json(i)).type=='fwd'; i++)
+    fwd.push(node_from_id(m.from).t.name+node_from_id(m.to).t.name+'>');
+  return fwd;
+}
+
 function fwd_s(fwd, i){
   assert(i<=fwd.length, 'invalid fwd index '+JSON.stringify(fwd)+':'+i);
   return fwd[i][2]=='>' ? fwd[i][0] : fwd[i][1];
@@ -71,6 +79,9 @@ function fwd_d(fwd, i){
   assert(i<=fwd.length, 'invalid fwd index '+JSON.stringify(fwd)+':'+i);
   return fwd[i][2]=='>' ? fwd[i][1] : fwd[i][0];
 }
+
+function fwd_s_id(fwd, i){ return b2s(t_nodes[fwd_s(fwd, i)].id); }
+function fwd_d_id(fwd, i){ return b2s(t_nodes[fwd_d(fwd, i)].id); }
 
 function nonce_hash(msg){
   return id_to_name(msg.from)+'_'+id_to_name(msg.to)+'_'+(msg.req_id||'none')+
@@ -108,6 +119,8 @@ function range_to_str(range){
 }
 
 function rt_to_str(rt, dir){
+  if (!rt)
+    return '';
   assert(util.xor(rt.range, rt.path));
   return rt.range ? range_to_str(rt.range) : path_to_str(rt.path, dir);
 }
@@ -362,6 +375,7 @@ function assert_event_c(c, event, call){
   if (call)
     return assert(!event, 'unexpected event '+event+' for call '+c.orig);
   if (event){
+    assert(!c.fwd, 'XXX TODO fwd support');
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
   }
@@ -373,9 +387,16 @@ function assert_event_c2(c, orig, fwd, event, call){
   if (call)
     return assert(!event, 'unexpected event '+event+' for call '+orig);
   if (event){
-    let expected = fwd ? build_cmd(fwd+'fwd', normalize(orig)+
-      (c.path ? ' '+build_cmd('path', path_to_str(c.path)) : '')+
-      (c.rt ? ' '+build_cmd('rt', rt_to_str(c.rt, c.dir)) : '')) : orig;
+    let expected = orig;
+    if (fwd){
+      assert(Array.isArray(fwd), 'invalid fwd '+JSON.stringify(fwd));
+      expected = normalize(orig);
+      Array.from(fwd).reverse().forEach(f=>{
+        expected = build_cmd(f+'fwd', expected+
+          (c.path ? ' '+build_cmd('path', path_to_str(c.path)) : '')+
+          (c.rt ? ' '+build_cmd('rt', rt_to_str(c.rt, c.dir)) : ''));
+      });
+    }
     assert_event(event, expected);
   }
   else
@@ -535,21 +556,18 @@ class FakeChannel extends EventEmitter {
   }
   send = data=>{
     let lbuffer = LBuffer.from(data); // XXX WIP
-    let msg = lbuffer.get_json(lbuffer.count()-1);
+    let msg = lbuffer.msg();
     assert(!t_pre_process, 'invalid send during pre_process');
     // XXX: need to filter out only test commands, other should fail test
     if (!t_mode.msg)
       return;
-    let fwd, e;
+    let e, fwd = fwd_from_lbuffer(lbuffer);
     let {req_id, type, cmd, ack, seq, body, path, nonce} = msg;
     cmd = cmd||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
-    let s = node_from_id(this.local_id), d = node_from_id(this.id);
-    if (s!=from || d!=to)
-      fwd = s.t.name+d.t.name+'>';
-    assert(msg.nonce, 'missing msg nonce '+JSON.stringify(msg));
+    assert(lbuffer.nonce(), 'missing msg nonce '+data);
     t_path[nonce] = lbuffer.path();
-    xerr.notice('*** send%s msg %s %s', fwd ? ' '+fwd : '',
+    xerr.notice('*** send%s msg %s %s', fwd ? ' fwd '+fwd : '',
       from.t.name+to.t.name+'>'+cmd, stringify(msg));
     return etask(function*send(){
       switch (type){
@@ -572,13 +590,18 @@ class FakeChannel extends EventEmitter {
         'unexpected msg type '+type);
       }
       e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
-        type, cmd, seq, ack: ack && ack.join(','), body})+
-        (t_conf.path&&fwd ? ' '+build_cmd('path', path_to_str(path)) : '')+
-        (t_conf.rt&&fwd ? ' '+build_cmd('rt', rt_to_str(msg.rt)) : '');
-      t_nonce[nonce_hash(msg)] = msg.nonce;
+        type, cmd, seq, ack: ack && ack.join(','), body});
+      if (fwd){
+        Array.from(fwd).reverse().forEach(f=>{
+          e = build_cmd(f+'fwd', e+
+            (t_conf.path&&fwd ? ' '+build_cmd('path', path_to_str(path)) : '')+
+            (t_conf.rt&&fwd ? ' '+build_cmd('rt', rt_to_str(msg.rt)) : ''));
+        });
+      }
+      t_nonce[nonce_hash(msg)] = lbuffer.nonce();
       track_msg(msg);
       yield cmd_run_if_next_fake();
-      yield cmd_run(_build_cmd(e, fwd && [fwd], ''));
+      yield cmd_run(e);
     });
   };
   destroy(){}
@@ -607,7 +630,7 @@ function req_hook(msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
+  assert(msg.nonce, 'missing msg nonce '+JSON.stringify(msg));
   track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
@@ -636,7 +659,7 @@ function req_send_hook(msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
+  assert(msg.nonce, 'missing msg nonce '+JSON.stringify(msg));
   track_msg(msg);
   cmd_run_if_next_fake();
   cmd_run(_build_cmd(e, '', ''));
@@ -692,7 +715,7 @@ function res_send_hook(router, msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
+  assert(msg.nonce, 'missing msg nonce '+JSON.stringify(msg));
   track_msg(msg);
   cmd_run_if_next_fake();
   cmd_run(_build_cmd(e, '', ''));
@@ -754,11 +777,10 @@ function node_get_channel(_s, _d){
   return d.peers.get(s.id);
 }
 
-const send_msg = (s, d, msg)=>etask(function*send_msg(){
+const send_msg = (s, d, lbuffer)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   if (!channel)
     return xerr('no channel '+s+d+'>');
-  let lbuffer = new LBuffer(msg); // XXX: WIP
   yield t_nodes[d].router._on_channel_msg(lbuffer.to_str(), channel);
 });
 
@@ -807,14 +829,14 @@ const fake_send_msg = (c, msg)=>etask(function*(){
   let nonce = t_nonce[nonce_hash(msg)] = t_nonce[nonce_hash(msg)]||
     ''+Math.floor(1e15 * Math.random());
   assign(msg, {to, from, nonce, path: [from]});
-  if (c.fwd){
+  if (c.fwd){ // XXX: WIP
     s = t_nodes[fwd_s(c.fwd, 0)];
     d = t_nodes[fwd_d(c.fwd, 0)];
   }
   t_path[nonce] = t_path[nonce]||[];
   t_path[nonce].push(b2s(s.id));
   msg.path = Array.from(t_path[nonce]);
-  if (s.t.fake && !d.t.fake)
+  if (s.t.fake && !d.t.fake) // XXX: enough to check that !d.t.fake
   {
     // XXX NOW: 1. fix logic (handle req_start/res_start/....)
     if (msg.type=='req')
@@ -826,7 +848,23 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     }
     msg.sign = node_from_id(from).wallet.sign(msg);
     track_msg(msg);
-    yield send_msg(s.t.name, d.t.name, msg);
+    let lbuffer = new LBuffer(msg); // XXX: WIP
+    if (c.fwd){
+      for (let i=c.fwd.length-1; i>=0; i--){
+        let msg2 = {
+          from: fwd_s_id(c.fwd, i),
+          to: fwd_d_id(c.fwd, i),
+          type: 'fwd',
+          rt: xutil.get(msg, ['rt', 'path']),
+        };
+        if (!xutil.get(msg2, ['rt', 'path'])){
+          msg2.rt = {range: {min: fwd_s_id(c.fwd, i),
+            max: fwd_d_id(c.fwd, i)}};
+        }
+        lbuffer.add_json(msg2);
+      }
+    }
+    yield send_msg(s.t.name, d.t.name, lbuffer);
   }
 });
 
@@ -2136,6 +2174,7 @@ describe('peer-relay', function(){
       abc>!req(id:r1 body:ping res:ping_r) 59s -
       cba>!req(id:r2 body:ping res:ping_r) 60s -
       cda>!req(id:r3 body:ping res:ping_r) -`);
+    if (0) // XXX WIP
     t('4_nodes_ring_range', `conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(id:10 wss) b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
       ab>!connect bc>!connect cd>!connect da>!connect -
@@ -2158,6 +2197,7 @@ describe('peer-relay', function(){
     // support:
     // cd>fwd(ad>msg(id:r1 type:req body:ping) rt:40-40)
     // cd<fwd(ad<msg(id:r1 type:res body:ping_r) rt:abcd)
+    if (0) // XXX WIP
     t('5_nodes_ring_range', `
       conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss

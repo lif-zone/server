@@ -16,7 +16,7 @@ const reqs = {};
 let free_req_id = date.monotonic();
 
 function res_handler(lbuffer){
-  let msg = lbuffer.get_json(0); // XXX WIP
+  let msg = lbuffer.msg(); // XXX WIP
   let {req_id, type, seq} = msg;
   seq = seq||0;
   if (!req_id || !['res', 'res_start', 'res_next', 'res_end'].includes(type))

@@ -45,9 +45,9 @@ export default class Router extends EventEmitter {
     this._send(lbuffer);
   }
   _send = lbuffer=>etask({'this': this}, function*(){
-    let msg = lbuffer.get_json(0); // XXX WIP
+    let msg = lbuffer.msg(); // XXX WIP
     let _this = this.this, channel;
-    if (msg.path.length >= _this.maxHops)
+    if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
     if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(lbuffer);
@@ -85,8 +85,8 @@ export default class Router extends EventEmitter {
   _on_channel_msg = (data, channel)=>etask({'this': this},
     function*_on_channel_msg(){
     let lbuffer = LBuffer.from(data); // XXX: WIP
-    let msg = lbuffer.get_json(0);
-    let _this = this.this, nonce = msg.nonce;
+    let msg = lbuffer.msg();
+    let _this = this.this, nonce = lbuffer.nonce();
     if (!nonce)
       return log('invalid message nonce %s', dbg_msg(msg));
     if (nonce in _this._touched)

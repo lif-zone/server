@@ -40,12 +40,14 @@ export default class LBuffer {
   }
   path(){
     if (!LBuffer.xxx_fwd_wrap) // XXX: WIP
-      return Array.from(this.get_json(0).path);
+      return Array.from(this.get_json(0).path||[]);
     let o, p = [];
     for (let i=0; i<this.count && (o=this.get_json(i)) && o.type=='fwd'; i++)
       p.unshift(o.from);
     return p;
   }
+  nonce(){ return this.msg().nonce; }
+  msg(){ return this.get_json(this.count()-1); }
 }
 
 LBuffer.from = function(s){
@@ -72,3 +74,4 @@ LBuffer.from = function(s){
   return lbuffer;
 };
 
+LBuffer.xxx_fwd_wrap = true; // XXX WIP
