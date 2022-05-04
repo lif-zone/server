@@ -61,24 +61,16 @@ export default class Router extends EventEmitter {
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg
     if (!(b2s(channel.local_id)==msg.from && b2s(channel.id)==msg.to)){
-      if (LBuffer.xxx_fwd_wrap){ // XXX: WIP
-        let msg2 = {
-          from: b2s(_this.id),
-          to: b2s(channel.id),
-          type: 'fwd',
-          rt: xutil.get(msg, ['rt', 'path']),
-        };
-        if (!xutil.get(msg2, ['rt', 'path']))
-          msg2.rt = {range: {min: b2s(channel.id), max: msg.to}};
-        _this.track_out(msg2, channel);
-        lbuffer.add_json(msg2);
-      } else {
-        msg.path.push(b2s(_this.id));
-        if (!xutil.get(msg, ['rt', 'path']))
-          msg.rt = {range: {min: b2s(channel.id), max: msg.to}};
-        _this.track_out(msg, channel);
-        lbuffer = new LBuffer(msg);
-      }
+      let msg2 = {
+        from: b2s(_this.id),
+        to: b2s(channel.id),
+        type: 'fwd',
+        rt: xutil.get(msg, ['rt', 'path']),
+      };
+      if (!xutil.get(msg2, ['rt', 'path']))
+        msg2.rt = {range: {min: b2s(channel.id), max: msg.to}};
+      _this.track_out(msg2, channel);
+      lbuffer.add_json(msg2);
     }
     yield channel.send(lbuffer.to_str());
   });

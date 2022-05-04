@@ -39,8 +39,6 @@ export default class LBuffer {
     return h+'\0'+d;
   }
   path(){
-    if (!LBuffer.xxx_fwd_wrap) // XXX: WIP
-      return Array.from(this.get_json(0).path||[]);
     let o, p = [];
     for (let i=0; i<this.count && (o=this.get_json(i)) && o.type=='fwd'; i++)
       p.unshift(o.from);
@@ -73,5 +71,3 @@ LBuffer.from = function(s){
     throw new Error('invalid buffer len');
   return lbuffer;
 };
-
-LBuffer.xxx_fwd_wrap = true; // XXX WIP

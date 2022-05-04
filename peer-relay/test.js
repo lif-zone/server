@@ -1557,8 +1557,7 @@ function extend_loop(c){
     delete o.loop;
     o.cmd = 'fwd';
     o.arg = prev;
-    if (LBuffer.xxx_fwd_wrap)
-      prev = _build_cmd(o.arg, [dir_c(o)]);
+    prev = _build_cmd(o.arg, [dir_c(o)]);
     set_orig(o, _build_cmd(o.arg, [dir_c(o)]));
     a.push(o);
   }
@@ -1963,7 +1962,6 @@ describe('peer-relay', function(){
           ab<connected`);
         t('bc>fwd(ab>msg(body:x))', `bc>fwd(ab>msg(body(x)))`);
         t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
-        if (LBuffer.xxx_fwd_wrap){
         t('abc>msg(body:x)', `ab>fwd(ac>msg(body(x)))
           bc>fwd(ab>fwd(ac>msg(body(x))))`);
         t('abc<msg(body:x)', `bc<fwd(ac<msg(body(x)))
@@ -1991,7 +1989,6 @@ describe('peer-relay', function(){
           ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws)))
           bc>fwd(ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws))))
           ac>*conn_info_r(ws)`);
-        }
         t('cd>fwd(ab>msg)', `cd>fwd(ab>msg)`);
         t('cd>fwd(ab>msg path:abc)', `cd>fwd(ab>msg path(abc))`);
         t('cd<fwd(ab<msg path:abc)', `cd<fwd(ab<msg path(abc))`);
@@ -2045,7 +2042,6 @@ describe('peer-relay', function(){
           ab<*res(id(r1) cmd(test) body(ping_r))`);
         t('abc>!req(id:r0 !e)', `ac>!req(id(r0) !e)`);
         t('abc<!req(id:r0 !e)', `ac<!req(id(r0) !e)`);
-        if (LBuffer.xxx_fwd_wrap){
         _t('mode(msg req)', 'abc>!req(id:r0)', `ac>!req(id(r0) !e)
           ab>fwd(ac>msg(id(r0) type(req)))
           bc>fwd(ab>fwd(ac>msg(id(r0) type(req))))
@@ -2069,7 +2065,6 @@ describe('peer-relay', function(){
           cb>fwd(ac<msg(id(r1) type(res) cmd(test) body(ping_r)))
           ba>fwd(cb>fwd(ac<msg(id(r1) type(res) cmd(test) body(ping_r))))
           ac<*res(id(r1) cmd(test) body(ping_r))`);
-        }
         t('ab>*res(id:r1 body:ping)', `ab>*res(id(r1) body(ping))`);
         t('ab>!res(body:hi !e)', `ab>!res(body(hi) !e)`);
         t('ab>!res(id(r0) body:hi !e)', `ab>!res(id(r0) body(hi) !e)`);
@@ -2083,7 +2078,6 @@ describe('peer-relay', function(){
            ab>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
         t('abc>!res(id:r0 !e)', `ac>!res(id(r0) !e)`);
         t('abc<!res(id:r0 !e)', `ac<!res(id(r0) !e)`);
-        if (LBuffer.xxx_fwd_wrap){
         _t('mode(msg req)', 'abc>!res(id:r0)', `ac>!res(id(r0) !e)
           ab>fwd(ac>msg(id(r0) type(res)))
           bc>fwd(ab>fwd(ac>msg(id(r0) type(res)))) ac>*res(id(r0))`);
@@ -2096,7 +2090,6 @@ describe('peer-relay', function(){
           bc>fwd(ab>fwd(ac>msg(id(r0) type(res) cmd(test) seq(1) ack(2) `+
           `body(ping))))
            ac>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
-        }
         t('a>*fail(id:r1 error:timeout)', `a>*fail(id(r1) error(timeout))`);
         t('a>*req_start(id:r0 cmd:test seq:1 ack:2 body:b0)',
           `a>*req_start(id(r0) cmd(test) seq(1) ack(2) body(b0))`);
