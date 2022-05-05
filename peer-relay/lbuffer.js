@@ -29,14 +29,14 @@ export default class LBuffer {
     return this.array[i].json;
   }
   to_str(){
-    let h = '', d='';
+    let h = [], d='';
     if (this.array.length<=1)
       return '\0'+xutil.get(this, ['array', 0, 'data'], '');
     this.array.forEach(o=>{
-      h += (h ? ' ' : '')+o.data.length;
+      h.push(o.data.length);
       d += o.data;
     });
-    return h+'\0'+d;
+    return JSON.stringify(h)+'\0'+d;
   }
   path(){
     let o, p = [];
@@ -54,20 +54,23 @@ LBuffer.from = function(s){
   let i = s.search('\0');
   if (i==-1)
     throw new Error('invalid buffer');
-  let h = s.substr(0, i), a = h.split(' '), lbuffer = new LBuffer();
+  let a, h = s.substr(0, i), lbuffer = new LBuffer();
+  try { a = JSON.parse(h||'""'); }
+  catch(err){ throw new Error('invalid buffer'); }
   i++;
-  if (!h){
+  if (!h || a&&a.length==0){
     lbuffer.add(s.substr(i, Infinity));
     return lbuffer;
   }
+  if (!Array.isArray(a))
+    throw new Error('invalid buffer');
   a.forEach(len=>{
-    if (!/^[0-9]+$/.test(len)) // XXX: is_number
+    if (typeof len!='number')
       throw new Error('invalid buffer');
-    len = parseInt(len);
     lbuffer.add_tail(s.substr(i, len));
     i += len;
   });
   if (i != s.length)
-    throw new Error('invalid buffer len');
+    throw new Error('invalid buffer');
   return lbuffer;
 };

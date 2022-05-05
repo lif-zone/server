@@ -1751,13 +1751,13 @@ describe('api', function(){
       lbuffer.add('a');
       t('\0a');
       lbuffer.add('bb');
-      t('2 1\0bba');
+      t('[2,1]\0bba');
       lbuffer.add('ccc');
-      t('3 2 1\0cccbba');
+      t('[3,2,1]\0cccbba');
       lbuffer.add('');
-      t('0 3 2 1\0cccbba');
+      t('[0,3,2,1]\0cccbba');
       lbuffer.add('abcdefghijk');
-      t('11 0 3 2 1\0abcdefghijkcccbba');
+      t('[11,0,3,2,1]\0abcdefghijkcccbba');
     });
     it('from_str', ()=>{
       const t = (s, exp)=>{
@@ -1767,11 +1767,11 @@ describe('api', function(){
       };
       t('\0', ['']);
       t('\0a', ['a']);
-      t('2\0aa', ['aa']);
-      t('2 3\0aabbb', ['aa', 'bbb']);
-      t('11 0 3 2 1\0abcdefghijkcccbba',
+      t('[]\0a', ['a']);
+      t('[2]\0aa', ['aa']);
+      t('[2,3]\0aabbb', ['aa', 'bbb']);
+      t('[11,0,3,2,1]\0abcdefghijkcccbba',
         ['abcdefghijk', '', 'ccc', 'bb', 'a']);
-      // XXX: test invalid
     });
     it('invalid', ()=>{
       let t = (s, exp)=>assert.throws(()=>LBuffer.from(s), {message: exp});
@@ -1780,12 +1780,13 @@ describe('api', function(){
       t([], 'invalid buffer');
       t({}, 'invalid buffer');
       t('', 'invalid buffer');
-      t('a', 'invalid buffer');
-      t('a\0abcdefghijk', 'invalid buffer');
-      t('1\0', 'invalid buffer len');
-      t('1\0ab', 'invalid buffer len');
-      t('1 2\0ab', 'invalid buffer len');
-      t('1 2\0abcd', 'invalid buffer len');
+      t('[1]', 'invalid buffer');
+      t('["2"]\0aa', 'invalid buffer');
+      t('[a]\0abcdefghijk', 'invalid buffer');
+      t('[1]\0', 'invalid buffer');
+      t('[1]\0ab', 'invalid buffer');
+      t('[1,2]\0ab', 'invalid buffer');
+      t('[1,2]\0abcd', 'invalid buffer');
     });
   });
 });
