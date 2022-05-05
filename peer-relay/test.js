@@ -1155,7 +1155,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   cmd = cmd||'';
   if (t_pre_process){
     if (c.loop)
-      c = extend_loop(c, true);
+      c = extend_loop(c);
     else
       set_orig(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body}));
     return;
@@ -1468,7 +1468,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   f.rt = rt;
   if (t_pre_process){
     if (c.loop)
-      return extend_loop(c, true);
+      return extend_loop(c);
   }
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
