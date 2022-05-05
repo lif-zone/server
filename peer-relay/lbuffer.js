@@ -1,6 +1,7 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
 import xutil from '../util/util.js';
+const stringify = JSON.stringify;
 
 export default class LBuffer {
   constructor(opt){
@@ -20,8 +21,8 @@ export default class LBuffer {
     let o = {data};
     this.array.push(o);
   }
-  add_json(o){ this.add(JSON.stringify(o)); }
-  add_tail_json(o){ this.add_tail(JSON.stringify(o)); }
+  add_json(o){ this.add(stringify(o)); }
+  add_tail_json(o){ this.add_tail(stringify(o)); }
   count(){ return this.array.length; }
   get(i){ return this.array[i].data; }
   get_json(i){
@@ -36,7 +37,7 @@ export default class LBuffer {
       h.push(o.data.length);
       d += o.data;
     });
-    return JSON.stringify(h)+'\0'+d;
+    return stringify(h)+'\0'+d;
   }
   path(){
     let o, p = [];

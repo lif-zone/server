@@ -71,12 +71,12 @@ function fwd_from_lbuffer(lbuffer){
 }
 
 function fwd_s(fwd, i){
-  assert(i<=fwd.length, 'invalid fwd index '+JSON.stringify(fwd)+':'+i);
+  assert(i<=fwd.length, 'invalid fwd index '+stringify(fwd)+':'+i);
   return fwd[i][2]=='>' ? fwd[i][0] : fwd[i][1];
 }
 
 function fwd_d(fwd, i){
-  assert(i<=fwd.length, 'invalid fwd index '+JSON.stringify(fwd)+':'+i);
+  assert(i<=fwd.length, 'invalid fwd index '+stringify(fwd)+':'+i);
   return fwd[i][2]=='>' ? fwd[i][1] : fwd[i][0];
 }
 
@@ -155,7 +155,7 @@ function _build_cmd(){
   let ret = cmd+(arg ? '('+arg+')' : '');
   if (!fwd)
     return ret;
-  assert(Array.isArray(fwd), 'invalid fwd '+JSON.stringify(fwd));
+  assert(Array.isArray(fwd), 'invalid fwd '+stringify(fwd));
   Array.from(fwd).reverse().forEach(f=>ret=f+'fwd('+ret+')');
   return ret;
 }
@@ -173,7 +173,7 @@ function build_cmd_o(cmd, fwd, o){
     o = fwd;
     fwd = '';
   }
-  assert(!fwd || Array.isArray(fwd), 'invalid fwd '+JSON.stringify(fwd));
+  assert(!fwd || Array.isArray(fwd), 'invalid fwd '+stringify(fwd));
   let a = [cmd, fwd];
   for (let arg in o){
     let val = o[arg];
@@ -389,7 +389,7 @@ function assert_event_c2(c, orig, fwd, event, call){
   if (event){
     let expected = orig;
     if (fwd){
-      assert(Array.isArray(fwd), 'invalid fwd '+JSON.stringify(fwd));
+      assert(Array.isArray(fwd), 'invalid fwd '+stringify(fwd));
       expected = normalize(orig);
       Array.from(fwd).reverse().forEach(f=>{
         expected = build_cmd(f+'fwd', expected+
@@ -407,11 +407,11 @@ function assert_missing_event(c){
   let s = t_nodes[c.s], d = t_nodes[c.d];
   if (c.fwd)
     s = t_nodes[fwd_s(c.fwd, 0)];
-  assert(s, 'fwd node not found '+JSON.stringify(c.fwd)+' '+c.orig);
+  assert(s, 'fwd node not found '+stringify(c.fwd)+' '+c.orig);
   if (c.cmd[0]=='*' && (t_mode.msg || !t_mode.req))
     assert(!s.t.fake || !d || d.t.fake, 'missing event for '+c.orig);
   else
-    assert(s.t.fake, 'missing event '+JSON.stringify(c.fwd)+' '+c.orig);
+    assert(s.t.fake, 'missing event '+stringify(c.fwd)+' '+c.orig);
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
@@ -630,7 +630,7 @@ function req_hook(msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce '+JSON.stringify(msg));
+  assert(msg.nonce, 'missing msg nonce '+stringify(msg));
   track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
@@ -659,7 +659,7 @@ function req_send_hook(msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce '+JSON.stringify(msg));
+  assert(msg.nonce, 'missing msg nonce '+stringify(msg));
   track_msg(msg);
   cmd_run_if_next_fake();
   cmd_run(_build_cmd(e, '', ''));
@@ -687,7 +687,7 @@ function res_hook(msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce %s', JSON.stringify(msg));
+  assert(msg.nonce, 'missing msg nonce %s', stringify(msg));
   track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
@@ -715,7 +715,7 @@ function res_send_hook(router, msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce '+JSON.stringify(msg));
+  assert(msg.nonce, 'missing msg nonce '+stringify(msg));
   track_msg(msg);
   cmd_run_if_next_fake();
   cmd_run(_build_cmd(e, '', ''));
