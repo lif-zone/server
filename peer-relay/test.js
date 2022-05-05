@@ -1962,6 +1962,8 @@ describe('peer-relay', function(){
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
         t('bc>fwd(ab>msg(body:x))', `bc>fwd(ab>msg(body(x)))`);
+        t('bc>fwd(ab>msg(body:x) rt:d)', `bc>fwd(ab>msg(body(x)) rt(d))`);
+        t('bc>fwd(ab>msg(body:x) rt:1-2)', `bc>fwd(ab>msg(body(x)) rt(1-2))`);
         t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
         t('abc>msg(body:x)', `ab>fwd(ac>msg(body(x)))
           bc>fwd(ab>fwd(ac>msg(body(x))))`);
