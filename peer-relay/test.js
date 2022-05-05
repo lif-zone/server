@@ -1965,6 +1965,8 @@ describe('peer-relay', function(){
         t('bc>fwd(ab>msg(body:x) rt:d)', `bc>fwd(ab>msg(body(x)) rt(d))`);
         t('bc>fwd(ab>msg(body:x) rt:1-2)', `bc>fwd(ab>msg(body(x)) rt(1-2))`);
         t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
+        t('bc>fwd(de>fwd(ab>msg(body:x) rt:c) rt:e)',
+          `bc>fwd(de>fwd(ab>msg(body(x)) rt(c)) rt(e))`);
         t('abc>msg(body:x)', `ab>fwd(ac>msg(body(x)))
           bc>fwd(ab>fwd(ac>msg(body(x))))`);
         t('abc<msg(body:x)', `bc<fwd(ac<msg(body(x)))
