@@ -3510,6 +3510,7 @@ describe('test_lib', ()=>{
       t('ab,cd>e', {cmd: 'ab,cd>e'}, 7);
       t('ab,cd>e(f)', {cmd: 'ab,cd>e', arg: 'f'}, 10);
       t('abc>', {cmd: 'abc>'}, 4);
+      t('ab.c>', {cmd: 'ab.c>'}, 5);
       t('abc>d', {cmd: 'abc>d'}, 5);
       t('abc>d(f)', {cmd: 'abc>d', arg: 'f'}, 8);
       t('abc~>d', {cmd: 'abc~>d'}, 6);
@@ -3662,14 +3663,65 @@ describe('test_lib', ()=>{
         {s: 'c', d: 'd', dir: '>'}], cmd: 'e'});
       t('cd,bc,ab<e', {loop: [{s: 'b', d: 'a', dir: '<'},
         {s: 'c', d: 'b', dir: '<'}, {s: 'd', d: 'c', dir: '<'}], cmd: 'e'});
-      t('abc>e', {s: 'a', d: 'c', dir: '>', loop: [{s: 'a', d: 'b', dir: '>'},
-        {s: 'b', d: 'c', dir: '>'}], cmd: 'e'});
+      t('abc>d', {s: 'a', d: 'c', dir: '>', loop: [{s: 'a', d: 'b', dir: '>'},
+        {s: 'b', d: 'c', dir: '>'}], cmd: 'd'});
       t('abc<d', {s: 'c', d: 'a', dir: '<', loop: [{s: 'c', d: 'b', dir: '<'},
         {s: 'b', d: 'a', dir: '<'}], cmd: 'd'});
       t('abcd>e', {s: 'a', d: 'd', dir: '>', loop: [{s: 'a', d: 'b', dir: '>'},
         {s: 'b', d: 'c', dir: '>'}, {s: 'c', d: 'd', dir: '>'}], cmd: 'e'});
       t('abcd<e', {s: 'd', d: 'a', dir: '<', loop: [{s: 'd', d: 'c', dir: '<'},
         {s: 'c', d: 'b', dir: '<'}, {s: 'b', d: 'a', dir: '<'}], cmd: 'e'});
+      t('a.bc>z', {s: 'a', d: 'c', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>', dot: true},
+        {s: 'b', d: 'c', dir: '>'}], cmd: 'z'});
+      t('ab.c>z', {s: 'a', d: 'c', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>'},
+        {s: 'b', d: 'c', dir: '>', dot: true}], cmd: 'z'});
+      t('a.b.c>z', {s: 'a', d: 'c', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>', dot: true},
+        {s: 'b', d: 'c', dir: '>', dot: true}], cmd: 'z'});
+      t('a.bcd>z', {s: 'a', d: 'd', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>', dot: true},
+        {s: 'b', d: 'c', dir: '>'}, {s: 'c', d: 'd', dir: '>'}], cmd: 'z'});
+      t('ab.cd>z', {s: 'a', d: 'd', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>', dot: true},
+        {s: 'c', d: 'd', dir: '>'}], cmd: 'z'});
+      t('abc.d>z', {s: 'a', d: 'd', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>'},
+        {s: 'c', d: 'd', dir: '>', dot: true}], cmd: 'z'});
+      t('ab.cde.fghi>z', {s: 'a', d: 'i', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>', dot: true},
+        {s: 'c', d: 'd', dir: '>'}, {s: 'd', d: 'e', dir: '>'},
+        {s: 'e', d: 'f', dir: '>', dot: true}, {s: 'f', d: 'g', dir: '>'},
+        {s: 'g', d: 'h', dir: '>'}, {s: 'h', d: 'i', dir: '>'}], cmd: 'z'});
+      t('ab.c<z', {s: 'c', d: 'a', dir: '<', loop: [
+        {s: 'c', d: 'b', dir: '<', dot: true},
+        {s: 'b', d: 'a', dir: '<'}], cmd: 'z'});
+      t('a.bc<z', {s: 'c', d: 'a', dir: '<', loop: [
+        {s: 'c', d: 'b', dir: '<'},
+        {s: 'b', d: 'a', dir: '<', dot: true}], cmd: 'z'});
+      t('a.b.c<z', {s: 'c', d: 'a', dir: '<', loop: [
+        {s: 'c', d: 'b', dir: '<', dot: true},
+        {s: 'b', d: 'a', dir: '<', dot: true}], cmd: 'z'});
+      t('abc.d<z', {s: 'd', d: 'a', dir: '<', loop: [
+        {s: 'd', d: 'c', dir: '<', dot: true},
+        {s: 'c', d: 'b', dir: '<'}, {s: 'b', d: 'a', dir: '<'}], cmd: 'z'});
+      t('ab.cd<z', {s: 'd', d: 'a', dir: '<', loop: [
+        {s: 'd', d: 'c', dir: '<'}, {s: 'c', d: 'b', dir: '<', dot: true},
+        {s: 'b', d: 'a', dir: '<'}], cmd: 'z'});
+      t('a.bcd<z', {s: 'd', d: 'a', dir: '<', loop: [
+        {s: 'd', d: 'c', dir: '<'}, {s: 'c', d: 'b', dir: '<'},
+        {s: 'b', d: 'a', dir: '<', dot: true}], cmd: 'z'});
+      t('ab.cde.fghi<z', {s: 'i', d: 'a', dir: '<', loop: [
+        {s: 'i', d: 'h', dir: '<'},
+        {s: 'h', d: 'g', dir: '<'},
+        {s: 'g', d: 'f', dir: '<'},
+        {s: 'f', d: 'e', dir: '<', dot: true},
+        {s: 'e', d: 'd', dir: '<'},
+        {s: 'd', d: 'c', dir: '<'},
+        {s: 'c', d: 'b', dir: '<', dot: true},
+        {s: 'b', d: 'a', dir: '<'},
+        ], cmd: 'z'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },

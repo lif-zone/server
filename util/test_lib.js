@@ -840,6 +840,7 @@ E.parse_cmd_dir = function(s){
   if (_d==-1)
     return {cmd: s};
   let loop = [], dir = s[_d], a='', b='', comma, no_comma, fuzzy;
+  let dot_a, dot_b;
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
@@ -849,11 +850,16 @@ E.parse_cmd_dir = function(s){
       fuzzy = true;
       continue;
     }
-    assert_invalid(/[a-z,<>=]/i.test(ch), s, i);
-    if (/[<>=,]/.test(ch))
+    assert_invalid(/[a-z,.<>=]/i.test(ch), s, i);
+    if (ch=='.'){
+      if (b)
+        dot_b = true;
+      else if (a)
+        dot_a = true;
+    }
+    else if (/[<>=,]/.test(ch))
     {
-      if (ch==',')
-      {
+      if (ch==','){
         assert_invalid(!no_comma, s, i);
         comma = true;
       }
@@ -865,6 +871,11 @@ E.parse_cmd_dir = function(s){
       }
       assert_invalid(dir!='=' || !b, s, i);
       let sd = /[>=]/.test(dir) ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      if (dot_a){
+        sd.dot = true;
+        dot_a = false;
+      }
+      assert_invalid(!dot_b, s, i);
       loop.push({...sd});
       a = b = '';
     }
@@ -874,6 +885,14 @@ E.parse_cmd_dir = function(s){
       assert_invalid(!comma, s, i);
       assert_invalid(dir!='=' || !b, s, i);
       let sd = /[>=]/.test(dir) ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      if (dot_a){
+        sd.dot = true;
+        dot_a = false;
+      }
+      if (dot_b){
+        dot_a = true;
+        dot_b = false;
+      }
       loop.push({...sd});
       a = b;
       b = ch;
