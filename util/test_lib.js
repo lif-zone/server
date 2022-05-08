@@ -852,10 +852,8 @@ E.parse_cmd_dir = function(s){
     }
     assert_invalid(/[a-z,.<>=]/i.test(ch), s, i);
     if (ch=='.'){
-      if (b)
-        dot_b = true;
-      else if (a)
-        dot_a = true;
+      dot_b = dot_b || !!b;
+      dot_a = dot_a || !b && !!a;
     }
     else if (/[<>=,]/.test(ch))
     {
