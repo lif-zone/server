@@ -82,8 +82,19 @@ function fwd_d(fwd, i){
   return fwd[i][2]=='>' ? fwd[i][1] : fwd[i][0];
 }
 
-function fwd_s_id(fwd, i){ return b2s(t_nodes[fwd_s(fwd, i)].id); }
-function fwd_d_id(fwd, i){ return b2s(t_nodes[fwd_d(fwd, i)].id); }
+function fwd_s_id(fwd, i){
+  i = i||0;
+  if (typeof fwd=='string')
+    fwd = [fwd];
+  return b2s(t_nodes[fwd_s(fwd, i)].id);
+}
+
+function fwd_d_id(fwd, i){
+  i = i||0;
+  if (typeof fwd=='string')
+    fwd = [fwd];
+  return b2s(t_nodes[fwd_d(fwd, i)].id);
+}
 
 function nonce_hash(msg){
   return id_to_name(msg.from)+'_'+id_to_name(msg.to)+'_'+(msg.req_id||'none')+
@@ -305,7 +316,7 @@ function assert_path(s, dir){ return parse_path(s, dir); }
 function assert_rt(s, dir){
   let range, path;
   if (!(range = parse_range(s, dir)))
-    path = parse_path(s);
+    path = parse_path(s, dir);
   assert(range||path, 'invalid rt '+s);
   return {range, path};
 }
@@ -393,10 +404,14 @@ function assert_event_c2(c, orig, fwd, event, call){
     if (fwd){
       assert(Array.isArray(fwd), 'invalid fwd '+stringify(fwd));
       expected = normalize(orig);
+      let _rt = Array.from(c.rt2||[]);
+      let _path = Array.from(c.path2||[]);
       Array.from(fwd).reverse().forEach(f=>{
-        expected = build_cmd(f+'fwd', expected+
-          (c.path ? ' '+build_cmd('path', path_to_str(c.path)) : '')+
-          (c.rt ? ' '+build_cmd('rt', rt_to_str(c.rt, c.dir)) : ''));
+        let rt = _rt.pop();
+        let path = _path.pop();
+        expected = build_cmd(normalize(f)+'fwd', expected+
+          (path ? ' '+build_cmd('path', path_to_str(path)) : '')+
+          (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : ''));
       });
     }
     assert_event(event, expected);
@@ -564,7 +579,7 @@ class FakeChannel extends EventEmitter {
     if (!t_mode.msg)
       return;
     let e, fwd = fwd_from_lbuffer(lbuffer);
-    let {req_id, type, cmd, ack, seq, body, path, nonce} = msg;
+    let {req_id, type, cmd, ack, seq, body, nonce} = msg;
     cmd = cmd||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
     assert(lbuffer.nonce(), 'missing msg nonce '+data);
@@ -594,10 +609,17 @@ class FakeChannel extends EventEmitter {
       e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
         type, cmd, seq, ack: ack && ack.join(','), body});
       if (fwd){
+        let path = [msg.from];
+        let i = lbuffer.count()-2;
         Array.from(fwd).reverse().forEach(f=>{
+          let m = lbuffer.get_json(i);
+          i--;
           e = build_cmd(f+'fwd', e+
-            (t_conf.path&&fwd ? ' '+build_cmd('path', path_to_str(path)) : '')+
-            (t_conf.rt&&fwd ? ' '+build_cmd('rt', rt_to_str(msg.rt)) : ''));
+            (t_conf.path&&fwd ? ' '+build_cmd('path', path_to_str(path||[]))
+            : '')+
+            (t_conf.rt&&fwd&&m.rt ? ' '+build_cmd('rt', rt_to_str(m.rt)) : '')
+          );
+          path.push(fwd_d_id(f));
         });
       }
       t_nonce[nonce_hash(msg)] = lbuffer.nonce();
@@ -857,12 +879,10 @@ const fake_send_msg = (c, msg)=>etask(function*(){
           from: fwd_s_id(c.fwd, i),
           to: fwd_d_id(c.fwd, i),
           type: 'fwd',
-          rt: xutil.get(msg, ['rt', 'path']),
+          rt: c.rt2[i],
         };
-        if (!xutil.get(msg2, ['rt', 'path'])){
-          msg2.rt = {range: {min: fwd_s_id(c.fwd, i),
-            max: fwd_d_id(c.fwd, i)}};
-        }
+        if (!xutil.get(msg2, ['rt', 'path']))
+          msg2.rt = {range: {min: fwd_d_id(c.fwd, i), max: msg.to}};
         lbuffer.add_json(msg2);
       }
     }
@@ -1459,15 +1479,17 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, path;
   util.forEach(arg, a=>{
     switch (a.cmd){
-    case 'rt': rt = assert_rt(a.arg); break;
+    case 'rt': rt = assert_rt(a.arg, c.dir); break;
     case 'path': path = assert_path(a.arg, c.dir); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   f.fwd = Array.from(c.fwd||[]);
   f.fwd.push(dir_c(c));
-  f.path = path;
-  f.rt = rt;
+  f.path2 = Array.from(c.path2||[]); // XXX: rm from here
+  f.path2.push(path);
+  f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here
+  f.rt2.push(rt);
   if (t_pre_process){
     if (c.loop)
       return extend_loop(c);
@@ -1476,7 +1498,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   if (t_pre_process){
     return set_orig(c, _build_cmd(f.orig+
       (path ? ' '+build_cmd('path', path_to_str(path, c.dir)) : '')+
-      (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : ''), [dir_c(c)]));
+      (rt ? ' '+build_cmd('rt', rt_to_str(rt, c.dir)) : ''), [dir_c(c)]));
   }
   yield cmd_run_if_next_fake();
 });
@@ -2192,16 +2214,18 @@ describe('peer-relay', function(){
       abc>!req(id:r1 body:ping res:ping_r) 59s -
       cba>!req(id:r2 body:ping res:ping_r) 60s -
       cda>!req(id:r3 body:ping res:ping_r) -`);
-    if (0) // XXX WIP
+    // XXX WIP: in the response, need rt:a and not and rt:abc
     t('4_nodes_ring_range', `conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(id:10 wss) b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
       ab>!connect bc>!connect cd>!connect da>!connect -
       ac>!req(id:r1 body:ping res:ping_r !e)
       ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30)
-      bc>fwd(ac>msg(id:r1 type:req body:ping) path:ab rt:30-30)
+      bc>fwd(ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30)
+        path:ab rt:30-30)
       ac>*req(id:r1 body:ping)
       bc<fwd(ac<msg(id:r1 type:res body:ping_r) path:c rt:abc)
-      ab<fwd(ac<msg(id:r1 type:res body:ping_r) path:bc rt:abc)
+      ab<fwd(bc<fwd(ac<msg(id:r1 type:res body:ping_r) path:c rt:abc)
+        path:bc rt:abc)
       ac<*res(id:r1 body:ping_r)`);
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
@@ -2210,24 +2234,22 @@ describe('peer-relay', function(){
       abcd>!req(id:r1 body:ping res:ping_r) 59s -
       abcd<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
-    // XXX derry:: once there is a known route, a client may send it with
-    // explicit.
-    // support:
-    // cd>fwd(ad>msg(id:r1 type:req body:ping) rt:40-40)
-    // cd<fwd(ad<msg(id:r1 type:res body:ping_r) rt:abcd)
-    if (0) // XXX WIP
     t('5_nodes_ring_range', `
       conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
       ad>!req(id:r1 body:ping res:ping_r !e)
       ab>fwd(ad>msg(id:r1 type:req body:ping) path:a rt:20-40)
-      bc>fwd(ad>msg(id:r1 type:req body:ping) path:ab rt:30-40)
-      cd>fwd(ad>msg(id:r1 type:req body:ping) path:abc rt:40-40)
+      bc>fwd(ab>fwd(ad>msg(id:r1 type:req body:ping) path:a rt:20-40)
+        path:ab rt:30-40)
+      cd>fwd(bc>fwd(ab>fwd(ad>msg(id:r1 type:req body:ping) path:a rt:20-40)
+        path:ab rt:30-40) path:abc rt:40-40)
       ad>*req(id:r1 body:ping)
       cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:abcd)
-      bc<fwd(ad<msg(id:r1 type:res body:ping_r) path:cd rt:abcd)
-      ab<fwd(ad<msg(id:r1 type:res body:ping_r) path:bcd rt:abcd)
+      bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:abcd)
+        path:cd rt:abcd)
+      ab<fwd(bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:abcd)
+        path:cd rt:abcd) path:bcd rt:abcd)
       ad<*res(id:r1 body:ping_r)`);
     if (0) // XXX: WIP
     t('5_nodes_ring_range_rev', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))

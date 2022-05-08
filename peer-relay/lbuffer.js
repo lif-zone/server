@@ -41,7 +41,7 @@ export default class LBuffer {
   }
   path(){
     let o, p = [];
-    for (let i=0; i<this.count && (o=this.get_json(i)) && o.type=='fwd'; i++)
+    for (let i=0; i<this.count() && (o=this.get_json(i)) && o.type=='fwd'; i++)
       p.unshift(o.from);
     return p;
   }

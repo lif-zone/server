@@ -39,13 +39,12 @@ export default class Router extends EventEmitter {
     msg.from = b2s(this.id);
     msg.to = dst;
     msg.nonce = nonce; // XXX: need test that will fail is this is missing
-    msg.path = [];
     msg.sign = this.wallet.sign(msg);
     let lbuffer = new LBuffer(msg); // XXX: WIP
     this._send(lbuffer);
   }
   _send = lbuffer=>etask({'this': this}, function*(){
-    let msg = lbuffer.msg(); // XXX WIP
+    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
     let _this = this.this, channel;
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
@@ -65,7 +64,8 @@ export default class Router extends EventEmitter {
         from: b2s(_this.id),
         to: b2s(channel.id),
         type: 'fwd',
-        rt: xutil.get(msg, ['rt', 'path']),
+        rt: xutil.get(msg0, ['rt', 'path']) &&
+          {path: xutil.get(msg0, ['rt', 'path'])}
       };
       if (!xutil.get(msg2, ['rt', 'path']))
         msg2.rt = {range: {min: b2s(channel.id), max: msg.to}};
