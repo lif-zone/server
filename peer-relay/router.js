@@ -53,7 +53,6 @@ export default class Router extends EventEmitter {
     if (channel = _this.get_channel_from_rt(msg));
     else if (channel = _this.get_channel_from_state(msg));
     else {
-      // XXX: use rt instead of rt.range and if rt.path exists channel from it
       channel = _this._channels.get_closest(msg.to,
         xutil.get(msg, ['rt', 'range']));
     }
@@ -64,11 +63,18 @@ export default class Router extends EventEmitter {
         from: b2s(_this.id),
         to: b2s(channel.id),
         type: 'fwd',
-        rt: xutil.get(msg0, ['rt', 'path']) &&
-          {path: xutil.get(msg0, ['rt', 'path'])}
       };
-      if (!xutil.get(msg2, ['rt', 'path']))
-        msg2.rt = {range: {min: b2s(channel.id), max: msg.to}};
+      if (msg.to!=msg2.to){
+        let rt = xutil.get(msg0, ['rt', 'path']) &&
+          {path: xutil.get(msg0, ['rt', 'path'])};
+        if (rt && Array.isArray(rt.path)){
+          rt.path = Array.from(rt.path);
+          rt.path.shift();
+        }
+        if (!rt)
+          rt = {range: {min: b2s(channel.id), max: msg.to}};
+        msg2.rt = rt;
+      }
       _this.track_out(msg2, channel);
       lbuffer.add_json(msg2);
     }

@@ -2220,12 +2220,10 @@ describe('peer-relay', function(){
       ab>!connect bc>!connect cd>!connect da>!connect -
       ac>!req(id:r1 body:ping res:ping_r !e)
       ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30)
-      bc>fwd(ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30)
-        path:ab rt:30-30)
+      bc>fwd(ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30) path:ab)
       ac>*req(id:r1 body:ping)
-      bc<fwd(ac<msg(id:r1 type:res body:ping_r) path:c rt:abc)
-      ab<fwd(bc<fwd(ac<msg(id:r1 type:res body:ping_r) path:c rt:abc)
-        path:bc rt:abc)
+      bc<fwd(ac<msg(id:r1 type:res body:ping_r) path:c rt:a)
+      ab<fwd(bc<fwd(ac<msg(id:r1 type:res body:ping_r) path:c rt:a) path:bc)
       ac<*res(id:r1 body:ping_r)`);
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
@@ -2243,13 +2241,13 @@ describe('peer-relay', function(){
       bc>fwd(ab>fwd(ad>msg(id:r1 type:req body:ping) path:a rt:20-40)
         path:ab rt:30-40)
       cd>fwd(bc>fwd(ab>fwd(ad>msg(id:r1 type:req body:ping) path:a rt:20-40)
-        path:ab rt:30-40) path:abc rt:40-40)
+        path:ab rt:30-40) path:abc)
       ad>*req(id:r1 body:ping)
-      cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:abcd)
-      bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:abcd)
-        path:cd rt:abcd)
-      ab<fwd(bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:abcd)
-        path:cd rt:abcd) path:bcd rt:abcd)
+      cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
+      bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
+        path:cd rt:a)
+      ab<fwd(bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
+        path:cd rt:a) path:bcd)
       ad<*res(id:r1 body:ping_r)`);
     if (0) // XXX: WIP
     t('5_nodes_ring_range_rev', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
