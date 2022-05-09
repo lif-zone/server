@@ -1713,9 +1713,22 @@ const test_to_str = cmds=>{
   return a.join(' ');
 };
 
+// XXX: copy of xtest.plugin_cmd_dir
+function plugin_cmd_dir(o){
+  o = xtest.test_parse_cmd_single(test_transform(o.orig));
+  let t = xtest.parse_cmd_dir(o.cmd);
+  let o2 = assign({}, o);
+  assign(o, t, {arg: o2.arg, orig: o2.orig});
+  o.meta = assign(o.meta||{}, o2.meta);
+  return o;
+}
+
+function test_parse(s){
+  return xtest.test_run_plugin(xtest.test_parse_cmd_multi(s), plugin_cmd_dir);
+}
 const test_pre_process = test=>etask(function*test_preprocess(){
   t_pre_process = true;
-  yield _test_run('fake', xtest.test_parse(test));
+  yield _test_run('fake', test_parse(test));
   t_pre_process = false;
   return t_cmds_processed;
 });
@@ -1762,7 +1775,7 @@ afterEach(function(){
   xerr.set_buffered(false);
 });
 
-function test_trasnform(s){
+function test_transform(s){
   let _d = s.search(/[<>]/);
   if (_d==-1)
     return s;
@@ -1800,7 +1813,7 @@ function test_trasnform(s){
 
 describe('api', function(){
   it('transform', ()=>{
-    let t = (s, exp)=>assert.equal(test_trasnform(s), exp);
+    let t = (s, exp)=>assert.equal(test_transform(s), exp);
    t('ab:ad>msg', `ab>fwd(ad>msg)`);
    t('bc:ab:ad>msg', `bc>fwd(ab>fwd(ad>msg))`);
    t('cd:bc:ab:ad>msg', `cd>fwd(bc>fwd(ab>fwd(ad>msg)))`);
@@ -2073,7 +2086,10 @@ describe('peer-relay', function(){
         t('ab>!connect', `ab>!connect(wss !r) ab>connect(wss !r)
           ab<connected`);
         t('bc>fwd(ab>msg(body:x))', `bc>fwd(ab>msg(body(x)))`);
+        t('bc:ab>msg(body:x)', `bc>fwd(ab>msg(body(x)))`);
         t('bc>fwd(ab>msg(body:x) rt:d)', `bc>fwd(ab>msg(body(x)) rt(d))`);
+        t('bc[d]:ab>msg(body:x)', `bc>fwd(ab>msg(body(x)) rt(d))`);
+        t('bc[10-20]:ab>msg(body:x)', `bc>fwd(ab>msg(body(x)) rt(10-20))`);
         t('bc>fwd(ab>msg(body:x) rt:1-2)', `bc>fwd(ab>msg(body(x)) rt(1-2))`);
         t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
         t('bc>fwd(de>fwd(ab>msg(body:x) rt:c) rt:e)',
@@ -2291,7 +2307,7 @@ describe('peer-relay', function(){
       20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_route_c', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
       a=node(wss) b=node(wss) c=node(wss) d=node e=node ab>!connect ac>!connect
-      ae>!req(id:r1 body:ping !e) ac>fwd(ae>msg(id:r1 type:req body:ping)) -
+      ae>!req(id:r1 body:ping !e) ac:ae>msg(id:r1 type:req body:ping) -
       20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30)) a=node(wss)
       b=node(wss) c=node(wss) ab>!connect bc>!connect ca>!connect
@@ -2351,21 +2367,17 @@ describe('peer-relay', function(){
       aed<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
     t('5_nodes_ring_range', `
-      conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
+      conf(rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
       ad>!req(id:r1 body:ping res:ping_r !e)
-      ab>fwd(ad>msg(id:r1 type:req body:ping) path:a rt:20-40)
-      bc>fwd(ab>fwd(ad>msg(id:r1 type:req body:ping) path:a rt:20-40)
-        path:ab rt:30-40)
-      cd>fwd(bc>fwd(ab>fwd(ad>msg(id:r1 type:req body:ping) path:a rt:20-40)
-        path:ab rt:30-40) path:abc)
+      ab[20-40]:ad>msg(id:r1 type:req body:ping)
+      bc[30-40]:ab[20-40]:ad>msg(id:r1 type:req body:ping)
+      cd:bc[30-40]:ab[20-40]:ad>msg(id:r1 type:req body:ping)
       ad>*req(id:r1 body:ping)
-      cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
-      bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
-        path:cd rt:a)
-      ab<fwd(bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
-        path:cd rt:a) path:bcd)
+      ad:cd[ab]<msg(id:r1 type:res body:ping_r)
+      ad:cd[ab]:bc[a]<msg(id:r1 type:res body:ping_r)
+      ad:cd[ab]:bc[a]:ab<msg(id:r1 type:res body:ping_r)
       ad<*res(id:r1 body:ping_r)`);
     if (0) // XXX: WIP
     t('5_nodes_ring_range_rev', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
