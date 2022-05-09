@@ -1767,19 +1767,35 @@ function test_trasnform(s){
   if (_d==-1)
     return s;
   let dir = s[_d], pre = s.substr(0, _d), post = s.substr(_d+1, Infinity);
-  let p = '>'+post;
-  if (dir=='>'){
-    for (let i=pre.length-1; i>=0; i--){
-      let ch = s[i];
-      p = ch==':' ? dir+'fwd('+p+')' : ch+p;
+  let a = [], p='', rt='';
+  for (let i=0, open=false; i<pre.length; i++){
+    let ch = s[i];
+    if (ch=='[')
+      open = true;
+    else if (ch==']')
+      open = false;
+    else if (open)
+      rt += ch;
+    else if (ch==':'){
+      assert(!open, 'missing ] for '+s);
+      rt = rt ? ' rt('+rt+')' : '';
+      a.push({pre: p+dir, rt});
+      p = rt = '';
     }
-  } else {
-    for (let i=0; i<pre.length; i++){
-      let ch = s[i];
-      p = ch==':' ? '>fwd('+p+')' : ch+p;
-    }
+    else
+      p += ch;
   }
-  return p;
+  rt = rt ? ' rt('+rt+')' : '';
+  let ret = '';
+  if (dir=='>'){
+    a.push({pre: p+dir+post, rt});
+    a = a.reverse();
+  } else {
+    a.push({pre: p+dir, rt});
+    a[0].pre += post;
+  }
+  a.forEach((c, i)=>ret = !i ? c.pre : c.pre+'fwd('+ret+c.rt+')');
+  return ret;
 }
 
 describe('api', function(){
@@ -1788,9 +1804,18 @@ describe('api', function(){
    t('ab:ad>msg', `ab>fwd(ad>msg)`);
    t('bc:ab:ad>msg', `bc>fwd(ab>fwd(ad>msg))`);
    t('cd:bc:ab:ad>msg', `cd>fwd(bc>fwd(ab>fwd(ad>msg)))`);
-   t('ab:ad<msg', `da>fwd(ba>msg)`);
-   t('bc:ab:ad<msg', `da>fwd(ba>fwd(cb>msg))`);
-   t('cd:bc:ab:ad<msg', `da>fwd(ba>fwd(cb>fwd(dc>msg)))`);
+   t('ab[c]:ad>msg', `ab>fwd(ad>msg rt(c))`);
+   t('ab[cd]:ad>msg', `ab>fwd(ad>msg rt(cd))`);
+   t('cd[x]:bc[y]:ab[z]:ad>msg',
+     `cd>fwd(bc>fwd(ab>fwd(ad>msg rt(z)) rt(y)) rt(x))`);
+   t('ab:ad<msg', `ad<fwd(ab<msg)`);
+   t('bc:ab:ad<msg', `ad<fwd(ab<fwd(bc<msg))`);
+   t('cd:bc:ab:ad<msg', `ad<fwd(ab<fwd(bc<fwd(cd<msg)))`);
+   t('da:ba[c]<msg', `ba<fwd(da<msg rt(c))`);
+   t('da:ba[cd]<msg', `ba<fwd(da<msg rt(cd))`);
+   t('da:ba[x]:cb[y]:dc[z]<msg',
+     `dc<fwd(cb<fwd(ba<fwd(da<msg rt(x)) rt(y)) rt(z))`);
+   // XXX: add test for invalid
   });
   it('normalize', ()=>{
     let t = (cmd, exp)=>assert.equal(normalize(cmd), exp);
