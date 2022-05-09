@@ -778,16 +778,17 @@ E.test_parse_cmd_single = function(s){
   assert_invalid(!parentesis, s, i);
   let cmd = ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
   if (arg_e>arg_s)
-  {
-    assert_invalid(!cmd.includes(':'), cmd, cmd.indexOf(':'));
     ret.arg = s.substr(arg_s, arg_e-arg_s);
-  }
   else if (cmd.includes(':'))
   {
-    let m = cmd.match(/(^[^:]+):([^:]+$)/);
-    assert_invalid(m, cmd, cmd.lastIndexOf(':'));
-    cmd = ret.cmd = m[1];
-    ret.arg = m[2];
+    if (cmd.includes('>') && cmd.indexOf('>') > cmd.indexOf(':'));
+    else if (cmd.includes('<') && cmd.indexOf('<') > cmd.indexOf(':'));
+    else {
+      let m = cmd.match(/(^[^:]+):([^:]+$)/);
+      assert_invalid(m, cmd, cmd.lastIndexOf(':'));
+      cmd = ret.cmd = m[1];
+      ret.arg = m[2];
+    }
   }
   ret.meta = {last: i};
   ret.orig = s.substr(cmd_s, i-cmd_s).trim();
@@ -827,9 +828,9 @@ E.test_parse_cmd_multi_level = function(s){
 E.test_run_plugin = function(a, cb){
   if (!Array.isArray(a))
     return;
-  a.forEach(o=>{
+  a.forEach((o, i)=>{
     if (cb)
-      cb(o);
+      a[i] = cb(o);
     if (o.arg)
       E.test_run_plugin(o.arg, cb);
   });
@@ -929,12 +930,17 @@ E.plugin_cmd_dir = function(o){
 };
 
 E.test_parse_rm_meta = function(a){
-  return E.test_run_plugin(a, o=>delete o.meta); };
+  return E.test_run_plugin(a, o=>{
+    delete o.meta;
+    return o;
+  });
+};
 
 E.test_parse_rm_meta_orig = function(a){
   return E.test_run_plugin(a, o=>{
     delete o.meta;
     delete o.orig;
+    return o;
   });
 };
 

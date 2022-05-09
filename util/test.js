@@ -3514,6 +3514,10 @@ describe('test_lib', ()=>{
       t('abc>d', {cmd: 'abc>d'}, 5);
       t('abc>d(f)', {cmd: 'abc>d', arg: 'f'}, 8);
       t('abc~>d', {cmd: 'abc~>d'}, 6);
+      t('ab:cd>e', {cmd: 'ab:cd>e'}, 7);
+      t('ab:cd<e', {cmd: 'ab:cd<e'}, 7);
+      t('ab:cd>e(a:d)', {cmd: 'ab:cd>e', arg: 'a:d'}, 12);
+      t('ab:cd<e(a:d)', {cmd: 'ab:cd<e', arg: 'a:d'}, 12);
     });
     it('cmd_single_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
@@ -3524,12 +3528,14 @@ describe('test_lib', ()=>{
       t('a)', 'invalid a^^^)');
       t('a(b()', 'invalid a(b()^^^');
       t('a(b () ', 'invalid a(b () ^^^');
-      t('a:(b)', 'invalid a^^^:');
       t('a:b:c', 'invalid a:b^^^:c');
     });
     it('test_run_plugin', ()=>{
       const t = (a, exp)=>{
-        let a2 = xtest.test_run_plugin(a, o=>o.cmd = o.cmd+o.cmd);
+        let a2 = xtest.test_run_plugin(a, o=>{
+          o.cmd = o.cmd+o.cmd;
+          return o;
+        });
         assert.equal(a, a2);
         assert.deepEqual(a, exp);
       };
