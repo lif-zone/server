@@ -1762,7 +1762,36 @@ afterEach(function(){
   xerr.set_buffered(false);
 });
 
+function test_trasnform(s){
+  let _d = s.search(/[<>]/);
+  if (_d==-1)
+    return s;
+  let dir = s[_d], pre = s.substr(0, _d), post = s.substr(_d+1, Infinity);
+  let p = '>'+post;
+  if (dir=='>'){
+    for (let i=pre.length-1; i>=0; i--){
+      let ch = s[i];
+      p = ch==':' ? dir+'fwd('+p+')' : ch+p;
+    }
+  } else {
+    for (let i=0; i<pre.length; i++){
+      let ch = s[i];
+      p = ch==':' ? '>fwd('+p+')' : ch+p;
+    }
+  }
+  return p;
+}
+
 describe('api', function(){
+  it('transform', ()=>{
+    let t = (s, exp)=>assert.equal(test_trasnform(s), exp);
+   t('ab:ad>msg', `ab>fwd(ad>msg)`);
+   t('bc:ab:ad>msg', `bc>fwd(ab>fwd(ad>msg))`);
+   t('cd:bc:ab:ad>msg', `cd>fwd(bc>fwd(ab>fwd(ad>msg)))`);
+   t('ab:ad<msg', `da>fwd(ba>msg)`);
+   t('bc:ab:ad<msg', `da>fwd(ba>fwd(cb>msg))`);
+   t('cd:bc:ab:ad<msg', `da>fwd(ba>fwd(cb>fwd(dc>msg)))`);
+  });
   it('normalize', ()=>{
     let t = (cmd, exp)=>assert.equal(normalize(cmd), exp);
     t('ab>', 'ab>');
