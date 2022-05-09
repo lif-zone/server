@@ -828,7 +828,8 @@ E.test_run_plugin = function(a, cb){
   if (!Array.isArray(a))
     return;
   a.forEach(o=>{
-    cb(o);
+    if (cb)
+      cb(o);
     if (o.arg)
       E.test_run_plugin(o.arg, cb);
   });
@@ -922,8 +923,6 @@ E.parse_cmd_dir = function(s){
 E.plugin_cmd_dir = function(o){
   let t = E.parse_cmd_dir(o.cmd);
   let o2 = assign({}, o);
-  for (let i in o)
-    delete o[i];
   assign(o, t, {arg: o2.arg, orig: o2.orig});
   o.meta = assign(o.meta||{}, o2.meta);
   return o;
