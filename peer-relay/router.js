@@ -6,11 +6,11 @@ import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 import xutil from '../util/util.js';
-import {dbg_msg} from './util.js';
+import {dbg_msg, path_eq} from './util.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
 const log = xlog('router');
-const b2s = xutil.buf_to_str;
+const b2s = xutil.buf_to_str, stringify = JSON.stringify;
 
 // XXX: need safe emit support
 export default class Router extends EventEmitter {
@@ -26,6 +26,7 @@ export default class Router extends EventEmitter {
     // XXX: memory leak - no cleanup for all
     this._touched = {};
     this.state = {};
+    this.routes = {};
     this._queue = [];
     this._channels = channels;
     this._channels.on('added', channel=>this._onChannelAdded(channel));
@@ -45,12 +46,14 @@ export default class Router extends EventEmitter {
   }
   _send = lbuffer=>etask({'this': this}, function*(){
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
-    let _this = this.this, channel;
+    let _this = this.this, channel, rt;
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
     if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(lbuffer);
     if (channel = _this.get_channel_from_rt(msg));
+    else if ((rt = _this.get_route(msg.to)) &&
+      (channel = _this.get_channel_from_path(rt.path)));
     else if (channel = _this.get_channel_from_state(msg));
     else {
       channel = _this._channels.get_closest(msg.to,
@@ -65,10 +68,10 @@ export default class Router extends EventEmitter {
         type: 'fwd',
       };
       if (msg.to!=msg2.to){
-        let rt = xutil.get(msg0, ['rt', 'path']) &&
+        rt = rt || xutil.get(msg0, ['rt', 'path']) &&
           {path: xutil.get(msg0, ['rt', 'path'])};
         if (rt && Array.isArray(rt.path)){
-          rt.path = Array.from(rt.path);
+          rt = {path: Array.from(rt.path)};
           rt.path.shift();
         }
         if (!rt)
@@ -107,7 +110,10 @@ export default class Router extends EventEmitter {
   }
   _onChannelRemoved = function(channel){
     channel.removeListener('message', this._on_channel_msg); }
+  get_channel_from_path(path){ return path && this._channels.get(path[0]); }
   get_channel_from_rt(msg){
+    return this.get_channel_from_path(xutil.get(msg, ['rt', 'path']));
+    /* XXX: rm
     let path = xutil.get(msg, ['rt', 'path']);
     if (!path)
       return;
@@ -117,6 +123,7 @@ export default class Router extends EventEmitter {
         continue;
       return this._channels.get(path[i+1]);
     }
+    */
   }
   get_channel_from_state(msg){
     let {from, to} = msg, state = this.state[state_hash(from, to)];
@@ -143,6 +150,25 @@ export default class Router extends EventEmitter {
       yield etask.sleep(this.this.state_timeout);
       delete this.this.state[hash];
     });
+  }
+  get_route(d){
+    let routes=this.routes;
+    return routes[d] && routes[d][0];
+  }
+  has_route(path){
+    let routes=this.routes, d=path[path.length-1];
+    if (!routes[d])
+      return false;
+    return !!routes[d].find(rt=>path_eq(rt.path, path));
+  }
+  add_route(path){
+    let routes=this.routes;
+    assert(path[0]!=b2s(this.id), 'path contains self id '+stringify(path));
+    let d = path[path.length-1];
+    routes[d] = routes[d]||[];
+    if (this.has_route(path))
+      return;
+    routes[d].push({path: Array.from(path)});
   }
 }
 

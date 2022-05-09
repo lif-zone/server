@@ -28,8 +28,6 @@ const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
-const xxx_wip_rt = false;
-
 // XXX: make it automatic for all node/browser in proc.js
 xerr.set_exception_catch_all(true);
 process.on('uncaughtException', err=>xerr.xexit(err));
@@ -204,7 +202,7 @@ function rev_c(c){ return rev_trim(dir_str(c.s, c.d, c.dir)); }
 
 function loop_str(loop){
   let s = loop[0].s;
-  loop.forEach(o=>s+=o.d);
+  loop.forEach(o=>s+=(o.dot ? '.' : '')+o.d);
   return s;
 }
 
@@ -614,11 +612,13 @@ class FakeChannel extends EventEmitter {
         Array.from(fwd).reverse().forEach(f=>{
           let m = lbuffer.get_json(i);
           i--;
+          let srt = t_conf.rt&&fwd&&m.rt ?
+            build_cmd('rt', rt_to_str(m.rt)) : '';
+          if (!t_conf.rt && xutil.get(m, ['rt', 'path']))
+            srt = build_cmd('rt', rt_to_str(m.rt));
           e = build_cmd(f+'fwd', e+
             (t_conf.path&&fwd ? ' '+build_cmd('path', path_to_str(path||[]))
-            : '')+
-            (t_conf.rt&&fwd&&m.rt ? ' '+build_cmd('rt', rt_to_str(m.rt)) : '')
-          );
+            : '')+(srt ? ' '+srt : ''));
           path.push(fwd_d_id(f));
         });
       }
@@ -938,6 +938,27 @@ function cmd_conf(opt){
     case 'rt': t_conf.rt = assert_bool(a.arg); break;
     default: assert(0, 'invalid conf '+a.cmd);
     }
+  });
+}
+
+function cmd_rt_add(opt){
+  let {c, event} = opt, arg = xtest.test_parse(c.arg);
+  let routes = {};
+  assert(!event, 'got unexpected '+event);
+  util.forEach(arg, a=>{
+    let node = t_nodes[a.cmd];
+    assert(node, 'invalid rt_add '+a.cmd);
+    let path = assert_path(a.arg);
+    assert(path[0]!=b2s(node.id), 'route cannot contain node '+node.t.name);
+    if (is_fake(node.t.name))
+      return;
+    routes[node.t.name] = routes[node.t.name]||[];
+    routes[node.t.name].push(path);
+  });
+  if (t_pre_process)
+    return;
+  util.forEach(routes, (o, n)=>{
+    o.forEach(path=>t_nodes[n].router.add_route(path));
   });
 }
 
@@ -1533,6 +1554,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'setup': yield cmd_setup(opt); break;
   case 'mode': yield cmd_mode(opt); break;
   case 'conf': yield cmd_conf(opt); break;
+  case 'rt_add': yield cmd_rt_add(opt); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
   case 'connect': yield cmd_connect(opt); break;
@@ -1580,15 +1602,19 @@ function extend_loop(c){
     let o = assign({}, c, c.loop[i]), rt='';
     delete o.loop;
     o.cmd = 'fwd';
-    if (xxx_wip_rt){
-      for (let j=i+1; j<c.loop.length; j++)
-        rt += c.loop[j].d;
-      o.arg = prev+(rt ? ' rt('+rt+')' : '');
-      prev = _build_cmd(o.arg, [dir_c(o)]);
-    } else {
-      o.arg = prev;
-      prev = _build_cmd(o.arg, [dir_c(o)]);
+    let end = i+1;
+    for (; end<c.loop.length; end++){
+      if (c.loop[end].dot)
+        break;
     }
+    for (let j=i+1; !c.loop[i].dot && j<end; j++){
+      if (c.loop[j].dot)
+        break;
+      else
+        rt += c.loop[j].d;
+    }
+    o.arg = prev+(rt ? ' rt('+rt+')' : '');
+    prev = _build_cmd(o.arg, [dir_c(o)]);
     set_orig(o, prev);
     a.push(o);
   }
@@ -1998,7 +2024,17 @@ describe('peer-relay', function(){
         t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
         t('bc>fwd(de>fwd(ab>msg(body:x) rt:c) rt:e)',
           `bc>fwd(de>fwd(ab>msg(body(x)) rt(c)) rt(e))`);
-        if (xxx_wip_rt){
+        t('ab.c>msg(body:x)', `ab>fwd(ac>msg(body(x)))
+          bc>fwd(ab>fwd(ac>msg(body(x))))`);
+        t('a.bcd>msg(body:x)', `ab>fwd(ad>msg(body(x)))
+          bc>fwd(ab>fwd(ad>msg(body(x))) rt(d))
+          cd>fwd(bc>fwd(ab>fwd(ad>msg(body(x))) rt(d)))`);
+        t('ab.cd>msg(body:x)', `ab>fwd(ad>msg(body(x)))
+          bc>fwd(ab>fwd(ad>msg(body(x))))
+          cd>fwd(bc>fwd(ab>fwd(ad>msg(body(x)))))`);
+        t('abc.d>msg(body:x)', `ab>fwd(ad>msg(body(x)) rt(c))
+          bc>fwd(ab>fwd(ad>msg(body(x)) rt(c)))
+          cd>fwd(bc>fwd(ab>fwd(ad>msg(body(x)) rt(c))))`);
         t('abc>msg(body:x)', `ab>fwd(ac>msg(body(x)) rt(c))
           bc>fwd(ab>fwd(ac>msg(body(x)) rt(c)))`);
         t('abc<msg(body:x)', `bc<fwd(ac<msg(body(x)) rt(a))
@@ -2009,10 +2045,8 @@ describe('peer-relay', function(){
           ab<fwd(bc<fwd(ac<msg(body(x)) rt(a)))`);
         t('abc<fwd(ac>msg(body:x))', `bc<fwd(ac>msg(body(x)) rt(a))
           ab<fwd(bc<fwd(ac>msg(body(x)) rt(a)))`);
-        }
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
-        if (xxx_wip_rt){
         _t('mode(msg req)', 'abc>conn_info(!r)', `
           ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c))
           bc>fwd(ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c)))
@@ -2023,10 +2057,8 @@ describe('peer-relay', function(){
           cb>fwd(ca>msg(type(res) cmd(conn_info) body(ws)) rt(a))
           ba>fwd(cb>fwd(ca>msg(type(res) cmd(conn_info) body(ws)) rt(a)))
           ca>*conn_info_r(ws)`);
-        }
         _t('mode(msg req)', 'ab>conn_info_r(ws wrtc)', `ab>msg(type(res)
           cmd(conn_info) body(ws wrtc)) ab>*conn_info_r(ws wrtc)`);
-        if (xxx_wip_rt)
         _t('mode(msg req)', 'abc>conn_info_r(ws)', `
           ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws)) rt(c))
           bc>fwd(ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws)) rt(c)))
@@ -2083,7 +2115,6 @@ describe('peer-relay', function(){
           ab<msg(id(r1) type(res) cmd(test) body(ping_r))
           ab<*res(id(r1) cmd(test) body(ping_r))`);
         t('abc>!req(id:r0 !e)', `ac>!req(id(r0) !e)`);
-        if (xxx_wip_rt){
         t('abc<!req(id:r0 !e)', `ac<!req(id(r0) !e)`);
         _t('mode(msg req)', 'abc>!req(id:r0)', `ac>!req(id(r0) !e)
           ab>fwd(ac>msg(id(r0) type(req)) rt(c))
@@ -2110,7 +2141,16 @@ describe('peer-relay', function(){
           cb>fwd(ac<msg(id(r1) type(res) cmd(test) body(ping_r)) rt(a))
           ba>fwd(cb>fwd(ac<msg(id(r1) type(res) cmd(test) body(ping_r)) rt(a)))
           ac<*res(id(r1) cmd(test) body(ping_r))`);
-        }
+         // XXX WIP: check why change cb> bc< and ba to ab< breaks test
+         _t('mode(msg req)', 'a.b.c>!req(body:ping res:ping_r)', `
+           ac>!req(body(ping) res(ping_r) !e)
+           ab>fwd(ac>msg(type(req) body(ping)))
+           bc>fwd(ab>fwd(ac>msg(type(req) body(ping))))
+           ac>*req(body(ping))
+           cb>fwd(ac<msg(type(res) body(ping_r)) rt(a))
+           ba>fwd(cb>fwd(ac<msg(type(res) body(ping_r)) rt(a)))
+           ac<*res(body(ping_r))
+         `);
         t('ab>*res(id:r1 body:ping)', `ab>*res(id(r1) body(ping))`);
         t('ab>!res(body:hi !e)', `ab>!res(body(hi) !e)`);
         t('ab>!res(id(r0) body:hi !e)', `ab>!res(id(r0) body(hi) !e)`);
@@ -2123,7 +2163,6 @@ describe('peer-relay', function(){
           ab>msg(id(r0) type(res) cmd(test) seq(1) ack(2) body(ping))
            ab>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
         t('abc>!res(id:r0 !e)', `ac>!res(id(r0) !e)`);
-        if (xxx_wip_rt){
         t('abc<!res(id:r0 !e)', `ac<!res(id(r0) !e)`);
         _t('mode(msg req)', 'abc>!res(id:r0)', `ac>!res(id(r0) !e)
           ab>fwd(ac>msg(id(r0) type(res)) rt(c))
@@ -2137,7 +2176,14 @@ describe('peer-relay', function(){
           `rt(c)) bc>fwd(ab>fwd(ac>msg(id(r0) type(res) cmd(test) seq(1) `+
           `ack(2) body(ping)) rt(c)))
            ac>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
-        }
+        if (0) // XXX WIP
+        _t('mode(msg req)', 'abcd<*res(id:r1 body:ping_r)', `
+          cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
+          bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
+            path:cd rt:a)
+          ab<fwd(bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
+            path:cd rt:a) path:bcd)
+          ad<*res(id:r1 body:ping_r)`);
         t('a>*fail(id:r1 error:timeout)', `a>*fail(id(r1) error(timeout))`);
         t('a>*req_start(id:r0 cmd:test seq:1 ack:2 body:b0)',
           `a>*req_start(id(r0) cmd(test) seq(1) ack(2) body(b0))`);
@@ -2178,7 +2224,9 @@ describe('peer-relay', function(){
     t('2_nodes_wss', `conf(id_bits:8) a=node(wss) b=node(wss)
       ab>!connect ab>!req(body:ping res:ping_r)`);
     t('xxx', `conf(id_bits:8) a=node(wss) b=node(wss)
-      c=node(wss) ab>!connect bc>!connect abc>!req(body:ping res:ping_r)`);
+      c=node(wss) ab>!connect bc>!connect a.b.c>!req(body:ping res:ping_r)`);
+    t('xxx2', `conf(id_bits:8) a=node(wss) b=node(wss) c=node(wss)
+      rt_add(a:bc) ab>!connect bc>!connect abc>!req(body:ping res:ping_r)`);
     t('3_nodes', `conf(id_bits:8) a=node(wss) b=node(wss)
       c=node(wss) ab>!connect ac>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r)`);
@@ -2195,10 +2243,19 @@ describe('peer-relay', function(){
       b=node(wss) c=node(wss) ab>!connect bc>!connect ca>!connect
       ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r) -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
-    // XXX: derry: review
     // XXX: implement stateful req
     t('4_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
+      bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) 60s
+      a.b.c>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
+      ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
+      b.c.d>!req(body:ping res:ping_r) 60s c.d.a>!req(body:ping res:ping_r) 60s
+      cb>!req(body:ping res:ping_r) 60s cd>!req(body:ping res:ping_r) 60s
+      da>!req(body:ping res:ping_r) 60s d.a.b>!req(body:ping res:ping_r) 60s
+      dc>!req(body:ping res:ping_r)`);
+    t('4_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
+      a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
+      rt_add(a:bc b:cd c:da d:ab)
       bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) 60s
       abc>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
       ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
@@ -2211,9 +2268,9 @@ describe('peer-relay', function(){
     t('4_nodes_ring_state_timeout', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
       bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) -
-      abc>!req(id:r1 body:ping res:ping_r) 59s -
-      cba>!req(id:r2 body:ping res:ping_r) 60s -
-      cda>!req(id:r3 body:ping res:ping_r) -`);
+      a.b.c>!req(id:r1 body:ping res:ping_r) 59s -
+      c.b.a>!req(id:r2 body:ping res:ping_r) 60s -
+      c.d.a>!req(id:r3 body:ping res:ping_r) -`);
     // XXX WIP: in the response, need rt:a and not and rt:abc
     t('4_nodes_ring_range', `conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40))
       a=node(id:10 wss) b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
@@ -2229,8 +2286,15 @@ describe('peer-relay', function(){
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
+      a.b.c.d>!req(id:r1 body:ping res:ping_r) 59s -
+      a.b.c.d<!req(id:r2 body:ping res:ping_r) 60s -
+      a.e.d<!req(id:r3 body:ping res:ping_r) 60s -`);
+    t('5_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
+      a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
+      ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
+      rt_add(a:bcd d:ea)
       abcd>!req(id:r1 body:ping res:ping_r) 59s -
-      abcd<!req(id:r2 body:ping res:ping_r) 60s -
+      aed<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
     t('5_nodes_ring_range', `
       conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
@@ -2425,11 +2489,11 @@ describe('peer-relay', function(){
       t('msg', `
         mode:msg node:a b=node(wss) ab>!connect(wss !r) ab>connect(wss !r)
         ab<connected - c=node(wss) bc>!connect(wss !r) bc>connect(wss !r)
-        bc<connected - abc>!req(id:r0 body:ping res:ping_r)`);
+        bc<connected - rt_add(a:bc) abc>!req(id:r0 body:ping res:ping_r)`);
       t('msg,req', `
         mode(msg req) node:a b=node(wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected - c=node(wss) bc>!connect(wss !r)
-        bc>connect(wss !r) bc<connected -
+        bc>connect(wss !r) bc<connected - rt_add(a:bc)
         abc>!req(id:r0 body:ping res:ping_r)`);
     });
     describe('failure', ()=>{
@@ -2862,11 +2926,11 @@ describe('peer-relay', function(){
       t('req', `mode:req setup:3_nodes_linear
         ab>!req(id:r0 body:ping res:ping_r) ac>!req(id:r1 body:ping res:ping_r)
         bc>!req(id:r2 body:ping res:ping_r)`);
-      t('msg', `mode:msg setup:3_nodes_linear
+      t('msg', `mode:msg setup:3_nodes_linear rt_add(a:bc)
         ab>!req(id:r0 body:ping res:ping_r)
         abc>!req(id:r1 body:ping res:ping_r)
         bc>!req(id:r2 body:ping res:ping_r)`);
-      t('msg,req', `mode(msg req) setup:3_nodes_linear
+      t('msg,req', `mode(msg req) setup:3_nodes_linear rt_add(a:bc)
         ab>!req(id:r0 body:ping res:ping_r)
         abc>!req(id:r1 body:ping res:ping_r)
         bc>!req(id:r2 body:ping res:ping_r)`);
@@ -2929,8 +2993,7 @@ describe('peer-relay', function(){
           ad>!req(id:r2 body:ping e res:ping_r) ad<*res(id:r2 body:ping_r) -
           bc>!req(id:r3 body:ping e res:ping_r) bc<*res(id:r3 body:ping_r) -
           bd>!req(id:r4 body:ping e res:ping_r) bd<*res(id:r4 body:ping_r) -
-          cd>!req(id:r5 body:ping e res:ping_r) cd<*res(id:r5 body:ping_r) -
-        `);
+          cd>!req(id:r5 body:ping e res:ping_r) cd<*res(id:r5 body:ping_r) -`);
         // XXX: rm ack:0 (should be auto)
         t('msg', `mode:msg setup:3_nodes_wss
           ab>!req(body:ping res:ping_r) ab>msg(type:req body:ping)
