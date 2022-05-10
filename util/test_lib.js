@@ -847,9 +847,11 @@ E.parse_cmd_dir = function(s){
   {
     let ch = s[i];
     assert_invalid(/[a-z,.<>=+-]/i.test(ch), s, i);
-    if (/[+-]/.test(ch))
+    if (/[+-]/.test(ch)){
+      assert_invalid(!sign && /[a-zA-Z]/.test(s[i+1]), s, i);
+      assert_invalid(dir=='>' ? s[i+2]=='>' : !i, s, i);
       sign = ch;
-    else if (ch=='.'){
+    } else if (ch=='.'){
       dot_b = dot_b || !!b;
       dot_a = dot_a || !b && !!a;
     }
@@ -875,14 +877,14 @@ E.parse_cmd_dir = function(s){
       loop.push({...sd});
       loop[dir=='>' ? loop.length-1 : 0].d =
         sign+loop[dir=='>' ? loop.length-1 : 0].d;
-      a = b = sign = '';
+      a = b = '';
     }
     else if (a && b)
     {
-      no_comma = true;
       assert_invalid(!comma, s, i);
       assert_invalid(dir!='=' || !b, s, i);
       let sd = /[>=]/.test(dir) ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      no_comma = true;
       if (dot_a){
         sd.dot = true;
         dot_a = false;

@@ -3766,12 +3766,13 @@ describe('test_lib', ()=>{
       t('abc,d>e', 'invalid abc^^^,d>e');
       t('a,cd>e', 'invalid a,cd^^^>e');
       t('ab,cd,e>f', 'invalid ab,cd,e^^^>f');
-      if (0){ // XXX: TODO
-      t('ab+>e', 'invalid XXX');
-      t('+ab>e', 'invalid XXX');
-      t('a+.b>e', 'invalid XXX');
-      t('ab.>e', 'invalid XXX');
-      }
+      t('ab+>e', 'invalid ab^^^+>e');
+      t('a+.b>e', 'invalid a^^^+.b>e');
+      t('ab.>e', 'invalid ab.^^^>e');
+      t('a+bc>e', 'invalid a^^^+bc>e');
+      t('+ab>e', 'invalid ^^^+ab>e');
+      t('a+b<e', 'invalid a^^^+b<e');
+      t('ab+<e', 'invalid ab^^^+<e');
     });
     it('parse', ()=>{
       const t = (test, exp)=>assert.deepEqual(
