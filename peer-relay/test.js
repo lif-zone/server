@@ -2411,7 +2411,7 @@ describe('peer-relay', function(){
     let t = (name, test)=>t_roles(name, 'abXcde', test);
     t('abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d>!req(id:r1 body:ping res:ping_r)
+      eX.c.d>!req(body:ping res:ping_r)
       eX.c.d.a>!req(body:ping res:ping_r)
       eX.c.d.a+e>!get_peer(+e r:a)
       eX.c.b.a.d-e>!get_peer(+e r:d)
@@ -3234,3 +3234,30 @@ describe('peer-relay', function(){
 
   */
 });
+
+// IDEAS
+/* XXX: 2022-05-10 - statical routing by freq/rtt
+// abcXYZdef
+// ae aX
+// f a-d 0.1% e-h 0.5% g-o 1% o-z 2%
+// ae X Y
+{from: 0x4827abc7, to: 0x68492bd, freq: 0.00085, rtt: avg rtt}
+[xxxxx                      x                                    x]
+[y        y        y        y       y      y       y      y      y]
+[00000123456789aba9876543210
+[a-c:100 2%, d-h:100 0.2%, h-z:100 0.02%]
+Z->X->a, W->Y-> a
+a: X Y(+X rtt) Z W(+Z rtt)
+ae> X(rtt X+rtt to range area, resulting bits resolved)
+via X 14.3 bit resolved, rtt 749ms, 749ms/14.3b = 52mspb
+via Y 12 bit resolved, rtt 520ms, 520ms/12b = 43.3mspb
+via W 10 bit resolved, rtt 300ms, 300ms/10b = 30mspb WINNER
+via Z 9 bit resolved, rtt 290ms, 290ms/9b = 32.2mspb
+bit per ms
+[xxxxxx x  x  x  x x  x  x    x         x         x       x       x]
+[a-z:0.08%
+freq=8/100
+12 0 1 2 3 4 5 6 5 4 3 2 1 0
+// a-d 100 e-f 500 g-o 1000 o-z 2000
+*/
+
