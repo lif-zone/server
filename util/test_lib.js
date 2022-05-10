@@ -864,8 +864,11 @@ E.parse_cmd_dir = function(s){
       assert_invalid(a||b, s, i);
       if (loop.length)
       {
-        assert_invalid(a&&b, s, i);
-        assert_invalid(loop[loop.length-1].s && loop[loop.length-1].d, s, i);
+        assert_invalid(a||b, s, i);
+        assert_invalid(
+          a && loop[loop.length-1].s && !b && !loop[loop.length-1].d||
+          !a && !loop[loop.length-1].s && b && loop[loop.length-1].d||
+          a && loop[loop.length-1].s && b && loop[loop.length-1].d, s, i);
       }
       assert_invalid(dir!='=' || !b, s, i);
       let sd = /[>=]/.test(dir) ? {s: a, d: b, dir} : {s: b, d: a, dir};
@@ -907,7 +910,7 @@ E.parse_cmd_dir = function(s){
   assert_invalid(loop.length, _d);
   if (dir=='<')
     loop.reverse();
-  let cmd = s.substr(_d+1), seq = true;
+  let cmd = s.substr(_d+1), seq = !comma;
   for (let i=1; seq && i<loop.length; i++){
     if (loop[i-1].dir!=loop[i].dir)
       seq = false;
@@ -916,7 +919,7 @@ E.parse_cmd_dir = function(s){
   }
   return assign(loop.length>1 ? {loop} : loop[0], {cmd, meta: {cmd: s}},
     seq ? {s: loop[0].s, d: loop[loop.length-1].d,
-    dir: loop[0].dir} : undefined);
+    dir: loop[0].dir} : undefined, comma ? {comma} : undefined);
 };
 
 E.plugin_cmd_dir = function(o){

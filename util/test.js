@@ -3662,17 +3662,19 @@ describe('test_lib', ()=>{
       t('ab>!c(d)', {s: 'a', d: 'b', dir: '>', cmd: '!c(d)'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
       t('a=b(c)', {s: 'a', d: '', dir: '=', cmd: 'b(c)'});
-      t('ab,bc>d', {s: 'a', d: 'c', dir: '>', loop: [
+      t('ab,bc>d', {comma: true, loop: [
         {s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>'}], cmd: 'd'});
-      t('bc,ab>d', {loop: [{s: 'b', d: 'c', dir: '>'},
+      t('bc,ab>d', {comma: true, loop: [{s: 'b', d: 'c', dir: '>'},
         {s: 'a', d: 'b', dir: '>'}], cmd: 'd'});
-      t('bc,ab<d', {loop: [{s: 'b', d: 'a', dir: '<'},
+      t('bc,ab<d', {comma: true, loop: [{s: 'b', d: 'a', dir: '<'},
         {s: 'c', d: 'b', dir: '<'}], cmd: 'd'});
-      t('ab,bc,cd>e', {s: 'a', d: 'd', dir: '>', loop: [
+      t('ab,bc,cd>e', {comma: true, loop: [
         {s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>'},
         {s: 'c', d: 'd', dir: '>'}], cmd: 'e'});
-      t('cd,bc,ab<e', {loop: [{s: 'b', d: 'a', dir: '<'},
+      t('cd,bc,ab<e', {comma: true, loop: [{s: 'b', d: 'a', dir: '<'},
         {s: 'c', d: 'b', dir: '<'}, {s: 'd', d: 'c', dir: '<'}], cmd: 'e'});
+      t('a,b=c', {comma: true, loop: [
+        {s: 'a', d: '', dir: '='}, {s: 'b', d: '', dir: '='}], cmd: 'c'});
       t('abc>d', {s: 'a', d: 'c', dir: '>', loop: [{s: 'a', d: 'b', dir: '>'},
         {s: 'b', d: 'c', dir: '>'}], cmd: 'd'});
       t('abc<d', {s: 'c', d: 'a', dir: '<', loop: [{s: 'c', d: 'b', dir: '<'},

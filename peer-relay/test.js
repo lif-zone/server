@@ -2273,6 +2273,10 @@ describe('peer-relay', function(){
           `ab>!res_start(id(r1) cmd(test) !e)`);
         t('ab>!res_start(id:r1 cmd:test)', `ab>!res_start(id(r1) cmd(test) !e)
           ab>*res_start(id(r1) cmd(test))`);
+        if (0){ // XXX: WIP
+        t('a,b=node:wss', `a=node(wss) b=node(wss)`);
+        t('ab,bc>!connect', `ab>!connect bc>!connect`);
+        }
       });
     });
   });
