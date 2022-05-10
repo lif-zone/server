@@ -271,8 +271,8 @@ function assert_int(val){
 function assert_node_ids(val){
   let ids = val.split(' '), ret = {};
   ids.forEach(s=>{
-    let a = s.match(/^([a-z]+):([0-9]+)$/);
-    assert(a && a.length==3, 'invaid node_ids '+val+' '+s);
+    let a = s.match(/^([a-zA-Z]+):([0-9]+)$/);
+    assert(a && a.length==3, 'invaid node_ids '+val+' part '+s);
     assert(!ret[a[1]], 'invalid node_ids '+val);
     ret[a[1]] = +a[2];
   });
@@ -1566,7 +1566,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*conn_info': yield cmd_conn_info(opt); break;
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '*conn_info_r': yield cmd_conn_info_r(opt); break;
-  case 'get_peer': yield cmd_get_peer(opt); break;
+  case '!get_peer': yield cmd_get_peer(opt); break;
   case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   case '!req': yield cmd_req(opt); break;
@@ -1948,10 +1948,10 @@ describe('buf_util', ()=>{
 describe('channels', ()=>{
   const v = val=>hash_from_int(val, 8, ID_BITS);
   it('get_closest', ()=>{
-    const t = (a, val, exp, range)=>{
+    const t = (a, val, exp, range, exclude)=>{
       let channels = new Channels();
       a.forEach(id=>channels.add(new FakeWsConnector(s2b(v(id)))));
-      let ch = channels.get_closest(v(val), range);
+      let ch = channels.get_closest(v(val), range, exclude);
       assert.equal(ch ? b2s(ch.id) : '', exp ? v(exp) : '');
     };
     t([], 10, '');
@@ -1967,6 +1967,8 @@ describe('channels', ()=>{
     t([10, 15], 9, 10, {min: v(15), max: v(15)});
     t([10, 15], 9, '', {min: v(10), max: v(15)});
     t([10, 15], 10, 15, {min: v(10), max: v(16)});
+    t([10, 15], 10, '', {min: v(10), max: v(16)}, v(15));
+    t([10, 15], 10, 10, {min: v(9), max: v(16)}, v(15));
     t([10, 15, 20], 9, 20);
     t([10, 15, 20], 10, 10);
     t([10, 15, 20], 11, 10);
@@ -2119,8 +2121,8 @@ describe('peer-relay', function(){
           ab<fwd(bc<fwd(ac<msg(body(x)) rt(a)))`);
         t('abc<fwd(ac>msg(body:x))', `bc<fwd(ac>msg(body(x)) rt(a))
           ab<fwd(bc<fwd(ac>msg(body(x)) rt(a)))`);
-        t('a-b>get_peer', 'a-b>get_peer');
-        t('a+b>get_peer', 'a+b>get_peer');
+        t('a-b>!get_peer', 'a-b>!get_peer');
+        t('a+b>!get_peer', 'a+b>!get_peer');
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
@@ -2397,6 +2399,17 @@ describe('peer-relay', function(){
       de<fwd(ad>msg(id:r1 type:res body:ping_r) 40-40)
       ad>*res(id:r1 body:ping_r)`);
   });
+  describe('get_peer', ()=>{
+    let t = (name, test)=>t_roles(name, 'abXcde', test);
+    t('abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      a=node:wss b=node:wss X=node:wss c=node:wss d=node:wss e=node:wss
+      ab>!connect bX>!connect Xc>!connect cd>!connect da>!connect eX>!connect
+      eX.c.d>!req(body:ping res:ping_r)
+      eX.c.d.a>!req(body:ping res:ping_r)
+      eX.c.d.a+e>!get_peer(+e r:a)
+      eX.c.b.a.d-e>!get_peer(+e r:d)
+      `);
+  });
   /* XXX derry: examples
   describe('get_peer', ()=>{
     if (true) return; // XXX WIP
@@ -2406,6 +2419,7 @@ describe('peer-relay', function(){
     t('ab', s+=` b=node:wss ab>!connect bb~>get_peer:b ab<get_peer_r:a`);
     t('abc', s+=` c=node:wss bc>!connect bb~>get_peer:b ab<get_peer_r:a`);
   });
+  // XXX TODO:
   t('a,b=node:wss', `a=node(wss) b=node(wss)`);
   t('ab,bc>!connect', `ab>!connect bc>!connect`);
   t('abc>msg', `ab>fwd(ac>msg rt:abc) bc>fwd(ac>msg rt:abc)`);
@@ -2456,7 +2470,7 @@ describe('peer-relay', function(){
   // XXX: support: a,b,c,d,e=node(wss) ab,bc,cd,de,ea>!connect
   // abcDefg dx>connect dxd+e>announce(r:bcfg) dxd-c>announce(r:abef)
   // dxe,dxc>online
-  // min online: abcdefg dx>connect dx+d.e,dx-dc>announce dxe,dxc>online
+  // min online: abcdefg dx>connect dx+d.e,dx-d.c>announce dxe,dxc>online
   // more min: abcdefg dx>connect dx+d.e>announce(r:c) dxe,dxc>online
   // better: abcdefg dx>connect dx+d.e>announce(r:bcfg) dxe,dxc>online
   // min min: abcdefg dx>connect dx+d.e>announce acd.ed>ping
