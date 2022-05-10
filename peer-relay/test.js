@@ -980,7 +980,7 @@ function cmd_setup(opt){
       M(`a=node(id:10) b=node(id:20 wss) - ab>!connect`);
       break;
     case '2_nodes_wss':
-      M(`a=node(wss) b=node(wss) ab>!connect()`);
+      M(`a,b=node:wss ab>!connect()`);
       break;
     case '3_nodes_linear':
       M(`setup:2_nodes c=node(wss) bc>!connect`);
@@ -2331,18 +2331,17 @@ describe('peer-relay', function(){
     let t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `conf(id_bits:8) setup:2_nodes
       ab>!req(body:ping res:ping_r)`);
-    t('2_nodes_wss', `conf(id_bits:8) a=node(wss) b=node(wss)
+    t('2_nodes_wss', `conf(id_bits:8) a,b=node:wss
       ab>!connect ab>!req(body:ping res:ping_r)`);
-    t('xxx', `conf(id_bits:8) a=node(wss) b=node(wss)
+    t('xxx', `conf(id_bits:8) a,b=node:wss
       c=node(wss) ab>!connect bc>!connect a.b.c>!req(body:ping res:ping_r)`);
-    t('xxx2', `conf(id_bits:8) a=node(wss) b=node(wss) c=node(wss)
+    t('xxx2', `conf(id_bits:8) a,b,c=node:wss
       rt_add(a:bc) ab>!connect bc>!connect abc>!req(body:ping res:ping_r)`);
-    t('3_nodes', `conf(id_bits:8) a=node(wss) b=node(wss)
-      c=node(wss) ab>!connect ac>!connect ab>!req(body:ping res:ping_r)
+    t('3_nodes', `conf(id_bits:8) a,b,c=node:wss ab>!connect
+      ac>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r)`);
     t('3_nodes_route_b', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
-      a=node(wss) b=node(wss) c=node(wss) d=node e=node ab>!connect
-      ac>!connect ad>!req(id:r1 body:ping !e)
+      a,b,c,d,e=node:wss ab>!connect ac>!connect ad>!req(id:r1 body:ping !e)
       ab>fwd(ad>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_route_c', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
@@ -2434,9 +2433,8 @@ describe('peer-relay', function(){
   describe('get_peer', ()=>{
     let t = (name, test)=>t_roles(name, 'abXcde', test);
     t('abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a=node:wss b=node:wss X=node:wss c=node:wss d=node:wss e=node:wss
-      ab>!connect bX>!connect Xc>!connect cd>!connect da>!connect eX>!connect
-      eX.c.d>!req(body:ping res:ping_r)
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      eX.c.d>!req(id:r1 body:ping res:ping_r)
       eX.c.d.a>!req(body:ping res:ping_r)
       eX.c.d.a+e>!get_peer(+e r:a)
       eX.c.b.a.d-e>!get_peer(+e r:d)
