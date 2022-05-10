@@ -60,6 +60,10 @@ let t_keys = {
   s: {pub: '00d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014',
     priv: '9596a63459b52771446435d15eb5950651893ae169100451fdcddf1c58d98d180'+
       '0d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014'},
+  x: {pub: '0088c645664b3a769da624d007e88aab94c99ca95d1e3ec1439e4cceec9c556d',
+    priv: '00'},
+  y: {pub: '0099c645664b3a769da624d007e88aab94c99ca95d1e3ec1439e4cceec9c556d',
+    priv: '00'},
 };
 
 // XXX: need test
@@ -196,7 +200,8 @@ function build_cmd_o(cmd, fwd, o){
   return _build_cmd.apply(this, a);
 }
 
-function dir_str(s, d, dir){ return dir=='>' ? s+d+'>' : d+s+'<'; }
+function dir_str(s, d, dir){ return dir=='>' ? s+d+'>' :
+  dir=='<' ? d+s+'<' : s+d+dir; }
 function dir_c(c){ return dir_str(c.s, c.d, c.dir); }
 function rev_c(c){ return rev_trim(dir_str(c.s, c.d, c.dir)); }
 
@@ -998,8 +1003,6 @@ function cmd_node(opt){
   if (c.dir=='=')
     name = c.s;
   util.forEach(arg, a=>{
-    if (!name)
-      return name = assert_name_new(a.cmd);
     switch (a.cmd){
     case 'wss': wss = assert_wss(a.arg); break;
     case 'wrtc': wrtc = assert_wrtc(a.arg); break;
@@ -1008,14 +1011,9 @@ function cmd_node(opt){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
+  assert_name_new(name);
   id = id||t_conf.node_ids[name];
   let fake = is_fake(name);
-  if (t_pre_process){
-    let o = {};
-    o[name] = true;
-    set_orig(c, build_cmd_o('node',
-      assign(o, {id, wss: !!wss, wrtc: !!wrtc})));
-  }
   if (id){
     assert(id>0 && id<Math.pow(2, t_conf.id_bits), 'invalid id '+id+
       ' valid 0-'+Math.pow(2, t_conf.id_bits));
@@ -1050,7 +1048,7 @@ const cmd_connect = opt=>etask(function*(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  assert(d, 'not node found '+c.d);
+  assert(d, 'unknown node '+c.d);
   if (!wss && !wrtc && util.xor(support_wss(d), support_wrtc(d))){
     wss = wss_from_node(d);
     wrtc = support_wrtc(d);
@@ -1062,12 +1060,12 @@ const cmd_connect = opt=>etask(function*(){
     {
       if (r)
         push_cmd(build_cmd(c.s+c.d+'>connect', wss&&'wss', wrtc&&'wrtc'));
-      set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
+      set_orig(c, build_cmd(dir_c(c)+c.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
     }
     else {
       if (r)
           push_cmd(c.s+c.d+'<connected');
-      set_orig(c, build_cmd(c.meta.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
+      set_orig(c, build_cmd(dir_c(c)+c.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
     }
     return;
   }
@@ -1137,7 +1135,7 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
       set_push_cmd(c, s);
     }
     else
-      set_orig(c, build_cmd(c.meta.cmd));
+      set_orig(c, build_cmd(dir_c(c)+c.cmd));
     return;
   }
   assert_event_c(c, event);
@@ -1172,7 +1170,7 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
      set_push_cmd(c, s);
     }
     else
-      set_orig(c, build_cmd(c.meta.cmd, c.arg));
+      set_orig(c, build_cmd(dir_c(c)+c.cmd, c.arg));
     return;
   }
   assert_event_c(c, event);
@@ -1201,9 +1199,11 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   cmd = cmd||'';
   if (t_pre_process){
     if (c.loop)
-      c = extend_loop(c);
-    else
-      set_orig(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body}));
+      c = extend_loop_fwd(c);
+    else {
+      set_orig(c, build_cmd_o(dir_c(c)+c.cmd,
+        {id, type, cmd, seq, ack, body}));
+    }
     return;
   }
   if (ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
@@ -1214,8 +1214,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
     seq = seq||0;
-  assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, type, cmd, seq, ack, body}),
-    c.fwd, event, false);
+  assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
+    {id, type, cmd, seq, ack, body}), c.fwd, event, false);
   if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
     seq = seq||0;
   if (type=='req'){
@@ -1312,7 +1312,7 @@ const cmd_req = opt=>etask(function*req(){
     return;
   }
   if (!d){
-    assert_event_c2(c, build_cmd_o(c.meta.cmd,
+    assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
       {id, cmd, seq, ack, body, ooo, dup, close}), c.fwd, event, call);
     return;
   }
@@ -1324,8 +1324,8 @@ const cmd_req = opt=>etask(function*req(){
     id = id || ++t_req_id+'';
   seq = track_seq_req(s.t.name, d.t.name, id, cmd, type, seq, call);
   cmd = cmd || t_req[id].cmd;
-  assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}), c.fwd,
-    event, call);
+  assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
+    {id, seq, ack, cmd, body}), c.fwd, event, call);
   if (!call){
     fake_emit(c, {type, req_id: id, seq, ack, cmd, body});
     return yield cmd_run_if_next_fake();
@@ -1444,7 +1444,7 @@ const cmd_res = opt=>etask(function*req(){
     return;
   }
   if (!d){
-    assert_event_c2(c, build_cmd_o(c.meta.cmd,
+    assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
       {id, cmd, seq, ack, body, ooo, dup, close}), c.fwd, event, call);
     return;
   }
@@ -1454,8 +1454,8 @@ const cmd_res = opt=>etask(function*req(){
   seq = track_seq_res(s.t.name, d.t.name, id, type, seq, call);
   cmd = cmd || t_req[id].cmd;
   assert(seq!==undefined, 'must have seq');
-  assert_event_c2(c, build_cmd_o(c.meta.cmd, {id, seq, ack, cmd, body}), c.fwd,
-    event, call);
+  assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
+    {id, seq, ack, cmd, body}), c.fwd, event, call);
   id = _id;
   if (!call){
     fake_emit(c, {type, req_id: id, seq, ack, cmd, body});
@@ -1492,7 +1492,7 @@ const cmd_fail = opt=>etask(function*req(){
   assert(id, 'fail missing id');
   assert(error, 'fail missing error');
   if (t_pre_process)
-    return set_orig(c, build_cmd_o(c.meta.cmd, {id, seq, error}));
+    return set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, seq, error}));
   assert_event_c(c, event);
   yield cmd_run_if_next_fake();
 });
@@ -1516,7 +1516,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   f.rt2.push(rt);
   if (t_pre_process){
     if (c.loop)
-      return extend_loop(c);
+      return extend_loop_fwd(c);
   }
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
@@ -1541,16 +1541,23 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   let c = opt.c;
   if (t_pre_process){
     let a;
-    if ('<>'.includes(c.cmd[2])){ // XXX: ugly code
+    // XXX: remove from  here
+    if ('<>'.includes(c.cmd[2])){
       // XXX fixme:
       // build_cmd(c.s+c.d+c.dir+'fwd', build_cmd(c.cmd, c.arg)))[0]);
       assign(c, xtest.test_parse(
         build_cmd(c.orig.substr(0, 3)+'fwd', c.orig.substr(3)))[0]);
     }
+    // XXX: remove from  here
     if (a = c.cmd.match(/(^\d+)ms$/))
       assign(c, xtest.test_parse(build_cmd('ms', a[1]))[0]);
+    // XXX: remove from  here
     if (a = c.cmd.match(/(^\d+)s$/))
       assign(c, xtest.test_parse(build_cmd('ms', +a[1]*date.ms.SEC))[0]);
+    if (c.loop && c.comma){
+      extend_loop_repeat(c);
+      return;
+    }
   }
   switch (c.cmd){
   case '-': yield cmd_ensure_no_events(opt); break;
@@ -1592,7 +1599,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
 });
 
 // XXX NOW: need test
-function extend_loop(c){
+function extend_loop_fwd(c){
   assert(c.loop);
   assert(t_pre_process);
   let a = [], prev;
@@ -1620,6 +1627,21 @@ function extend_loop(c){
     o.arg = prev+(rt ? ' rt('+rt+')' : '');
     prev = _build_cmd(o.arg, [dir_c(o)]);
     set_orig(o, prev);
+    a.push(o);
+  }
+  return _set_push_cmd(c, a);
+}
+
+// XXX NOW: need test
+function extend_loop_repeat(c){
+  assert(c.loop);
+  assert(c.comma);
+  assert(t_pre_process);
+  let a = [];
+  for (let i=0; i<c.loop.length; i++){
+    let o = assign({}, c, c.loop[i]);
+    delete o.loop;
+    set_orig(o, build_cmd(dir_c(o)+o.cmd, o.arg));
     a.push(o);
   }
   return _set_push_cmd(c, a);
@@ -2067,23 +2089,31 @@ describe('peer-relay', function(){
     });
     describe('pre_process', function(){
       describe('shortcut', ()=>{
-        const _t = (mode, test, exp)=>it(mode+(mode ? ' ': '')+test,
+        const _t = (mode, test, exp, both)=>it(mode+(mode ? ' ': '')+test,
           ()=>etask(function*(){
           test_start();
           mode = mode||'mode(req)';
-          let setup = 'node(a wss) node(b wss) node(c wss) node(d wss) '+
-            'node(e wss) node(f wss) '+(mode ? mode+' ' : '');
+          let setup = 'a=node(wss) b=node(wss) c=node(wss) d=node(wss) '+
+            'e=node(wss) f=node(wss) '+(mode ? mode+' ' : '');
           let regex = new RegExp('^'+xescape.regex(setup));
           let res = yield test_pre_process(setup+test);
-          assert.equal(test_to_str(res).replace(regex, ''),
-            string.split_ws(exp).join(' '));
+          if (both){
+            let res_exp = yield test_pre_process(setup+exp);
+            assert.equal(test_to_str(res).replace(regex, ''),
+            test_to_str(res_exp).replace(regex, ''));
+          }
+          else {
+            assert.equal(test_to_str(res).replace(regex, ''),
+              string.split_ws(exp).join(' '));
+          }
         }));
         const t = (test, exp)=>_t('', test, exp);
+        const T = (test, exp)=>_t('', test, exp, true);
         t('1ms', `ms(1)`);
         t('12ms', `ms(12)`);
         t('1s', `ms(1000)`);
         t('12s', `ms(12000)`);
-        t('s=node(wss)', `node(s wss)`);
+        t('s=node(wss)', `s=node(wss)`);
         t('ab>connect(wss !r)', `ab>connect(wss !r)`);
         t('ab>connect(!r)', `ab>connect(wss !r)`);
         t('ab>connect', `ab>connect(wss !r) ab<connected`);
@@ -2273,10 +2303,8 @@ describe('peer-relay', function(){
           `ab>!res_start(id(r1) cmd(test) !e)`);
         t('ab>!res_start(id:r1 cmd:test)', `ab>!res_start(id(r1) cmd(test) !e)
           ab>*res_start(id(r1) cmd(test))`);
-        if (0){ // XXX: WIP
-        t('a,b=node:wss', `a=node(wss) b=node(wss)`);
-        t('ab,bc>!connect', `ab>!connect bc>!connect`);
-        }
+        t('x,y=node:wss', `x=node(wss) y=node(wss)`);
+        T('ab,bc>!connect', `ab>!connect bc>!connect`);
       });
     });
   });
@@ -2554,15 +2582,15 @@ describe('peer-relay', function(){
     });
     // XXX: simplify with moving find to !connect
     describe('2_nodes', ()=>{
-      t('req', `mode:req node:a b=node(wss(port:4000)) ab>!connect(wss !r)
+      t('req', `mode:req a=node b=node(wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected -
         ab>!req(id:r0 body:ping res:ping_r !e)
         ab>*req(id:r0 body:ping) ab<*res(id:r0 body:ping_r)`);
-      t('msg', `mode:msg node:a b=node(wss(port:4000)) ab>!connect(wss !r)
+      t('msg', `mode:msg a=node b=node(wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected -
         ab>!req(id:r0 body:ping res:ping_r !e)
         ab>msg(type:req id:r0 body:ping) ab<msg(type:res id:r0 body:ping_r)`);
-      t('msg,req', `mode(msg req) node:a b=node(wss(port:4000))
+      t('msg,req', `mode(msg req) a=node b=node(wss(port:4000))
         ab>!connect(wss !r) ab>connect(wss !r) ab<connected -
         ab>!req(id:r0 body:ping res:ping_r !e) ab>msg(type:req id:r0 body:ping)
         ab>*req(id:r0 body:ping) ab<msg(type:res id:r0 body:ping_r)
@@ -2573,15 +2601,15 @@ describe('peer-relay', function(){
       // t('fwd', `setup:3_nodes_linear ac>!req(id:r0 body:ping res:ping_r)
       //  abc>*req(id:r0 body:ping) abc<fwd(ac<*res(id:r0 body:ping_r))`);
       t('req', `
-        mode:req node:a b=node(wss) ab>!connect(wss !r) ab>connect(wss !r)
+        mode:req a=node b=node(wss) ab>!connect(wss !r) ab>connect(wss !r)
         ab<connected - c=node(wss) bc>!connect(wss !r) bc>connect(wss !r)
         bc<connected - ac>!req(id:r0 body:ping res:ping_r)`);
       t('msg', `
-        mode:msg node:a b=node(wss) ab>!connect(wss !r) ab>connect(wss !r)
+        mode:msg a=node b=node(wss) ab>!connect(wss !r) ab>connect(wss !r)
         ab<connected - c=node(wss) bc>!connect(wss !r) bc>connect(wss !r)
         bc<connected - rt_add(a:bc) abc>!req(id:r0 body:ping res:ping_r)`);
       t('msg,req', `
-        mode(msg req) node:a b=node(wss) ab>!connect(wss !r)
+        mode(msg req) a=node b=node(wss) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected - c=node(wss) bc>!connect(wss !r)
         bc>connect(wss !r) bc<connected - rt_add(a:bc)
         abc>!req(id:r0 body:ping res:ping_r)`);
@@ -2614,12 +2642,12 @@ describe('peer-relay', function(){
       describe('no_route', ()=>{
         // XXX: no_route should fail with error(no_route)
         if (0) // XXX: fixme
-        t('req', `mode:req setup:2_nodes node:c cb>!req(id:r0 body:ping) -
+        t('req', `mode:req setup:2_nodes c=node cb>!req(id:r0 body:ping) -
         19999ms - 1ms c>*fail(id:r0 error:timeout)`);
-        t('msg', `mode:msg setup:2_nodes node:c cb>!req(id:r0 body:ping !e) -
+        t('msg', `mode:msg setup:2_nodes c=node cb>!req(id:r0 body:ping !e) -
         19999ms - 1ms c>*fail(id:r0 error:timeout)`);
         if (0) // XXX: fixme
-        t('msg,req', `mode(msg req) setup:2_nodes node:c
+        t('msg,req', `mode(msg req) setup:2_nodes c=node
         cb>!req(id:r0 body:ping) - 19999ms -
         1ms c>*fail(id:r0 error:timeout)`);
       });
@@ -2975,9 +3003,9 @@ describe('peer-relay', function(){
   // XXX: add boostrap support
   describe('2_nodes_ws', function(){
     const t = (name, test)=>t_roles(name, 'ab', test);
-    t('long', `mode:req node:a b=node(wss(port:4000)) ab>!connect(wss !r)
+    t('long', `mode:req a=node b=node(wss(port:4000)) ab>!connect(wss !r)
       ab>connect(wss !r) ab<connected`);
-    t('short', `mode:req node:a b=node(wss) ab>!connect`);
+    t('short', `mode:req a=node b=node(wss) ab>!connect`);
     t('req', `mode:req setup:2_nodes ab>!req(id:r0 body:ping res:ping_r)
       ab<!req(id:r1 body:ping res:ping_r)`);
     t('msg', `mode:msg setup:2_nodes ab>!req(id:r0 body:ping res:ping_r)
@@ -3038,7 +3066,7 @@ describe('peer-relay', function(){
       t('msg', `mode:msg setup:3_nodes_wss`);
       t('msg,req', `mode(msg req) setup:3_nodes_wss`);
       if (true) return; // XXX: TODO
-      t('star', `s=node(wss) node:a b=node(wss) as>!connect(find(a sa)) -
+      t('star', `s=node(wss) a=node b=node(wss) as>!connect(find(a sa)) -
         bs>!connect(find(bas sab)) bsa>*conn_info:r`);
       t('star_wss', `s=node(wss) a=node(wss) b=node(wss) -
         as>!connect(find(a sa)) - bs>!connect(find(bas sab))
