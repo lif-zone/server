@@ -1179,6 +1179,9 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
   fake_emit(c, {type: 'res', cmd: 'conn_info', body: {ws, wrtc}});
 });
 
+const cmd_get_peer = opt=>etask(function cmd_get_peer(){
+});
+
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
   assert(s && d, 'invalid event '+c.orig);
@@ -1563,6 +1566,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*conn_info': yield cmd_conn_info(opt); break;
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '*conn_info_r': yield cmd_conn_info_r(opt); break;
+  case 'get_peer': yield cmd_get_peer(opt); break;
   case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   case '!req': yield cmd_req(opt); break;
@@ -2115,6 +2119,8 @@ describe('peer-relay', function(){
           ab<fwd(bc<fwd(ac<msg(body(x)) rt(a)))`);
         t('abc<fwd(ac>msg(body:x))', `bc<fwd(ac>msg(body(x)) rt(a))
           ab<fwd(bc<fwd(ac>msg(body(x)) rt(a)))`);
+        t('a-b>get_peer', 'a-b>get_peer');
+        t('a+b>get_peer', 'a+b>get_peer');
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
