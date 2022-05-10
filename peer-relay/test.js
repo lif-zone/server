@@ -2345,16 +2345,16 @@ describe('peer-relay', function(){
       ab>fwd(ad>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_route_c', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
-      a=node(wss) b=node(wss) c=node(wss) d=node e=node ab>!connect ac>!connect
+      a,b,c,d,e=node:wss ab>!connect ac>!connect
       ae>!req(id:r1 body:ping !e) ac:ae>msg(id:r1 type:req body:ping) -
       20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30)) a=node(wss)
-      b=node(wss) c=node(wss) ab>!connect bc>!connect ca>!connect
-      ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r) -`);
+    t('3_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30)) a,b,c=node:wss
+      ab>!connect bc>!connect ca>!connect ab>!req(body:ping res:ping_r)
+      ac>!req(body:ping res:ping_r) -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
     // XXX: implement stateful req
     t('4_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
-      a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
+      a,b,c,d=node:wss ab>!connect
       bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) 60s
       a.b.c>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
       ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
@@ -2363,8 +2363,7 @@ describe('peer-relay', function(){
       da>!req(body:ping res:ping_r) 60s d.a.b>!req(body:ping res:ping_r) 60s
       dc>!req(body:ping res:ping_r)`);
     t('4_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
-      a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
-      rt_add(a:bc b:cd c:da d:ab)
+      a,b,c,d=node:wss ab>!connect rt_add(a:bc b:cd c:da d:ab)
       bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) 60s
       abc>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
       ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
@@ -2375,7 +2374,7 @@ describe('peer-relay', function(){
     // XXX: need to rm explicit req_id. need to fix test req tracking.
     // without explicit req_id, the test fails
     t('4_nodes_ring_state_timeout', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
-      a=node(wss) b=node(wss) c=node:wss d=node:wss ab>!connect
+      a,b,c,d=node:wss ab>!connect
       bc>!connect cd>!connect da>!connect - ab>!req(body:ping res:ping_r) -
       a.b.c>!req(id:r1 body:ping res:ping_r) 59s -
       c.b.a>!req(id:r2 body:ping res:ping_r) 60s -
@@ -2393,13 +2392,13 @@ describe('peer-relay', function(){
       ac<*res(id:r1 body:ping_r)`);
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
-      a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
+      a,b,c,d,e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
       a.b.c.d>!req(id:r1 body:ping res:ping_r) 59s -
       a.b.c.d<!req(id:r2 body:ping res:ping_r) 60s -
       a.e.d<!req(id:r3 body:ping res:ping_r) 60s -`);
     t('5_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
-      a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
+      a,b,c,d,e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
       rt_add(a:bcd d:ea)
       abcd>!req(id:r1 body:ping res:ping_r) 59s -
@@ -2407,7 +2406,7 @@ describe('peer-relay', function(){
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
     t('5_nodes_ring_range', `
       conf(rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
-      a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
+      a,b,c,d,e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
       ad>!req(id:r1 body:ping res:ping_r !e)
       ab[20-40]:ad>msg(id:r1 type:req body:ping)
@@ -2420,7 +2419,7 @@ describe('peer-relay', function(){
       ad<*res(id:r1 body:ping_r)`);
     if (0) // XXX: WIP
     t('5_nodes_ring_range_rev', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
-      a=node(wss) b=node(wss) c=node:wss d=node:wss e=node:wss
+      a,b,c,d,e=node:wss
       ab>!connect bc>!connect cd>!connect de>!connect ea>!connect
       ad<!req(id:r1 body:ping res:ping_r !e)
       de>fwd(ad<msg(id:r1 type:req body:ping) 50-10)
