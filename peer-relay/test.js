@@ -3051,21 +3051,21 @@ describe('peer-relay', function(){
         bc>!req(id:r2 body:ping res:ping_r)`);
     });
     describe('linear_wrtc', ()=>{
-      t('req', `mode:req a=node(wrtc) b=node(wrtc wss) c=node(wrtc wss) -
+      t('req', `mode:req a=node(wrtc) b,c=node(wrtc wss)
         ab>!connect(wss) - bc>!connect(wrtc)`);
-      t('msg', `mode:msg a=node(wrtc) b=node(wrtc wss) c=node(wrtc wss) -
+      t('msg', `mode:msg a=node(wrtc) b,c=node(wrtc wss)
         ab>!connect:wss - bc>!connect:wrtc`);
-      t('msg,req', `mode(msg req) a=node(wrtc) b=node(wrtc wss)
-        c=node(wrtc wss) - ab>!connect:wss`);
+      t('msg,req', `mode(msg req) a=node(wrtc) b,c=node(wrtc wss)
+        ab>!connect:wss - bc>!connect:wrtc`);
     });
     describe('linear_wss', ()=>{
       t('req', `mode:req setup:3_nodes_wss`);
       t('msg', `mode:msg setup:3_nodes_wss`);
       t('msg,req', `mode(msg req) setup:3_nodes_wss`);
       if (true) return; // XXX: TODO
-      t('star', `s=node(wss) a=node b=node(wss) as>!connect(find(a sa)) -
+      t('star', `s,b=node:wss a=node as>!connect(find(a sa)) -
         bs>!connect(find(bas sab)) bsa>*conn_info:r`);
-      t('star_wss', `s=node(wss) a=node(wss) b=node(wss) -
+      t('star_wss', `s,a,b=node:wss
         as>!connect(find(a sa)) - bs>!connect(find(bas sab))
         bsa>*conn_info(r:ws) ab<connect(find(bas abs))`);
     });
@@ -3201,20 +3201,6 @@ describe('peer-relay', function(){
       cb>!req(body:ping res:ping_r) - cd>!req(body:ping res:ping_r) -
       da>!req(body:ping res:ping_r) - db>!req(body:ping res:ping_r) -
       dc>!req(body:ping res:ping_r)`);
-    t = (name, test)=>t_roles(name, 'abcdef', test);
-    /* XXX derry BUG: eabc>!req(id:r2 body:ping res:ping_r) -
-       a---b---c---d
-       |
-       e---f
-    */
-    if (0) // XXX: fixme
-    t('xxx_bug', `a=node(wss) b=node(wss)
-      c=node(wss) d=node(wss) e=node(wss) f=node(wss) ab>!connect -
-      cd>!connect - bc>!connect - ef>!connect - ea>!connect -
-      eab>!req(id:r1 body:ping res:ping_r) -
-      ec>!req(id:r2 body:ping res:ping_r !e)
-      ef>fwd(ec>msg(id:r2 type:req body:ping)) 20s e>*fail(id:r2 error:timeout)
-    `);
   });
   describe('ring_connect', ()=>{
     let t = ()=>{}, s;
