@@ -986,11 +986,10 @@ function cmd_setup(opt){
       M(`setup:2_nodes c=node(wss) bc>!connect`);
       break;
     case '3_nodes_wss':
-      M(`setup:2_nodes_wss c=node(wss) bc>!connect ac>!connect`);
+      M(`setup:2_nodes_wss c=node(wss) bc,ac>!connect`);
       break;
     case '4_nodes_wss':
-      M(`setup(3_nodes_wss) d=node(wss) cd>!connect -
-      db>!connect da>!connect`);
+      M(`setup(3_nodes_wss) d=node(wss) cd,db,da>!connect`);
       break;
     default: assert(false, 'unknown macro '+m.cmd);
     }
@@ -2333,10 +2332,6 @@ describe('peer-relay', function(){
       ab>!req(body:ping res:ping_r)`);
     t('2_nodes_wss', `conf(id_bits:8) a,b=node:wss
       ab>!connect ab>!req(body:ping res:ping_r)`);
-    t('xxx', `conf(id_bits:8) a,b=node:wss
-      c=node(wss) ab>!connect bc>!connect a.b.c>!req(body:ping res:ping_r)`);
-    t('xxx2', `conf(id_bits:8) a,b,c=node:wss
-      rt_add(a:bc) ab>!connect bc>!connect abc>!req(body:ping res:ping_r)`);
     t('3_nodes', `conf(id_bits:8) a,b,c=node:wss ab>!connect
       ac>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r)`);
