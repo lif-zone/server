@@ -130,6 +130,8 @@ export default class Req extends EventEmitter {
     this.sent[seq].et_timeout = etask({'this': this}, function*req_timeout(){
       yield etask.sleep(timeout);
       delete this.this.sent[seq];
+      if (Req.t.fail_hook) // XXX NOW: mv to emit_ooo
+        Req.t.fail_hook({error: 'timeout', req_id, seq, req: this.this});
       this.this.emit('fail', {error: 'timeout', req_id, seq});
       // XXX: support per-req timeout and allow to specify if fatal or retry
       // XXX: close req

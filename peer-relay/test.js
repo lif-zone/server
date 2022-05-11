@@ -716,6 +716,13 @@ function req_send_hook(msg){
   cmd_run(_build_cmd(e, '', ''));
 }
 
+function fail_hook(o){
+  let id = typeof o.req_id=='string' && 'r'==o.req_id[0] ? o.req_id :
+    undefined;
+  let seq = o.req.stream ? o.seq : undefined;
+  cmd_run(build_cmd_o(o.req.node.t.name+'>*fail', {id, seq, error: o.error}));
+}
+
 function res_hook(msg){
   if (!t_mode.req || !t_mode.msg)
     return;
@@ -1367,16 +1374,12 @@ const cmd_req = opt=>etask(function*req(){
     if (type=='req'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
       let req = new Req({node: s, dst: b2s(d.id), req_id: id});
-      req.on('fail', o=>cmd_run(build_cmd_o(c.s+'>*fail',
-        {id: o.req_id, error: o.error})));
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send({seq, ack}, body);
     } else if (type=='req_start'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
       let req = new Req({node: s, stream: true, dst: b2s(d.id), req_id: id,
         cmd});
-      req.on('fail', o=>cmd_run(build_cmd_o(c.s+'>*fail',
-        {id: o.req_id, seq: o.seq, error: o.error})));
       if (emit_api){
         let cb = (o, opt)=>cmd_run(build_cmd_o(c.s+'>*'+o.type, {id: o.req_id,
           cmd: o.cmd,
@@ -1521,7 +1524,6 @@ const cmd_fail = opt=>etask(function*req(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  assert(id, 'fail missing id');
   assert(error, 'fail missing error');
   if (t_pre_process)
     return set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, seq, error}));
@@ -1744,12 +1746,14 @@ function test_setup_mode(){
     Req.t_send_hook = req_send_hook;
     ReqHandler.t_send_hook = res_send_hook;
     Req.t.res_hook = res_hook;
+    Req.t.fail_hook = fail_hook;
     ReqHandler.t.req_hook = req_hook;
   }
   else {
     delete ReqHandler.t_send_hook;
     delete Req.t_send_hook;
     delete Req.t.res_hook;
+    delete Req.t.fail_hook;
     delete ReqHandler.t.req_hook;
   }
   ReqHandler.t_new_res_hook = new_res_hook;
@@ -2481,26 +2485,36 @@ describe('peer-relay', function(){
     t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
-    // XXX: why there is no timeout error on missing res?!
     t('abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d.a-e>!get_peer(r:a)
+      e-e>!get_peer(r:a)
       eX:e-e>msg(type(req) cmd(get_peer))
       Xc:eX:e-e>msg(type(req) cmd(get_peer))
       cd:Xc:eX:e-e>msg(type(req) cmd(get_peer))
-      da:cd:Xc:eX:e-e>msg(type(req) cmd(get_peer))`);
+      da:cd:Xc:eX:e-e>msg(type(req) cmd(get_peer))
+      20s e>*fail(error:timeout)`);
     t('abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.b.a.d+e>!get_peer(r:d)
+      e+e>!get_peer(r:d)
       eX:e+e>msg(type(req) cmd(get_peer))
       Xb:eX:e+e>msg(type(req) cmd(get_peer))
       ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
-      ad:ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))`);
+      ad:ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
+      20s e>*fail(error:timeout)`);
       /* XXX BUG: missing events
       ad:ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
       Xb:eX:e+e>msg(type(req) cmd(get_peer))
       ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
       */
+    if (0) // XXX TODO
+    t('abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      eX.c.d.a-e>!get_peer(r:a)`);
+    if (0) // XXX TODO
+    t('abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      eX.b.a.d+e>!get_peer(r:d)`);
+    // XXX BUG: 2nd get_peer doesn't send all messages. bug in req tracking
     t('abXcde-XXX', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d.a-e>!get_peer(r:a)
@@ -2508,8 +2522,10 @@ describe('peer-relay', function(){
       Xc:eX:e-e>msg(type(req) cmd(get_peer))
       cd:Xc:eX:e-e>msg(type(req) cmd(get_peer))
       da:cd:Xc:eX:e-e>msg(type(req) cmd(get_peer)) -
+      20s e>*fail(error:timeout)
       eX.b.a.d+e>!get_peer(r:d)
-      eX:e+e>msg(type(req) cmd(get_peer))`);
+      eX:e+e>msg(type(req) cmd(get_peer))
+      20s e>*fail(error:timeout)`);
   });
   /* XXX derry: examples
   describe('get_peer', ()=>{
