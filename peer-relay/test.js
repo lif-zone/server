@@ -2482,16 +2482,34 @@ describe('peer-relay', function(){
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
     // XXX: why there is no timeout error on missing res?!
-    t('abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+    t('abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d>!req(body:ping res:ping_r)
-      eX.c.d.a>!req(body:ping res:ping_r)
-      eX.c.d.a+e>!get_peer(r:a)
+      eX.c.d.a-e>!get_peer(r:a)
+      eX:e-e>msg(type(req) cmd(get_peer))
+      Xc:eX:e-e>msg(type(req) cmd(get_peer))
+      cd:Xc:eX:e-e>msg(type(req) cmd(get_peer))
+      da:cd:Xc:eX:e-e>msg(type(req) cmd(get_peer))`);
+    t('abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      eX.b.a.d+e>!get_peer(r:d)
       eX:e+e>msg(type(req) cmd(get_peer))
-      Xc:eX:e+e>msg(type(req) cmd(get_peer))
-      cd:Xc:eX:e+e>msg(type(req) cmd(get_peer))
-      da:cd:Xc:eX:e+e>msg(type(req) cmd(get_peer))`);
-      // XXX: WIP eX.c.b.a.d-e>!get_peer(r:d)
+      Xb:eX:e+e>msg(type(req) cmd(get_peer))
+      ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
+      ad:ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))`);
+      /* XXX BUG: missing events
+      ad:ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
+      Xb:eX:e+e>msg(type(req) cmd(get_peer))
+      ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
+      */
+    t('abXcde-XXX', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      eX.c.d.a-e>!get_peer(r:a)
+      eX:e-e>msg(type(req) cmd(get_peer))
+      Xc:eX:e-e>msg(type(req) cmd(get_peer))
+      cd:Xc:eX:e-e>msg(type(req) cmd(get_peer))
+      da:cd:Xc:eX:e-e>msg(type(req) cmd(get_peer)) -
+      eX.b.a.d+e>!get_peer(r:d)
+      eX:e+e>msg(type(req) cmd(get_peer))`);
   });
   /* XXX derry: examples
   describe('get_peer', ()=>{

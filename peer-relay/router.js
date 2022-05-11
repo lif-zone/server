@@ -53,9 +53,12 @@ export default class Router extends EventEmitter {
       return xerr('drop msg max hop reached');
     if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(lbuffer);
-    if (msg.fuzzy && buf_util.in_range(
-      {min: s2b(msg0.from), max: s2b(msg0.to)}, s2b(msg.to))){
-      return;
+    if (msg.fuzzy=='-' && buf_util.in_range(
+      {min: s2b(msg0.from), max: s2b(msg0.to)}, s2b(msg.to)) ||
+      msg.fuzzy=='+' && buf_util.in_range(
+      {min: s2b(msg0.to), max: s2b(msg0.from)}, s2b(msg.to))
+      ){
+        return;
     }
     if (channel = _this.get_channel_from_rt(msg));
     else if ((rt = _this.get_route(msg.to)) &&
@@ -64,7 +67,7 @@ export default class Router extends EventEmitter {
     else {
       channel = _this._channels.get_closest(msg.to,
         {range: xutil.get(msg, ['rt', 'range']), exclude: msg0.from,
-        fuzzy: msg.fuzzy});
+        bigger: msg.fuzzy=='+'});
     }
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg
