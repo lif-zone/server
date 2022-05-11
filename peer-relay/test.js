@@ -1996,16 +1996,20 @@ describe('buf_util', ()=>{
     t({min: 10, max: 10}, 9, true);
     t({min: 10, max: 10}, 10, false);
     t({min: 10, max: 10}, 11, true);
+    t({min: 25, max: 30}, 50, false);
+    t({min: 30, max: 40}, 50, false);
+    t({min: 40, max: 10}, 50, true);
   });
 });
 
 describe('channels', ()=>{
   const v = val=>hash_from_int(val, 8, ID_BITS);
+  const inv = val=>int_from_hash(val, 8, ID_BITS);
   it('get_closest', ()=>{
     const t = (a, val, exp, range, exclude)=>{
       let channels = new Channels();
       a.forEach(id=>channels.add(new FakeWsConnector(s2b(v(id)))));
-      let ch = channels.get_closest(v(val), range, exclude&&{exclude});
+      let ch = channels.get_closest(v(val), {range, exclude});
       assert.equal(ch ? b2s(ch.id) : '', exp ? v(exp) : '');
     };
     t([], 10, '');
@@ -2031,6 +2035,36 @@ describe('channels', ()=>{
     t([10, 15, 20], 20, 20);
     t([10, 15, 20], 21, 20);
     t([20, 40], 10, 40);
+  });
+  it('get_closest2', ()=>{
+    const t = (nodes, val, opt, exp)=>{
+      val = parseInt(val);
+      let a = nodes.split(' ');
+      a.forEach((s, i)=>a[i] = +s);
+      let channels = new Channels();
+      a.forEach(id=>channels.add(new FakeWsConnector(s2b(v(id)))));
+      let ch = channels.get_closest(v(val), opt);
+      assert.equal(ch ? inv(b2s(ch.id)) : '', exp ? inv(v(exp)) : '');
+    };
+    t('10 15 20', 9, {}, 20);
+    t('10 20 25 30 40 50', 26, {}, 25);
+    t('10 20 25 30 40 50', 24, {}, 20);
+    t('10 20 25 30 40 50', 25, {}, 25);
+    t('10 20 25 30 40 50', 25, {bigger: true}, 25);
+    t('10 20 25 30 40 50', 25, {skip_self: true}, 20);
+    t('10 20 25 30 40 50', 25, {skip_self: true, bigger: true}, 30);
+    t('10 20 25 30 40 50', 50, {}, 50);
+    t('10 20 25 30 40 50', 50, {bigger: true}, 50);
+    t('10 20 25 30 40 50', 50, {skip_self: true}, 40);
+    t('10 20 25 30 40 50', 50, {skip_self: true, bigger: true}, 10);
+//    t('10 20 50', 50, {fuzzy: true}, '');
+/*
+    25 -> 30 -> 40 -> 10
+    src: 40 dst:50 now:a
+
+    40 50 10
+    if (buf_util.in_range({min: 40, max: 10}, 50
+*/
   });
 });
 
@@ -2447,7 +2481,7 @@ describe('peer-relay', function(){
     t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
-    if (0) // XXX: WIP
+    // XXX: why there is no timeout error on missing res?!
     t('abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r)
@@ -2456,8 +2490,7 @@ describe('peer-relay', function(){
       eX:e+e>msg(type(req) cmd(get_peer))
       Xc:eX:e+e>msg(type(req) cmd(get_peer))
       cd:Xc:eX:e+e>msg(type(req) cmd(get_peer))
-      da:cd:Xc:eX:e+e>msg(type(req) cmd(get_peer))
-      `);
+      da:cd:Xc:eX:e+e>msg(type(req) cmd(get_peer))`);
       // XXX: WIP eX.c.b.a.d-e>!get_peer(r:d)
   });
   /* XXX derry: examples

@@ -44,9 +44,11 @@ export default class Channels extends EventEmitter {
       a.push(this.map[id]);
     return a;
   }
-  get_closest(id, range, opt){
+  get_closest(id, opt){
     opt = opt||{};
-    let exclude = opt.exclude && s2b(opt.exclude);
+    let {range, skip_self, bigger} = opt;
+    let exclude = opt.exclude &&
+      (typeof opt.exclude=='string' ? s2b(opt.exclude) : opt.exclude);
     id = typeof id=='string' ? s2b(id) : id;
     // XXX: wrap it in buf_util.js
     range = range &&
@@ -59,12 +61,15 @@ export default class Channels extends EventEmitter {
         continue;
       if (range && !buf_util.in_range(range, ch.id))
         continue;
-      if (!ch.id.compare(id)){
+      if (!skip_self && !ch.id.compare(id)){
         best = ch;
         break;
       }
-      else if (ch.id.compare(id)<0 && (!best || best.id.compare(ch.id)<0))
+      else if (
+        !bigger && ch.id.compare(id)<0 && (!best || best.id.compare(ch.id)<0)||
+        bigger && ch.id.compare(id)>0 && (!best || best.id.compare(ch.id)>0)){
         best = ch;
+      }
     }
     if (best)
       return best;
@@ -75,10 +80,13 @@ export default class Channels extends EventEmitter {
         continue;
       if (range && !buf_util.in_range(range, ch.id))
         continue;
-      if (!best)
+      if (!best){
         best = ch;
-      else if (ch.id.compare(best.id)>0)
+      }
+      else if (!bigger && ch.id.compare(best.id)>0 ||
+        bigger && ch.id.compare(best.id)<0){
         best = ch;
+      }
     }
     return best;
   }

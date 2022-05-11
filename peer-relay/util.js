@@ -33,3 +33,4 @@ export function path_eq(p1, p2){
   for (let i=0; i<p1.length && p1[i]==p2[i]; i++)
   return i==p1.length;
 }
+

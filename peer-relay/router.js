@@ -5,12 +5,14 @@ import assert from 'assert';
 import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import date from '../util/date.js';
+import buf_util from './buf_util.js';
 import xutil from '../util/util.js';
 import {dbg_msg, path_eq} from './util.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
 const log = xlog('router');
-const b2s = xutil.buf_to_str, stringify = JSON.stringify;
+const b2s = xutil.buf_to_str, s2b = xutil.buf_from_str;
+const stringify = JSON.stringify;
 
 // XXX: need safe emit support
 export default class Router extends EventEmitter {
@@ -51,13 +53,18 @@ export default class Router extends EventEmitter {
       return xerr('drop msg max hop reached');
     if (!_this._channels.count) // XXX: verify and test it
       return _this._queue.push(lbuffer);
+    if (msg.fuzzy && buf_util.in_range(
+      {min: s2b(msg0.from), max: s2b(msg0.to)}, s2b(msg.to))){
+      return;
+    }
     if (channel = _this.get_channel_from_rt(msg));
     else if ((rt = _this.get_route(msg.to)) &&
       (channel = _this.get_channel_from_path(rt.path)));
     else if (!msg.fuzzy && (channel = _this.get_channel_from_state(msg)));
     else {
       channel = _this._channels.get_closest(msg.to,
-        xutil.get(msg, ['rt', 'range']), {exclude: msg0.from});
+        {range: xutil.get(msg, ['rt', 'range']), exclude: msg0.from,
+        fuzzy: msg.fuzzy});
     }
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg
