@@ -226,7 +226,7 @@ function rev_c(c){ return rev_trim(dir_str(c.s, c.d, c.dir)); }
 
 function loop_str(loop){
   let s = loop[0].s;
-  loop.forEach(o=>s+=(o.dot ? '.' : '')+o.d);
+  loop.forEach(o=>s+=/[+-]/.test(o.d) ? '' : (o.dot ? '.' : '')+o.d);
   return s;
 }
 
@@ -1211,8 +1211,15 @@ const cmd_get_peer = opt=>etask(function*cmd_get_peer(){
   let {c, event} = opt, s = N(c.s), d = N(c.d, {fuzzy: true});
   let fuzzy = get_fuzzy(c.d);
   assert(!event, 'unexpected event for get_peer '+event);
-  if (t_pre_process)
+  if (t_pre_process){
+    if (c.loop){
+      let s = build_cmd_o(c.s+c.d+'>!get_peer');
+      s += t_mode.msg ? ' '+build_cmd(loop_str(c.loop)+'>fwd',
+        build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'get_peer'})) : '';
+      set_push_cmd(c, s);
+    }
     return;
+  }
   if (!s.t.fake)
     s.get_peer(b2s(d.id), {fuzzy});
   yield cmd_run_if_next_fake();
@@ -2178,7 +2185,8 @@ describe('peer-relay', function(){
           }
         }));
         const t = (test, exp)=>_t('', test, exp);
-        const T = (test, exp)=>_t('', test, exp, true);
+        const _T = (mode, test, exp)=>_t(mode, test, exp, true);
+        const T = (test, exp)=>_T('', test, exp);
         t('1ms', `ms(1)`);
         t('12ms', `ms(12)`);
         t('1s', `ms(1000)`);
@@ -2221,8 +2229,10 @@ describe('peer-relay', function(){
           ab<fwd(bc<fwd(ac<msg(body(x)) rt(a)))`);
         t('abc<fwd(ac>msg(body:x))', `bc<fwd(ac>msg(body(x)) rt(a))
           ab<fwd(bc<fwd(ac>msg(body(x)) rt(a)))`);
-        t('a-b>!get_peer', 'a-b>!get_peer');
-        t('a+b>!get_peer', 'a+b>!get_peer');
+        t('a-b>!get_peer', `a-b>!get_peer`);
+        t('a+b>!get_peer', `a+b>!get_peer`);
+        _T('mode(msg req)', 'a.b+c>!get_peer', `a+c>!get_peer
+          ab:a+c>msg(type:req cmd:get_peer)`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
@@ -2501,29 +2511,25 @@ describe('peer-relay', function(){
       ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
       ad:ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
       20s e>*fail(error:timeout)`);
-      /* XXX BUG: missing events
-      ad:ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
-      Xb:eX:e+e>msg(type(req) cmd(get_peer))
-      ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
-      */
-    if (0) // XXX TODO
     t('abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d.a-e>!get_peer(r:a)`);
-    if (0) // XXX TODO
+      eX.c.d.a-e>!get_peer(r:a) 20s e>*fail(error:timeout)`);
     t('abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.b.a.d+e>!get_peer(r:d)`);
-    // XXX BUG: 2nd get_peer doesn't send all messages. bug in req tracking
+      eX.b.a.d+e>!get_peer(r:d) 20s e>*fail(error:timeout)`);
+    // XXX BUG: 2nd get_peer missing events (bug in req tracking):
+    // ad:ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
+    // Xb:eX:e+e>msg(type(req) cmd(get_peer))
+    // ba:Xb:eX:e+e>msg(type(req) cmd(get_peer))
     t('abXcde-XXX', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d.a-e>!get_peer(r:a)
+      e-e>!get_peer(r:a)
       eX:e-e>msg(type(req) cmd(get_peer))
       Xc:eX:e-e>msg(type(req) cmd(get_peer))
       cd:Xc:eX:e-e>msg(type(req) cmd(get_peer))
       da:cd:Xc:eX:e-e>msg(type(req) cmd(get_peer)) -
       20s e>*fail(error:timeout)
-      eX.b.a.d+e>!get_peer(r:d)
+      e+e>!get_peer(r:d)
       eX:e+e>msg(type(req) cmd(get_peer))
       20s e>*fail(error:timeout)`);
   });
