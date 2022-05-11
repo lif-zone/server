@@ -28,7 +28,16 @@ const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
-function N(name){
+function get_fuzzy(name){
+  if (name && /[+-]/.test(name[0]))
+    return name[0];
+  return '';
+}
+
+function N(name, opt){
+  opt = opt||{};
+  if (opt.fuzzy)
+    assert(get_fuzzy(name), 'must be fuzzy '+name);
   if (!name)
     return;
   name = /[+-]/.test(name[0]) ? name[1] : name;
@@ -592,8 +601,9 @@ class FakeChannel extends EventEmitter {
     if (!t_mode.msg)
       return;
     let e, fwd = fwd_from_lbuffer(lbuffer);
-    let {req_id, type, cmd, ack, seq, body, nonce} = msg;
+    let {fuzzy, req_id, type, cmd, ack, seq, body, nonce} = msg;
     cmd = cmd||'';
+    fuzzy = fuzzy||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
     assert(lbuffer.nonce(), 'missing msg nonce '+data);
     t_path[nonce] = lbuffer.path();
@@ -604,6 +614,7 @@ class FakeChannel extends EventEmitter {
       case 'req':
         switch (cmd){
         case 'conn_info': body= ''; break;
+        case 'get_peer': body= ''; break;
         case '': break;
         default: assert(0, 'invalid cmd '+cmd);
         }
@@ -619,8 +630,9 @@ class FakeChannel extends EventEmitter {
         'res_next', 'req_end', 'res_end'].includes(type),
         'unexpected msg type '+type);
       }
-      e = build_cmd_o(from.t.name+to.t.name+'>msg', {id: test_req_id(req_id),
-        type, cmd, seq, ack: ack && ack.join(','), body});
+      e = build_cmd_o(from.t.name+fuzzy+to.t.name+'>msg',
+        {id: test_req_id(req_id), type, cmd, seq, ack: ack && ack.join(','),
+        body});
       if (fwd){
         let path = [msg.from];
         let i = lbuffer.count()-2;
@@ -861,10 +873,12 @@ function fake_emit(c, msg){
 }
 
 const fake_send_msg = (c, msg)=>etask(function*(){
-  let s = N(c.s), d = N(c.d), f = s, t = d;
+  let s = N(c.s), d = N(c.d), f = s, t = d, fuzzy = get_fuzzy(c.d);
   let to = b2s(d.id), from = b2s(s.id);
   msg.to = to;
   msg.from = from;
+  if (fuzzy)
+    msg.fuzzy = fuzzy;
   let nonce = t_nonce[nonce_hash(msg)] = t_nonce[nonce_hash(msg)]||
     ''+Math.floor(1e15 * Math.random());
   assign(msg, {to, from, nonce, path: [from]});
@@ -1186,11 +1200,15 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
   fake_emit(c, {type: 'res', cmd: 'conn_info', body: {ws, wrtc}});
 });
 
-const cmd_get_peer = opt=>etask(function cmd_get_peer(){
-  let {c, event} = opt;
+const cmd_get_peer = opt=>etask(function*cmd_get_peer(){
+  let {c, event} = opt, s = N(c.s), d = N(c.d, {fuzzy: true});
+  let fuzzy = get_fuzzy(c.d);
   assert(!event, 'unexpected event for get_peer '+event);
   if (t_pre_process)
     return;
+  if (!s.t.fake)
+    s.get_peer(b2s(d.id), {fuzzy});
+  yield cmd_run_if_next_fake();
 });
 
 const cmd_msg = opt=>etask(function*cmd_msg(){
@@ -1234,6 +1252,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   if (type=='req'){
     switch (cmd){
     case 'conn_info': break;
+    case 'get_peer': break;
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
     }
@@ -1986,7 +2005,7 @@ describe('channels', ()=>{
     const t = (a, val, exp, range, exclude)=>{
       let channels = new Channels();
       a.forEach(id=>channels.add(new FakeWsConnector(s2b(v(id)))));
-      let ch = channels.get_closest(v(val), range, exclude);
+      let ch = channels.get_closest(v(val), range, exclude&&{exclude});
       assert.equal(ch ? b2s(ch.id) : '', exp ? v(exp) : '');
     };
     t([], 10, '');
@@ -2423,13 +2442,23 @@ describe('peer-relay', function(){
   });
   describe('get_peer', ()=>{
     let t = (name, test)=>t_roles(name, 'abXcde', test);
+    // XXX: add test with previoues request to check behavior when there is
+    // already a routing state
+    t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
+    if (0) // XXX: WIP
     t('abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r)
       eX.c.d.a>!req(body:ping res:ping_r)
       eX.c.d.a+e>!get_peer(r:a)
-      eX.c.b.a.d-e>!get_peer(r:d)
+      eX:e+e>msg(type(req) cmd(get_peer))
+      Xc:eX:e+e>msg(type(req) cmd(get_peer))
+      cd:Xc:eX:e+e>msg(type(req) cmd(get_peer))
+      da:cd:Xc:eX:e+e>msg(type(req) cmd(get_peer))
       `);
+      // XXX: WIP eX.c.b.a.d-e>!get_peer(r:d)
   });
   /* XXX derry: examples
   describe('get_peer', ()=>{

@@ -44,9 +44,10 @@ export default class Channels extends EventEmitter {
       a.push(this.map[id]);
     return a;
   }
-  get_closest(id, range, exclude){
+  get_closest(id, range, opt){
+    opt = opt||{};
+    let exclude = opt.exclude && s2b(opt.exclude);
     id = typeof id=='string' ? s2b(id) : id;
-    exclude = exclude && (typeof exclude=='string' ? s2b(exclude) : exclude);
     // XXX: wrap it in buf_util.js
     range = range &&
       {min: typeof range.min=='string' ? s2b(range.min) : range.min,

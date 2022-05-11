@@ -54,10 +54,10 @@ export default class Router extends EventEmitter {
     if (channel = _this.get_channel_from_rt(msg));
     else if ((rt = _this.get_route(msg.to)) &&
       (channel = _this.get_channel_from_path(rt.path)));
-    else if (channel = _this.get_channel_from_state(msg));
+    else if (!msg.fuzzy && (channel = _this.get_channel_from_state(msg)));
     else {
       channel = _this._channels.get_closest(msg.to,
-        xutil.get(msg, ['rt', 'range']), msg0.from);
+        xutil.get(msg, ['rt', 'range']), {exclude: msg0.from});
     }
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg

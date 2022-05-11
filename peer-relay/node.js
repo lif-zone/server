@@ -143,7 +143,11 @@ export default class Node extends EventEmitter {
     for (var i = 0; i < peers.length; i++)
       peers[i].destroy();
   }
-  get_peers(){ return this.peers; }
+  get_peer(dst, opt){
+    let req = new Req({node: this, dst, fuzzy: opt.fuzzy, cmd: 'get_peer'});
+    req.send('');
+    return req;
+  }
 }
 Node.WsConnector = WsConnector;
 Node.WrtcConnector = WrtcConnector;
