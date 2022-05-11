@@ -28,6 +28,16 @@ const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
 function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
 
+function N(name){
+  if (!name)
+    return;
+  name = /[+-]/.test(name[0]) ? name[1] : name;
+  assert(/^[a-zA-Z]$/.test(name), 'invalid name '+name);
+  let node = t_nodes[name];
+  assert(node, 'missing node '+name);
+  return node;
+}
+
 // XXX: make it automatic for all node/browser in proc.js
 xerr.set_exception_catch_all(true);
 process.on('uncaughtException', err=>xerr.xexit(err));
@@ -88,14 +98,14 @@ function fwd_s_id(fwd, i){
   i = i||0;
   if (typeof fwd=='string')
     fwd = [fwd];
-  return b2s(t_nodes[fwd_s(fwd, i)].id);
+  return b2s(N(fwd_s(fwd, i)).id);
 }
 
 function fwd_d_id(fwd, i){
   i = i||0;
   if (typeof fwd=='string')
     fwd = [fwd];
-  return b2s(t_nodes[fwd_d(fwd, i)].id);
+  return b2s(N(fwd_d(fwd, i)).id);
 }
 
 function nonce_hash(msg){
@@ -114,7 +124,7 @@ function conn_opts(body){
 
 function conn_opts_from_node(node){
   let a = [];
-  node = typeof node=='string' ? t_nodes[node] : node;
+  node = typeof node=='string' ? N(node) : node;
   if (support_wss(node))
     a.push('ws');
   if (support_wrtc(node))
@@ -246,7 +256,7 @@ function wss_from_node(node){ return util.get(node, 't.wss.url'); }
 
 function node_from_url(url){
   for (let name in t_nodes){
-    let node = t_nodes[name];
+    let node = N(name);
     if (node.t.wss && wss_from_node(node)==url)
       return node;
   }
@@ -257,7 +267,7 @@ function support_wrtc(node){ return node.wrtcConnector.supported; }
 
 function node_from_id(id){
   for (let name in t_nodes){
-    let node = t_nodes[name];
+    let node = N(name);
     if (node.t.id == _str(id))
       return node;
   }
@@ -292,7 +302,7 @@ function assert_ack(val){
   return a;
 }
 
-function assert_exist(name){ assert(t_nodes[name], 'node not found '+name); }
+function assert_exist(name){ assert(N(name), 'node not found '+name); }
 
 function assert_not_exist(name){
   assert(!t_nodes[name], 'node already exist '+name); }
@@ -325,7 +335,7 @@ function assert_rt(s, dir){
 }
 
 function assert_support_wrtc(name){
-  assert(support_wrtc(t_nodes[name]), 'node '+name+' does not support wrtc');
+  assert(support_wrtc(N(name)), 'node '+name+' does not support wrtc');
   return true;
 }
 
@@ -352,7 +362,7 @@ function assert_wrtc(val){
 function assert_wss_url(d, val){
   let wss;
   if (!val)
-    wss = t_nodes[d].wsConnector.url;
+    wss = N(d).wsConnector.url;
   else {
     assert(!d);
     wss = val;
@@ -366,7 +376,7 @@ function assert_bootstrap(val){
   let bootstrap = [];
   let a = val.split(' ');
   a.forEach(name=>{
-    let node = t_nodes[name];
+    let node = N(name);
     assert(node, 'node not found '+name);
     let url = wss_from_node(node);
     assert(url, 'no url for '+name);
@@ -379,7 +389,7 @@ function assert_bootstrap(val){
 function assert_peers(peers){
   let a = peers.split(',');
   assert(a.length>0, 'no peers specified');
-  a.forEach(name=>assert(t_nodes[name], 'node not found '+name+'/'+peers));
+  a.forEach(name=>assert(N(name), 'node not found '+name+'/'+peers));
 }
 */
 
@@ -424,9 +434,9 @@ function assert_event_c2(c, orig, fwd, event, call){
 }
 
 function assert_missing_event(c){
-  let s = t_nodes[c.s], d = t_nodes[c.d];
+  let s = N(c.s), d = N(c.d);
   if (c.fwd)
-    s = t_nodes[fwd_s(c.fwd, 0)];
+    s = N(fwd_s(c.fwd, 0));
   assert(s, 'fwd node not found '+stringify(c.fwd)+' '+c.orig);
   if (c.cmd[0]=='*' && (t_mode.msg || !t_mode.req))
     assert(!s.t.fake || !d || d.t.fake, 'missing event for '+c.orig);
@@ -782,7 +792,7 @@ function path_to_str(path, dir){
 function id_to_name(id){ return node_from_id(id).t.name; }
 
 // XXX: cleanup all code
-function name_to_id(name){ return b2s(t_nodes[name].id); }
+function name_to_id(name){ return b2s(N(name).id); }
 
 /* XXX: decide if to remove
 function array_id_to_name(a){
@@ -795,14 +805,14 @@ function array_name_to_id(a){
   let ret = [];
   a.forEach(name=>{
     assert_exist(name);
-    ret.push(util.buf_to_str(t_nodes[name].id));
+    ret.push(util.buf_to_str(N(name).id));
   });
   return ret;
 }
 */
 
 function node_get_channel(_s, _d){
-  let s = t_nodes[_s], d = t_nodes[_d];
+  let s = N(_s), d = N(_d);
   return d.peers.get(s.id);
 }
 
@@ -810,7 +820,7 @@ const send_msg = (s, d, lbuffer)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   if (!channel)
     return xerr('no channel '+s+d+'>');
-  yield t_nodes[d].router._on_channel_msg(lbuffer.to_str(), channel);
+  yield N(d).router._on_channel_msg(lbuffer.to_str(), channel);
 });
 
 function fake_emit(c, msg){
@@ -818,7 +828,7 @@ function fake_emit(c, msg){
     return;
   if (t_mode.msg) // XXX: TODO
     return;
-  let s = t_nodes[c.s], d = t_nodes[c.d], f = s, t = d;
+  let s = N(c.s), d = N(c.d), f = s, t = d;
   let to = b2s(d.id), from = b2s(s.id);
   msg.to = to;
   msg.from = from;
@@ -851,7 +861,7 @@ function fake_emit(c, msg){
 }
 
 const fake_send_msg = (c, msg)=>etask(function*(){
-  let s = t_nodes[c.s], d = t_nodes[c.d], f = s, t = d;
+  let s = N(c.s), d = N(c.d), f = s, t = d;
   let to = b2s(d.id), from = b2s(s.id);
   msg.to = to;
   msg.from = from;
@@ -859,8 +869,8 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     ''+Math.floor(1e15 * Math.random());
   assign(msg, {to, from, nonce, path: [from]});
   if (c.fwd){ // XXX: WIP
-    s = t_nodes[fwd_s(c.fwd, 0)];
-    d = t_nodes[fwd_d(c.fwd, 0)];
+    s = N(fwd_s(c.fwd, 0));
+    d = N(fwd_d(c.fwd, 0));
   }
   t_path[nonce] = t_path[nonce]||[];
   t_path[nonce].push(b2s(s.id));
@@ -951,7 +961,7 @@ function cmd_rt_add(opt){
   let routes = {};
   assert(!event, 'got unexpected '+event);
   util.forEach(arg, a=>{
-    let node = t_nodes[a.cmd];
+    let node = N(a.cmd);
     assert(node, 'invalid rt_add '+a.cmd);
     let path = assert_path(a.arg);
     assert(path[0]!=b2s(node.id), 'route cannot contain node '+node.t.name);
@@ -963,7 +973,7 @@ function cmd_rt_add(opt){
   if (t_pre_process)
     return;
   util.forEach(routes, (o, n)=>{
-    o.forEach(path=>t_nodes[n].router.add_route(path));
+    o.forEach(path=>N(n).router.add_route(path));
   });
 }
 
@@ -1036,7 +1046,7 @@ function cmd_node(opt){
 // once a gets b.id, it emits 'connection' - we emit ab>connect
 // once b gets a.id, it emits 'connection' - we emit ab<connected
 const cmd_connect = opt=>etask(function*(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s = N(c.s), d = N(c.d);
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd[0]=='!';
   let r = true;
   util.forEach(arg, a=>{
@@ -1142,7 +1152,7 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
 });
 
 const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
-  let {c, event} = opt, s = t_nodes[c.s], basic = !/[*!]/.test(c.cmd[0]);
+  let {c, event} = opt, s = N(c.s), basic = !/[*!]/.test(c.cmd[0]);
   let arg = xtest.test_parse(c.arg), ws, wrtc;
   util.forEach(arg, a=>{
     switch (a.cmd){
@@ -1177,10 +1187,14 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
 });
 
 const cmd_get_peer = opt=>etask(function cmd_get_peer(){
+  let {c, event} = opt;
+  assert(!event, 'unexpected event for get_peer '+event);
+  if (t_pre_process)
+    return;
 });
 
 const cmd_msg = opt=>etask(function*cmd_msg(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse(c.arg), body;
   let id, type, cmd, seq, ack, a;
@@ -1250,7 +1264,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
 });
 
 const cmd_req = opt=>etask(function*req(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d], seq, ack;
+  let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
   assert(t_pre_process||!c.loop);
   let emit_api=false, ooo=false, dup=false, close=false;
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
@@ -1401,7 +1415,7 @@ const cmd_req = opt=>etask(function*req(){
 });
 
 const cmd_res = opt=>etask(function*req(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(t_pre_process||!c.loop);
   let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
   let type = c.cmd.replace(/[!*]/, ''), cmd='', seq, ack, e=call;
@@ -1477,7 +1491,7 @@ const cmd_res = opt=>etask(function*req(){
 });
 
 const cmd_fail = opt=>etask(function*req(){
-  let {c, event} = opt, s = t_nodes[c.s], d = t_nodes[c.d];
+  let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && !d, 'invalid event '+c.orig);
   let error, id, seq, arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
@@ -1652,11 +1666,11 @@ const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
     return;
   let next = t_cmds[t_i];
   if (next && next.s && next.cmd[0]=='*' && (t_mode.msg || !t_mode.req)){
-    if (!next.d || !t_nodes[next.d].t.fake)
+    if (!next.d || !N(next.d).t.fake)
       return;
     return yield cmd_run();
   }
-  if (!next || !next.s || !t_nodes[next.s].t.fake)
+  if (!next || !next.s || !N(next.s).t.fake)
     return;
   yield cmd_run();
 });
@@ -2413,8 +2427,8 @@ describe('peer-relay', function(){
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r)
       eX.c.d.a>!req(body:ping res:ping_r)
-      eX.c.d.a+e>!get_peer(+e r:a)
-      eX.c.b.a.d-e>!get_peer(+e r:d)
+      eX.c.d.a+e>!get_peer(r:a)
+      eX.c.b.a.d-e>!get_peer(r:d)
       `);
   });
   /* XXX derry: examples
