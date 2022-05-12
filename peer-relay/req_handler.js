@@ -148,7 +148,7 @@ function req_handler_cb(lbuffer){
   let req_handler = util.get(nodes, [id, 'cmd', cmd, 'req_handler']);
   if (!req_handler)
     return;
-  req_handler.rt = {path: Array.from(msg.path)};
+  req_handler.rt = {path: lbuffer.path()};
   req_handler.rt.path.reverse();
   let res = util.get(nodes, [id, 'req_id', req_id, 'res']);
   if (!res){

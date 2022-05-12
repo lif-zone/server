@@ -53,7 +53,7 @@ process.on('uncaughtException', err=>xerr.xexit(err));
 process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
-let t_nodes = {}, t_msg, t_nonce, t_path;
+let t_nodes = {}, t_msg, t_nonce;
 let t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id, t_ack;
 let t_reprocess, t_conf, t_req_id_last;
@@ -604,12 +604,11 @@ class FakeChannel extends EventEmitter {
     if (!t_mode.msg)
       return;
     let e, fwd = fwd_from_lbuffer(lbuffer);
-    let {fuzzy, req_id, type, cmd, ack, seq, body, nonce} = msg;
+    let {fuzzy, req_id, type, cmd, ack, seq, body} = msg;
     cmd = cmd||'';
     fuzzy = fuzzy||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
     assert(lbuffer.nonce(), 'missing msg nonce '+data);
-    t_path[nonce] = lbuffer.path();
     xerr.notice('*** send%s msg %s %s', fwd ? ' fwd '+fwd : '',
       from.t.name+to.t.name+'>'+cmd, stringify(msg));
     return etask(function*send(){
@@ -903,9 +902,6 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     s = N(fwd_s(c.fwd, 0));
     d = N(fwd_d(c.fwd, 0));
   }
-  t_path[nonce] = t_path[nonce]||[];
-  t_path[nonce].push(b2s(s.id));
-  msg.path = Array.from(t_path[nonce]);
   if (s.t.fake && !d.t.fake) // XXX: enough to check that !d.t.fake
   {
     // XXX NOW: 1. fix logic (handle req_start/res_start/....)
@@ -1569,7 +1565,6 @@ const cmd_fail = opt=>etask(function*req(){
 });
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
-  // XXX NOW: simplify implementation
   let {c, event} = opt;
   let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, path;
   util.forEach(arg, a=>{
@@ -1581,9 +1576,9 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   });
   f.fwd = Array.from(c.fwd||[]);
   f.fwd.push(dir_c(c));
-  f.path2 = Array.from(c.path2||[]); // XXX: rm from here
+  f.path2 = Array.from(c.path2||[]); // XXX: rm from here!
   f.path2.push(path);
-  f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here
+  f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here!
   f.rt2.push(rt);
   if (t_pre_process){
     if (c.loop)
@@ -1773,7 +1768,6 @@ function test_start(role){
   t_cmds = undefined;
   t_cmds_processed = [];
   t_nonce = {};
-  t_path = {};
   t_req = {};
   t_conf = {};
   set_id_bits(10);
