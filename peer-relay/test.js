@@ -865,10 +865,10 @@ function fake_emit(c, msg){
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
   assert(!c.fwd, 'fwd not allowed in fake_emit');
+  assert(msg.req_id, 'missing req_id');
+  track_msg(msg);
   if (!d.t.fake)
   {
-    assert(msg.req_id, 'missing req_id');
-    track_msg(msg);
     let lbuffer = new LBuffer(msg); // XXX WIP
     if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
       ReqHandler.t.req_handler_cb.call(d.router, lbuffer);
