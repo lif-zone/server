@@ -23,7 +23,7 @@ function res_handler(lbuffer){
     return;
   // XXX: if final response, remove from this.reqs
   if (!reqs[req_id]) // XXX: change to LERR
-    return log.notice('req not found %s', req_id);
+    return log('req not found %s', req_id);
   if (!Number.isInteger(seq) || seq<0)
     return log('invalid seq '+seq);
   log.debug('msg %s', dbg_msg(msg));

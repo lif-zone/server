@@ -900,10 +900,10 @@ const fake_send_msg = (c, msg)=>etask(function*(){
       // XXX HACK: we use t_req_id_last to handle fuzzy. in fuzzy a-a>req
       // but the response is sent from uknown node.
       msg.req_id = msg.req_id||t_req_id_last;
-    assert(msg.req_id, 'missing req_id');
+      assert(msg.req_id, 'missing req_id');
     }
-    msg.sign = node_from_id(from).wallet.sign(msg);
     track_msg(msg);
+    msg.sign = node_from_id(from).wallet.sign(msg);
     let lbuffer = new LBuffer(msg); // XXX: WIP
     if (c.fwd){
       for (let i=c.fwd.length-1; i>=0; i--){
