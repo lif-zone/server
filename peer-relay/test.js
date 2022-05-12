@@ -900,6 +900,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     else if (msg.type=='res'){
       msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
         cmd: msg.cmd});
+    assert(msg.req_id, 'missing req_id');
     }
     msg.sign = node_from_id(from).wallet.sign(msg);
     track_msg(msg);
