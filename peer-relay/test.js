@@ -495,7 +495,11 @@ function track_seq_res(s, d, id, type, seq, call){
   return seq===undefined ? t_req[id].res.seq : seq;
 }
 
-function ack_hash(s, d, req_id){ return s+'_'+d+'_'+req_id; }
+function ack_hash(s, d, req_id){
+ // if (t_mode.msg)
+//    assert(req_id, 'missing req_id');
+  return s+'_'+d+'_'+req_id;
+}
 
 // XXX: unite with nonce and use t_req instead of t_ack/t_msg
 function track_msg(msg){
@@ -855,8 +859,7 @@ function fake_emit(c, msg){
     return;
   if (t_mode.msg) // XXX: TODO
     return;
-  let s = N(c.s), d = N(c.d), f = s, t = d;
-  let to = b2s(d.id), from = b2s(s.id);
+  let s = N(c.s), d = N(c.d), to = b2s(d.id), from = b2s(s.id);
   msg.to = to;
   msg.from = from;
   let nonce = t_nonce[nonce_hash(msg)];
@@ -866,18 +869,7 @@ function fake_emit(c, msg){
   assert(!c.fwd, 'fwd not allowed in fake_emit');
   if (s.t.fake && !d.t.fake)
   {
-    if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
-      msg.req_id = msg.req_id || ++t_req_id+'';
-    else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
-      if (node_from_id(msg.from).t.fake && !node_from_id(msg.to).t.fake){
-        msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
-          cmd: msg.cmd});
-      }
-    }
-    else
-      assert(0, 'invalid type '+msg.type);
     assert(msg.req_id, 'missing req_id');
-    msg.sign = node_from_id(from).wallet.sign(msg);
     track_msg(msg);
     let lbuffer = new LBuffer(msg); // XXX WIP
     if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type))
