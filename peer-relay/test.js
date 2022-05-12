@@ -53,8 +53,7 @@ process.on('uncaughtException', err=>xerr.xexit(err));
 process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
-let t_nodes = {}, t_msg, t_nonce;
-let t_req, t_cmds, t_i, t_role, t_port=4000;
+let t_nodes = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id, t_ack;
 let t_reprocess, t_conf, t_req_id_last;
 let t_keys = {
