@@ -867,7 +867,7 @@ function fake_emit(c, msg){
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
   assert(!c.fwd, 'fwd not allowed in fake_emit');
-  if (s.t.fake && !d.t.fake)
+  if (!d.t.fake)
   {
     assert(msg.req_id, 'missing req_id');
     track_msg(msg);
@@ -889,12 +889,11 @@ const fake_send_msg = (c, msg)=>etask(function*(){
   let nonce = t_nonce[nonce_hash(msg)] = t_nonce[nonce_hash(msg)]||
     ''+Math.floor(1e15 * Math.random());
   assign(msg, {to, from, nonce, path: [from]});
-  if (c.fwd){ // XXX: WIP
+  if (c.fwd){
     s = N(fwd_s(c.fwd, 0));
     d = N(fwd_d(c.fwd, 0));
   }
-  if (s.t.fake && !d.t.fake) // XXX: enough to check that !d.t.fake
-  {
+  if (!d.t.fake){
     // XXX NOW: 1. fix logic (handle req_start/res_start/....)
     if (msg.type=='req')
       msg.req_id = msg.req_id || ++t_req_id+'';
