@@ -523,9 +523,7 @@ function track_msg(msg){
 
 function get_req_id(o){
   let {s, d, cmd} = o, h = s+'_'+d+'_'+cmd;
-  // XXX HACK: we use t_req_id_last to handle fuzzy. in fuzzy a-a>req
-  // but the response is sent from uknown node.
-  return t_msg[h]||t_req_id_last;
+  return t_msg[h];
 }
 
 function get_ack(o){
@@ -894,12 +892,14 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     d = N(fwd_d(c.fwd, 0));
   }
   if (!d.t.fake){
-    // XXX NOW: 1. fix logic (handle req_start/res_start/....)
     if (msg.type=='req')
       msg.req_id = msg.req_id || ++t_req_id+'';
     else if (msg.type=='res'){
       msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
         cmd: msg.cmd});
+      // XXX HACK: we use t_req_id_last to handle fuzzy. in fuzzy a-a>req
+      // but the response is sent from uknown node.
+      msg.req_id = msg.req_id||t_req_id_last;
     assert(msg.req_id, 'missing req_id');
     }
     msg.sign = node_from_id(from).wallet.sign(msg);
