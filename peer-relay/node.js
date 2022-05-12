@@ -24,7 +24,7 @@ export default class Node extends EventEmitter {
       opt = {};
     // XXX: change id string
     this.wallet = new Wallet({keys: opt.keys});
-    this.id = this.wallet.keys.pub;
+    let id = this.id = this.wallet.keys.pub;
     // XXX: need cleanup for all internal structures
     this.pending = {};
     this.peers = new Channels();
@@ -43,6 +43,8 @@ export default class Node extends EventEmitter {
           wrtc: this.wrtcConnector.supported});
       }
     });
+    this.get_peer_handler = new ReqHandler({node: this, cmd: 'get_peer'})
+    .on('req', (msg, res)=>res.send({id: b2s(id)}));
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
     this.wsConnector = new Node.WsConnector(this.id, opt.port, opt.host,

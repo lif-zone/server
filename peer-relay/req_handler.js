@@ -142,7 +142,9 @@ function req_handler_cb(lbuffer){
   seq = seq||0;
   if (!Number.isInteger(seq) || seq<0)
     return xerr('invalid seq '+seq);
-  let id = b2s(msg.to);
+  let id = b2s(this.id);
+  if (!msg.fuzzy)
+    assert.equal(msg.to, id);
   let req_handler = util.get(nodes, [id, 'cmd', cmd, 'req_handler']);
   if (!req_handler)
     return;
