@@ -892,7 +892,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     d = N(fwd_d(c.fwd, 0));
   }
   if (!d.t.fake){
-    if (msg.type=='req')
+    if (['req', 'req_start'].includes(msg.type))
       msg.req_id = msg.req_id || ++t_req_id+'';
     else if (msg.type=='res'){
       msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
