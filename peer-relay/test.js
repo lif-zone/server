@@ -891,18 +891,22 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     s = N(fwd_s(c.fwd, 0));
     d = N(fwd_d(c.fwd, 0));
   }
-  if (!d.t.fake){
+  if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type)){
+    msg.req_id = msg.req_id||get_req_id({s: f.t.name, d: t.t.name,
+      cmd: msg.cmd});
     if (['req', 'req_start'].includes(msg.type))
       msg.req_id = msg.req_id || ++t_req_id+'';
-    else if (msg.type=='res'){
-      msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
-        cmd: msg.cmd});
-      // XXX HACK: we use t_req_id_last to handle fuzzy. in fuzzy a-a>req
-      // but the response is sent from uknown node.
-      msg.req_id = msg.req_id||t_req_id_last;
-      assert(msg.req_id, 'missing req_id');
-    }
-    track_msg(msg);
+  }
+  else if (msg.type=='res'){
+    msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
+      cmd: msg.cmd});
+    // XXX HACK: we use t_req_id_last to handle fuzzy. in fuzzy a-a>req
+    // but the response is sent from uknown node.
+    msg.req_id = msg.req_id||t_req_id_last;
+    assert(msg.req_id, 'missing req_id');
+  }
+  track_msg(msg);
+  if (!d.t.fake){
     msg.sign = node_from_id(from).wallet.sign(msg);
     let lbuffer = new LBuffer(msg); // XXX: WIP
     if (c.fwd){
