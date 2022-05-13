@@ -493,8 +493,7 @@ function track_seq_res(s, d, id, type, seq, call){
 }
 
 function ack_hash(s, d, req_id){
- // if (t_mode.msg)
-//    assert(req_id, 'missing req_id');
+  assert(req_id, 'missing req_id');
   return s+'_'+d+'_'+req_id;
 }
 
@@ -1383,13 +1382,13 @@ const cmd_req = opt=>etask(function*req(){
       {id, cmd, seq, ack, body, ooo, dup, close}), c.fwd, event, call);
     return;
   }
+  id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
+  if (call)
+    id = id || ++t_req_id+'';
   if (!call && ack===undefined){
     ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
       s: d.t.name, d: s.t.name});
   }
-  id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
-  if (call)
-    id = id || ++t_req_id+'';
   seq = track_seq_req(s.t.name, d.t.name, id, cmd, type, seq, call);
   cmd = cmd || t_req[id].cmd;
   assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
