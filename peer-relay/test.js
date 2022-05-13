@@ -158,9 +158,6 @@ function rt_to_str(rt, dir){
   return rt.range ? range_to_str(rt.range) : path_to_str(rt.path, dir);
 }
 
-// non-number req_id is set explicit in test
-function test_req_id(req_id){ return is_number(req_id) ? undefined : req_id; }
-
 function normalize(e){
   if (!e)
     return e;
@@ -635,8 +632,7 @@ class FakeChannel extends EventEmitter {
         'unexpected msg type '+type);
       }
       e = build_cmd_o(from.t.name+fuzzy+to.t.name+'>msg',
-        {id: test_req_id(req_id), type, cmd, seq, ack: ack && ack.join(','),
-        body});
+        {id: req_id, type, cmd, seq, ack: ack && ack.join(','), body});
       if (fwd){
         let path = [msg.from];
         let i = lbuffer.count()-2;
@@ -684,7 +680,7 @@ function req_hook(msg){
   case '':
   case 'test':
     e = build_cmd_o(from.t.name+to.t.name+'>*'+type,
-      {id: test_req_id(req_id), seq, ack: ack && ack.join(','), cmd, body});
+      {id: req_id, seq, ack: ack && ack.join(','), cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
@@ -713,7 +709,7 @@ function req_send_hook(msg){
   case '':
   case 'test':
     e = build_cmd_o(from.t.name+to.t.name+'>*'+type,
-      {id: test_req_id(req_id), seq, ack: ack && ack.join(','), cmd, body});
+      {id: req_id, seq, ack: ack && ack.join(','), cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
@@ -750,7 +746,7 @@ function res_hook(msg){
     break;
   case 'test':
   case '':
-    e = build_cmd_o(from.t.name+to.t.name+'>*'+type, {id: test_req_id(req_id),
+    e = build_cmd_o(from.t.name+to.t.name+'>*'+type, {id: req_id,
       seq, ack: ack && ack.join(','), cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
@@ -778,7 +774,7 @@ function res_send_hook(router, msg){
     break;
   case 'test':
   case '':
-    e = build_cmd_o(from.t.name+to.t.name+'>*'+type, {id: test_req_id(req_id),
+    e = build_cmd_o(from.t.name+to.t.name+'>*'+type, {id: req_id,
       seq, ack: ack && ack.join(','), cmd, body});
     break;
   default: assert(0, 'invalid cmd '+cmd);
@@ -897,7 +893,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     if (['req', 'req_start'].includes(msg.type))
       msg.req_id = msg.req_id || ++t_req_id+'';
   }
-  else if (msg.type=='res'){
+  else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
     msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
       cmd: msg.cmd});
     // XXX HACK: we use t_req_id_last to handle fuzzy. in fuzzy a-a>req
@@ -1271,10 +1267,14 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
     return;
   }
+  if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
+    id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
+  } else if (['res', 'res_start', 'res_next', 'res_end'].includes(type)){
+    id = id||get_req_id({s: d.t.name, d: s.t.name, cmd})||t_req_id_last;
+  }
   if (ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
     'res_next', 'res_end'].includes(type)){
-    ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
-      s: d.t.name, d: s.t.name,
+    ack = get_ack({req_id: id, s: d.t.name, d: s.t.name,
       keep: t_mode.req && t_mode.msg || !c.fwd || fwd_d(c.fwd, 0)!=d.t.name});
   }
   if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
@@ -1387,6 +1387,7 @@ const cmd_req = opt=>etask(function*req(){
     ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
       s: d.t.name, d: s.t.name});
   }
+  id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
   if (call)
     id = id || ++t_req_id+'';
   seq = track_seq_req(s.t.name, d.t.name, id, cmd, type, seq, call);
@@ -1506,6 +1507,7 @@ const cmd_res = opt=>etask(function*req(){
     }
     return;
   }
+  id = id||get_req_id({s: d.t.name, d: s.t.name, cmd});
   if (!d){
     assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
       {id, cmd, seq, ack, body, ooo, dup, close}), c.fwd, event, call);
