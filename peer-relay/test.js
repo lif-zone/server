@@ -1689,7 +1689,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
 function extend_loop_fwd(c){
   assert(c.loop);
   assert(t_pre_process);
-  let a = [], prev;
+  let a = [], prev, dir = c.loop[0].dir;
   assert(['fwd', 'msg'].includes(c.cmd), 'invalid loop '+c.cmd);
   if (c.cmd=='msg'){
     prev = build_cmd(dir_str(c.loop[0].s,
@@ -1711,7 +1711,8 @@ function extend_loop_fwd(c){
       else
         rt += c.loop[j].d;
     }
-    o.arg = prev+(rt ? ' rt('+rt+')' : '');
+    o.arg = prev+(rt ? ' rt('+
+      (dir=='>' ? rt : rt.split('').reverse().join(''))+')' : '');
     prev = _build_cmd(o.arg, [dir_c(o)]);
     set_orig(o, prev);
     a.push(o);
@@ -2327,6 +2328,9 @@ describe('peer-relay', function(){
           ab<fwd(bc<fwd(ac<msg(body(x)) rt(a)))`);
         t('abc<fwd(ac>msg(body:x))', `bc<fwd(ac>msg(body(x)) rt(a))
           ab<fwd(bc<fwd(ac>msg(body(x)) rt(a)))`);
+        t('abcd<fwd(ac>msg(body:x))', `cd<fwd(ac>msg(body(x)) rt(ab))
+          bc<fwd(cd<fwd(ac>msg(body(x)) rt(ab)) rt(a))
+          ab<fwd(bc<fwd(cd<fwd(ac>msg(body(x)) rt(ab)) rt(a)))`);
         t('a-b>!get_peer', `a-b>!get_peer`);
         t('a+b>!get_peer', `a+b>!get_peer`);
         _T('mode(msg req)', 'a.b+c>!get_peer', `a+c>!get_peer
@@ -2621,17 +2625,12 @@ describe('peer-relay', function(){
     t('xxx', `mode(msg req) conf(id:amXYZnz)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
       `);
-    if (0) // XXX: fix parset to support pXnoa< correctly)
-    t('xxx', `mode(msg req) conf(id:amXYZnz)
-      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
-      pX.n.o.a-p>!get_peer(r:a)
-      pXnoa<msg(type:res cmd:get_peer) ap>*get_peer_r`);
     t('short-p', `mode(msg req) conf(id:amXYZnz)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect pX.n.o.a-p>!get_peer(r:a)
-      aonXp>msg(type:res cmd:get_peer) pa<*get_peer_r`);
+      pXnoa<msg(type:res cmd:get_peer) pa<*get_peer_r`);
     t('short+p', `mode(msg req) conf(id:amXYZnz)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
-      p.X.b.a.o+p>!get_peer(r:o) oabXp>msg(type:res cmd:get_peer)
+      p.X.b.a.o+p>!get_peer(r:o) pXbao<msg(type:res cmd:get_peer)
       po<*get_peer_r`);
   });
   /* XXX derry: examples
