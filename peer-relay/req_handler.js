@@ -166,7 +166,7 @@ function req_handler_cb(lbuffer){
   if (msg.ack)
     res.clr_timeout(msg.ack);
   if (ReqHandler.t.req_hook) // XXX NOW: move to emit_ooo
-    ReqHandler.t.req_hook(msg);
+    ReqHandler.t.req_hook(lbuffer);
   if (['req', 'req_start'].includes(type)){
     let dup = res.req_seq==0;
     res.req_seq = 0;

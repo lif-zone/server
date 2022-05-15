@@ -659,7 +659,8 @@ class FakeChannel extends EventEmitter {
   destroy(){}
 }
 
-function req_hook(msg){
+function req_hook(lbuffer){
+  let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
   // XXX: need to filter out only test commands, other should fail test
   if (!t_mode.req || !t_mode.msg)
     return;
@@ -669,6 +670,7 @@ function req_hook(msg){
     'invalid msg type '+type);
   cmd = cmd||'';
   let from = node_from_id(msg.from), to = node_from_id(msg.to);
+  let to0 = node_from_id(msg0.to);
   xerr.notice('*** req_send_hook %s %s',
     from.t.name+to.t.name+'>'+cmd, stringify(msg));
   switch (cmd){
@@ -676,7 +678,8 @@ function req_hook(msg){
     e = build_cmd(from.t.name+to.t.name+'>*conn_info', '');
     break;
   case 'get_peer':
-    e = build_cmd(from.t.name+fuzzy+to.t.name+'>*get_peer', '');
+    assert(fuzzy, 'get_peer must be fuzzy');
+    e = build_cmd(from.t.name+to0.t.name+'>*get_peer', '');
     break;
   case '':
   case 'test':
@@ -1207,8 +1210,8 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
 });
 
 const cmd_get_peer = opt=>etask(function cmd_get_peer(){
-  let {c, event} = opt, s = N(c.s), d = N(c.d, {fuzzy: true});
-  let call = c.cmd[0]=='!';
+  let {c, event} = opt;
+  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
   let fuzzy = get_fuzzy(c.d);
   assert(!call || !event, 'unexpected event for get_peer '+event);
   if (t_pre_process){
@@ -1216,6 +1219,8 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
       let s = build_cmd_o(c.s+c.d+'>!get_peer');
       s += t_mode.msg ? ' '+build_cmd(loop_str(c.loop)+'>fwd',
         build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'get_peer'})) : '';
+      s += t_mode.req ? ' '+
+        build_cmd_o(c.s+c.loop[c.loop.length-2].d+'>*get_peer') : '';
       set_push_cmd(c, s);
     }
     return;
@@ -2158,6 +2163,7 @@ describe('wallet', ()=>{
 
 function hash_from_int(val, bits, total_bits){
   assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  assert(bits<=total_bits, 'bits bigger than total_bits');
   let len = total_bits/4;
   let s = bigInt(val).shiftLeft(total_bits-bits).toString(16);
   return '0'.repeat(len-s.length)+s;
@@ -2176,12 +2182,34 @@ function hash_from_int(val, bits, total_bits){
 
 function int_from_hash(hash, bits, total_bits){
   assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  assert(bits<=total_bits, 'bits bigger than total_bits');
   return bigInt(hash, 16).shiftRight(total_bits-bits).toString(10);
 /* XXX: obsolete, rm
   let buf = s2b(hash);
   BufferShift.shr(buf, 32 -bits);
   return buf.readIntBE(1, 3);
 */
+}
+
+// abcdefghijklmXYZnopqrstuvwxyz
+// b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
+function test_gen_ids(bits, total_bits){
+  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  assert(bits<=total_bits, 'bits bigger than total_bits');
+  let max = bigInt(2).pow(bits);
+  let d = max.divide(26); // a-z is 26 characters
+  let ret = {};
+  for (let i=0, v=bigInt(d); i<26; i++, v=v.plus(d)){
+    let ch = String.fromCharCode('a'.charCodeAt(0)+i);
+    ret[ch] = hash_from_int(v.toString(10), bits, total_bits);
+    if (i==12){
+      let X = v.plus(d.divide(2));
+      ret.X = hash_from_int(X.toString(10), bits, total_bits);
+      ret.Y = hash_from_int(X.plus(1).toString(10), bits, total_bits);
+      ret.Z = hash_from_int(X.plus(2).toString(10), bits, total_bits);
+    }
+  }
+  return ret;
 }
 
 describe('peer-relay', function(){
@@ -2218,11 +2246,19 @@ describe('peer-relay', function(){
       _t(bigInt(2).pow(256).minus(1).toString(10), 256, 256,
         'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
     });
-    it('default_ids', function(){
-      // XXX: TODO
+    it('gen_ids', function(){
       // abcdefghijklmXYZnopqrstuvwxyz
-      // b-a = 2^128/26 X=n+(o-n)/2 Y=X+1 Z=X+2
-
+      // b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
+      let ids = test_gen_ids(8, 16);
+      assert.equal(ids.a, '0900');
+      assert.equal(ids.b, '1200');
+      assert.equal(ids.m, '7500');
+      assert.equal(ids.X, '7900');
+      assert.equal(ids.Y, '7a00');
+      assert.equal(ids.Z, '7b00');
+      assert.equal(ids.n, '7e00');
+      assert.equal(ids.y, 'e100');
+      assert.equal(ids.z, 'ea00');
     });
     describe('pre_process', function(){
       describe('shortcut', ()=>{
@@ -2292,7 +2328,9 @@ describe('peer-relay', function(){
         t('a-b>!get_peer', `a-b>!get_peer`);
         t('a+b>!get_peer', `a+b>!get_peer`);
         _T('mode(msg req)', 'a.b+c>!get_peer', `a+c>!get_peer
-          ab:a+c>msg(type:req cmd:get_peer)`);
+          ab:a+c>msg(type:req cmd:get_peer) ab>*get_peer`);
+        _T('mode(msg req)', 'a.b-c>!get_peer', `a-c>!get_peer
+          ab:a-c>msg(type:req cmd:get_peer) ab>*get_peer`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
@@ -2555,28 +2593,28 @@ describe('peer-relay', function(){
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer(r:a)
-      e.X.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) e-e>*get_peer
+      e.X.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) ea>*get_peer
       adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r`);
     t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer(r:d)
-      e.X.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) e+e>*get_peer
+      e.X.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) ed>*get_peer
       dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect eX.c.d.a-e>!get_peer(r:a)
-      e-e>*get_peer adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r `);
+      adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r `);
     t('short:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect eX.b.a.d+e>!get_peer(r:d)
-      e+e>*get_peer dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      eX.b.a.d+e>!get_peer(r:d)
+      dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
     t('multiple:abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)
       e-e>!get_peer(r:a)
-      e.X.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) e-e>*get_peer
+      e.X.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) ea>*get_peer
       adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r
       e+e>!get_peer(r:d)
-      e.X.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) e+e>*get_peer
-      dabXe>msg(type:res cmd:get_peer) de>*get_peer_r
-    `);
+      e.X.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) ed>*get_peer
+      dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
   });
   /* XXX derry: examples
   describe('get_peer', ()=>{
