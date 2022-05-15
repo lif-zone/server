@@ -291,12 +291,14 @@ function assert_int(val){
 }
 
 function assert_node_ids(val){
+  if (val=='amXYZnz')
+    return test_gen_ids(t_conf.id_bits, ID_BITS);
   let ids = val.split(' '), ret = {};
   ids.forEach(s=>{
     let a = s.match(/^([a-zA-Z]+):([0-9]+)$/);
     assert(a && a.length==3, 'invaid node_ids '+val+' part '+s);
     assert(!ret[a[1]], 'invalid node_ids '+val);
-    ret[a[1]] = +a[2];
+    ret[a[1]] = hash_from_int(+a[2], t_conf.id_bits, ID_BITS);
   });
   return ret;
 }
@@ -1044,13 +1046,13 @@ function cmd_node(opt){
     }
   });
   assert_name_new(name);
-  id = id||t_conf.node_ids[name];
+  if (id)
+    id = hash_from_int(id, t_conf.id_bits, ID_BITS);
+  else
+    id = t_conf.node_ids[name];
   let fake = is_fake(name);
-  if (id){
-    assert(id>0 && id<Math.pow(2, t_conf.id_bits), 'invalid id '+id+
-      ' valid 0-'+Math.pow(2, t_conf.id_bits));
-    key = {pub: hash_from_int(id, t_conf.id_bits, ID_BITS), priv: '00'};
-  }
+  if (id)
+    key = {pub: id, priv: '00'};
   else {
     key = t_keys[name];
     assert(key, 'key not found '+name);
@@ -2613,6 +2615,24 @@ describe('peer-relay', function(){
       eX.c.d.a-e>!get_peer(r:a) adcXe>msg(type:res cmd:get_peer)
       ae>*get_peer_r eX.b.a.d+e>!get_peer(r:d)
       dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
+  });
+  describe('get_peer2', ()=>{
+    let t = (name, test)=>t_roles(name, 'abXnop', test);
+    t('xxx', `mode(msg req) conf(id:amXYZnz)
+      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
+      `);
+    if (0) // XXX: fix parset to support pXnoa< correctly)
+    t('xxx', `mode(msg req) conf(id:amXYZnz)
+      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
+      pX.n.o.a-p>!get_peer(r:a)
+      pXnoa<msg(type:res cmd:get_peer) ap>*get_peer_r`);
+    t('short-p', `mode(msg req) conf(id:amXYZnz)
+      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect pX.n.o.a-p>!get_peer(r:a)
+      aonXp>msg(type:res cmd:get_peer) pa<*get_peer_r`);
+    t('short+p', `mode(msg req) conf(id:amXYZnz)
+      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
+      p.X.b.a.o+p>!get_peer(r:o) oabXp>msg(type:res cmd:get_peer)
+      po<*get_peer_r`);
   });
   /* XXX derry: examples
   describe('get_peer', ()=>{
