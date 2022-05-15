@@ -2,7 +2,6 @@
 'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
 // XXX: need jslint mocha: true
 import assert from 'assert';
-import BufferShift from 'buffershift';
 import Node from './node.js';
 import Req from './req.js';
 import Channels from './channels.js';
@@ -23,6 +22,8 @@ import xtest from '../util/test_lib.js';
 import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
+import bigInt from 'big-integer';
+
 const assign = Object.assign, s2b = util.buf_from_str, b2s = util.buf_to_str;
 const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
@@ -2156,6 +2157,12 @@ describe('wallet', ()=>{
 });
 
 function hash_from_int(val, bits, total_bits){
+  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  let len = total_bits/4;
+  let s = bigInt(val).shiftLeft(total_bits-bits).toString(16);
+  return '0'.repeat(len-s.length)+s;
+/* XXX: obsolete, rm
+  import BufferShift from 'buffershift';
   assert(val<Math.pow(2, 32), 'val too big '+val);
   assert(bits>=8 && total_bits>=bits, 'invalid '+bits+'/'+total_bits);
   assert(val>0 && val<Math.pow(2, bits), 'invalid '+val+
@@ -2164,12 +2171,17 @@ function hash_from_int(val, bits, total_bits){
   buf.writeIntBE(val, 0, 4);
   BufferShift.shl(buf, 32-bits);
   return b2s(buf);
+*/
 }
 
 function int_from_hash(hash, bits, total_bits){
+  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  return bigInt(hash, 16).shiftRight(total_bits-bits).toString(10);
+/* XXX: obsolete, rm
   let buf = s2b(hash);
-  BufferShift.shr(buf, 32-bits);
+  BufferShift.shr(buf, 32 -bits);
   return buf.readIntBE(1, 3);
+*/
 }
 
 describe('peer-relay', function(){
@@ -2180,10 +2192,11 @@ describe('peer-relay', function(){
   });
   describe('test_api', function(){
     it('hash_from_int', function(){
-      let t = (val, bits, exp)=>{
-        assert.equal(hash_from_int(val, bits, 40), exp);
-        assert.equal(int_from_hash(exp, bits, 40), val);
+      const _t = (val, bits, max_bits, exp)=>{
+        assert.equal(hash_from_int(val, bits, max_bits), exp);
+        assert.equal(int_from_hash(exp, bits, max_bits), val);
       };
+      const t = (val, bits, exp)=>_t(val, bits, 40, exp);
       t(1, 8, '0100000000');
       t(2, 8, '0200000000');
       t(255, 8, 'ff00000000');
@@ -2199,6 +2212,17 @@ describe('peer-relay', function(){
       t(1023, 16, '03ff000000');
       t(1, 10, '0040000000');
       t(1023, 10, 'ffc0000000');
+      t(1, 40, '0000000001');
+      _t(1, 256, 256,
+        '0000000000000000000000000000000000000000000000000000000000000001');
+      _t(bigInt(2).pow(256).minus(1).toString(10), 256, 256,
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+    });
+    it('default_ids', function(){
+      // XXX: TODO
+      // abcdefghijklmXYZnopqrstuvwxyz
+      // b-a = 2^128/26 X=n+(o-n)/2 Y=X+1 Z=X+2
+
     });
     describe('pre_process', function(){
       describe('shortcut', ()=>{
