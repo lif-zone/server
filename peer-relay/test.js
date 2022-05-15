@@ -2610,11 +2610,8 @@ describe('peer-relay', function(){
     t('multiple:abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)
-      e-e>!get_peer(r:a)
-      e.X.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) ea>*get_peer
-      adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r
-      e+e>!get_peer(r:d)
-      e.X.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) ed>*get_peer
+      eX.c.d.a-e>!get_peer(r:a) adcXe>msg(type:res cmd:get_peer)
+      ae>*get_peer_r eX.b.a.d+e>!get_peer(r:d)
       dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
   });
   /* XXX derry: examples
