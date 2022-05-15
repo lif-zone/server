@@ -54,7 +54,7 @@ process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
 let t_nodes = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
-let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id, t_ack;
+let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_reprocess, t_conf, t_req_id_last;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
@@ -117,6 +117,7 @@ function fwd_d_id(fwd, i){
 }
 
 function nonce_hash(msg){
+  assert(msg.req_id, 'missing req_id '+stringify(msg));
   return id_to_name(msg.from)+'_'+id_to_name(msg.to)+'_'+(msg.req_id||'none')+
     '_'+(msg.type||'none')+'_'+(msg.cmd||'none');
 }
@@ -446,7 +447,7 @@ function assert_missing_event(c){
   if (c.cmd[0]=='*' && (t_mode.msg || !t_mode.req))
     assert(!s.t.fake || !d || d.t.fake, 'missing event for '+c.orig);
   else
-    assert(s.t.fake, 'missing event '+stringify(c.fwd)+' '+c.orig);
+    assert(s.t.fake, 'missing event '+(c.fwd||[]).join(':')+' '+c.orig);
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
@@ -492,45 +493,45 @@ function track_seq_res(s, d, id, type, seq, call){
   return seq===undefined ? t_req[id].res.seq : seq;
 }
 
-function ack_hash(s, d, req_id){
-  assert(req_id, 'missing req_id');
-  return s+'_'+d+'_'+req_id;
-}
-
 // XXX: unite with nonce and use t_req instead of t_ack/t_msg
 function track_msg(msg){
-  if (!msg.req_id)
-    return;
+  assert(msg.req_id, 'missing req_id %s', stringify(msg));
   let s = node_from_id(msg.from).t.name, d = node_from_id(msg.to).t.name;
   let {type, req_id, cmd, seq} = msg;
   assert(is_number(msg.seq), 'req/res must have seq '+stringify(msg));
+  req_id = ''+req_id;
   cmd = cmd||'';
-  xerr.notice('*** track_msg %s%s> id:%s type:%s cmd:%s', s, d, req_id, type,
-    cmd);
-  let h = s+'_'+d+'_'+cmd;
-  t_msg[h] = req_id;
-  t_req_id_last = req_id;
-  xerr.notice('*** track_ack %s%s> id:%s seq:%s', s, d, req_id, seq);
-  h = ack_hash(s, d, req_id);
-  t_ack[h] = t_ack[h]||[];
-  if (!t_ack[h].includes(seq))
-    t_ack[h].push(seq);
+  t_msg[req_id] = t_msg[req_id]||{s, d, cmd, seq: {req: [], res: []}};
+  if (!['req', 'req_start'].includes(type))
+    t_msg[req_id].active = true;
+  t_req_id_last = req_id; // XXX HACK: rm it
+  let t;
+  if (['req', 'req_start', 'req_next', 'req_end'].includes(type))
+    t = 'req';
+  else if (['res', 'res_start', 'res_next', 'res_end'].includes(type))
+    t = 'res';
+  if (!t_msg[req_id].seq[t].includes(seq))
+    t_msg[req_id].seq[t].push(seq);
 }
 
 function get_req_id(o){
-  let {s, d, cmd} = o, h = s+'_'+d+'_'+cmd;
-  return t_msg[h];
+  for (let req_id in t_msg){
+    let o2 = t_msg[req_id];
+    if (o.cmd==o2.cmd && (o.s==o2.s&&o.d==o2.d || o.s==o2.d&&o.d==o2.s))
+      return req_id;
+  }
+  return '';
 }
 
 function get_ack(o){
-  let {s, d, req_id, keep} = o;
-  let h = ack_hash(s, d, req_id), ack = t_ack[h];
-  if (!ack)
+  let {type, req_id, keep} = o;
+  if (!t_msg[req_id])
     return;
-  xerr.notice('*** get_ack %s%s> id:%s ack:%s keep %s',
-    s, d, req_id, ack.join(','), keep);
+  let ack = t_msg[req_id].seq[type];
+  if (!ack || !ack.length)
+    return;
   if (!keep)
-    delete t_ack[h];
+    t_msg[req_id].seq[type] = [];
   return ack;
 }
 
@@ -879,27 +880,29 @@ const fake_send_msg = (c, msg)=>etask(function*(){
   msg.from = from;
   if (fuzzy)
     msg.fuzzy = fuzzy;
-  let nonce = t_nonce[nonce_hash(msg)] = t_nonce[nonce_hash(msg)]||
-    ''+Math.floor(1e15 * Math.random());
-  assign(msg, {to, from, nonce, path: [from]});
+  assign(msg, {to, from, path: [from]});
   if (c.fwd){
     s = N(fwd_s(c.fwd, 0));
     d = N(fwd_d(c.fwd, 0));
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(msg.type)){
-    msg.req_id = msg.req_id||get_req_id({s: f.t.name, d: t.t.name,
+    let id = msg.req_id||get_req_id({s: f.t.name, d: t.t.name,
       cmd: msg.cmd});
-    if (['req', 'req_start'].includes(msg.type))
-      msg.req_id = msg.req_id || ++t_req_id+'';
+    if (!id || ['req', 'req_start'].includes(msg.type) && t_msg[id] &&
+      t_msg[id].active){
+      if (id)
+        delete t_msg[id];
+      id = ++t_req_id+'';
+    }
+    msg.req_id = id;
   }
   else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
     msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
       cmd: msg.cmd});
-    // XXX HACK: we use t_req_id_last to handle fuzzy. in fuzzy a-a>req
-    // but the response is sent from uknown node.
-    msg.req_id = msg.req_id||t_req_id_last;
     assert(msg.req_id, 'missing req_id');
   }
+  msg.nonce = t_nonce[nonce_hash(msg)] = t_nonce[nonce_hash(msg)]||
+    ''+Math.floor(1e15 * Math.random());
   track_msg(msg);
   if (!d.t.fake){
     msg.sign = node_from_id(from).wallet.sign(msg);
@@ -1217,6 +1220,9 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
     return;
   }
   if (call){
+    let id = get_req_id({s: s.t.name, d: d.t.name, cmd: 'get_peer'});
+    if (id && t_msg[id] && t_msg[id].active)
+      delete t_msg[id];
     if (!s.t.fake)
       s.get_peer(b2s(d.id), {fuzzy});
     return;
@@ -1269,11 +1275,14 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
     id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
   } else if (['res', 'res_start', 'res_next', 'res_end'].includes(type)){
+    // XXX HACK: we use t_req_id_last to handle fuzzy. in fuzzy a-a>req
+    // but the response is sent from uknown node.
     id = id||get_req_id({s: d.t.name, d: s.t.name, cmd})||t_req_id_last;
   }
   if (ack===undefined && ['req_next', 'req_end', 'res', 'res_start',
     'res_next', 'res_end'].includes(type)){
-    ack = get_ack({req_id: id, s: d.t.name, d: s.t.name,
+    ack = get_ack({req_id: id,
+      type: ['req_next', 'req_end'].includes(type) ? 'res' : 'req',
       keep: t_mode.req && t_mode.msg || !c.fwd || fwd_d(c.fwd, 0)!=d.t.name});
   }
   if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
@@ -1383,11 +1392,17 @@ const cmd_req = opt=>etask(function*req(){
     return;
   }
   id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
-  if (call)
-    id = id || ++t_req_id+'';
+  if (call){
+    if (!id || ['req', 'req_start'].includes(type) && t_msg[id] &&
+      t_msg[id].active){
+      if (id)
+        delete t_msg[id];
+      id = ++t_req_id+'';
+    }
+  }
   if (!call && ack===undefined){
     ack = get_ack({req_id: id||get_req_id({s: d.t.name, d: s.t.name, cmd}),
-      s: d.t.name, d: s.t.name});
+      type: 'res'});
   }
   seq = track_seq_req(s.t.name, d.t.name, id, cmd, type, seq, call);
   cmd = cmd || t_req[id].cmd;
@@ -1514,7 +1529,7 @@ const cmd_res = opt=>etask(function*req(){
   }
   _id = id||get_req_id({s: d.t.name, d: s.t.name, cmd});
   if (!call && ack===undefined)
-    ack = get_ack({req_id: _id, s: d.t.name, d: s.t.name});
+    ack = get_ack({req_id: _id, type: 'req'});
   seq = track_seq_res(s.t.name, d.t.name, id, type, seq, call);
   cmd = cmd || t_req[id].cmd;
   assert(seq!==undefined, 'must have seq');
@@ -1759,7 +1774,6 @@ function test_start(role){
   t_mode = {msg: true, req: true};
   t_mode_prev = [];
   t_req_id = 0;
-  t_ack = {};
   t_msg = {};
   t_cmds = undefined;
   t_cmds_processed = [];
@@ -2512,37 +2526,32 @@ describe('peer-relay', function(){
   });
   describe('get_peer', ()=>{
     let t = (name, test)=>t_roles(name, 'abXcde', test);
-    // XXX: add test with previoues request to check behavior when there is
-    // already a routing state
     t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
-    // XXX: BUG: check why parse requires ack:0
-    // BUG: doesn't work: eXcda<msg(type:res cmd:get_peer ack:0)
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer(r:a)
       e.X.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) e-e>*get_peer
-      adcXe>msg(type:res cmd:get_peer ack:0) ae>*get_peer_r`);
-    // XXX: e-e>*get_peer_r
+      adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r`);
     t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer(r:d)
       e.X.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) e+e>*get_peer
-      dabXe>msg(type:res cmd:get_peer ack:0) de>*get_peer_r`);
-    t('short: abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
+    t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect eX.c.d.a-e>!get_peer(r:a)
-      e-e>*get_peer adcXe>msg(type:res cmd:get_peer ack:0) ae>*get_peer_r `);
+      e-e>*get_peer adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r `);
     t('short:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect eX.b.a.d+e>!get_peer(r:d)
-      e+e>*get_peer dabXe>msg(type:res cmd:get_peer ack:0) de>*get_peer_r`);
-    if (0) // XXX bug: fixme (probably due to req state handling)
-    t('xxx', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      e+e>*get_peer dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
+    t('multiple:abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)
       e-e>!get_peer(r:a)
       e.X.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) e-e>*get_peer
-      adcXe>msg(type:res cmd:get_peer ack:0) ae>*get_peer_r
+      adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r
       e+e>!get_peer(r:d)
       e.X.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) e+e>*get_peer
-      dabXe>msg(type:res cmd:get_peer ack:0) de>*get_peer_r
+      dabXe>msg(type:res cmd:get_peer) de>*get_peer_r
     `);
   });
   /* XXX derry: examples
