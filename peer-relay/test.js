@@ -1717,6 +1717,8 @@ function extend_loop_fwd(c){
     prev = c.arg;
   for (let i=0; i<c.loop.length; i++){
     let o = assign({}, c, c.loop[i]), rt='';
+    if (get_fuzzy(o.s) || get_fuzzy(o.d))
+      break;
     delete o.loop;
     o.cmd = 'fwd';
     let end = i+1;
@@ -2359,6 +2361,7 @@ describe('peer-relay', function(){
           ab<fwd(bc<fwd(cd<fwd(ac>msg(body(x)) rt(ab)) rt(a)))`);
         t('a-b>!get_peer', `a-b>!get_peer`);
         t('a+b>!get_peer', `a+b>!get_peer`);
+        t('+ab<!get_peer', `+ab<!get_peer`);
         if (0){ // XXX: need simple msg, no fwd
         _T('mode(msg req)', 'a.b+c>!get_peer', `a+c>!get_peer
           ab:a+c>msg(type:req cmd:get_peer) ab>*get_peer`);
@@ -2368,9 +2371,10 @@ describe('peer-relay', function(){
         _T('mode(msg req)', 'a.b.c+d>!get_peer', `a+d>!get_peer
           a.b.c>fwd(a+d>msg(type:req cmd:get_peer)) ac>*get_peer
           cba>fwd(ac<msg(type:res cmd:get_peer)) ac<*get_peer_r`);
-        if (0) // XXX WIP
         T('a.b.c+d>msg(type:req cmd:get_peer)',
           `a.b.c>fwd(a+d>msg(type:req cmd:get_peer))`);
+        T('+dc.b.a<msg(type:req cmd:get_peer)',
+          `c.b.a<fwd(+da<msg(type:req cmd:get_peer))`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
@@ -2634,15 +2638,14 @@ describe('peer-relay', function(){
     // XXX: e.X -> make it an error
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer
-      // XXX: eX.b.a.d+e>msg(type:req cmd:get_peer)
       // XXX: eX.c.d.a+e>get_peer
       // XXX: eX.c.d.a>fwd(e-e>get_peer)
-      eX.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) ea>*get_peer
+      eX.c.d.a-e>msg(type:req cmd:get_peer) ea>*get_peer
       eXcda<msg(type:res cmd:get_peer) // XXX: eXcda<get_peer_r
       ea<*get_peer_r`);
     t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer
-      eX.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) ed>*get_peer
+      eX.b.a.d+e>msg(type:req cmd:get_peer) ed>*get_peer
       eXbad<msg(type:res cmd:get_peer) ed<*get_peer_r`);
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
