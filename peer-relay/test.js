@@ -1261,15 +1261,21 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
 });
 
 const cmd_get_peer_r = opt=>etask(function cmd_get_peer_r(){
-  let {c, event} = opt;
+  let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   let arg = xtest.test_parse(c.arg);
   util.forEach(arg, a=>{
     switch (a.cmd){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  if (t_pre_process)
+  if (t_pre_process){
+    if (basic && c.loop){
+      let s = build_cmd(loop_str(c.loop)+'>fwd',
+        build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'get_peer'}));
+      set_push_cmd(c, s);
+    }
     return;
+  }
   assert_event_c(c, event);
   fake_emit(c, {type: 'res', cmd: 'get_peer_r', body: ''});
 });
@@ -1684,6 +1690,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'get_peer': yield cmd_get_peer(opt); break;
   case '!get_peer': yield cmd_get_peer(opt); break;
   case '*get_peer': yield cmd_get_peer(opt); break;
+  case 'get_peer_r': yield cmd_get_peer_r(opt); break;
   case '*get_peer_r': yield cmd_get_peer_r(opt); break;
   case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
@@ -2381,6 +2388,7 @@ describe('peer-relay', function(){
         T('+dc.b.a<msg(type:req cmd:get_peer)',
           `c.b.a<fwd(+da<msg(type:req cmd:get_peer))`);
         T('a.b.c+d>get_peer', `a.b.c+d>msg(type:req cmd:get_peer)`);
+        T('a.b.c>get_peer_r', `a.b.c>msg(type:res cmd:get_peer)`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
@@ -2642,16 +2650,16 @@ describe('peer-relay', function(){
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
     // XXX: e.X -> make it an error
+    // XXX: add res to get_peer_r support and !get_peer
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer
       // XXX: eX.c.d.a>fwd(e-e>get_peer)
       eX.c.d.a-e>get_peer ea>*get_peer
-      eXcda<msg(type:res cmd:get_peer) // XXX: eXcda<get_peer_r
-      ea<*get_peer_r`);
+      eXcda<get_peer_r ea<*get_peer_r`);
     t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer
       eX.b.a.d+e>get_peer ed>*get_peer
-      eXbad<msg(type:res cmd:get_peer) ed<*get_peer_r`);
+      eXbad<get_peer_r ed<*get_peer_r`);
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d.a-e>!get_peer(r:a)`);
