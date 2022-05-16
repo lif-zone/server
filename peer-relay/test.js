@@ -2628,27 +2628,19 @@ describe('peer-relay', function(){
     t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
-     /* XXX: from derry
     // XXX: e.X -> make it an error
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      e-e>!get_peer
-      eX.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) // XXX: eX.c.d.a-e>get_peer
-      // XXX: TODO  eX.c.d.a>fwd(e-e>get_peer)
-      ea>*get_peer
-      eXcda<msg(type:res cmd:get_peer) // XXX: TODO: eXcda<get_peer_r
-      ea<*get_peer_r`);
-    // XXX: add "//" comments api in tests
-    // XXX: add dbg
-    */
-    // XXX: eX.b.a.d>fwd(e+e>msg(type:req cmd:get_peer))
-    // XXX: eX.b.a.d+e>msg(type:req cmd:get_peer)
-    t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer
       // XXX: eX.b.a.d+e>msg(type:req cmd:get_peer)
       // XXX: eX.c.d.a+e>get_peer
+      // XXX: eX.c.d.a>fwd(e-e>get_peer)
+      eX.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) ea>*get_peer
+      eXcda<msg(type:res cmd:get_peer) // XXX: eXcda<get_peer_r
+      ea<*get_peer_r`);
+    t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer
       eX.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) ed>*get_peer
-      dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
+      eXbad<msg(type:res cmd:get_peer) ed<*get_peer_r`);
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d.a-e>!get_peer(r:a)`);
