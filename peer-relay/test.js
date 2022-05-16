@@ -2648,6 +2648,14 @@ describe('peer-relay', function(){
     // abcdX d-:c d+:X
     dX>!connect dX.X.Xa.Xb.Xc.X+d,dX.Xc.Xb.Xa.X.Xc-d>announce dX,dXc>online
     `);
+   /* XXX: compact path:
+     bX.Xa.X -> bXaX -> bX
+     bX.Xa.X.Xa -> bXaXa -> bXa
+     cX.Xa.Xb.X -> cXaXbX -> cX
+     cX.Xb.Xa.X.Xb -> cXbXaXb -> cXb
+     dX.X.Xa.Xb.Xc.X -> dXaXbXcX -> dX
+     dX.Xc.Xb.Xa.X.Xc -> dXcXbXaXc -> dXc
+   */
   });
 
   /* XXX derry: examples
