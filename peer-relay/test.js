@@ -1720,13 +1720,12 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
 function extend_loop_fwd(c){
   assert(c.loop);
   assert(t_pre_process);
-  let a = [], prev, dir = c.loop[0].dir;
+  let a = [], dir = c.loop[0].dir, prev = c.arg;
   assert(['fwd', 'msg'].includes(c.cmd), 'invalid loop '+c.cmd);
   if (c.cmd=='msg'){
     prev = build_cmd(dir_str(c.loop[0].s,
       c.loop[c.loop.length-1].d, c.loop[0].dir)+c.cmd, c.arg);
-  } else
-    prev = c.arg;
+  }
   for (let i=0; i<c.loop.length; i++){
     let o = assign({}, c, c.loop[i]), rt='';
     if (get_fuzzy(o.s) || get_fuzzy(o.d))
@@ -1878,6 +1877,7 @@ function test_parse(s){
   return xtest.test_run_plugin(xtest.test_parse_cmd_multi(s), plugin_cmd_dir);
 }
 const test_pre_process = test=>etask(function*test_preprocess(){
+  assert(!t_pre_process, 'already in pre_process');
   t_pre_process = true;
   yield _test_run('fake', test_parse(test));
   t_pre_process = false;
@@ -2389,6 +2389,8 @@ describe('peer-relay', function(){
           `c.b.a<fwd(+da<msg(type:req cmd:get_peer))`);
         T('a.b.c+d>get_peer', `a.b.c+d>msg(type:req cmd:get_peer)`);
         T('a.b.c>get_peer_r', `a.b.c>msg(type:res cmd:get_peer)`);
+        if (0) // XXX: TODO
+        T('a.b.c>fwd(ac>get_peer_r)', `a.b.c>get_peer_r`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
@@ -2650,10 +2652,9 @@ describe('peer-relay', function(){
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
     // XXX: e.X -> make it an error
-    // XXX: add res to get_peer_r support and !get_peer
+    // XXX: add res to get_peer_r(res) and !get_peer(res). make it auto default
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer
-      // XXX: eX.c.d.a>fwd(e-e>get_peer)
       eX.c.d.a-e>get_peer ea>*get_peer
       eXcda<get_peer_r ea<*get_peer_r`);
     t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
@@ -2663,7 +2664,6 @@ describe('peer-relay', function(){
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d.a-e>!get_peer(r:a)`);
-    // XXX: change r:a to res:a (and make it auto by default)
     t('short:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.b.a.d+e>!get_peer(r:d)`);
