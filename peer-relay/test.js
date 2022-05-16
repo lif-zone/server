@@ -2368,6 +2368,9 @@ describe('peer-relay', function(){
         _T('mode(msg req)', 'a.b.c+d>!get_peer', `a+d>!get_peer
           a.b.c>fwd(a+d>msg(type:req cmd:get_peer)) ac>*get_peer
           cba>fwd(ac<msg(type:res cmd:get_peer)) ac<*get_peer_r`);
+        if (0) // XXX WIP
+        T('a.b.c+d>msg(type:req cmd:get_peer)',
+          `a.b.c>fwd(a+d>msg(type:req cmd:get_peer))`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
