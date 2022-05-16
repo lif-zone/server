@@ -1225,12 +1225,12 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
 });
 
 const cmd_get_peer = opt=>etask(function cmd_get_peer(){
-  let {c, event} = opt;
+  let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
   let fuzzy = get_fuzzy(c.d);
   assert(!call || !event, 'unexpected event for get_peer '+event);
   if (t_pre_process){
-    if (c.loop){
+    if (call && c.loop){
       let s = build_cmd_o(c.s+c.d+'>!get_peer');
       s += t_mode.msg ? ' '+build_cmd(loop_str(c.loop)+'>fwd',
         build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'get_peer'})) : '';
@@ -1240,6 +1240,10 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
       s += t_mode.msg ? ' '+build_cmd(rev_loop_str(loop)+'>fwd',
         build_cmd_o(rev_trim(sd)+'msg', {type: 'res', cmd: 'get_peer'})) : '';
       s += t_mode.req ? ' '+build_cmd_o(rev_trim(sd)+'*get_peer_r') : '';
+      set_push_cmd(c, s);
+    } else if (basic && c.loop){
+      let s = build_cmd(loop_str(c.loop)+'>fwd',
+        build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'get_peer'}));
       set_push_cmd(c, s);
     }
     return;
@@ -1677,6 +1681,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*conn_info': yield cmd_conn_info(opt); break;
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '*conn_info_r': yield cmd_conn_info_r(opt); break;
+  case 'get_peer': yield cmd_get_peer(opt); break;
   case '!get_peer': yield cmd_get_peer(opt); break;
   case '*get_peer': yield cmd_get_peer(opt); break;
   case '*get_peer_r': yield cmd_get_peer_r(opt); break;
@@ -2375,6 +2380,7 @@ describe('peer-relay', function(){
           `a.b.c>fwd(a+d>msg(type:req cmd:get_peer))`);
         T('+dc.b.a<msg(type:req cmd:get_peer)',
           `c.b.a<fwd(+da<msg(type:req cmd:get_peer))`);
+        T('a.b.c+d>get_peer', `a.b.c+d>msg(type:req cmd:get_peer)`);
         _t('mode(msg req)',
           'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         _t('mode(msg req)', 'abc>conn_info(!r)', `
@@ -2638,14 +2644,13 @@ describe('peer-relay', function(){
     // XXX: e.X -> make it an error
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer
-      // XXX: eX.c.d.a+e>get_peer
       // XXX: eX.c.d.a>fwd(e-e>get_peer)
-      eX.c.d.a-e>msg(type:req cmd:get_peer) ea>*get_peer
+      eX.c.d.a-e>get_peer ea>*get_peer
       eXcda<msg(type:res cmd:get_peer) // XXX: eXcda<get_peer_r
       ea<*get_peer_r`);
     t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer
-      eX.b.a.d+e>msg(type:req cmd:get_peer) ed>*get_peer
+      eX.b.a.d+e>get_peer ed>*get_peer
       eXbad<msg(type:res cmd:get_peer) ed<*get_peer_r`);
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
