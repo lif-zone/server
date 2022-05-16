@@ -730,7 +730,7 @@ function assert_invalid(exp, s, i){
 
 E.test_parse_cmd_single = function(s){
   let state = 'pre', i, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
-  let parentesis = 0, done = false;
+  let parentesis = 0, done, comment;
   for (i=0; i<s.length && !done; i++)
   {
     let c = s.charAt(i);
@@ -742,9 +742,17 @@ E.test_parse_cmd_single = function(s){
       assert_invalid(!'()'.includes(c), s, i);
       state = 'cmd';
       cmd_s = i;
+      comment = c=='/';
       break;
     case 'cmd':
       assert_invalid(!')'.includes(c), s, i);
+      if (comment && c=='/'){
+        cmd_e = i+1;
+        arg_s = i+1;
+        state = 'arg';
+        break;
+      }
+      comment = false;
       if (string.is_ws(c))
       {
         cmd_e = i;
@@ -759,7 +767,14 @@ E.test_parse_cmd_single = function(s){
       }
       break;
     case 'arg':
-      if (c=='(')
+      if (comment){
+        if (c=='\r' || c==`\n`){
+          arg_e = i;
+          done = true;
+        }
+        break;
+      }
+      else if (c=='(')
         parentesis++;
       if (c==')')
         parentesis--;
@@ -776,6 +791,8 @@ E.test_parse_cmd_single = function(s){
   if (state=='pre')
     return;
   assert_invalid(!parentesis, s, i);
+  if (comment && !done)
+    arg_e = s.length;
   let cmd = ret.cmd = s.substr(cmd_s, cmd_e-cmd_s);
   if (arg_e>arg_s)
     ret.arg = s.substr(arg_s, arg_e-arg_s);

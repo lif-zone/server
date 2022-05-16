@@ -3518,6 +3518,12 @@ describe('test_lib', ()=>{
       t('ab:cd<e', {cmd: 'ab:cd<e'}, 7);
       t('ab:cd>e(a:d)', {cmd: 'ab:cd>e', arg: 'a:d'}, 12);
       t('ab:cd<e(a:d)', {cmd: 'ab:cd<e', arg: 'a:d'}, 12);
+      t('// XXX', {cmd: '//', arg: ' XXX'}, 6);
+      t(' // XXX ', {cmd: '//', arg: ' XXX '}, 8);
+      t(`// XXX XXX2
+        XXX3`, {cmd: '//', arg: ' XXX XXX2'}, 12);
+      t(` // XXX XXX2 
+        XXX3`, {cmd: '//', arg: ' XXX XXX2 '}, 14);
     });
     it('cmd_single_invalid', ()=>{
       const t = (s, exp)=>assert.throws(
@@ -3564,6 +3570,10 @@ describe('test_lib', ()=>{
       t('ab>connect', [{cmd: 'ab>connect'}]);
       t('ab>(test go(now 3 send:4))', [{cmd: 'ab>',
         arg: 'test go(now 3 send:4)'}]);
+      t('// XXX', [{cmd: '//', arg: ' XXX'}]);
+      t('a(c) // XXX', [{cmd: 'a', arg: 'c'}, {cmd: '//', arg: ' XXX'}]);
+      t(`a(c) // XXX
+        b`, [{cmd: 'a', arg: 'c'}, {cmd: '//', arg: ' XXX'}, {cmd: 'b'}]);
     });
     it('cmd_multi_level_valid', ()=>{
       const t = (s, exp)=>{
