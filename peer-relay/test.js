@@ -2627,43 +2627,34 @@ describe('peer-relay', function(){
   });
   describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXnop', test);
-    t('short-p', `mode(msg req) conf(id:amXYZnz)
+    t('short:abXnop-p', `mode(msg req) conf(id:amXYZnz)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
       pX.n.o.a-p>!get_peer(r:a)`);
-    t('short+p', `mode(msg req) conf(id:amXYZnz)
+    t('short:abXnop+p', `mode(msg req) conf(id:amXYZnz)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
       p.X.b.a.o+p>!get_peer(r:o)`);
   });
-  /* XXX derry: examples
-  describe('get_peer', ()=>{
-    if (true) return; // XXX WIP
-    let t = (name, test)=>t_roles(name, 'abcd', test);
-    let s = 'conf(a:10 b:20 c:30 d:40 e:50';
-    t('a', s+=` a=node:wss`); // XXX: do aa~>get_peer
-    t('ab', s+=` b=node:wss ab>!connect bb~>get_peer:b ab<get_peer_r:a`);
-    t('abc', s+=` c=node:wss bc>!connect bb~>get_peer:b ab<get_peer_r:a`);
+  describe('announce', ()=>{
+    if (true) return; // XXX: WIP
+    // - go right
+    // + go left
+    let t = (name, test)=>t_roles(name, 'abXnop', test);
+    t('xxx', `mode(msg req) conf(id:amXYZnz) a,b,c,d,e,X=node:wss
+    aX>!connect aX+a>announce aX-a>announce aX>online
+    // abX b-:a b+:X
+    bX>!connect bX.Xa.X-b,bX.Xa.X.Xa+b>announce bX,bXa>online
+    // abcX c-:b c+:X
+    cX>!connect cX.Xa.Xb.X-c,cX.Xb.Xa.X.Xb+c>announce cX,cXb>online
+    // abcdX d-:c d+:X
+    dX>!connect dX.X.Xa.Xb.Xc.X+d,dX.Xc.Xb.Xa.X.Xc-d>announce dX,dXc>online
+    `);
   });
+
+  /* XXX derry: examples
   // XXX TODO:
   t('a,b=node:wss', `a=node(wss) b=node(wss)`);
   t('ab,bc>!connect', `ab>!connect bc>!connect`);
-  t('abc>msg', `ab>fwd(ac>msg rt:abc) bc>fwd(ac>msg rt:abc)`);
-  // XXX: review
-  t('abc>msg', `ab>fwd(ac>msg rt:abc) bc>fwd(ab>fwd(ac>msg rt:abc) rt:abc)`);
-  t('abc>msg', `ab>fwd(ac>msg rt:abc) bc>fwd(ab>fwd(ac>msg rt:abc) rt:abc)`);
-  _t('abc>msg', `ab>fwd(ac>msg rt:abc) bc>fwd(ab>fwd(ac>msg) rt:abc)`);
-  _t('abc>msg', `ab>fwd(ac>msg rt:abc) bc>fwd(ab>fwd(ac>msg rt:abc))`);
-  _t('abc>msg', `ab(rt:abc):ac>msg bc(rt:abc):ab(rt:abc):ac>msg`);
-  _t('abc>msg', `ab:ac>msg bc:ab:ac>msg`);
-  t('abc>msg', `ab>fwd(ac>msg rt:abc) bc>ab>msg`);
-  t('abc.d>msg', `ab>fwd(ad>msg rt:abc) bc>fwd(ad>msg rt:abc)
-    cd>fwd(ad>msg rt:cd)`);
-  t('abc.de.f>msg', `ab>fwd(af>msg rt:abc) bc>fwd(af>msg rt:abc)
-    cd>fwd(af>msg rt:cde) de>fwd(af>msg rt:cde) ef>fwd(af>msg rt:ef)`);
-  t('ab*e.c.d.he', `ab>fwd(ae>msg rt:ab) bc>fwd(ae>msg rt:bc)
-    cd>fwd(ae>msg rt:cd) dh>fwd(ae>msg rt:dh) he>fwd(he>msg rt he)`);
-  // XXX: why do we need *e? example for finding out (b c d h): ab*e.c.d.he
   t('ab-c>msg', `ab>fwd(a-c>msg)`);
-  t('ab-c.d>msg', `ab>fwd(a-c>msg rt:ab) cd>fwd(a-c>msg)`);
   t('abc.d>msg', `ab>fwd(ad>msg rt:abc) bc>fwd(ab>fwd(ad>msg rt:abc) rt:abc)
     cd>fwd(bc>fwd(ab>fwd(ad>msg rt:abc) rt:abc) rt:cd)`);
   t('abc.d>msg', `ab(rt:abc):ad>msg bc(rt:abc):ab(rt:abc):ad>msg
