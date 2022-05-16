@@ -2687,11 +2687,11 @@ describe('peer-relay', function(){
   describe('discovery', ()=>{
     let t = (name, test)=>t_roles(name, 'abcdeX', test);
     t('abcdeX', `mode(msg req) conf(id:a-mXYZn-z) a,b,c,d,e,X=node:wss
-      aX>!connect aX+a>!get_peer // XXX aX>ping
+      aX>!connect aX+a>!get_peer // XXX aX>!ping
       // abX b+:X
       bX>!connect bX.a+b>!get_peer
       // bX.Xa.X.Xa+b>!get_peer
-      // XXX: bXa>ping
+      // XXX: bXa>!ping
       `);
     if (true) return; // XXX: WIP
     // - go right

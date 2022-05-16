@@ -104,7 +104,6 @@ export default class Router extends EventEmitter {
     _this._touched[nonce] = true;
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
-    debugger;
     if (msg.to==b2s(_this.id))
       _this.emit('message', lbuffer);
     else // relay
