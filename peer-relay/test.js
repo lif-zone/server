@@ -1006,13 +1006,15 @@ function cmd_comment(opt){
   let {c, event} = opt;
   if (t_pre_process)
     return set_orig(c, c.cmd+c.arg+'\r');
-  return cmd_run(event);
+  if (t_i<t_cmds.length)
+    return cmd_run(event);
 }
 
 function cmd_dbg(opt){
   let {event} = opt;
   debugger; // eslint-disable-line no-debugger
-  return cmd_run(event);
+  if (t_i<t_cmds.length)
+    return cmd_run(event);
 }
 
 function cmd_setup(opt){
@@ -2682,11 +2684,15 @@ describe('peer-relay', function(){
       pX.b.a.o+p>!get_peer`);
   });
   // XXX: unite with get_peer tests
-  describe('announce', ()=>{
+  describe('discovery', ()=>{
     let t = (name, test)=>t_roles(name, 'abcdeX', test);
-    if (true) return; // XXX: WIP
     t('abcdeX', `mode(msg req) conf(id:a-mXYZn-z) a,b,c,d,e,X=node:wss
-      aX>!connect aX+a>!get_peer`);
+      aX>!connect aX+a>!get_peer // XXX aX>ping
+      // abX b+:X
+      bX>!connect bX.a+b>!get_peer
+      // bX.Xa.X.Xa+b>!get_peer
+      // XXX: bXa>ping
+      `);
     if (true) return; // XXX: WIP
     // - go right
     // + go left

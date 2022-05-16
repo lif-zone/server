@@ -68,6 +68,8 @@ export default class Router extends EventEmitter {
         {range: xutil.get(msg, ['rt', 'range']), exclude: msg0.from,
         bigger: msg.fuzzy=='+'});
     }
+    if (!channel && msg.fuzzy) // XXX: why it was not handle in fuzzy part
+      return _this.emit('message', lbuffer);
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg
     if (!(b2s(channel.local_id)==msg.from && b2s(channel.id)==msg.to)){
@@ -102,6 +104,7 @@ export default class Router extends EventEmitter {
     _this._touched[nonce] = true;
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
+    debugger;
     if (msg.to==b2s(_this.id))
       _this.emit('message', lbuffer);
     else // relay
