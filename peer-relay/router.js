@@ -56,8 +56,7 @@ export default class Router extends EventEmitter {
     if (msg.fuzzy=='-' && buf_util.in_range(
       {min: s2b(msg0.from), max: s2b(msg0.to)}, s2b(msg.to)) ||
       msg.fuzzy=='+' && buf_util.in_range(
-      {min: s2b(msg0.to), max: s2b(msg0.from)}, s2b(msg.to))
-      ){
+      {min: s2b(msg0.to), max: s2b(msg0.from)}, s2b(msg.to))){
         return _this.emit('message', lbuffer);
     }
     if (channel = _this.get_channel_from_rt(msg));
