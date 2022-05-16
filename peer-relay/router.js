@@ -71,11 +71,7 @@ export default class Router extends EventEmitter {
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg
     if (!(b2s(channel.local_id)==msg.from && b2s(channel.id)==msg.to)){
-      let msg2 = {
-        from: b2s(_this.id),
-        to: b2s(channel.id),
-        type: 'fwd',
-      };
+      let msg2 = {from: b2s(_this.id), to: b2s(channel.id), type: 'fwd'};
       if (msg.to!=msg2.to){
         rt = rt || xutil.get(msg0, ['rt', 'path']) &&
           {path: xutil.get(msg0, ['rt', 'path'])};
