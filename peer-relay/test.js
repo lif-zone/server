@@ -1009,6 +1009,12 @@ function cmd_comment(opt){
   return cmd_run(event);
 }
 
+function cmd_dbg(opt){
+  let {event} = opt;
+  debugger; // eslint-disable-line no-debugger
+  return cmd_run(event);
+}
+
 function cmd_setup(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let M = s=>push_cmd(s+' - ');
@@ -1658,6 +1664,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   switch (c.cmd){
   case '-': yield cmd_ensure_no_events(opt); break;
   case '//': yield cmd_comment(opt); break;
+  case 'dbg': yield cmd_dbg(opt); break;
   case 'setup': yield cmd_setup(opt); break;
   case 'mode': yield cmd_mode(opt); break;
   case 'conf': yield cmd_conf(opt); break;
@@ -1752,8 +1759,10 @@ const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
   if (t_role=='fake')
     return;
   let next = t_cmds[t_i];
-  for (let i=t_i+1; next && next.cmd=='//' && i<t_cmds.length; i++)
+  for (let i=t_i+1; next && ['//', 'dbg'].includes(next.cmd) &&
+    i<t_cmds.length; i++){
     next = t_cmds[i];
+  }
   if (next && next.s && next.cmd[0]=='*' && (t_mode.msg || !t_mode.req)){
     if (!next.d || !N(next.d).t.fake)
       return;
