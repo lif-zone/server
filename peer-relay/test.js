@@ -291,7 +291,7 @@ function assert_int(val){
 }
 
 function assert_node_ids(val){
-  if (val=='amXYZnz')
+  if (val=='a-mXYZn-z')
     return test_gen_ids(t_conf.id_bits, ID_BITS);
   let ids = val.split(' '), ret = {};
   ids.forEach(s=>{
@@ -1002,6 +1002,13 @@ function cmd_rt_add(opt){
   });
 }
 
+function cmd_comment(opt){
+  let {c, event} = opt;
+  if (t_pre_process)
+    return set_orig(c, c.cmd+c.arg+'\r');
+  return cmd_run(event);
+}
+
 function cmd_setup(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let M = s=>push_cmd(s+' - ');
@@ -1650,6 +1657,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   }
   switch (c.cmd){
   case '-': yield cmd_ensure_no_events(opt); break;
+  case '//': yield cmd_comment(opt); break;
   case 'setup': yield cmd_setup(opt); break;
   case 'mode': yield cmd_mode(opt); break;
   case 'conf': yield cmd_conf(opt); break;
@@ -1744,6 +1752,8 @@ const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
   if (t_role=='fake')
     return;
   let next = t_cmds[t_i];
+  for (let i=t_i+1; next && next.cmd=='//' && i<t_cmds.length; i++)
+    next = t_cmds[i];
   if (next && next.s && next.cmd[0]=='*' && (t_mode.msg || !t_mode.req)){
     if (!next.d || !N(next.d).t.fake)
       return;
@@ -2295,6 +2305,9 @@ describe('peer-relay', function(){
         t('1s', `ms(1000)`);
         t('12s', `ms(12000)`);
         t('s=node(wss)', `s=node(wss)`);
+        T('s=node(wss) // XXX', `s=node(wss) // XXX`);
+        T(`s=node(wss) // XXX XXX(2)(
+          ab>connect(!r)`, `s=node(wss) // XXX XXX(2)(\r ab>connect(wss !r)`);
         t('ab>connect(wss !r)', `ab>connect(wss !r)`);
         t('ab>connect(!r)', `ab>connect(wss !r)`);
         t('ab>connect', `ab>connect(wss !r) ab<connected`);
@@ -2606,17 +2619,31 @@ describe('peer-relay', function(){
     t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
+     /* XXX: from derry
+    // XXX: e.X -> make it an error
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer(r:a)
-      e.X.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) ea>*get_peer
-      adcXe>msg(type:res cmd:get_peer) ae>*get_peer_r`);
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
+      e-e>!get_peer
+      eX.c.d.a>fwd(e-e>msg(type:req cmd:get_peer)) // XXX: eX.c.d.a-e>get_peer
+      // XXX: TODO  eX.c.d.a>fwd(e-e>get_peer)
+      ea>*get_peer
+      eXcda<msg(type:res cmd:get_peer) // XXX: TODO: eXcda<get_peer_r
+      ea<*get_peer_r`);
+    // XXX: add "//" comments api in tests
+    // XXX: add dbg
+    */
+    // XXX: eX.b.a.d>fwd(e+e>msg(type:req cmd:get_peer))
+    // XXX: eX.b.a.d+e>msg(type:req cmd:get_peer)
     t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer(r:d)
-      e.X.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) ed>*get_peer
+      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer
+      // XXX: eX.b.a.d+e>msg(type:req cmd:get_peer)
+      // XXX: eX.c.d.a+e>get_peer
+      eX.b.a.d>fwd(e+e>msg(type:req cmd:get_peer)) ed>*get_peer
       dabXe>msg(type:res cmd:get_peer) de>*get_peer_r`);
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d.a-e>!get_peer(r:a)`);
+    // XXX: change r:a to res:a (and make it auto by default)
     t('short:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.b.a.d+e>!get_peer(r:d)`);
@@ -2627,10 +2654,10 @@ describe('peer-relay', function(){
   });
   describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXnop', test);
-    t('short:abXnop-p', `mode(msg req) conf(id:amXYZnz)
+    t('short:abXnop-p', `mode(msg req) conf(id:a-mXYZn-z)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
       pX.n.o.a-p>!get_peer(r:a)`);
-    t('short:abXnop+p', `mode(msg req) conf(id:amXYZnz)
+    t('short:abXnop+p', `mode(msg req) conf(id:a-mXYZn-z)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
       p.X.b.a.o+p>!get_peer(r:o)`);
   });
@@ -2638,15 +2665,17 @@ describe('peer-relay', function(){
     if (true) return; // XXX: WIP
     // - go right
     // + go left
-    let t = (name, test)=>t_roles(name, 'abXnop', test);
-    t('xxx', `mode(msg req) conf(id:amXYZnz) a,b,c,d,e,X=node:wss
-    aX>!connect aX+a>announce aX-a>announce aX>online
+    // XXX: binary search tree: https://www.npmjs.com/package/avl
+    let t = (name, test)=>t_roles(name, 'abcdeX', test);
+    t('xxx', `mode(msg req) conf(id:a-mXYZn-z) a,b,c,d,e,X=node:wss
+    // XXX: add a-m n-z support
+    aX>!connect aX+a>get_peer aX>ping
     // abX b-:a b+:X
-    bX>!connect bX.Xa.X-b,bX.Xa.X.Xa+b>announce bX,bXa>online
+    bX>!connect bX.Xa.X-b,bX.Xa.X.Xa+b>announce bX,bXa>ping
     // abcX c-:b c+:X
-    cX>!connect cX.Xa.Xb.X-c,cX.Xb.Xa.X.Xb+c>announce cX,cXb>online
+    cX>!connect cX.Xa.Xb.X-c,cX.Xb.Xa.X.Xb+c>announce cX,cXb>ping
     // abcdX d-:c d+:X
-    dX>!connect dX.X.Xa.Xb.Xc.X+d,dX.Xc.Xb.Xa.X.Xc-d>announce dX,dXc>online
+    dX>!connect dX.X.Xa.Xb.Xc.X+d,dX.Xc.Xb.Xa.X.Xc-d>announce dX,dXc>ping
     `);
    /* XXX: compact path:
      bX.Xa.X -> bXaX -> bX
