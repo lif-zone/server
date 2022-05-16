@@ -1228,6 +1228,7 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
   let fuzzy = get_fuzzy(c.d);
+  assert(!c.arg, 'invalid arg '+c.orig);
   assert(!call || !event, 'unexpected event for get_peer '+event);
   if (t_pre_process){
     if (call && c.loop){
@@ -2651,7 +2652,6 @@ describe('peer-relay', function(){
     t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
-    // XXX: add res to get_peer_r(res) and !get_peer(res). make it auto default
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer
       eX.c.d.a-e>get_peer ea>*get_peer
@@ -2662,23 +2662,23 @@ describe('peer-relay', function(){
       eXbad<get_peer_r ed<*get_peer_r`);
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d.a-e>!get_peer(r:a)`);
+      eX.c.d.a-e>!get_peer`);
     t('short:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.b.a.d+e>!get_peer(r:d)`);
+      eX.b.a.d+e>!get_peer`);
     t('multiple:abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)
-      eX.c.d.a-e>!get_peer(r:a) eX.b.a.d+e>!get_peer(r:d)`);
+      eX.c.d.a-e>!get_peer eX.b.a.d+e>!get_peer`);
   });
   describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXnop', test);
     t('short:abXnop-p', `mode(msg req) conf(id:a-mXYZn-z)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
-      pX.n.o.a-p>!get_peer(r:a)`);
+      pX.n.o.a-p>!get_peer`);
     t('short:abXnop+p', `mode(msg req) conf(id:a-mXYZn-z)
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
-      pX.b.a.o+p>!get_peer(r:o)`);
+      pX.b.a.o+p>!get_peer`);
   });
   describe('announce', ()=>{
     if (true) return; // XXX: WIP
