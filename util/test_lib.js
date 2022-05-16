@@ -924,7 +924,7 @@ E.parse_cmd_dir = function(s){
     else
       assert(false);
   }
-  assert_invalid(loop.length, _d);
+  assert_invalid(loop.length, s, _d);
   if (dir=='<')
     loop.reverse();
   let cmd = s.substr(_d+1), seq = !comma;
