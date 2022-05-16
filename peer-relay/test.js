@@ -1238,8 +1238,7 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
       let loop = Array.from(c.loop).splice(0, c.loop.length-1);
       let sd = c.s+c.loop[loop.length-1].d+'>';
       s += t_mode.req ? ' '+build_cmd_o(sd+'*get_peer') : '';
-      s += t_mode.msg ? ' '+build_cmd(rev_loop_str(loop)+'>fwd',
-        build_cmd_o(rev_trim(sd)+'msg', {type: 'res', cmd: 'get_peer'})) : '';
+      s += t_mode.msg ? ' '+build_cmd(rev_loop_str(loop)+'>get_peer_r') : '';
       s += t_mode.req ? ' '+build_cmd_o(rev_trim(sd)+'*get_peer_r') : '';
       set_push_cmd(c, s);
     } else if (basic && c.loop){
@@ -1270,9 +1269,13 @@ const cmd_get_peer_r = opt=>etask(function cmd_get_peer_r(){
     }
   });
   if (t_pre_process){
-    if (basic && c.loop){
-      let s = build_cmd(loop_str(c.loop)+'>fwd',
-        build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'get_peer'}));
+    if (basic){
+      let s;
+      if (c.loop){
+        s = build_cmd(loop_str(c.loop)+'>fwd',
+          build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'get_peer'}));
+      } else
+        s = build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'get_peer'});
       set_push_cmd(c, s);
     }
     return;
@@ -2375,21 +2378,19 @@ describe('peer-relay', function(){
         t('a-b>!get_peer', `a-b>!get_peer`);
         t('a+b>!get_peer', `a+b>!get_peer`);
         t('+ab<!get_peer', `+ab<!get_peer`);
-        if (0){ // XXX: need simple msg, no fwd
-        _T('mode(msg req)', 'a.b+c>!get_peer', `a+c>!get_peer
-          ab:a+c>msg(type:req cmd:get_peer) ab>*get_peer`);
-        _T('mode(msg req)', 'a.b-c>!get_peer', `a-c>!get_peer
-          ab:a-c>msg(type:req cmd:get_peer) ab>*get_peer`);
-        }
         _T('mode(msg req)', 'ab.c+d>!get_peer', `a+d>!get_peer
           ab.c>fwd(a+d>msg(type:req cmd:get_peer)) ac>*get_peer
-          cba>fwd(ac<msg(type:res cmd:get_peer)) ac<*get_peer_r`);
+          cba>fwd(ca>msg(type:res cmd:get_peer)) ac<*get_peer_r`);
         T('ab.c+d>msg(type:req cmd:get_peer)',
           `ab.c>fwd(a+d>msg(type:req cmd:get_peer))`);
         T('+dc.ba<msg(type:req cmd:get_peer)',
           `c.ba<fwd(+da<msg(type:req cmd:get_peer))`);
+        T('ab>get_peer_r', `ab>msg(type:res cmd:get_peer)`);
         T('ab.c+d>get_peer', `ab.c+d>msg(type:req cmd:get_peer)`);
         T('ab.c>get_peer_r', `ab.c>msg(type:res cmd:get_peer)`);
+        _T('mode(msg req)', 'ab+c>!get_peer', `a+c>!get_peer
+          ab:a+c>msg(type:req cmd:get_peer) ab>*get_peer
+          ba>get_peer_r ab<*get_peer_r`);
         if (0) // XXX: TODO
         T('ab.c>fwd(ac>get_peer_r)', `ab.c>get_peer_r`);
         _t('mode(msg req)',
@@ -2680,21 +2681,24 @@ describe('peer-relay', function(){
       a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
       pX.b.a.o+p>!get_peer`);
   });
+  // XXX: unite with get_peer tests
   describe('announce', ()=>{
+    let t = (name, test)=>t_roles(name, 'abcdeX', test);
+    if (true) return; // XXX: WIP
+    t('abcdeX', `mode(msg req) conf(id:a-mXYZn-z) a,b,c,d,e,X=node:wss
+      aX>!connect aX+a>!get_peer`);
     if (true) return; // XXX: WIP
     // - go right
     // + go left
     // XXX: binary search tree: https://www.npmjs.com/package/avl
-    let t = (name, test)=>t_roles(name, 'abcdeX', test);
     t('xxx', `mode(msg req) conf(id:a-mXYZn-z) a,b,c,d,e,X=node:wss
-    // XXX: add a-m n-z support
-    aX>!connect aX+a>get_peer aX>ping
-    // abX b-:a b+:X
-    bX>!connect bX.Xa.X-b,bX.Xa.X.Xa+b>announce bX,bXa>ping
-    // abcX c-:b c+:X
-    cX>!connect cX.Xa.Xb.X-c,cX.Xb.Xa.X.Xb+c>announce cX,cXb>ping
-    // abcdX d-:c d+:X
-    dX>!connect dX.X.Xa.Xb.Xc.X+d,dX.Xc.Xb.Xa.X.Xc-d>announce dX,dXc>ping
+      aX>!connect aX+a>get_peer aX>ping
+      // abX b-:a b+:X
+      bX>!connect bX.Xa.X-b,bX.Xa.X.Xa+b>announce bX,bXa>ping
+      // abcX c-:b c+:X
+      cX>!connect cX.Xa.Xb.X-c,cX.Xb.Xa.X.Xb+c>announce cX,cXb>ping
+      // abcdX d-:c d+:X
+      dX>!connect dX.X.Xa.Xb.Xc.X+d,dX.Xc.Xb.Xa.X.Xc-d>announce dX,dXc>ping
     `);
    /* XXX: compact path:
      bX.Xa.X -> bXaX -> bX
