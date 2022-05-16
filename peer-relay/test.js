@@ -1300,7 +1300,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   cmd = cmd||'';
   if (t_pre_process){
     if (c.loop)
-      c = extend_loop_fwd(c);
+      c = expand_loop_fwd(c);
     else {
       set_orig(c, build_cmd_o(dir_c(c)+c.cmd,
         {id, type, cmd, seq, ack, body}));
@@ -1628,7 +1628,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   f.rt2.push(rt);
   if (t_pre_process){
     if (c.loop)
-      return extend_loop_fwd(c);
+      return expand_loop_fwd(c);
   }
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
@@ -1667,7 +1667,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
     if (a = c.cmd.match(/(^\d+)s$/))
       assign(c, xtest.test_parse(build_cmd('ms', +a[1]*date.ms.SEC))[0]);
     if (c.loop && c.comma){
-      extend_loop_repeat(c);
+      expand_loop_repeat(c);
       return;
     }
   }
@@ -1717,7 +1717,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
 });
 
 // XXX NOW: need test
-function extend_loop_fwd(c){
+function expand_loop_fwd(c){
   assert(c.loop);
   assert(t_pre_process);
   let a = [], dir = c.loop[0].dir, prev = c.arg;
@@ -1753,7 +1753,7 @@ function extend_loop_fwd(c){
 }
 
 // XXX NOW: need test
-function extend_loop_repeat(c){
+function expand_loop_repeat(c){
   assert(c.loop);
   assert(c.comma);
   assert(t_pre_process);
