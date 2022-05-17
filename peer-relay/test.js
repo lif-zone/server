@@ -2310,6 +2310,15 @@ describe('channels', ()=>{
     t('10 15 20', 20, 20);
     t('10 15 20', 21, 20);
     t('20 40', 10, 40);
+    t = (nodes, val, range, exp)=>_t(nodes, val, {bigger: false, range}, exp);
+    t('10 15', 9, {min: v(10), max: v(16)}, 15);
+    t('10 15', 9, {min: v(15), max: v(15)}, 10);
+    t('10 15', 9, {min: v(10), max: v(15)}, '');
+    t('10 15', 10, {min: v(10), max: v(16)}, 15);
+    /* XXX: TODO (and rename get_closest2 -> get_closest
+    t([10, 15], 10, '', {min: v(10), max: v(16)}, v(15));
+    t([10, 15], 10, 10, {min: v(9), max: v(16)}, v(15));
+    */
     t = (nodes, val, exp)=>_t(nodes, val, {bigger: true}, exp);
     t('10 20 25 30 40 50', 9, 10);
     t('10 20 25 30 40 50', 10, 10);
