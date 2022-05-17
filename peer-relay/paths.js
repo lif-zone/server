@@ -17,25 +17,23 @@ add(path){
   path = Array.from(path);
   let o = tree.find(id);
   if (!o)
-    return tree.insert({id, paths: [{path, ts}]});
-  let paths = o.paths;
+    return tree.insert(id, {id, paths: [{path, ts}]}).data;
+  let paths = o.data.paths;
   for (let i=0; i<paths.length; i++){
     let p = paths[i];
     if (p.path.length==path.length){
       if (Paths.eq(p.path, path)){
-        o.ts = ts; // XXX: need to reorder by ts
-        return o;
+        p.ts = ts; // XXX: need to reorder by ts
+        return o.data;
       }
     } else if (p.path.length>path.length){
-      if (!i)
-        p.unshift({path, ts});
-      else // XXX: we might need to reoder by ts
-        paths.splice(i, 0, {path, ts});
-      return o;
+      // XXX: we might need to reoder by ts
+      paths.splice(i, 0, {path, ts});
+      return o.data;
     }
   }
   paths.push({path, ts});
-  return o;
+  return o.data;
 }
 }
 
@@ -47,4 +45,4 @@ Paths.eq = function(p1, p2){
   return i==p1.length;
 };
 
-Paths.cmp = function(a, b){ return buf_util.cmp(a.id, b.id); };
+Paths.cmp = function(a, b){ return buf_util.cmp(a, b); };

@@ -2113,7 +2113,7 @@ describe('paths', ()=>{
     t([v(1), v(2)], [v(1), v(2)], true);
   });
   it('cmp', ()=>{
-    const t = (a, b, exp)=>assert.equal(Paths.cmp({id: s2b(a)}, {id: s2b(b)}),
+    const t = (a, b, exp)=>assert.equal(Paths.cmp(s2b(a), s2b(b)),
       exp);
     t(v(1), v(1), 0);
     t(v(1), v(2), -1);
@@ -2123,6 +2123,56 @@ describe('paths', ()=>{
     t(v(max-1), v(max), -1);
     t(v(max), v(max-1), 1);
     t(v(max-1), v(max-1), 0);
+  });
+  it('add', ()=>{
+    const t = (s, exp)=>{
+      let ids = test_gen_ids(8, ID_BITS);
+      function id_to_name(id){
+        for (let name in ids)
+        {
+          if (ids[name]==id)
+            return name;
+        }
+        assert(0, 'id not found '+id);
+      }
+      function path_to_str(p){
+        let ret = '';
+        p.forEach(id=>ret = ret + id_to_name(id));
+        return ret;
+      }
+      let tree = new Paths();
+      let a = s.split(' ');
+      xsinon.clock_set({now: 1});
+      a.forEach(p=>{
+        let path = [];
+        p.split('').forEach(name=>path.push(ids[name]));
+        tree.add(path);
+        xsinon.tick(1);
+      });
+      let ret = [];
+      tree.tree.forEach(o=>{
+        let data = o.data;
+        let paths = [];
+        data.paths.forEach(p=>paths.push(path_to_str(p.path)+':'+p.ts));
+        ret.push(id_to_name(b2s(data.id))+'['+paths.join(' ')+']');
+      });
+      assert.equal(ret.join(' '), exp);
+      xsinon.uninit();
+    };
+    t('ba a', 'a[a:2 ba:1]');
+    t('a', 'a[a:1]');
+    t('a a', 'a[a:2]');
+    t('a b', 'a[a:1] b[b:2]');
+    t('a b c', 'a[a:1] b[b:2] c[c:3]');
+    t('c b a', 'a[a:3] b[b:2] c[c:1]');
+    t('a ba', 'a[a:1 ba:2]');
+    t('ba a', 'a[a:2 ba:1]');
+    t('ca ba a', 'a[a:3 ca:1 ba:2]');
+    t('ba ca a', 'a[a:3 ba:1 ca:2]');
+    t('ba ca', 'a[ba:1 ca:2]');
+    t('ca ba', 'a[ca:1 ba:2]');
+    t('ba cda a', 'a[a:3 ba:1 cda:2]');
+    t('ba cda a ba', 'a[a:3 ba:4 cda:2]');
   });
 });
 
