@@ -1,6 +1,7 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
 import {EventEmitter} from 'events';
+import assert from 'assert';
 import Tree from 'avl';
 import buf_util from './buf_util.js';
 import date from '../util/date.js';
@@ -38,18 +39,41 @@ add(path){
   move_to_head(paths, paths.length-1);
   return o.data;
 }
-get_closest(id){
-  let tree=this.tree, start=0, end=tree.size;
+get_closest(id, opt){
+  let {dir, skip_self} = opt;
+  assert(['+', '-'].includes(dir), 'invalid dir '+dir);
+  let tree=this.tree, start=0, size=tree.size, end=size;
+  if (!end)
+    return;
+  let best;
   while (end>start){
 		var mid = Math.floor((start+end)/2);
     let key = tree.at(mid).key, cmp = Paths.cmp(id, key);
-    if (cmp>0)
-			start = mid+1;
-    else if (cmp<0)
-			end = mid;
-		else
-      return key;
+    if (dir=='+'){
+      if (cmp>0)
+        start = mid+1;
+      else if (cmp<0){
+        end = mid;
+        best = key;
+      }
+      else if (skip_self)
+        start = mid+1;
+      else
+        return key;
+    } else {
+      if (cmp>0){
+        start = mid+1;
+        best = key;
+      }
+      else if (cmp<0)
+        end = mid;
+      else if (skip_self)
+        end = mid;
+      else
+        return key;
+    }
 	}
+  return best||(dir=='+' ? tree.at(0).key : tree.at(size-1).key);
 }
 }
 
