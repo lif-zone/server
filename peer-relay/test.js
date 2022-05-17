@@ -2169,8 +2169,10 @@ describe('paths', ()=>{
     t('ba a', 'a[a:2 ba:1]');
     t('ca ba a', 'a[a:3 ca:1 ba:2]');
     t('ba ca a', 'a[a:3 ba:1 ca:2]');
+    // XXX derry: do we need to use the most recent path
     t('ba ca', 'a[ba:1 ca:2]');
     t('ca ba', 'a[ca:1 ba:2]');
+    t('ca ba ca', 'a[ca:3 ba:2]');
     t('ba cda a', 'a[a:3 ba:1 cda:2]');
     t('ba cda a ba', 'a[a:3 ba:4 cda:2]');
   });
