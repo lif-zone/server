@@ -2112,6 +2112,18 @@ describe('paths', ()=>{
     t([v(1)], [v(1), v(2)], false);
     t([v(1), v(2)], [v(1), v(2)], true);
   });
+  it('cmp', ()=>{
+    const t = (a, b, exp)=>assert.equal(Paths.cmp({id: s2b(a)}, {id: s2b(b)}),
+      exp);
+    t(v(1), v(1), 0);
+    t(v(1), v(2), -1);
+    t(v(2), v(1), 1);
+    t(v(2), v(2), 0);
+    let max = Math.pow(2, 8)-1;
+    t(v(max-1), v(max), -1);
+    t(v(max), v(max-1), 1);
+    t(v(max-1), v(max-1), 0);
+  });
 });
 
 describe('channels', ()=>{
