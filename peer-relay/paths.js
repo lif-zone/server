@@ -24,17 +24,43 @@ add(path){
     if (p.path.length==path.length){
       if (Paths.eq(p.path, path)){
         p.ts = ts; // XXX: need to reorder by ts
+        move_to_head(paths, i);
         return o.data;
       }
     } else if (p.path.length>path.length){
       // XXX: we might need to reoder by ts
       paths.splice(i, 0, {path, ts});
+      move_to_head(paths, i);
       return o.data;
     }
   }
   paths.push({path, ts});
+  move_to_head(paths, paths.length-1);
   return o.data;
 }
+get_closest(id){
+  let tree=this.tree, start=0, end=tree.size;
+  while (end>start){
+		var mid = Math.floor((start+end)/2);
+    let key = tree.at(mid).key, cmp = Paths.cmp(id, key);
+    if (cmp>0)
+			start = mid+1;
+    else if (cmp<0)
+			end = mid;
+		else
+      return key;
+	}
+}
+}
+
+function move_to_head(paths, i){
+  let path = paths[i].path, curr = paths[i], j;
+  for (j=i; j>=0 && paths[j].path.length==path.length; j--);
+  j++;
+  if (j==i)
+    return;
+  paths.splice(i, 1);
+  paths.splice(j, 0, curr);
 }
 
 Paths.eq = function(p1, p2){
