@@ -5,6 +5,7 @@ import assert from 'assert';
 import Node from './node.js';
 import Req from './req.js';
 import Channels from './channels.js';
+import Paths from './paths.js';
 import buf_util from './buf_util.js';
 import ReqHandler from './req_handler.js';
 import etask from '../util/etask.js';
@@ -2098,6 +2099,18 @@ describe('buf_util', ()=>{
     t({min: 25, max: 30}, 50, false);
     t({min: 30, max: 40}, 50, false);
     t({min: 40, max: 10}, 50, true);
+  });
+});
+
+describe('paths', ()=>{
+  const v = val=>hash_from_int(val, 8, ID_BITS);
+  it('eq', ()=>{
+    const t = (p1, p2, exp)=>assert.equal(Paths.eq(p1, p2), exp);
+    t([v(1)], [v(1)], true);
+    t([v(1)], [v(2)], false);
+    t([v(1), v(2)], [v(1)], false);
+    t([v(1)], [v(1), v(2)], false);
+    t([v(1), v(2)], [v(1), v(2)], true);
   });
 });
 

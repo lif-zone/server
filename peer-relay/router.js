@@ -7,7 +7,8 @@ import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 import buf_util from './buf_util.js';
 import xutil from '../util/util.js';
-import {dbg_msg, path_eq} from './util.js';
+import {dbg_msg} from './util.js';
+import Paths from './paths.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
 const log = xlog('router');
@@ -166,7 +167,7 @@ export default class Router extends EventEmitter {
     let routes=this.routes, d=path[path.length-1];
     if (!routes[d])
       return false;
-    return !!routes[d].find(rt=>path_eq(rt.path, path));
+    return !!routes[d].find(rt=>Paths.eq(rt.path, path));
   }
   add_route(path){
     let routes=this.routes;
