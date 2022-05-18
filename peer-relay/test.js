@@ -2896,41 +2896,6 @@ describe('peer-relay', function(){
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)
       eX.c.d.a-e>!get_peer eX.b.a.d+e>!get_peer`);
   });
-  /* XXX: derry
-  // node ID 2^128 2^160
-  // self: node ID of myself
-  // hold in memory: list
-  // TODO: NodeId: convert ID to double. 2^53, exp 10bit. 0-1
-  // self=c aXbcde>ping on receive: aXbc: add aXb nodes,
-  // pkt return: aXbcde<ping on receuve: add de nodes
-  class NodeId {
-    s: 'ab472bc732',
-    n: 0.48274923823232,
-    b: Buffer('ab472bc732')
-  };
-  nodes = {
-    map = new Map;
-    tree: new Avl;
-  };
-  nodes.map['ab472bc732'] = {id: NodeId, ...}
-  class Node {
-    id: NodeId,
-    conns: Map,
-    routes: ['bXa'],
-    self: null or NodeSelf,
-  };
-  nodes.a.conn.X == nodes.X.conn.a
-  class NodeConn {rtt, bw, last pkt..., self: null || NodeConnSelf};
-  will appear: a->X X->a,b b->X,c c->b
-  nodes = new Map;
-  nodes[a] == AVL lookup of 'a'
-
-  nodes = {
-    a: {conn: [X]}
-    X: {conn: [a, b]},
-    b: {conn: [X, c]}.
-  };
-  */
   describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXnop', test);
     t('short:abXnop-p', `mode(msg req)
@@ -3769,8 +3734,50 @@ describe('peer-relay', function(){
   */
 });
 
+/*
+VP:
+- class NodeId: rewrite code
+
+*/
+
+/* XXX: derry: 17-May-2022
+// node ID 2^128 2^160
+// self: node ID of myself
+// hold in memory: list
+// TODO: NodeId: convert ID to double. 2^53, exp 10bit. 0-1
+// self=c aXbcde>ping on receive: aXbc: add aXb nodes,
+// pkt return: aXbcde<ping on receuve: add de nodes
+class NodeId {
+  s: 'ab472bc732',
+  n: 0.48274923823232,
+  b: Buffer('ab472bc732')
+};
+nodes = {
+  map = new Map;
+  tree: new Avl;
+};
+nodes.map['ab472bc732'] = {id: NodeId, ...}
+class Node {
+  id: NodeId,
+  conns: Map,
+  routes: ['bXa'],
+  self: null or NodeSelf,
+};
+nodes.a.conn.X == nodes.X.conn.a
+class NodeConn {rtt, bw, last pkt..., self: null || NodeConnSelf};
+will appear: a->X X->a,b b->X,c c->b
+nodes = new Map;
+nodes[a] == AVL lookup of 'a'
+
+nodes = {
+  a: {conn: [X]}
+  X: {conn: [a, b]},
+  b: {conn: [X, c]}.
+};
+*/
+
 // IDEAS
-/* XXX: 2022-05-10 - statical routing by freq/rtt
+/* XXX derry: 2022-05-10 - statical routing by freq/rtt
 // abcXYZdef
 // ae aX
 // f a-d 0.1% e-h 0.5% g-o 1% o-z 2%
