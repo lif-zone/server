@@ -2205,6 +2205,14 @@ describe('paths', ()=>{
     t('10 15 20', 20, 20);
     t('10 15 20', 21, 20);
     t('20 40', 10, 40);
+    if (0){ // XXX: WIP
+    t = (nodes, val, range, exp)=>_t(nodes, val, {dir: '-',
+      range: {min: s2b(range.min), max: s2b(range.max)}}, exp);
+    t('10 15', 9, {min: s2b(v(10)), max: s2b(v(16))}, 15);
+    t('10 15', 9, {min: s2b(v(15)), max: s2b(v(15))}, 10);
+    t('10 15', 9, {min: s2b(v(10)), max: s2b(v(15))}, '');
+    t('10 15', 10, {min: s2b(v(10)), max: s2b(v(16))}, 15);
+    }
     t = (nodes, val, exp)=>_t(nodes, val, {dir: '+'}, exp);
     t('10 20 25 30 40 50', 9, 10);
     t('10 20 25 30 40 50', 10, 10);
@@ -2215,6 +2223,17 @@ describe('paths', ()=>{
     t('10 20 25 30 40 50', 49, 50);
     t('10 20 25 30 40 50', 50, 50);
     t('10 20 25 30 40 50', 51, 10);
+    if (0){ // XXX: WIP
+    t = (nodes, val, range, exp)=>_t(nodes, val, {dir: '+',
+      range: {min: s2b(range.min), max: s2b(range.max)}}, exp);
+    t('10 20 25 30 40 50', 26, {min: v(29), max: v(50)}, 30);
+    t('10 20 25 30 40 50', 26, {min: v(30), max: v(50)}, 40);
+    t('10 20 25 30 40 50', 26, {min: v(40), max: v(51)}, 50);
+    t('10 20 25 30 40 50', 26, {min: v(50), max: v(10)}, '');
+    t('10 20 25 30 40 50', 26, {min: v(50), max: v(11)}, 10);
+    t('10 20 25 30 40 50', 26, {min: v(39), max: v(11)}, 40);
+    t('10 20 25 30 40 50', 51, {min: v(39), max: v(11)}, 10);
+    }
     t = (nodes, val, exp)=>_t(nodes, val, {dir: '+', skip_self: true}, exp);
     t('10 20 25 30 40 50', 9, 10);
     t('10 20 25 30 40 50', 10, 20);
@@ -2329,6 +2348,14 @@ describe('channels', ()=>{
     t('10 20 25 30 40 50', 49, 50);
     t('10 20 25 30 40 50', 50, 50);
     t('10 20 25 30 40 50', 51, 10);
+    t = (nodes, val, range, exp)=>_t(nodes, val, {bigger: true, range}, exp);
+    t('10 20 25 30 40 50', 26, {min: v(29), max: v(50)}, 30);
+    t('10 20 25 30 40 50', 26, {min: v(30), max: v(50)}, 40);
+    t('10 20 25 30 40 50', 26, {min: v(40), max: v(51)}, 50);
+    t('10 20 25 30 40 50', 26, {min: v(50), max: v(10)}, '');
+    t('10 20 25 30 40 50', 26, {min: v(50), max: v(11)}, 10);
+    t('10 20 25 30 40 50', 26, {min: v(39), max: v(11)}, 40);
+    t('10 20 25 30 40 50', 51, {min: v(39), max: v(11)}, 10);
     t = (nodes, val, exp)=>_t(nodes, val,
       {bigger: true, skip_self: true}, exp);
     t('10 20 25 30 40 50', 9, 10);
@@ -2871,14 +2898,52 @@ describe('peer-relay', function(){
       eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)
       eX.c.d.a-e>!get_peer eX.b.a.d+e>!get_peer`);
   });
+  /* XXX: derry
+  // node ID 2^128 2^160
+  // self: node ID of myself
+  // hold in memory: list
+  // TODO: NodeId: convert ID to double. 2^53, exp 10bit. 0-1
+  // self=c aXbcde>ping on receive: aXbc: add aXb nodes,
+  // pkt return: aXbcde<ping on receuve: add de nodes
+  class NodeId {
+    s: 'ab472bc732',
+    n: 0.48274923823232,
+    b: Buffer('ab472bc732')
+  };
+  nodes = {
+    map = new Map;
+    tree: new Avl;
+  };
+  nodes.map['ab472bc732'] = {id: NodeId, ...}
+  class Node {
+    id: NodeId,
+    conns: Map,
+    routes: ['bXa'],
+    self: null or NodeSelf,
+  };
+  nodes.a.conn.X == nodes.X.conn.a
+  class NodeConn {rtt, bw, last pkt..., self: null || NodeConnSelf};
+  will appear: a->X X->a,b b->X,c c->b
+  nodes = new Map;
+  nodes[a] == AVL lookup of 'a'
+
+  nodes = {
+    a: {conn: [X]}
+    X: {conn: [a, b]},
+    b: {conn: [X, c]}.
+  };
+  */
   describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXnop', test);
-    t('short:abXnop-p', `mode(msg req) conf(id:a-mXYZn-z)
-      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
-      pX.n.o.a-p>!get_peer`);
+    t('short:abXnop-p', `mode(msg req)
+      conf(id:a-mXYZn-z) a,b,X,n,o,p=node:wss
+      // XXX conf(id:a-mXYZn-z)
+      // XXX conf(id:a-mXYZn-z !node) - in order NOT to create the nodes
+      // XXX conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
+      // XXX a,b,c=node === a,b,c=node:wss
+      ab,bX,Xn,no,oa,pX>!connect pX.n.o.a-p>!get_peer`);
     t('short:abXnop+p', `mode(msg req) conf(id:a-mXYZn-z)
-      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect
-      pX.b.a.o+p>!get_peer`);
+      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect pX.b.a.o+p>!get_peer`);
   });
   // XXX: unite with get_peer tests
   describe('discovery', ()=>{
