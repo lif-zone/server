@@ -40,23 +40,20 @@ add(path){
   return o.data;
 }
 get_closest(id, opt){
-  let {dir, skip_self} = opt;
+  let {dir, range, skip_self} = opt;
   assert(['+', '-'].includes(dir), 'invalid dir '+dir);
-  let tree=this.tree, start=0, size=tree.size, end=size;
-  if (!end)
+  assert(!range, 'XXX range support');
+  let tree=this.tree, start=0, size=tree.size, end=size, best;
+  if (!size)
     return;
-  let best;
   while (end>start){
 		var mid = Math.floor((start+end)/2);
     let key = tree.at(mid).key, cmp = Paths.cmp(id, key);
     if (dir=='+'){
-      if (cmp>0)
-        start = mid+1;
-      else if (cmp<0){
+      if (cmp<0){
         end = mid;
         best = key;
-      }
-      else if (skip_self)
+      } else if (cmp>0 || skip_self)
         start = mid+1;
       else
         return key;
@@ -65,9 +62,7 @@ get_closest(id, opt){
         start = mid+1;
         best = key;
       }
-      else if (cmp<0)
-        end = mid;
-      else if (skip_self)
+      else if (cmp<0 || skip_self)
         end = mid;
       else
         return key;

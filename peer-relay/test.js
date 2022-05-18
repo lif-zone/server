@@ -2233,6 +2233,8 @@ describe('paths', ()=>{
     t('10 20 25 30 40 50', 26, {min: v(50), max: v(11)}, 10);
     t('10 20 25 30 40 50', 26, {min: v(39), max: v(11)}, 40);
     t('10 20 25 30 40 50', 51, {min: v(39), max: v(11)}, 10);
+    t('10 20 25 30 40 50', 51, {min: v(39), max: v(39)}, 10);
+    t('10 20 25 30 40 50', 31, {min: v(10), max: v(30)}, 20);
     }
     t = (nodes, val, exp)=>_t(nodes, val, {dir: '+', skip_self: true}, exp);
     t('10 20 25 30 40 50', 9, 10);
@@ -2254,6 +2256,20 @@ describe('paths', ()=>{
     t('10 20 25 30 40 50', 49, 40);
     t('10 20 25 30 40 50', 50, 50);
     t('10 20 25 30 40 50', 51, 50);
+    if (0){ // XXX: WIP
+    t = (nodes, val, range, exp)=>_t(nodes, val, {dir: '-',
+      range: {min: s2b(range.min), max: s2b(range.max)}}, exp);
+    t('10 20 25 30 40 50', 30, {min: v(10), max: v(31)}, 30);
+    t('10 20 25 30 40 50', 30, {min: v(10), max: v(30)}, 25);
+    t('10 20 25 30 40 50', 30, {min: v(10), max: v(25)}, 20);
+    t('10 20 25 30 40 50', 30, {min: v(10), max: v(20)}, '');
+    t('10 20 25 30 40 50', 30, {min: v(49), max: v(20)}, 10);
+    t('10 20 25 30 40 50', 30, {min: v(49), max: v(10)}, 50);
+    t('10 20 25 30 40 50', 30, {min: v(49), max: v(50)}, '');
+    t('10 20 25 30 40 50', 30, {min: v(39), max: v(50)}, 40); // XXX: need +
+    t('10 20 25 30 40 50', 30, {min: v(39), max: v(40)}, '');
+    t('10 20 25 30 40 50', 30, {min: v(39), max: v(39)}, 30); // XXX: ?
+    }
     t = (nodes, val, exp)=>_t(nodes, val, {dir: '-', skip_self: true}, exp);
     t('10 20 25 30 40 50', 9, 50);
     t('10 20 25 30 40 50', 10, 50);
@@ -2271,37 +2287,6 @@ describe('channels', ()=>{
   const v = val=>hash_from_int(val, 8, ID_BITS);
   const inv = val=>int_from_hash(val, 8, ID_BITS);
   it('get_closest', ()=>{
-    const t = (a, val, exp, range, exclude)=>{
-      let channels = new Channels();
-      a.forEach(id=>channels.add(new FakeWsConnector(s2b(v(id)))));
-      let ch = channels.get_closest(v(val), {range, exclude});
-      assert.equal(ch ? b2s(ch.id) : '', exp ? v(exp) : '');
-    };
-    t([], 10, '');
-    t([10], 9, 10);
-    t([10], 10, 10);
-    t([10], 11, 10);
-    t([10, 15], 9, 15);
-    t([10, 15], 10, 10);
-    t([10, 15], 11, 10);
-    t([10, 15], 15, 15);
-    t([10, 15], 16, 15);
-    t([10, 15], 9, 15, {min: v(10), max: v(16)});
-    t([10, 15], 9, 10, {min: v(15), max: v(15)});
-    t([10, 15], 9, '', {min: v(10), max: v(15)});
-    t([10, 15], 10, 15, {min: v(10), max: v(16)});
-    t([10, 15], 10, '', {min: v(10), max: v(16)}, v(15));
-    t([10, 15], 10, 10, {min: v(9), max: v(16)}, v(15));
-    t([10, 15, 20], 9, 20);
-    t([10, 15, 20], 10, 10);
-    t([10, 15, 20], 11, 10);
-    t([10, 15, 20], 15, 15);
-    t([10, 15, 20], 16, 15);
-    t([10, 15, 20], 20, 20);
-    t([10, 15, 20], 21, 20);
-    t([20, 40], 10, 40);
-  });
-  it('get_closest2', ()=>{
     const _t = (nodes, val, opt, exp)=>{
       val = parseInt(val);
       let a = nodes ? nodes.split(' ') : [];
@@ -2356,6 +2341,8 @@ describe('channels', ()=>{
     t('10 20 25 30 40 50', 26, {min: v(50), max: v(11)}, 10);
     t('10 20 25 30 40 50', 26, {min: v(39), max: v(11)}, 40);
     t('10 20 25 30 40 50', 51, {min: v(39), max: v(11)}, 10);
+    t('10 20 25 30 40 50', 51, {min: v(39), max: v(39)}, 10);
+    t('10 20 25 30 40 50', 31, {min: v(10), max: v(30)}, 20);
     t = (nodes, val, exp)=>_t(nodes, val,
       {bigger: true, skip_self: true}, exp);
     t('10 20 25 30 40 50', 9, 10);
@@ -2377,6 +2364,17 @@ describe('channels', ()=>{
     t('10 20 25 30 40 50', 49, 40);
     t('10 20 25 30 40 50', 50, 50);
     t('10 20 25 30 40 50', 51, 50);
+    t = (nodes, val, range, exp)=>_t(nodes, val, {bigger: false, range}, exp);
+    t('10 20 25 30 40 50', 30, {min: v(10), max: v(31)}, 30);
+    t('10 20 25 30 40 50', 30, {min: v(10), max: v(30)}, 25);
+    t('10 20 25 30 40 50', 30, {min: v(10), max: v(25)}, 20);
+    t('10 20 25 30 40 50', 30, {min: v(10), max: v(20)}, '');
+    t('10 20 25 30 40 50', 30, {min: v(49), max: v(20)}, 10);
+    t('10 20 25 30 40 50', 30, {min: v(49), max: v(10)}, 50);
+    t('10 20 25 30 40 50', 30, {min: v(49), max: v(50)}, '');
+    t('10 20 25 30 40 50', 30, {min: v(39), max: v(50)}, 40);
+    t('10 20 25 30 40 50', 30, {min: v(39), max: v(40)}, '');
+    t('10 20 25 30 40 50', 30, {min: v(39), max: v(39)}, 30); // XXX: ?
     t = (nodes, val, exp)=>_t(nodes, val,
       {bigger: false, skip_self: true}, exp);
     t('10 20 25 30 40 50', 9, 50);
