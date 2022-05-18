@@ -3737,7 +3737,6 @@ describe('peer-relay', function(){
 /*
 VP:
 - class NodeId: rewrite code
-
 */
 
 /* XXX: derry: 17-May-2022
