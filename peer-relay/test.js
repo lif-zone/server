@@ -3793,8 +3793,9 @@ describe('peer-relay', function(){
 /*
 VP:
 - class NodeId:
-  + class NodeId + test
-  * fix code to use NodeId
+  + class NodeId+test
+  + fix code to use NodeId
+  - Nodes/Node/NodeConn+test
 */
 
 /* XXX: derry: 17-May-2022
