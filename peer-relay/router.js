@@ -22,7 +22,7 @@ export default class Router extends EventEmitter {
     super();
     let {channels, id, wallet, state_timeout} = opt;
     this.wallet = wallet;
-    this.id = NodeId.from(id);
+    this.id = id;
     this.concurrency = 1;
     this.state_timeout = state_timeout||60*date.ms.SEC;
     this.maxHops = 20;

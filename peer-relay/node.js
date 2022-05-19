@@ -3,6 +3,7 @@
 import {EventEmitter} from 'events';
 import assert from 'assert';
 import Router from './router.js';
+import NodeId from './node_id.js';
 import Channels from './channels.js';
 import Req from './req.js';
 import ReqHandler from './req_handler.js';
@@ -29,7 +30,7 @@ export default class Node extends EventEmitter {
     this.pending = {};
     this.peers = new Channels();
     this.peers.on('removed', channel=>channel.destroy());
-    this.router = new Router({channels: this.peers, id: this.id,
+    this.router = new Router({channels: this.peers, id: NodeId.from(id),
       wallet: this.wallet});
     this.conn_handler = new ReqHandler({node: this, cmd: 'conn_info'})
     .on('req', (msg, res)=>{
@@ -37,7 +38,7 @@ export default class Node extends EventEmitter {
       if (this.peers.get(from))
           return;
       // XXX: review this logic. looks wrong
-      if (this.pending[from]==null || from.compare(this.id)<0){
+      if (this.pending[from]==null || from.compare(id)<0){
         this.pending[from] = true;
         res.send({ws: this.wsConnector.url,
           wrtc: this.wrtcConnector.supported});
