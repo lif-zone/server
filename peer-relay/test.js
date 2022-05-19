@@ -3,6 +3,7 @@
 // XXX: need jslint mocha: true
 import assert from 'assert';
 import Node from './node.js';
+import NodeId from './node_id.js';
 import Req from './req.js';
 import Channels from './channels.js';
 import Paths from './paths.js';
@@ -1970,6 +1971,99 @@ function test_transform(s){
   return ret;
 }
 
+describe('buf_util', ()=>{
+    it('hash_from_int', function(){
+      const _t = (val, bits, max_bits, exp)=>{
+        assert.equal(hash_from_int(val, bits, max_bits), exp);
+        assert.equal(int_from_hash(exp, bits, max_bits), val);
+      };
+      const t = (val, bits, exp)=>_t(val, bits, 40, exp);
+      t(1, 8, '0100000000');
+      t(2, 8, '0200000000');
+      t(255, 8, 'ff00000000');
+      t(1, 9, '0080000000');
+      t(2, 9, '0100000000');
+      t(3, 9, '0180000000');
+      t(1, 8, '0100000000');
+      t(1, 16, '0001000000');
+      t(1, 24, '0000010000');
+      t(2, 8, '0200000000');
+      t(15, 8, '0f00000000');
+      t(255, 8, 'ff00000000');
+      t(1023, 16, '03ff000000');
+      t(1, 10, '0040000000');
+      t(1023, 10, 'ffc0000000');
+      t(1, 40, '0000000001');
+      _t(1, 256, 256,
+        '0000000000000000000000000000000000000000000000000000000000000001');
+      _t(bigInt(2).pow(256).minus(1).toString(10), 256, 256,
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+    });
+    it('gen_ids', function(){
+      // abcdefghijklmXYZnopqrstuvwxyz
+      // b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
+      let ids = test_gen_ids(8, 16);
+      assert.equal(ids.a, '0900');
+      assert.equal(ids.b, '1200');
+      assert.equal(ids.m, '7500');
+      assert.equal(ids.X, '7900');
+      assert.equal(ids.Y, '7a00');
+      assert.equal(ids.Z, '7b00');
+      assert.equal(ids.n, '7e00');
+      assert.equal(ids.y, 'e100');
+      assert.equal(ids.z, 'ea00');
+    });
+  it('in_range', ()=>{
+    const v = val=>s2b(hash_from_int(val, 8, ID_BITS));
+    const t = (range, id, exp)=>{
+      range = {min: v(range.min), max: v(range.max)};
+      id = v(id);
+      assert.equal(buf_util.in_range(range, id), exp);
+    };
+    t({min: 10, max: 20}, 9, false);
+    t({min: 10, max: 20}, 10, false);
+    t({min: 10, max: 20}, 11, true);
+    t({min: 10, max: 20}, 19, true);
+    t({min: 10, max: 20}, 20, false);
+    t({min: 10, max: 20}, 21, false);
+    t({min: 20, max: 10}, 19, false);
+    t({min: 20, max: 10}, 20, false);
+    t({min: 20, max: 10}, 21, true);
+    t({min: 20, max: 10}, 9, true);
+    t({min: 20, max: 10}, 10, false);
+    t({min: 20, max: 10}, 11, false);
+    t({min: 10, max: 10}, 9, true);
+    t({min: 10, max: 10}, 10, false);
+    t({min: 10, max: 10}, 11, true);
+    t({min: 25, max: 30}, 50, false);
+    t({min: 30, max: 40}, 50, false);
+    t({min: 40, max: 10}, 50, true);
+  });
+});
+
+describe('node_id', function(){
+  const i2b = val=>s2b(hash_from_int(val, 80, 80));
+  it('basic', function(){
+    const t = (val, exp)=>{
+      let id = new NodeId(i2b(val));
+      assert.equal(id.s, exp);
+      assert.equal(id.b.toString('hex'), exp);
+      id = new NodeId(Buffer.from(exp, 'hex'));
+      assert.equal(id.s, exp);
+      assert.equal(id.b.toString('hex'), exp);
+    };
+    t(1, '00000000000000000001');
+    t(2, '00000000000000000002');
+    t(8, '00000000000000000008');
+    t(15, '0000000000000000000f');
+    t(16, '00000000000000000010');
+    t(bigInt(2).pow(80).minus(1).toString(10), 'ffffffffffffffffffff');
+    t(bigInt(2).pow(80).minus(2).toString(10), 'fffffffffffffffffffe');
+    t(bigInt(2).pow(80).minus(15).toString(10), 'fffffffffffffffffff1');
+    t(bigInt(2).pow(80).minus(16).toString(10), 'fffffffffffffffffff0');
+  });
+});
+
 describe('api', function(){
   it('transform', ()=>{
     let t = (s, exp)=>assert.equal(test_transform(s), exp);
@@ -2073,36 +2167,6 @@ describe('api', function(){
     });
   });
 });
-
-describe('buf_util', ()=>{
-  const v = val=>s2b(hash_from_int(val, 8, ID_BITS));
-  it('in_range', ()=>{
-    const t = (range, id, exp)=>{
-      range = {min: v(range.min), max: v(range.max)};
-      id = v(id);
-      assert.equal(buf_util.in_range(range, id), exp);
-    };
-    t({min: 10, max: 20}, 9, false);
-    t({min: 10, max: 20}, 10, false);
-    t({min: 10, max: 20}, 11, true);
-    t({min: 10, max: 20}, 19, true);
-    t({min: 10, max: 20}, 20, false);
-    t({min: 10, max: 20}, 21, false);
-    t({min: 20, max: 10}, 19, false);
-    t({min: 20, max: 10}, 20, false);
-    t({min: 20, max: 10}, 21, true);
-    t({min: 20, max: 10}, 9, true);
-    t({min: 20, max: 10}, 10, false);
-    t({min: 20, max: 10}, 11, false);
-    t({min: 10, max: 10}, 9, true);
-    t({min: 10, max: 10}, 10, false);
-    t({min: 10, max: 10}, 11, true);
-    t({min: 25, max: 30}, 50, false);
-    t({min: 30, max: 40}, 50, false);
-    t({min: 40, max: 10}, 50, true);
-  });
-});
-
 describe('paths', ()=>{
   const v = val=>hash_from_int(val, 8, ID_BITS);
   const inv = val=>int_from_hash(val, 8, ID_BITS);
@@ -2488,47 +2552,6 @@ describe('peer-relay', function(){
     xtest.set(util, 'test_on_connection', test_on_connection);
   });
   describe('test_api', function(){
-    it('hash_from_int', function(){
-      const _t = (val, bits, max_bits, exp)=>{
-        assert.equal(hash_from_int(val, bits, max_bits), exp);
-        assert.equal(int_from_hash(exp, bits, max_bits), val);
-      };
-      const t = (val, bits, exp)=>_t(val, bits, 40, exp);
-      t(1, 8, '0100000000');
-      t(2, 8, '0200000000');
-      t(255, 8, 'ff00000000');
-      t(1, 9, '0080000000');
-      t(2, 9, '0100000000');
-      t(3, 9, '0180000000');
-      t(1, 8, '0100000000');
-      t(1, 16, '0001000000');
-      t(1, 24, '0000010000');
-      t(2, 8, '0200000000');
-      t(15, 8, '0f00000000');
-      t(255, 8, 'ff00000000');
-      t(1023, 16, '03ff000000');
-      t(1, 10, '0040000000');
-      t(1023, 10, 'ffc0000000');
-      t(1, 40, '0000000001');
-      _t(1, 256, 256,
-        '0000000000000000000000000000000000000000000000000000000000000001');
-      _t(bigInt(2).pow(256).minus(1).toString(10), 256, 256,
-        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
-    });
-    it('gen_ids', function(){
-      // abcdefghijklmXYZnopqrstuvwxyz
-      // b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
-      let ids = test_gen_ids(8, 16);
-      assert.equal(ids.a, '0900');
-      assert.equal(ids.b, '1200');
-      assert.equal(ids.m, '7500');
-      assert.equal(ids.X, '7900');
-      assert.equal(ids.Y, '7a00');
-      assert.equal(ids.Z, '7b00');
-      assert.equal(ids.n, '7e00');
-      assert.equal(ids.y, 'e100');
-      assert.equal(ids.z, 'ea00');
-    });
     describe('pre_process', function(){
       describe('shortcut', ()=>{
         const _t = (mode, test, exp, both)=>it(mode+(mode ? ' ': '')+test,

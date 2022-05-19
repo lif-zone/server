@@ -10,20 +10,22 @@ export default class NodeId extends EventEmitter {
 constructor(id){
   super();
   if (typeof id=='string')
-    this.s = id;
+    this._s = id;
   else if (Buffer.isBuffer(id))
-    this.b = id;
+    this._b = id;
   else
     assert.fail('invalid id '+id);
 }
 get s(){
-  if (this.s===undefined)
-    this.s = b2s(this.b);
-  return this.s;
+  if (this._s===undefined)
+    this._s = b2s(this._b);
+  return this._s;
 }
 get b(){
-  if (this.b===undefined)
-    this.b = s2b(this.s);
-  return this.b;
+  if (this._b===undefined)
+    this._b = s2b(this._s);
+  return this._b;
 }
+// XXX: optimize with this.n as float of first 53 bits
+cmp(id){ return this.b.cmp(id); }
 }
