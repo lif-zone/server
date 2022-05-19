@@ -25,33 +25,32 @@ export default class Node extends EventEmitter {
     if (!opt)
       opt = {};
     this.wallet = new Wallet({keys: opt.keys});
-    let id = this.id = this.wallet.keys.pub;
+    let id = this.id = NodeId.from(this.wallet.keys.pub);
     // XXX: need cleanup for all internal structures
     this.pending = {};
     this.peers = new Channels();
     this.peers.on('removed', channel=>channel.destroy());
-    this.router = new Router({channels: this.peers, id: NodeId.from(id),
-      wallet: this.wallet});
+    this.router = new Router({channels: this.peers, id, wallet: this.wallet});
     this.conn_handler = new ReqHandler({node: this, cmd: 'conn_info'})
     .on('req', (msg, res)=>{
      let from = s2b(msg.from);
       if (this.peers.get(from))
           return;
       // XXX: review this logic. looks wrong
-      if (this.pending[from]==null || from.compare(id)<0){
+      if (this.pending[from]==null || from.compare(id.b)<0){
         this.pending[from] = true;
         res.send({ws: this.wsConnector.url,
           wrtc: this.wrtcConnector.supported});
       }
     });
     this.get_peer_handler = new ReqHandler({node: this, cmd: 'get_peer'})
-    .on('req', (msg, res)=>res.send({id: b2s(id)}));
+    .on('req', (msg, res)=>res.send({id: id.s}));
     if (opt.port)
-      xerr.notice('peer-relay: listen on %s id %s', opt.port, b2s(this.id));
-    this.wsConnector = new Node.WsConnector(this.id, opt.port, opt.host,
+      xerr.notice('peer-relay: listen on %s id %s', opt.port, id.s);
+    this.wsConnector = new Node.WsConnector(id.b, opt.port, opt.host,
       opt.http);
     this.wsConnector.on('connection', channel=>this._onConnection(channel));
-    this.wrtcConnector = new Node.WrtcConnector(this.id, this.router,
+    this.wrtcConnector = new Node.WrtcConnector(id.b, this.router,
       opt.wrtc);
     this.wrtcConnector.on('connection', channel=>this._onConnection(channel));
     setTimeout(()=>{ // XXX HACK: rm timeout
@@ -76,7 +75,7 @@ export default class Node extends EventEmitter {
     channel.on('error', err=>xerr('Error', err));
     delete _this.pending[channel.id];
     if (_this.peers.get(channel.id)){
-      if (channel.id.compare(_this.id) >= 0)
+      if (channel.id.compare(_this.id.b) >= 0)
         channel.destroy();
       return;
     }
@@ -95,7 +94,7 @@ export default class Node extends EventEmitter {
       return;
     if (this.peers.get(id))
       return;
-    if (id.equals(this.id))
+    if (id.equals(this.id.b))
       return;
     this.pending[id] = true;
     // XXX: allow empty body

@@ -108,14 +108,14 @@ function fwd_s_id(fwd, i){
   i = i||0;
   if (typeof fwd=='string')
     fwd = [fwd];
-  return b2s(N(fwd_s(fwd, i)).id);
+  return N(fwd_s(fwd, i)).id.s;
 }
 
 function fwd_d_id(fwd, i){
   i = i||0;
   if (typeof fwd=='string')
     fwd = [fwd];
-  return b2s(N(fwd_d(fwd, i)).id);
+  return N(fwd_d(fwd, i)).id.s;
 }
 
 function nonce_hash(msg){
@@ -312,7 +312,7 @@ function support_wrtc(node){ return node.wrtcConnector.supported; }
 function node_from_id(id){
   for (let name in t_nodes){
     let node = N(name);
-    if (node.t.id == b2s(id))
+    if (node.id.s == b2s(id))
       return node;
   }
 }
@@ -579,9 +579,9 @@ class FakeNode extends EventEmitter {
   constructor(opt){
     super();
     this.wallet = new Wallet({keys: opt.keys});
-    this.id = opt.keys.pub;
-    this.wsConnector = new FakeWsConnector(this.id, opt.port, opt.host);
-    this.wrtcConnector = new FakeWrtcConnector(this.id, null, opt.wrtc);
+    this.id = NodeId.from(opt.keys.pub);
+    this.wsConnector = new FakeWsConnector(this.id.b, opt.port, opt.host);
+    this.wrtcConnector = new FakeWrtcConnector(this.id.b, null, opt.wrtc);
   }
   destroy(){}
 }
@@ -600,7 +600,7 @@ class FakeWsConnector extends EventEmitter {
     let _this = this.this;
     let d = node_from_url(url), s = node_from_id(_this.id);
     assert(d, 'node not found for url '+url);
-    let channel = new FakeChannel({local_id: s.id, id: d.id});
+    let channel = new FakeChannel({local_id: s.id.b, id: d.id.b});
     channel.wsConnector = _this;
     channel.t.initiaor = true;
     assert(!s.t.fake, 'src must be real');
@@ -618,7 +618,7 @@ class FakeWrtcConnector extends EventEmitter {
   connect = _d=>etask({'this': this}, function*connect(){
     let _this = this.this;
     let d = node_from_id(_d), s = node_from_id(_this.id);
-    let channel = new FakeChannel({local_id: s.id, id: d.id});
+    let channel = new FakeChannel({local_id: s.id.b, id: d.id.b});
     channel.wrtcConnector = _this;
     channel.t.initiaor = true;
     assert(!s.t.fake, 'src must be real');
@@ -860,7 +860,7 @@ function path_to_str(path, dir){
 function id_to_name(id){ return node_from_id(id).t.name; }
 
 // XXX: cleanup all code
-function name_to_id(name){ return b2s(N(name).id); }
+function name_to_id(name){ return N(name).id.s; }
 
 /* XXX: decide if to remove
 function array_id_to_name(a){
@@ -881,7 +881,7 @@ function array_name_to_id(a){
 
 function node_get_channel(_s, _d){
   let s = N(_s), d = N(_d);
-  return d.peers.get(s.id);
+  return d.peers.get(s.id.b);
 }
 
 const send_msg = (s, d, lbuffer)=>etask(function*send_msg(){
@@ -896,7 +896,7 @@ function fake_emit(c, msg){
     return;
   if (t_mode.msg) // XXX: TODO
     return;
-  let s = N(c.s), d = N(c.d), to = b2s(d.id), from = b2s(s.id);
+  let s = N(c.s), d = N(c.d), to = d.id.s, from = s.id.s;
   msg.to = to;
   msg.from = from;
   let nonce = t_nonce[nonce_hash(msg)];
@@ -918,7 +918,7 @@ function fake_emit(c, msg){
 
 const fake_send_msg = (c, msg)=>etask(function*(){
   let s = N(c.s), d = N(c.d), f = s, t = d, fuzzy = get_fuzzy(c.d);
-  let to = b2s(d.id), from = b2s(s.id);
+  let to = d.id.s, from = s.id.s;
   msg.to = to;
   msg.from = from;
   if (fuzzy)
@@ -1026,7 +1026,7 @@ function cmd_rt_add(opt){
     let node = N(a.cmd);
     assert(node, 'invalid rt_add '+a.cmd);
     let path = assert_path(a.arg);
-    assert(path[0]!=b2s(node.id), 'route cannot contain node '+node.t.name);
+    assert(path[0]!=node.id.s, 'route cannot contain node '+node.t.name);
     if (is_fake(node.t.name))
       return;
     routes[node.t.name] = routes[node.t.name]||[];
@@ -1113,8 +1113,8 @@ function cmd_node(opt){
   let node = new (fake ? FakeNode : Node)(assign(
     {keys: {priv: s2b(key.priv), pub: s2b(key.pub)}, bootstrap, wrtc},
     wss));
-  node.t = {id: b2s(node.id), name, fake, wss};
-  xerr.notice('id %s:%s', name, b2s(node.id));
+  node.t = {id: node.id.s, name, fake, wss};
+  xerr.notice('id %s:%s', name, node.id.s);
   t_nodes[name] = node;
 }
 
@@ -1161,14 +1161,14 @@ const cmd_connect = opt=>etask(function*(){
       if (wss)
         yield s.wsConnector.connect(wss);
       else if (wrtc)
-        yield s.wrtcConnector.connect(d.id);
+        yield s.wrtcConnector.connect(d.id.b);
     }
   }
   else {
     if (s.t.fake && d.t.fake)
       return;
     if (s.t.fake){
-      let channel = new FakeChannel({local_id: d.id, id: s.id});
+      let channel = new FakeChannel({local_id: d.id.b, id: s.id.b});
       if (wss)
         channel.wsConnector = d.wsConnector;
       else
@@ -1292,7 +1292,7 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
     if (id && t_msg[id] && t_msg[id].active)
       delete t_msg[id];
     if (!s.t.fake)
-      s.get_peer(b2s(d.id), {fuzzy});
+      s.get_peer(d.id.s, {fuzzy});
     return;
   }
   assert_event_c(c, event);
@@ -1494,12 +1494,12 @@ const cmd_req = opt=>etask(function*req(){
   if (!s.t.fake){
     if (type=='req'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
-      let req = new Req({node: s, dst: b2s(d.id), req_id: id});
+      let req = new Req({node: s, dst: d.id.s, req_id: id});
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send({seq, ack}, body);
     } else if (type=='req_start'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
-      let req = new Req({node: s, stream: true, dst: b2s(d.id), req_id: id,
+      let req = new Req({node: s, stream: true, dst: d.id.s, req_id: id,
         cmd});
       if (emit_api){
         let cb = (o, opt)=>cmd_run(build_cmd_o(c.s+'>*'+o.type, {id: o.req_id,
@@ -1621,16 +1621,16 @@ const cmd_res = opt=>etask(function*req(){
   if (!s.t.fake){
     if (type=='res_end'){
       if (close){
-        ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send_close({seq, ack},
+        ReqHandler.t.nodes[s.id.s].req_id[id].res.send_close({seq, ack},
           body);
       }
       else {
-        ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send_end({seq, ack},
+        ReqHandler.t.nodes[s.id.s].req_id[id].res.send_end({seq, ack},
           body);
       }
     }
     else
-      ReqHandler.t.nodes[b2s(s.id)].req_id[id].res.send({seq, ack}, body);
+      ReqHandler.t.nodes[s.id.s].req_id[id].res.send({seq, ack}, body);
   }
 });
 

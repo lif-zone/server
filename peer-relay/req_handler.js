@@ -16,7 +16,7 @@ const RES_TIMEOUT = 20*date.ms.SEC;
 const nodes = {};
 
 // XXX: need to close and also proper cleanup when node is destroyed
-function destroy_cb(){ delete nodes[b2s(this.id)]; }
+function destroy_cb(){ delete nodes[this.id.s]; }
 
 // XXX: Req/Req_handler are very similar. unite code
 class Res extends EventEmitter {

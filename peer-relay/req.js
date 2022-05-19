@@ -69,7 +69,7 @@ export default class Req extends EventEmitter {
     assert(!fuzzy || !stream, 'fuzzy dst cannot be used with stream');
     this.node = node;
     let router = this.router = node.router;
-    this.src = node.id;
+    this.src = node.id.b;
     this.dst = dst;
     this.fuzzy = fuzzy;
     this.cmd = cmd;
