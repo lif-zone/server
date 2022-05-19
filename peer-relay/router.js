@@ -6,6 +6,7 @@ import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 import buf_util from './buf_util.js';
+import NodeId from './node_id.js';
 import xutil from '../util/util.js';
 import {dbg_msg} from './util.js';
 import Paths from './paths.js';
@@ -50,6 +51,7 @@ export default class Router extends EventEmitter {
   _send = lbuffer=>etask({'this': this}, function*(){
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
     let _this = this.this, channel, rt;
+    let from = NodeId.from(msg.from), to = NodeId.from(msg.to);
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
     if (!_this._channels.count) // XXX: verify and test it
@@ -71,9 +73,9 @@ export default class Router extends EventEmitter {
     }
     if (!channel && msg.fuzzy) // XXX: why it was not handle in fuzzy part
       return _this.emit('message', lbuffer);
-    if (!channel || channel.id.s==msg.from)
+    if (!channel || channel.id.eq(from))
       return; // XXX: add err msg
-    if (!(channel.local_id.s==msg.from && channel.id.s==msg.to)){
+    if (!(channel.local_id.eq(from) && channel.id.eq(to))){
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd'};
       if (msg.to!=msg2.to){
         rt = rt || xutil.get(msg0, ['rt', 'path']) &&
