@@ -493,7 +493,7 @@ function assert_missing_event(c){
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
-  let s = node_from_id(channel.local_id), d = node_from_id(channel.id);
+  let s = node_from_id(channel.local_id.b), d = node_from_id(channel.id.b);
   if (channel.t.initiaor){
     assert(!s.t.fake, 'src must be real');
     yield cmd_run(build_cmd(s.t.name+d.t.name+'>connect',
@@ -602,7 +602,7 @@ class FakeWsConnector extends EventEmitter {
     let _this = this.this;
     let d = node_from_url(url), s = node_from_id(_this.id);
     assert(d, 'node not found for url '+url);
-    let channel = new FakeChannel({local_id: s.id.b, id: d.id.b});
+    let channel = new FakeChannel({local_id: s.id, id: d.id});
     channel.wsConnector = _this;
     channel.t.initiaor = true;
     assert(!s.t.fake, 'src must be real');
@@ -620,7 +620,7 @@ class FakeWrtcConnector extends EventEmitter {
   connect = _d=>etask({'this': this}, function*connect(){
     let _this = this.this;
     let d = node_from_id(_d), s = node_from_id(_this.id);
-    let channel = new FakeChannel({local_id: s.id.b, id: d.id.b});
+    let channel = new FakeChannel({local_id: s.id, id: d.id});
     channel.wrtcConnector = _this;
     channel.t.initiaor = true;
     assert(!s.t.fake, 'src must be real');
@@ -1170,7 +1170,7 @@ const cmd_connect = opt=>etask(function*(){
     if (s.t.fake && d.t.fake)
       return;
     if (s.t.fake){
-      let channel = new FakeChannel({local_id: d.id.b, id: s.id.b});
+      let channel = new FakeChannel({local_id: d.id, id: s.id});
       if (wss)
         channel.wsConnector = d.wsConnector;
       else
@@ -2440,9 +2440,9 @@ describe('channels', ()=>{
       let a = nodes ? nodes.split(' ') : [];
       a.forEach((s, i)=>a[i] = +s);
       let channels = new Channels();
-      a.forEach(id=>channels.add(new FakeWsConnector(s2b(v(id)))));
+      a.forEach(id=>channels.add(new FakeChannel({id: NodeId.from(v(id))})));
       let ch = channels.get_closest(v(val), opt);
-      assert.equal(ch ? inv(b2s(ch.id)) : '', exp);
+      assert.equal(ch ? inv(ch.id.s) : '', exp);
     };
     let t = (nodes, val, exp)=>_t(nodes, val, {bigger: false}, exp);
     t('', 10, '');

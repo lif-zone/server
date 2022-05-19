@@ -11,9 +11,8 @@ import {dbg_msg} from './util.js';
 import Paths from './paths.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
-import NodeId from './node_id.js';
 const log = xlog('router');
-const b2s = buf_util.buf_to_str, s2b = buf_util.buf_from_str;
+const s2b = buf_util.buf_from_str;
 const stringify = JSON.stringify;
 
 // XXX: need safe emit support
@@ -72,10 +71,10 @@ export default class Router extends EventEmitter {
     }
     if (!channel && msg.fuzzy) // XXX: why it was not handle in fuzzy part
       return _this.emit('message', lbuffer);
-    if (!channel || b2s(channel.id)==msg.from)
+    if (!channel || channel.id.s==msg.from)
       return; // XXX: add err msg
-    if (!(b2s(channel.local_id)==msg.from && b2s(channel.id)==msg.to)){
-      let msg2 = {from: _this.id.s, to: b2s(channel.id), type: 'fwd'};
+    if (!(channel.local_id.s==msg.from && channel.id.s==msg.to)){
+      let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd'};
       if (msg.to!=msg2.to){
         rt = rt || xutil.get(msg0, ['rt', 'path']) &&
           {path: xutil.get(msg0, ['rt', 'path'])};
@@ -84,7 +83,7 @@ export default class Router extends EventEmitter {
           rt.path.shift();
         }
         if (!rt)
-          rt = {range: {min: b2s(channel.id), max: msg.to}};
+          rt = {range: {min: channel.id.s, max: msg.to}};
         msg2.rt = rt;
       }
       _this.track_out(msg2, channel);
@@ -131,8 +130,8 @@ export default class Router extends EventEmitter {
     if (xutil.get(state, [from, 'ch_in']))
       return this._channels.get(state[from].ch_in);
   }
-  track_in = (msg, channel)=>this.track(msg, b2s(channel.id), '');
-  track_out = (msg, channel)=>this.track(msg, '', b2s(channel.id));
+  track_in = (msg, channel)=>this.track(msg, channel.id.s, '');
+  track_out = (msg, channel)=>this.track(msg, '', channel.id.s);
   track(msg, ch_in, ch_out){
     let {from, to} = msg, ts = date.monotonic(), state, o;
     let hash = state_hash(from, to);

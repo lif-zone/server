@@ -13,7 +13,7 @@ export default class Channels extends EventEmitter {
     this.count = 0;
   }
   add(channel){
-    let id = b2s(channel.id);
+    let id = channel.id.s;
     if (this.map[id]){
       xerr('channel already added %s', id);
       return channel;
@@ -56,17 +56,18 @@ export default class Channels extends EventEmitter {
     let a = this.toArray(), best;
     for (let i=0; i<a.length; i++){
       let ch = a[i];
-      if (exclude && !ch.id.compare(exclude))
+      if (exclude && !ch.id.b.compare(exclude))
         continue;
-      if (range && !buf_util.in_range(range, ch.id))
+      if (range && !buf_util.in_range(range, ch.id.b))
         continue;
-      if (!skip_self && !ch.id.compare(id)){
+      if (!skip_self && !ch.id.b.compare(id)){
         best = ch;
         break;
       }
-      else if (
-        !bigger && ch.id.compare(id)<0 && (!best || best.id.compare(ch.id)<0)||
-        bigger && ch.id.compare(id)>0 && (!best || best.id.compare(ch.id)>0)){
+      else if (!bigger && ch.id.b.compare(id)<0 &&
+        (!best || best.id.b.compare(ch.id.b)<0)||
+        bigger && ch.id.b.compare(id)>0 &&
+        (!best || best.id.b.compare(ch.id.b)>0)){
         best = ch;
       }
     }
@@ -75,15 +76,15 @@ export default class Channels extends EventEmitter {
     // it's a ring, so the minimum is the closest
     for (let i=0; i<a.length; i++){
       let ch = a[i];
-      if (exclude && !ch.id.compare(exclude))
+      if (exclude && !ch.id.b.compare(exclude))
         continue;
-      if (range && !buf_util.in_range(range, ch.id))
+      if (range && !buf_util.in_range(range, ch.id.b))
         continue;
       if (!best){
         best = ch;
       }
-      else if (!bigger && ch.id.compare(best.id)>0 ||
-        bigger && ch.id.compare(best.id)<0){
+      else if (!bigger && ch.id.b.compare(best.id.b)>0 ||
+        bigger && ch.id.b.compare(best.id.b)<0){
         best = ch;
       }
     }

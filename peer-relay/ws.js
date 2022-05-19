@@ -5,6 +5,7 @@ import {EventEmitter} from 'events';
 import xutil from '../util/util.js';
 import {dbg_id, dbg_sd} from './util.js';
 import ws_util from '../util/ws.js';
+import NodeId from './node_id.js';
 import fs from 'fs';
 import https from 'https';
 import http from 'http';
@@ -64,7 +65,7 @@ WsConnector.prototype._onConnection = function(ws){
     ws.close();
     return;
   }
-  var channel = new WsChannel(this.id, ws);
+  var channel = new WsChannel(NodeId.from(this.id), ws);
   channel.tmp_id = ++this.tmp_id_n;
   this.channels[channel.tmp_id] = channel;
   channel.on('open', onOpen);
@@ -134,7 +135,7 @@ function WsChannel(local_id, ws){
 WsChannel.prototype._onOpen = function(){
   if (this.destroyed)
     return;
-  this.ws.send(JSON.stringify(this.local_id));
+  this.ws.send(JSON.stringify(this.local_id.s));
 };
 
 WsChannel.prototype.send = function(data){
@@ -152,7 +153,7 @@ WsChannel.prototype._onMessage = function(data){
     return;
   if (!this.id){
     // XXX: rm JSON.parse from here
-    this.id = new Buffer(JSON.parse(data), 'hex');
+    this.id = NodeId.from(JSON.parse(data));
     log.debug('%s open', this.dbg_str());
     this.emit('open');
   }

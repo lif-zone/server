@@ -3,6 +3,7 @@
 import {inherits} from 'util';
 import {EventEmitter} from 'events';
 import SimplePeer from 'simple-peer';
+import NodeId from './node_id.js';
 import xerr from '../util/xerr.js';
 import _debug from 'debug';
 import xutil from '../util/util.js';
@@ -72,7 +73,7 @@ WrtcConnector.prototype._setupSimplePeer = function(remoteID, offer){
     sp.removeListener('connect', onConnect);
     sp.removeListener('close', onClose);
     sp.removeListener('error', onError);
-    self.emit('connection', new WrtcChannel(sp, remoteID));
+    self.emit('connection', new WrtcChannel(sp, NodeId.from(remoteID)));
   }
 
   function onClose(){
