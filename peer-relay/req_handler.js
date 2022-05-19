@@ -143,7 +143,7 @@ function req_handler_cb(lbuffer){
   seq = seq||0;
   if (!Number.isInteger(seq) || seq<0)
     return xerr('invalid seq '+seq);
-  let id = b2s(this.id);
+  let id = this.id.s;
   if (!msg.fuzzy)
     assert.equal(msg.to, id);
   let req_handler = util.get(nodes, [id, 'cmd', cmd, 'req_handler']);
@@ -188,7 +188,7 @@ export default class ReqHandler extends EventEmitter {
     this.node = node;
     this.router = router;
     this.timeout = timeout||RES_TIMEOUT;
-    let id = this.id = b2s(router.id);
+    let id = this.id = router.id.s;
     // XXX: need unregister + cleanup
     assert(!util.get(nodes, [id, cmd]), 'handler already exists '+cmd);
     nodes[id] = nodes[id]||{cmd: {}};

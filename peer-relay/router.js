@@ -11,6 +11,7 @@ import {dbg_msg} from './util.js';
 import Paths from './paths.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
+import NodeId from './node_id.js';
 const log = xlog('router');
 const b2s = buf_util.buf_to_str, s2b = buf_util.buf_from_str;
 const stringify = JSON.stringify;
@@ -21,7 +22,7 @@ export default class Router extends EventEmitter {
     super();
     let {channels, id, wallet, state_timeout} = opt;
     this.wallet = wallet;
-    this.id = id;
+    this.id = NodeId.from(id);
     this.concurrency = 1;
     this.state_timeout = state_timeout||60*date.ms.SEC;
     this.maxHops = 20;
@@ -40,7 +41,7 @@ export default class Router extends EventEmitter {
   send_msg(dst, msg){
     let nonce=''+Math.floor(1e15*Math.random());
     this._touched[nonce] = true;
-    msg.from = b2s(this.id);
+    msg.from = this.id.s;
     msg.to = dst;
     msg.nonce = nonce; // XXX: need test that will fail is this is missing
     msg.sign = this.wallet.sign(msg);
@@ -74,7 +75,7 @@ export default class Router extends EventEmitter {
     if (!channel || b2s(channel.id)==msg.from)
       return; // XXX: add err msg
     if (!(b2s(channel.local_id)==msg.from && b2s(channel.id)==msg.to)){
-      let msg2 = {from: b2s(_this.id), to: b2s(channel.id), type: 'fwd'};
+      let msg2 = {from: _this.id.s, to: b2s(channel.id), type: 'fwd'};
       if (msg.to!=msg2.to){
         rt = rt || xutil.get(msg0, ['rt', 'path']) &&
           {path: xutil.get(msg0, ['rt', 'path'])};
@@ -105,7 +106,7 @@ export default class Router extends EventEmitter {
     _this._touched[nonce] = true;
     assert(typeof msg.from=='string', 'invalid from');
     assert(typeof msg.to=='string', 'invalid to');
-    if (msg.to==b2s(_this.id))
+    if (msg.to==_this.id.s)
       _this.emit('message', lbuffer);
     else // relay
       yield _this._send(lbuffer);
@@ -120,19 +121,7 @@ export default class Router extends EventEmitter {
     channel.removeListener('message', this._on_channel_msg); }
   get_channel_from_path(path){ return path && this._channels.get(path[0]); }
   get_channel_from_rt(msg){
-    return this.get_channel_from_path(xutil.get(msg, ['rt', 'path']));
-    /* XXX: rm
-    let path = xutil.get(msg, ['rt', 'path']);
-    if (!path)
-      return;
-    let id = b2s(this.id);
-    for (let i=0; i<path.length; i++){
-      if (id!=path[i])
-        continue;
-      return this._channels.get(path[i+1]);
-    }
-    */
-  }
+    return this.get_channel_from_path(xutil.get(msg, ['rt', 'path'])); }
   get_channel_from_state(msg){
     let {from, to} = msg, state = this.state[state_hash(from, to)];
     if (!state)
@@ -171,7 +160,7 @@ export default class Router extends EventEmitter {
   }
   add_route(path){
     let routes=this.routes;
-    assert(path[0]!=b2s(this.id), 'path contains self id '+stringify(path));
+    assert(path[0]!=this.id.s, 'path contains self id '+stringify(path));
     let d = path[path.length-1];
     routes[d] = routes[d]||[];
     if (this.has_route(path))
