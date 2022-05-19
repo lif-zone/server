@@ -145,6 +145,42 @@ function conn_opts_from_node(node){
   return a.join(' ');
 }
 
+function hash_from_int(val, bits, total_bits){
+  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  assert(bits<=total_bits, 'bits bigger than total_bits');
+  let len = total_bits/4;
+  let s = bigInt(val).shiftLeft(total_bits-bits).toString(16);
+  return '0'.repeat(len-s.length)+s;
+}
+
+function int_from_hash(hash, bits, total_bits){
+  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  assert(bits<=total_bits, 'bits bigger than total_bits');
+  return bigInt(hash, 16).shiftRight(total_bits-bits).toString(10);
+}
+
+// abcdefghijklmXYZnopqrstuvwxyz
+// b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
+function test_gen_ids(bits, total_bits){
+  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  assert(bits<=total_bits, 'bits bigger than total_bits');
+  let max = bigInt(2).pow(bits);
+  let d = max.divide(26); // a-z is 26 characters
+  let ret = {};
+  for (let i=0, v=bigInt(d); i<26; i++, v=v.plus(d)){
+    let ch = String.fromCharCode('a'.charCodeAt(0)+i);
+    ret[ch] = hash_from_int(v.toString(10), bits, total_bits);
+    if (i==12){
+      let X = v.plus(d.divide(2));
+      ret.X = hash_from_int(X.toString(10), bits, total_bits);
+      ret.Y = hash_from_int(X.plus(1).toString(10), bits, total_bits);
+      ret.Z = hash_from_int(X.plus(2).toString(10), bits, total_bits);
+    }
+  }
+  return ret;
+}
+
+
 function parse_range(s){
   let a = s.match(/^([0-9]+)-([0-9]+)$/);
   return a && {min: hash_from_int(+a[1], t_conf.id_bits, ID_BITS),
@@ -2045,7 +2081,7 @@ describe('node_id', function(){
   const i2b = val=>s2b(hash_from_int(val, 80, 80));
   it('basic', function(){
     const t = (val, exp)=>{
-      let id = new NodeId(i2b(val));
+      let id = NodeId.from(i2b(val));
       assert.equal(id.s, exp);
       assert.equal(id.b.toString('hex'), exp);
       id = new NodeId(Buffer.from(exp, 'hex'));
@@ -2057,10 +2093,55 @@ describe('node_id', function(){
     t(8, '00000000000000000008');
     t(15, '0000000000000000000f');
     t(16, '00000000000000000010');
+    t(bigInt(2).pow(48).minus(1).toString(10), '00000000ffffffffffff');
+    t('281474976710655', '00000000ffffffffffff');
+    t(bigInt(2).pow(52).minus(1).toString(10), '0000000fffffffffffff');
+    t(bigInt(2).pow(56).minus(1).toString(10), '000000ffffffffffffff');
     t(bigInt(2).pow(80).minus(1).toString(10), 'ffffffffffffffffffff');
     t(bigInt(2).pow(80).minus(2).toString(10), 'fffffffffffffffffffe');
     t(bigInt(2).pow(80).minus(15).toString(10), 'fffffffffffffffffff1');
     t(bigInt(2).pow(80).minus(16).toString(10), 'fffffffffffffffffff0');
+  });
+  it('number', function(){
+    const t = (s, exp, exp_f)=>{
+      let id = NodeId.from(s);
+      assert.equal(''+id.i, exp);
+      assert.equal(!id.n ? '0' : ''+id.n, exp_f);
+    };
+    t('00000000000000000000', '0', '0');
+    t('00000000000000000001', '0', '0');
+    t('00000000000000f00000', '0', '0');
+    t('00000000000001000000', '1', '1.3877787807814457e-17');
+    t('00000000000002000000', '2', '2.7755575615628914e-17');
+    t('fffffffffff000000000', '9007199254736896', '0.9999999999999432');
+    t('ffffffffffff00000000', '9007199254740736', '0.9999999999999964');
+    t('fffffffffffff0000000', '9007199254740976', '0.9999999999999998');
+    t('fffffffffffff8000000', '9007199254740984', '0.9999999999999999');
+    t('fffffffffffff9000000', '9007199254740985', '0.9999999999999999');
+    t('fffffffffffffe000000', '9007199254740990', '1');
+    t('ffffffffffffff000000', '9007199254740991', '1');
+    t('ffffffffffffff100000', '9007199254740991', '1');
+    t('ffffffffffffffffffff', '9007199254740991', '1');
+  });
+  it('cmp', function(){
+    const t = (a, b, exp)=>
+      assert.equal(NodeId.from(a).cmp(NodeId.from(b)), exp);
+    t('00000000000000000000', '00000000000000000000', 0);
+    t('00000000000000000000', '00000000000000000001', -1);
+    t('00000000000000000001', '00000000000000000000', 1);
+    t('00000000000001000000', '00000000000001000000', 0);
+    t('00000000000001000000', '00000000000002000000', -1);
+    t('00000000000002000000', '00000000000001000000', 1);
+    t('fffffffffffff0000000', 'fffffffffffff0000000', -0);
+    t('fffffffffffff0000000', 'fffffffffffff8000000', -1);
+    t('fffffffffffff8000000', 'fffffffffffff0000000', 1);
+    t('fffffffffffff9000000', 'fffffffffffff9000000', 0);
+    t('fffffffffffff9000000', 'fffffffffffffe000000', -1);
+    t('fffffffffffffe000000', 'fffffffffffff9000000', 1);
+    t('fffffffffffffffffffe', 'fffffffffffffffffffe', 0);
+    t('fffffffffffffffffffe', 'ffffffffffffffffffff', -1);
+    t('ffffffffffffffffffff', 'fffffffffffffffffffe', 1);
+    t('ffffffffffffffffffff', 'ffffffffffffffffffff', 0);
   });
 });
 
@@ -2493,57 +2574,6 @@ describe('wallet', ()=>{
     t({from: 'a'});
   });
 });
-
-function hash_from_int(val, bits, total_bits){
-  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
-  assert(bits<=total_bits, 'bits bigger than total_bits');
-  let len = total_bits/4;
-  let s = bigInt(val).shiftLeft(total_bits-bits).toString(16);
-  return '0'.repeat(len-s.length)+s;
-/* XXX: obsolete, rm
-  import BufferShift from 'buffershift';
-  assert(val<Math.pow(2, 32), 'val too big '+val);
-  assert(bits>=8 && total_bits>=bits, 'invalid '+bits+'/'+total_bits);
-  assert(val>0 && val<Math.pow(2, bits), 'invalid '+val+
-    ' 0-'+Math.pow(2, bits));
-  let buf = new Buffer(total_bits/8);
-  buf.writeIntBE(val, 0, 4);
-  BufferShift.shl(buf, 32-bits);
-  return b2s(buf);
-*/
-}
-
-function int_from_hash(hash, bits, total_bits){
-  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
-  assert(bits<=total_bits, 'bits bigger than total_bits');
-  return bigInt(hash, 16).shiftRight(total_bits-bits).toString(10);
-/* XXX: obsolete, rm
-  let buf = s2b(hash);
-  BufferShift.shr(buf, 32 -bits);
-  return buf.readIntBE(1, 3);
-*/
-}
-
-// abcdefghijklmXYZnopqrstuvwxyz
-// b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
-function test_gen_ids(bits, total_bits){
-  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
-  assert(bits<=total_bits, 'bits bigger than total_bits');
-  let max = bigInt(2).pow(bits);
-  let d = max.divide(26); // a-z is 26 characters
-  let ret = {};
-  for (let i=0, v=bigInt(d); i<26; i++, v=v.plus(d)){
-    let ch = String.fromCharCode('a'.charCodeAt(0)+i);
-    ret[ch] = hash_from_int(v.toString(10), bits, total_bits);
-    if (i==12){
-      let X = v.plus(d.divide(2));
-      ret.X = hash_from_int(X.toString(10), bits, total_bits);
-      ret.Y = hash_from_int(X.plus(1).toString(10), bits, total_bits);
-      ret.Z = hash_from_int(X.plus(2).toString(10), bits, total_bits);
-    }
-  }
-  return ret;
-}
 
 describe('peer-relay', function(){
   beforeEach(function(){
