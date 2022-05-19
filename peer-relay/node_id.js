@@ -37,6 +37,7 @@ get n(){
       this._n = Number(BigInt('0x'+this.s.slice(0, 14))) / divider;
     return this._n;
 }
+eq(id){ return this.s===id.s; }
 cmp(id){
   let d = this.n - id.n;
   if (d)

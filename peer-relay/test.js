@@ -2124,8 +2124,10 @@ describe('node_id', function(){
     t('ffffffffffffffffffff', '9007199254740991', '1');
   });
   it('cmp', function(){
-    const t = (a, b, exp)=>
+    const t = (a, b, exp)=>{
       assert.equal(NodeId.from(a).cmp(NodeId.from(b)), exp);
+      assert.equal(NodeId.from(a).eq(NodeId.from(b)), !exp);
+    };
     t('00000000000000000000', '00000000000000000000', 0);
     t('00000000000000000000', '00000000000000000001', -1);
     t('00000000000000000001', '00000000000000000000', 1);
