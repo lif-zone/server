@@ -25,12 +25,10 @@ import xerr from '../util/xerr.js';
 import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
 import bigInt from 'big-integer';
-
 const assign = Object.assign;
 const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
 const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
-function _str(id){ return typeof id=='string' ? id : b2s(id); }
 
 function get_fuzzy(name){
   if (name && /[+-]/.test(name[0]))
@@ -314,7 +312,7 @@ function support_wrtc(node){ return node.wrtcConnector.supported; }
 function node_from_id(id){
   for (let name in t_nodes){
     let node = N(name);
-    if (node.t.id == _str(id))
+    if (node.t.id == b2s(id))
       return node;
   }
 }
@@ -1115,8 +1113,8 @@ function cmd_node(opt){
   let node = new (fake ? FakeNode : Node)(assign(
     {keys: {priv: s2b(key.priv), pub: s2b(key.pub)}, bootstrap, wrtc},
     wss));
-  node.t = {id: _str(node.id), name, fake, wss};
-  xerr.notice('id %s:%s', name, _str(node.id));
+  node.t = {id: b2s(node.id), name, fake, wss};
+  xerr.notice('id %s:%s', name, b2s(node.id));
   t_nodes[name] = node;
 }
 

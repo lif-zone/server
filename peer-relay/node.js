@@ -23,7 +23,6 @@ export default class Node extends EventEmitter {
     super();
     if (!opt)
       opt = {};
-    // XXX: change id string
     this.wallet = new Wallet({keys: opt.keys});
     let id = this.id = this.wallet.keys.pub;
     // XXX: need cleanup for all internal structures
