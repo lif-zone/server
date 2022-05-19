@@ -10,7 +10,7 @@ export function dbg_id(id){
       return 'no_id';
     if (typeof id!='string')
       id = buf_util.buf_to_str(id);
-    return id.substr(0, 5);
+    return id.slice(0, 5);
   } catch(err){
     xerr('invalid id %s error %s', id, err);
     return 'invalid_id';

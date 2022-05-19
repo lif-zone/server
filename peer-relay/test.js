@@ -205,13 +205,13 @@ function normalize(e){
   let a=e[0], b=e[1], d=e[2];
   if (d!='<')
     return e;
-  return b+a+'>'+e.substr(3);
+  return b+a+'>'+e.slice(3);
 }
 
 function rev_trim(s){
   let i = s.search(/[<>]/);
   assert(i>=0 && i<3, 'invalid [<>] '+s);
-  s = s.substr(0, i)+(s[i]=='<' ? '>' : '<');
+  s = s.slice(0, i)+(s[i]=='<' ? '>' : '<');
   return s;
 }
 
@@ -1703,7 +1703,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
       // XXX fixme:
       // build_cmd(c.s+c.d+c.dir+'fwd', build_cmd(c.cmd, c.arg)))[0]);
       assign(c, xtest.test_parse(
-        build_cmd(c.orig.substr(0, 3)+'fwd', c.orig.substr(3)))[0]);
+        build_cmd(c.orig.slice(0, 3)+'fwd', c.orig.slice(3)))[0]);
     }
     // XXX: remove from  here
     if (a = c.cmd.match(/(^\d+)ms$/))
