@@ -167,12 +167,14 @@ function test_gen_ids(bits, total_bits){
   let ret = {};
   for (let i=0, v=bigInt(d); i<26; i++, v=v.plus(d)){
     let ch = String.fromCharCode('a'.charCodeAt(0)+i);
-    ret[ch] = hash_from_int(v.toString(10), bits, total_bits);
+    ret[ch] = NodeId.from(hash_from_int(v.toString(10), bits, total_bits));
     if (i==12){
       let X = v.plus(d.divide(2));
-      ret.X = hash_from_int(X.toString(10), bits, total_bits);
-      ret.Y = hash_from_int(X.plus(1).toString(10), bits, total_bits);
-      ret.Z = hash_from_int(X.plus(2).toString(10), bits, total_bits);
+      ret.X = NodeId.from(hash_from_int(X.toString(10), bits, total_bits));
+      ret.Y = NodeId.from(hash_from_int(X.plus(1).toString(10), bits,
+        total_bits));
+      ret.Z = NodeId.from(hash_from_int(X.plus(2).toString(10), bits,
+        total_bits));
     }
   }
   return ret;
@@ -335,7 +337,7 @@ function assert_node_ids(val){
     let a = s.match(/^([a-zA-Z]+):([0-9]+)$/);
     assert(a && a.length==3, 'invaid node_ids '+val+' part '+s);
     assert(!ret[a[1]], 'invalid node_ids '+val);
-    ret[a[1]] = hash_from_int(+a[2], t_conf.id_bits, ID_BITS);
+    ret[a[1]] = NodeId.from(hash_from_int(+a[2], t_conf.id_bits, ID_BITS));
   });
   return ret;
 }
@@ -1099,12 +1101,12 @@ function cmd_node(opt){
   });
   assert_name_new(name);
   if (id)
-    id = hash_from_int(id, t_conf.id_bits, ID_BITS);
+    id = NodeId.from(hash_from_int(id, t_conf.id_bits, ID_BITS));
   else
     id = t_conf.node_ids[name];
   let fake = is_fake(name);
   if (id)
-    key = {pub: id, priv: '00'};
+    key = {pub: id.b, priv: '00'};
   else {
     key = t_keys[name];
     assert(key, 'key not found '+name);
@@ -2037,15 +2039,15 @@ describe('buf_util', ()=>{
       // abcdefghijklmXYZnopqrstuvwxyz
       // b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
       let ids = test_gen_ids(8, 16);
-      assert.equal(ids.a, '0900');
-      assert.equal(ids.b, '1200');
-      assert.equal(ids.m, '7500');
-      assert.equal(ids.X, '7900');
-      assert.equal(ids.Y, '7a00');
-      assert.equal(ids.Z, '7b00');
-      assert.equal(ids.n, '7e00');
-      assert.equal(ids.y, 'e100');
-      assert.equal(ids.z, 'ea00');
+      assert.equal(ids.a.s, '0900');
+      assert.equal(ids.b.s, '1200');
+      assert.equal(ids.m.s, '7500');
+      assert.equal(ids.X.s, '7900');
+      assert.equal(ids.Y.s, '7a00');
+      assert.equal(ids.Z.s, '7b00');
+      assert.equal(ids.n.s, '7e00');
+      assert.equal(ids.y.s, 'e100');
+      assert.equal(ids.z.s, 'ea00');
     });
   it('in_range', ()=>{
     const v = val=>s2b(hash_from_int(val, 8, ID_BITS));
@@ -2275,7 +2277,7 @@ describe('paths', ()=>{
       function id_to_name(id){
         for (let name in ids)
         {
-          if (ids[name]==id)
+          if (ids[name].s==id)
             return name;
         }
         assert(0, 'id not found '+id);
@@ -2290,7 +2292,7 @@ describe('paths', ()=>{
       xsinon.clock_set({now: 1});
       a.forEach(p=>{
         let path = [];
-        p.split('').forEach(name=>path.push(ids[name]));
+        p.split('').forEach(name=>path.push(ids[name].s));
         tree.add(path);
         xsinon.tick(1);
       });
