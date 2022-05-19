@@ -35,9 +35,6 @@ E.wait = function(){
   return p;
 };
 
-E.buf_to_str = function(b){ return b ? b.toString('hex') : ''; };
-E.buf_from_str = function(s){ return Buffer.from(s, 'hex'); };
-
 E.is_inspect = function(){
   return !!process.execArgv.find(s=>/inspect/.test(s)); };
 
