@@ -25,10 +25,11 @@ import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
 import bigInt from 'big-integer';
 
-const assign = Object.assign, s2b = util.buf_from_str, b2s = util.buf_to_str;
+const assign = Object.assign;
+const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
 const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
-function _str(id){ return typeof id=='string' ? id : util.buf_to_str(id); }
+function _str(id){ return typeof id=='string' ? id : b2s(id); }
 
 function get_fuzzy(name){
   if (name && /[+-]/.test(name[0]))

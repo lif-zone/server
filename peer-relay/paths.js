@@ -5,8 +5,7 @@ import assert from 'assert';
 import Tree from 'avl';
 import buf_util from './buf_util.js';
 import date from '../util/date.js';
-import xutil from '../util/util.js';
-const s2b = xutil.buf_from_str;
+const s2b = buf_util.buf_from_str;
 
 export default class Paths extends EventEmitter {
 constructor(opt){

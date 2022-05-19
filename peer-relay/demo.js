@@ -1,7 +1,7 @@
 // author: derry. coder: arik.
 import Node from './node.js';
 import {LocalStorage} from 'node-localstorage';
-import util from '../util/util.js';
+import buf_util from './buf_util.js';
 import etask from '../util/etask.js';
 import date from '../util/date.js';
 import xerr from '../util/xerr.js';
@@ -10,7 +10,7 @@ import ReqHandler from './req_handler.js';
 import {dbg_id} from './util.js';
 import xlog from '../util/xlog.js';
 const log = xlog('demo');
-const s2b = util.buf_from_str, b2s = util.buf_to_str;
+const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
 const localStorage = new LocalStorage('/var/lif/demo_local_storage');
 // XXX: make it automatic for all node/browser in proc.js
 xerr.set_exception_catch_all(true);

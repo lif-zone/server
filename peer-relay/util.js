@@ -1,6 +1,6 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
-import xutil from '../util/util.js';
+import buf_util from './buf_util.js';
 import xerr from '../util/xerr.js';
 import sprintf from '../util/sprintf.js';
 
@@ -9,7 +9,7 @@ export function dbg_id(id){
     if (!id)
       return 'no_id';
     if (typeof id!='string')
-      id = xutil.buf_to_str(id);
+      id = buf_util.buf_to_str(id);
     return id.substr(0, 5);
   } catch(err){
     xerr('invalid id %s error %s', id, err);

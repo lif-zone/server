@@ -3,8 +3,7 @@
 import {EventEmitter} from 'events';
 import xerr from '../util/xerr.js';
 import buf_util from './buf_util.js';
-import xutil from '../util/util.js';
-const b2s = xutil.buf_to_str, s2b = xutil.buf_from_str;
+const b2s = buf_util.buf_to_str, s2b = buf_util.buf_from_str;
 
 // XXX: need test
 export default class Channels extends EventEmitter {

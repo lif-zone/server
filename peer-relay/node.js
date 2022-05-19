@@ -10,12 +10,13 @@ import Wallet from './wallet.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
 import {dbg_id} from './util.js';
+import buf_util from './buf_util.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
 import xlog from '../util/xlog.js';
 const log = xlog('node');
-const s2b = util.buf_from_str, b2s = util.buf_to_str;
+const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
 
 export default class Node extends EventEmitter {
   constructor(opt){

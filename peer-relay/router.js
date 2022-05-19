@@ -12,7 +12,7 @@ import Paths from './paths.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
 const log = xlog('router');
-const b2s = xutil.buf_to_str, s2b = xutil.buf_from_str;
+const b2s = buf_util.buf_to_str, s2b = buf_util.buf_from_str;
 const stringify = JSON.stringify;
 
 // XXX: need safe emit support

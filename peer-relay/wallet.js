@@ -3,8 +3,8 @@
 import hcrypto from 'hypercore-crypto';
 import assert from 'assert';
 import hash from 'object-hash';
-import util from '../util/util.js';
-const b2s = util.buf_to_str;
+import buf_util from './buf_util.js';
+const b2s = buf_util.buf_to_str;
 import {undefined_to_null2} from './util.js';
 
 let excludeKeys = key=>['path', 'sign', 'debug'].indexOf(key)!=-1;
