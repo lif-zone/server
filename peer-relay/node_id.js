@@ -14,6 +14,12 @@ constructor(id){
     this._s = id;
   else if (Buffer.isBuffer(id))
     this._b = id;
+  else if (id instanceof NodeId){
+    this._s = id._s;
+    this._b = id._b;
+    this._n = id._n;
+    this._i = id._i;
+  }
   else
     assert.fail('invalid id '+id);
 }
