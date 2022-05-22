@@ -3796,6 +3796,7 @@ VP:
   + class NodeId+test
   + fix code to use NodeId
   - Nodes/Node/NodeConn+test
+  - rtt calculation - calculate it during the connection and pass it along fwd
 */
 
 /* XXX: derry: 17-May-2022
