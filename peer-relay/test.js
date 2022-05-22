@@ -2847,7 +2847,6 @@ describe('peer-relay', function(){
       xit(name, roles[i], test);
   };
   describe('router', ()=>{
-    // XXX TODO: need framing support (eg. for fwd)
     let t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `conf(id_bits:8) setup:2_nodes
       ab>!req(body:ping res:ping_r)`);
@@ -3856,7 +3855,12 @@ VP:
 - class NodeId:
   + class NodeId+test
   + fix code to use NodeId
-  - Nodes/Node/NodeConn+test
+  - fix parser
+    - conf(id:a-mXYZn-z) - create nodes by default
+    - conf(id:a-mXYZn-z !node) - in order NOT to create the nodes
+    - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
+    - a,b,c=node === a,b,c=node:wss (make wss the default)
+  * Nodes/Node/NodeConn+test
   - remove obsolete
     - rename Ws/WrtcChannel to WsConn/WrtcConn
     - remove node.peers
