@@ -3796,7 +3796,11 @@ VP:
   + class NodeId+test
   + fix code to use NodeId
   - Nodes/Node/NodeConn+test
-  - rename Ws/WrtcChannel to WsConn/WrtcConn
+  - remove obsolete
+    - rename Ws/WrtcChannel to WsConn/WrtcConn
+    - remove node.peers
+    - remove node.channels
+    - remove path.js
   - rtt calculation - calculate it during the connection and pass it along fwd
 */
 
