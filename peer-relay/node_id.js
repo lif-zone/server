@@ -49,3 +49,4 @@ cmp(id){
 }
 
 NodeId.from = function(id){ return new NodeId(id); };
+NodeId.cmp = function(a, b){ return a.cmp(b); };

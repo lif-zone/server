@@ -3790,20 +3790,6 @@ describe('peer-relay', function(){
   */
 });
 
-/*
-VP:
-- class NodeId:
-  + class NodeId+test
-  + fix code to use NodeId
-  - Nodes/Node/NodeConn+test
-  - remove obsolete
-    - rename Ws/WrtcChannel to WsConn/WrtcConn
-    - remove node.peers
-    - remove node.channels
-    - remove path.js
-  - rtt calculation - calculate it during the connection and pass it along fwd
-*/
-
 /* XXX: derry: 17-May-2022
 // node ID 2^128 2^160
 // self: node ID of myself
@@ -3864,5 +3850,18 @@ bit per ms
 freq=8/100
 12 0 1 2 3 4 5 6 5 4 3 2 1 0
 // a-d 100 e-f 500 g-o 1000 o-z 2000
+*/
+/*
+VP:
+- class NodeId:
+  + class NodeId+test
+  + fix code to use NodeId
+  - Nodes/Node/NodeConn+test
+  - remove obsolete
+    - rename Ws/WrtcChannel to WsConn/WrtcConn
+    - remove node.peers
+    - remove node.channels
+    - remove path.js
+  - rtt calculation - calculate it during the connection and pass it along fwd
 */
 
