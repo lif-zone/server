@@ -32,6 +32,7 @@ export default class Router extends EventEmitter {
     this._touched = {};
     this.state = {};
     this.node_map = new NodeMap();
+    this.conn = new Map();
     this.routes = {};
     this._queue = [];
     this._channels = channels;
@@ -115,14 +116,35 @@ export default class Router extends EventEmitter {
       yield _this._send(lbuffer);
   });
   _onChannelAdded(channel){
+    let dst = channel.id, node = this.node_map.get(dst);
+    if (!node){
+      node = new NodeMap.Node(dst);
+      this.node_map.set(dst, node);
+    }
+    let conn = this.conn.get(dst);
+    assert(!conn, 'XXX: support update of connection');
+    conn = new NodeMap.NodeConn(dst, channel);
+    this.conn.set(dst, conn);
+    node.set_conn(dst, conn);
     channel.on('message', this._on_channel_msg);
     // XXX: check if this can happen during test and add yield
     while (this._queue.length)
       this._send(this._queue.shift());
   }
   _onChannelRemoved = function(channel){
-    channel.removeListener('message', this._on_channel_msg); }
-  get_channel_from_path(path){ return path && this._channels.get(path[0]); }
+    let dst = channel.id, node = this.node_map.get(dst);
+    node.del_conn(dst);
+    channel.removeListener('message', this._on_channel_msg);
+  }
+  get_channel_from_id(id){
+    return this._channels.get(id.s);
+  }
+  get_channel_from_path(path){
+    let dst = path && path[0] && NodeId.from(path[0]);
+    if (!dst)
+      return;
+    return this.get_channel_from_id(dst);
+  }
   get_channel_from_rt(msg){
     return this.get_channel_from_path(xutil.get(msg, ['rt', 'path'])); }
   get_channel_from_state(msg){
@@ -130,9 +152,9 @@ export default class Router extends EventEmitter {
     if (!state)
       return;
     if (xutil.get(state, [to, 'ch_out']))
-      return this._channels.get(state[to].ch_out);
+      return this.get_channel_from_id(NodeId.from(state[to].ch_out));
     if (xutil.get(state, [from, 'ch_in']))
-      return this._channels.get(state[from].ch_in);
+      return this.get_channel_from_id(NodeId.from(state[from].ch_in));
   }
   track_in = (msg, channel)=>this.track(msg, channel.id.s, '');
   track_out = (msg, channel)=>this.track(msg, '', channel.id.s);
