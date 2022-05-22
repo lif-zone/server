@@ -1008,16 +1008,28 @@ function cmd_mode(opt){
 
 function cmd_conf(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
+  let ids, no_node=false;
   assert(!event, 'got unexpected '+event);
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'id_bits': set_id_bits(assert_int(a.arg)); break;
-    case 'id': set_node_ids(assert_node_ids(a.arg)); break;
+    case 'id': ids = assert_node_ids(a.arg); break;
     case 'path': t_conf.path = assert_bool(a.arg); break;
     case 'rt': t_conf.rt = assert_bool(a.arg); break;
+    case '!node': no_node = assert_bool(a.arg); break;
     default: assert(0, 'invalid conf '+a.cmd);
     }
   });
+  if (ids)
+    set_node_ids(ids);
+  if (!t_pre_process)
+    return;
+  if (ids && !no_node){
+    let s = '';
+    for (let name in ids)
+      s += (s ? ' ' : '')+name+'=node:wss';
+    push_cmd(s);
+  }
 }
 
 function cmd_rt_add(opt){
@@ -2607,6 +2619,8 @@ describe('peer-relay', function(){
         const t = (test, exp)=>_t('', test, exp);
         const _T = (mode, test, exp)=>_t(mode, test, exp, true);
         const T = (test, exp)=>_T('', test, exp);
+        t('conf(id(X:10 Y:20))', 'conf(id(X:10 Y:20)) X=node:wss Y=node:wss');
+        t('conf(id(X:10 Y:20) !node)', 'conf(id(X:10 Y:20) !node)');
         t('1ms', `ms(1)`);
         t('12ms', `ms(12)`);
         t('1s', `ms(1000)`);
@@ -2855,21 +2869,19 @@ describe('peer-relay', function(){
     t('3_nodes', `conf(id_bits:8) a,b,c=node:wss ab,ac>!connect
       ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r)`);
     t('3_nodes_route_b', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
-      a,b,c,d,e=node:wss ab,ac>!connect ad>!req(id:r1 body:ping !e)
+      ab,ac>!connect ad>!req(id:r1 body:ping !e)
       ab>fwd(ad>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_route_c', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
-      a,b,c,d,e=node:wss ab,ac>!connect
-      ae>!req(id:r1 body:ping !e) ac:ae>msg(id:r1 type:req body:ping) -
-      20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30)) a,b,c=node:wss
+      ab,ac>!connect ae>!req(id:r1 body:ping !e)
+      ac:ae>msg(id:r1 type:req body:ping) - 20s a>*fail(id:r1 error:timeout)`);
+    t('3_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30))
       ab,bc,ca>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r) -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
     // XXX: implement stateful req
     t('4_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
-      a,b,c,d=node:wss ab,bc,cd,da>!connect -
-      ab>!req(body:ping res:ping_r) 60s
+      ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
       ab.c>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
       ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
       bc.d>!req(body:ping res:ping_r) 60s cd.a>!req(body:ping res:ping_r) 60s
@@ -2877,7 +2889,7 @@ describe('peer-relay', function(){
       da>!req(body:ping res:ping_r) 60s da.b>!req(body:ping res:ping_r) 60s
       dc>!req(body:ping res:ping_r)`);
     t('4_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
-      a,b,c,d=node:wss rt_add(a:bc b:cd c:da d:ab)
+      rt_add(a:bc b:cd c:da d:ab)
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
       abc>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
       ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
@@ -2888,14 +2900,12 @@ describe('peer-relay', function(){
     // XXX: need to rm explicit req_id. need to fix test req tracking.
     // without explicit req_id, the test fails
     t('4_nodes_ring_state_timeout', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
-      a,b,c,d=node:wss ab,bc,cd,da>!connect -
-      ab>!req(body:ping res:ping_r) -
+      ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) -
       ab.c>!req(id:r1 body:ping res:ping_r) 59s -
       cb.a>!req(id:r2 body:ping res:ping_r) 60s -
       cd.a>!req(id:r3 body:ping res:ping_r) -`);
     // XXX WIP: in the response, need rt:a and not and rt:abc
     t('4_nodes_ring_range', `conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40))
-      a=node(id:10 wss) b=node(id:20 wss) c=node(id:30 wss) d=node(id:40 wss)
       ab,bc,cd,da>!connect - ac>!req(id:r1 body:ping res:ping_r !e)
       ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30)
       bc>fwd(ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30) path:ab)
@@ -2905,18 +2915,16 @@ describe('peer-relay', function(){
       ac<*res(id:r1 body:ping_r)`);
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
-      a,b,c,d,e=node:wss ab,bc,cd,de,ea>!connect
-      ab.c.d>!req(id:r1 body:ping res:ping_r) 59s -
+      ab,bc,cd,de,ea>!connect ab.c.d>!req(id:r1 body:ping res:ping_r) 59s -
       ab.cd<!req(id:r2 body:ping res:ping_r) 60s -
       a.ed<!req(id:r3 body:ping res:ping_r) 60s -`);
     t('5_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
-      a,b,c,d,e=node:wss ab,bc,cd,de,ea>!connect rt_add(a:bcd d:ea)
+      ab,bc,cd,de,ea>!connect rt_add(a:bcd d:ea)
       abcd>!req(id:r1 body:ping res:ping_r) 59s -
       aed<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
     t('5_nodes_ring_range', `
-      conf(rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
-      a,b,c,d,e=node:wss ab,bc,cd,de,ea>!connect
+      conf(rt id_bits:8 id(a:10 b:20 c:30 d:40 e:50)) ab,bc,cd,de,ea>!connect
       ad>!req(id:r1 body:ping res:ping_r !e)
       ab[20-40]:ad>msg(id:r1 type:req body:ping)
       bc[30-40]:ab[20-40]:ad>msg(id:r1 type:req body:ping)
@@ -2930,43 +2938,39 @@ describe('peer-relay', function(){
   describe('get_peer', ()=>{
     let t = (name, test)=>t_roles(name, 'abXcde', test);
     t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)`);
+      ab,bX,Xc,cd,da,eX>!connect eX.c.d>!req(body:ping res:ping_r)
+      eX.c.d.a>!req(body:ping res:ping_r)`);
     t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer
-      eX.c.d.a-e>get_peer ea>*get_peer
+      ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer eX.c.d.a-e>get_peer ea>*get_peer
       eXcda<get_peer_r ea<*get_peer_r`);
     t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer
-      eX.b.a.d+e>get_peer ed>*get_peer
+      ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer eX.b.a.d+e>get_peer ed>*get_peer
       eXbad<get_peer_r ed<*get_peer_r`);
     t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d.a-e>!get_peer`);
+      ab,bX,Xc,cd,da,eX>!connect eX.c.d.a-e>!get_peer`);
     t('short:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.b.a.d+e>!get_peer`);
+      ab,bX,Xc,cd,da,eX>!connect eX.b.a.d+e>!get_peer`);
     t('multiple:abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      a,b,X,c,d,e=node:wss ab,bX,Xc,cd,da,eX>!connect
-      eX.c.d>!req(body:ping res:ping_r) eX.c.d.a>!req(body:ping res:ping_r)
-      eX.c.d.a-e>!get_peer eX.b.a.d+e>!get_peer`);
+      ab,bX,Xc,cd,da,eX>!connect eX.c.d>!req(body:ping res:ping_r)
+      eX.c.d.a>!req(body:ping res:ping_r) eX.c.d.a-e>!get_peer
+      eX.b.a.d+e>!get_peer`);
   });
   describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXnop', test);
     t('short:abXnop-p', `mode(msg req)
-      conf(id:a-mXYZn-z) a,b,X,n,o,p=node:wss
+      conf(id:a-mXYZn-z)
       // XXX conf(id:a-mXYZn-z)
       // XXX conf(id:a-mXYZn-z !node) - in order NOT to create the nodes
       // XXX conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
       // XXX a,b,c=node === a,b,c=node:wss
       ab,bX,Xn,no,oa,pX>!connect pX.n.o.a-p>!get_peer`);
     t('short:abXnop+p', `mode(msg req) conf(id:a-mXYZn-z)
-      a,b,X,n,o,p=node:wss ab,bX,Xn,no,oa,pX>!connect pX.b.a.o+p>!get_peer`);
+      ab,bX,Xn,no,oa,pX>!connect pX.b.a.o+p>!get_peer`);
   });
   // XXX: unite with get_peer tests
   describe('discovery', ()=>{
     let t = (name, test)=>t_roles(name, 'abcdeX', test);
-    t('abcdeX', `mode(msg req) conf(id:a-mXYZn-z) a,b,c,d,e,X=node:wss
+    t('abcdeX', `mode(msg req) conf(id:a-mXYZn-z)
       aX>!connect aX+a>!get_peer // XXX aX>!ping
       // abX b+:X
       bX>!connect bX.a+b>!get_peer
@@ -3856,10 +3860,11 @@ VP:
   + class NodeId+test
   + fix code to use NodeId
   - fix parser
-    - conf(id:a-mXYZn-z) - create nodes by default
-    - conf(id:a-mXYZn-z !node) - in order NOT to create the nodes
+    + conf(id:a-mXYZn-z) - create nodes by default
+    + conf(id:a-mXYZn-z !node) - in order NOT to create the nodes
     - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
     - a,b,c=node === a,b,c=node:wss (make wss the default)
+    - aX>!ping
   * Nodes/Node/NodeConn+test
   - remove obsolete
     - rename Ws/WrtcChannel to WsConn/WrtcConn
