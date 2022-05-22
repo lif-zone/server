@@ -7,6 +7,7 @@ import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 import buf_util from './buf_util.js';
 import NodeId from './node_id.js';
+import NodeMap from './node_map.js';
 import xutil from '../util/util.js';
 import {dbg_msg} from './util.js';
 import Paths from './paths.js';
@@ -30,6 +31,7 @@ export default class Router extends EventEmitter {
     // XXX: memory leak - no cleanup for all
     this._touched = {};
     this.state = {};
+    this.node_map = new NodeMap();
     this.routes = {};
     this._queue = [];
     this._channels = channels;
