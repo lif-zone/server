@@ -3993,20 +3993,22 @@ VP:
   + fix code to use NodeId
   * Node_map/Node/NodeConn+test
     + track Node/NodeConn from node self connections
-    * track Node/NodeConn from incoming messages
-  - rtt calculation - calculate it during the connection and pass it along fwd
+    + track Node/NodeConn from incoming messages
+    * track rtt per connection
+      * conf(rtt(200 ab:50))
   - path selection:
     - use dijkstra to build path/costs to all destinataions
       https://github.com/lambdabaa/dijkstra/blob/master/index.js
     - select to forward message with the path that has lowest rtt per bit
       distance_bits(distance){
         return !distance ? 0 : Math.max(53+Math.log2(distance), 0); }
-  - use Node_map+path selection instead existing obsolete code + fix tests
+    - use Node_map+path selection instead existing obsolete code + fix tests
   - remove obsolete
     - rename Ws/WrtcChannel to WsConn/WrtcConn
     - remove node.peers
     - remove node.channels
     - remove path.js
+  - rtt calculation - calculate it during the connection and pass it along fwd
   - fix parser
     - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
     - a,b,c=node === a,b,c=node:wss (make wss the default)
