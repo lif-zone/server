@@ -32,7 +32,6 @@ export default class Router extends EventEmitter {
     this._touched = {};
     this.state = {};
     this.node_map = new NodeMap();
-    this.conn = new Map();
     this.routes = {};
     this._queue = [];
     this._channels = channels;
@@ -122,10 +121,8 @@ export default class Router extends EventEmitter {
       node = new NodeMap.Node(dst);
       this.node_map.set(dst, node);
     }
-    let conn = this.conn.get(dst);
-    assert(!conn, 'XXX: support update of connection');
-    conn = new NodeMap.NodeConn({ids: [this.id, dst], self: channel});
-    this.conn.set(dst, conn);
+    let conn = this.node_map.get_conn({ids: [this.id, dst], create: true,
+      self: channel});
     node.set_conn(this.id, conn);
     this.node.set_conn(dst, conn);
     channel.on('message', this._on_channel_msg);

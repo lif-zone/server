@@ -10,6 +10,7 @@ constructor(){
   super();
   this.map = new Map();
   this.tree = new Tree(NodeId.cmp, true);
+  this.conn = new Map();
 }
 set(id, node){
   this.map.set(id.s, node);
@@ -19,6 +20,17 @@ get(id){ return this.map.get(id.s); }
 del(id){
   this.map.delete(id.s);
   this.tree.remove(id);
+}
+get_conn(opt){
+  let {ids, create, self} = opt, hash = conn_hash(ids);
+  let conn = this.conn.get(hash);
+  if (!create || conn){
+    assert(!conn || !self , 'XXX: support update of connection self');
+    return conn;
+  }
+  conn = new NodeMap.NodeConn({ids, self});
+  this.conn.set(hash, conn);
+  return conn;
 }
 }
 
@@ -43,5 +55,9 @@ constructor(opt){
 }
 }
 
+function conn_hash(ids){ return ids[0].cmp(ids[1])<0 ?
+  ids[0].s+'_'+ids[1].s : ids[1].s+'_'+ids[0].s; }
+
 NodeMap.Node = Node;
 NodeMap.NodeConn = NodeConn;
+NodeMap.conn_hash = conn_hash;
