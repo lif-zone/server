@@ -195,6 +195,11 @@ export default class Router extends EventEmitter {
     routes[d].push({path: Array.from(path)});
   }
   update_conn(lbuffer){
+    /* XXX WIP
+    for (let i=0; i<lbuffer.size(); i++){
+      let msg = lbuffer.get_json(i);
+    }
+  */
   }
 }
 
