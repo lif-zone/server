@@ -3903,12 +3903,6 @@ VP:
 - class NodeId:
   + class NodeId+test
   + fix code to use NodeId
-  - fix parser
-    + conf(id:a-mXYZn-z) - create nodes by default
-    + conf(id:a-mXYZn-z !node) - in order NOT to create the nodes
-    - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
-    - a,b,c=node === a,b,c=node:wss (make wss the default)
-    - aX>!ping
   * Node_map/Node/NodeConn+test
     + track Node/NodeConn from node self connections
     * track Node/NodeConn from incoming messages
@@ -3925,5 +3919,9 @@ VP:
     - remove node.peers
     - remove node.channels
     - remove path.js
+  - fix parser
+    - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
+    - a,b,c=node === a,b,c=node:wss (make wss the default)
+    - aX>!ping
 */
 
