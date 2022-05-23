@@ -3909,12 +3909,9 @@ VP:
     - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
     - a,b,c=node === a,b,c=node:wss (make wss the default)
     - aX>!ping
-  * Nodes/Node/NodeConn+test
-  - remove obsolete
-    - rename Ws/WrtcChannel to WsConn/WrtcConn
-    - remove node.peers
-    - remove node.channels
-    - remove path.js
+  * Node_map/Node/NodeConn+test
+    + track Node/NodeConn from node self connections
+    * track Node/NodeConn from incoming messages
   - rtt calculation - calculate it during the connection and pass it along fwd
   - path selection:
     - use dijkstra to build path/costs to all destinataions
@@ -3922,5 +3919,11 @@ VP:
     - select to forward message with the path that has lowest rtt per bit
       distance_bits(distance){
         return !distance ? 0 : Math.max(53+Math.log2(distance), 0); }
+  - use Node_map+path selection instead existing obsolete code + fix tests
+  - remove obsolete
+    - rename Ws/WrtcChannel to WsConn/WrtcConn
+    - remove node.peers
+    - remove node.channels
+    - remove path.js
 */
 
