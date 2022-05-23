@@ -2908,7 +2908,7 @@ describe('peer-relay', function(){
       // XXX TODO: zX:Yz:Yc,Xa:zX:Yz:Yc>msg(type:req)
       zX:Yz:Yc>msg(type:req) Xa:zX:Yz:Yc>msg(type:req)
       test_node_conn(X:az a:bX b:acd c:b d:b Y:z z:YX)`);
-    // XXX: conf(rtt(200) rtt(ab:100))
+    // XXX derry: conf(rtt(200 ab:100))
   });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);
@@ -3903,6 +3903,88 @@ bit per ms
 freq=8/100
 12 0 1 2 3 4 5 6 5 4 3 2 1 0
 // a-d 100 e-f 500 g-o 1000 o-z 2000
+*/
+
+/* derry 2022-05-23: how to select the lowest rtt per bit?
+    me = 0.1;
+    dst = 0.2;
+    me is 0.1 from dst;
+    node 0.9 is 0.3 from dst;
+    node 0.3 is 0.1 from dst;
+    node 0.5 is 0.3 from dst;
+    calc_dist_via(src (myself), dst (we want to get to), via){
+      src_dst_diff = calc_dist(src, dst);
+      via_dst_diff = calc_dist(via, dst);
+      if (src_dst_diff<=via_dst_diff)
+        return {good: false};
+      let ret = {good: true};
+      // src 0.1 dst 0.3 via 0.32 dist_done = 0.18;
+      ret.dist_dst = via_dst_diff;
+      ret.dist_done = src_dst_diff-via_dst_diff;
+      ret.rtt_pb = via.rtt/dist_to_bits(ret.dist_done);
+      return ret;
+    }
+    rtt/bit  200ms/6bit = 33ms/bit  100ms/5bit = 20ms/bit; // vs self & dest
+    for (best = at = itr(dest)..next() && i<16){
+       if (at.rtt_pb<best.rtt_pb)
+         best = at;
+    }
+    // next prev in avl circle, that after 1 continues in 0
+    // iterator class: you initiate it (like initiating for loop), and
+    // it gives you next
+    // 0.1 0.4 0.41 0.42 0.43 0.5 0.9 0.99
+    // itr = avl.dist_iterator(0.429)
+    // itr.next() == 0.43
+    // itr.next() == 0.42
+    // itr.next() == 0.41
+    // itr.next() == 0.4
+    // itr.next() == 0.5
+    // itr.next() == 0.1
+    // itr.next() == 0.99
+    // itr.next() == 0.9
+    // itr.next() == null
+    // dist_iterator(Number 0-1, String node id, NodeId Object)
+    // AVL.find (exact), AVL.find_bidi (closest from both dirs),
+    // AVL.find_next (eq or more), AVL.find_prev (eq or less)
+    new NodeItr(id){
+      if (typeof id=='number'){
+        this.start = new NodeId(d, {no_buf: true});
+        this.n = AVL.find_next(this.start);
+      } else if (typeof id=='string'){
+        this.start = new NodeId(id, {no_buf: true});
+        this.n = AVL.find_next(this.start);
+      } else if (id instanceof NodeId){
+        this.start = id;
+        this.n = AVL.find_next(this.start);
+      } else if (id instanceof Node){
+        this.start = id.id;
+        this.n = id;
+      } else
+        assert();
+      this.p = this.n && this.n.prev();
+    }
+    NodeItr.next(){
+      if (!this.n)
+        return null;
+      if (this.n===this.p){
+        this.n = null;
+        return this.p;
+      }
+      let at;
+      let n_diff = calc_dist(this.n.id.d, this.start);
+      let p_diff = calc_dist(this.p.id.d, this.start);
+      if (n_diff<p_diff){
+        at = this.n;
+        this.n = this.n.next();
+      } else {
+        at = this.p;
+        this.p = this.p.prev();
+      }
+      return at;
+    }
+  });
+  calc_dist(a, b){ return Math.abs(...) <0.5..}
+
 */
 /*
 VP:
