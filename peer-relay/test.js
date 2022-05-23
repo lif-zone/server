@@ -2860,6 +2860,16 @@ describe('peer-relay', function(){
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
+  describe('nodes', ()=>{
+    if (true) return; // XXX: WIP
+    let t = (name, test)=>t_roles(name, 'X', test);
+    t('direct', `mode(msg req) conf(id:a-mXYZn-z)
+      Xa>!connect
+      test_nodes(X(a(conn(X))))
+      Xb>!connect
+      test_nodes(X(a(conn(X) b(conn(X)))))
+    `);
+  });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `conf(id_bits:8) setup:2_nodes
@@ -3876,7 +3886,7 @@ VP:
     - use dijkstra to build path/costs to all destinataions
       https://github.com/lambdabaa/dijkstra/blob/master/index.js
     - select to forward message with the path that has lowest rtt per bit
-      c = Math.abs(a-b); c = c>=0.5 ? 1-c : c;
-      the number of bits is Math.log2(c)
+      distance_bits(distance){
+        return !distance ? 0 : Math.max(53+Math.log2(distance), 0); }
 */
 
