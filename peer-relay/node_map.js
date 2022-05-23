@@ -16,7 +16,17 @@ set(id, node){
   this.map.set(id.s, node);
   this.tree.insert(id, node);
 }
-get(id){ return this.map.get(id.s); }
+get(opt){
+  if (opt instanceof NodeId)
+    opt = {id: opt};
+  let {id, create} = opt;
+  let node = this.map.get(id.s);
+  if (!create || node)
+    return node;
+  node = new NodeMap.Node(id);
+  this.set(id, node);
+  return node;
+}
 del(id){
   this.map.delete(id.s);
   this.tree.remove(id);
@@ -25,7 +35,7 @@ get_conn(opt){
   let {ids, create, self} = opt, hash = conn_hash(ids);
   let conn = this.conn.get(hash);
   if (!create || conn){
-    assert(!conn || !self , 'XXX: support update of connection self');
+    assert(!conn || !self, 'XXX: support update of connection self');
     return conn;
   }
   conn = new NodeMap.NodeConn({ids, self});

@@ -116,11 +116,7 @@ export default class Router extends EventEmitter {
       yield _this._send(lbuffer);
   });
   _onChannelAdded(channel){
-    let dst = channel.id, node = this.node_map.get(dst);
-    if (!node){
-      node = new NodeMap.Node(dst);
-      this.node_map.set(dst, node);
-    }
+    let dst = channel.id, node = this.node_map.get({id: dst, create: true});
     let conn = this.node_map.get_conn({ids: [this.id, dst], create: true,
       self: channel});
     node.set_conn(this.id, conn);
@@ -192,11 +188,15 @@ export default class Router extends EventEmitter {
     routes[d].push({path: Array.from(path)});
   }
   update_conn(lbuffer){
-    /* XXX WIP
     for (let i=0; i<lbuffer.size(); i++){
       let msg = lbuffer.get_json(i);
+      let f = NodeId.from(msg.from), t = NodeId.from(msg.to);
+      let nf = this.node_map.get({id: f, create: true});
+      let nt = this.node_map.get({id: t, create: true});
+      let conn = this.node_map.get_conn({ids: [f, t], create: true});
+      nf.set_conn(t, conn);
+      nt.set_conn(f, conn);
     }
-  */
   }
 }
 

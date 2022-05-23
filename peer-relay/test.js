@@ -1055,6 +1055,9 @@ function cmd_test_node_conn(opt){
       let d = node_from_id(id);
       s += d.t.name;
     });
+    // XXX: string.sort_char
+    s = s.split('').sort((a, b)=>a>b ? -1 : a<b ? 1 : 0).join('');
+    n2 = n2.split('').sort((a, b)=>a>b ? -1 : a<b ? 1 : 0).join('');
     assert.equal(s, n2, 'conn mismatch for '+n.t.name);
     delete exp[n.t.name];
   });
@@ -2890,17 +2893,16 @@ describe('peer-relay', function(){
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
-  describe('nodes_conn', ()=>{
+  describe('node_conn', ()=>{
     let t = (name, test)=>t_roles(name, 'X', test);
     t('direct', `mode(msg req) conf(id:a-mXYZn-z) test_node_conn(X)
       Xa>!connect test_node_conn(X:a a:X)
       Xb<!connect test_node_conn(X:ab a:X b:X)
       Xy>!connect test_node_conn(X:aby a:X b:X y:X)
       Xz<!connect test_node_conn(X:abyz a:X b:X y:X z:X)`);
-    if (0) // XXX WIP
     t('from_fwd', `mode(msg req) conf(id:a-mXYZn-z) test_node_conn(X)
       Xa>!connect test_node_conn(X:a a:X)
-      aX:ba>msg(type:req) test_node_conn(X:a a:X b:a)
+      aX:ba>msg(type:req) test_node_conn(X:a a:bX b:a)
       `);
   });
   describe('router', ()=>{
