@@ -110,8 +110,6 @@ export default class Router extends EventEmitter {
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track_in(msg, channel);
     _this._touched[nonce] = true;
-    assert(typeof msg.from=='string', 'invalid from');
-    assert(typeof msg.to=='string', 'invalid to');
     if (msg.to==_this.id.s)
       _this.emit('message', lbuffer);
     else // relay

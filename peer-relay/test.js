@@ -2892,17 +2892,16 @@ describe('peer-relay', function(){
   };
   describe('nodes', ()=>{
     let t = (name, test)=>t_roles(name, 'X', test);
-    t('direct', `mode(msg req) conf(id:a-mXYZn-z)
-      test_node_conn(X)
-      Xa>!connect
-      test_node_conn(X:a a:X)
-      Xb<!connect
-      test_node_conn(X:ab a:X b:X)
-      Xy>!connect
-      test_node_conn(X:aby a:X b:X y:X)
-      Xz<!connect
-      test_node_conn(X:abyz a:X b:X y:X z:X)
-    `);
+    t('direct', `mode(msg req) conf(id:a-mXYZn-z) test_node_conn(X)
+      Xa>!connect test_node_conn(X:a a:X)
+      Xb<!connect test_node_conn(X:ab a:X b:X)
+      Xy>!connect test_node_conn(X:aby a:X b:X y:X)
+      Xz<!connect test_node_conn(X:abyz a:X b:X y:X z:X)`);
+    if (0) // XXX WIP
+    t('from_fwd', `mode(msg req) conf(id:a-mXYZn-z) test_node_conn(X)
+      Xa>!connect test_node_conn(X:a a:X)
+      aX:ba>msg(type:req) test_node_conn(X:a a:X b:a)
+      `);
   });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);
