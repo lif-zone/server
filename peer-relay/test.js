@@ -1032,6 +1032,32 @@ function cmd_conf(opt){
   }
 }
 
+function cmd_test_node_conn(opt){
+  let {c, event} = opt, arg = xtest.test_parse(c.arg), s, exp = {};
+  assert(!event, 'got unexpected '+event);
+  util.forEach(arg, a=>{
+    if (!s)
+      s = N(a.cmd);
+    exp[a.cmd] = a.arg||'';
+  });
+  if (t_pre_process || s.t.fake)
+    return;
+  s.router.node_map.map.forEach(node=>{
+    let n = node_from_id(node.id.s), n2 = exp[n.t.name];
+    // XXX: fix node_map.get to work also with strings
+    // XXX: check also node_map.tree
+    assert(n2!==undefined, 'node '+n.t.name+' not found');
+    let s = '';
+    Array.from(node.conn.keys()).forEach(id=>{
+      let d = node_from_id(id);
+      s += d.t.name;
+    });
+    assert.equal(s, n2, 'conn mismatch for '+n.t.name);
+    delete exp[n.t.name];
+  });
+  assert(!Object.keys(exp).length, 'missing nodes '+Object.keys(exp));
+}
+
 function cmd_rt_add(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let routes = {};
@@ -1735,6 +1761,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'setup': yield cmd_setup(opt); break;
   case 'mode': yield cmd_mode(opt); break;
   case 'conf': yield cmd_conf(opt); break;
+  case 'test_node_conn': yield cmd_test_node_conn(opt); break;
   case 'rt_add': yield cmd_rt_add(opt); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
@@ -2861,13 +2888,17 @@ describe('peer-relay', function(){
       xit(name, roles[i], test);
   };
   describe('nodes', ()=>{
-    if (true) return; // XXX: WIP
     let t = (name, test)=>t_roles(name, 'X', test);
     t('direct', `mode(msg req) conf(id:a-mXYZn-z)
+      test_node_conn(X)
       Xa>!connect
-      test_nodes(X(a(conn(X))))
-      Xb>!connect
-      test_nodes(X(a(conn(X) b(conn(X)))))
+      test_node_conn(X:a a:X)
+      Xb<!connect
+      test_node_conn(X:ab a:X b:X)
+      Xy>!connect
+      test_node_conn(X:aby a:X b:X y:X)
+      Xz<!connect
+      test_node_conn(X:abyz a:X b:X y:X z:X)
     `);
   });
   describe('router', ()=>{

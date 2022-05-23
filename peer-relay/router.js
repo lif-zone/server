@@ -36,6 +36,8 @@ export default class Router extends EventEmitter {
     this.routes = {};
     this._queue = [];
     this._channels = channels;
+    this.node = new NodeMap.Node(id);
+    this.node_map.set(id, this.node);
     this._channels.on('added', channel=>this._onChannelAdded(channel));
     this._channels.on('removed', channel=>this._onChannelRemoved(channel));
     for (let c of this._channels.toArray())
@@ -125,7 +127,8 @@ export default class Router extends EventEmitter {
     assert(!conn, 'XXX: support update of connection');
     conn = new NodeMap.NodeConn(dst, channel);
     this.conn.set(dst, conn);
-    node.set_conn(dst, conn);
+    node.set_conn(this.id, conn);
+    this.node.set_conn(dst, conn);
     channel.on('message', this._on_channel_msg);
     // XXX: check if this can happen during test and add yield
     while (this._queue.length)
