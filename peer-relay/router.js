@@ -190,6 +190,8 @@ export default class Router extends EventEmitter {
   update_conn(lbuffer){
     for (let i=0; i<lbuffer.size(); i++){
       let msg = lbuffer.get_json(i);
+      if (msg.type!='fwd') // XXX: still need to update RTT
+        break;
       let f = NodeId.from(msg.from), t = NodeId.from(msg.to);
       let nf = this.node_map.get({id: f, create: true});
       let nt = this.node_map.get({id: t, create: true});

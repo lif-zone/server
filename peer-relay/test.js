@@ -2901,8 +2901,13 @@ describe('peer-relay', function(){
       Xy>!connect test_node_conn(X:aby a:X b:X y:X)
       Xz<!connect test_node_conn(X:abyz a:X b:X y:X z:X)`);
     t('from_fwd', `mode(msg req) conf(id:a-mXYZn-z) test_node_conn(X)
-      Xa>!connect test_node_conn(X:a a:X)
-      aX:ba>msg(type:req) test_node_conn(X:a a:bX b:a)
+      aX>!connect test_node_conn(X:a a:X)
+      aX:ba:cb:cY>msg(type:req) test_node_conn(X:a a:bX b:ac c:b)
+      aX:ba:db:dY>msg(type:req) test_node_conn(X:a a:bX b:acd c:b d:b)
+      zX>!connect test_node_conn(X:az a:bX b:acd c:b d:b z:X)
+      zX:Yz:Yc>msg(type:req)
+      Xa>fwd(zX>fwd(Yz>fwd(Yc>msg(type:req))))
+      test_node_conn(X:az a:bX b:acd c:b d:b Y:z z:YX)
       `);
   });
   describe('router', ()=>{
