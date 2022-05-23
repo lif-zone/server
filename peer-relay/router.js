@@ -59,7 +59,7 @@ export default class Router extends EventEmitter {
     let from = NodeId.from(msg.from), to = NodeId.from(msg.to);
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
-    if (!_this._channels.count) // XXX: verify and test it
+    if (!_this._channels.size) // XXX: verify and test it
       return _this._queue.push(lbuffer);
     if (msg.fuzzy=='-' && buf_util.in_range(
       {min: s2b(msg0.from), max: s2b(msg0.to)}, s2b(msg.to)) ||
@@ -103,6 +103,7 @@ export default class Router extends EventEmitter {
     let lbuffer = LBuffer.from(data); // XXX: WIP
     let msg = lbuffer.msg();
     let _this = this.this, nonce = lbuffer.nonce();
+    _this.update_conn(lbuffer);
     if (!nonce)
       return log('invalid message nonce %s', dbg_msg(msg));
     if (nonce in _this._touched)
@@ -192,6 +193,8 @@ export default class Router extends EventEmitter {
     if (this.has_route(path))
       return;
     routes[d].push({path: Array.from(path)});
+  }
+  update_conn(lbuffer){
   }
 }
 

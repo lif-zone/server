@@ -89,7 +89,7 @@ let t_keys = {
 // XXX: need test
 function fwd_from_lbuffer(lbuffer){
   let fwd = [], m;
-  for (let i=0; i<lbuffer.count() && (m=lbuffer.get_json(i)).type=='fwd'; i++)
+  for (let i=0; i<lbuffer.size() && (m=lbuffer.get_json(i)).type=='fwd'; i++)
     fwd.push(node_from_id(m.from).t.name+node_from_id(m.to).t.name+'>');
   return fwd;
 }
@@ -677,7 +677,7 @@ class FakeChannel extends EventEmitter {
         {id: req_id, type, cmd, seq, ack: ack && ack.join(','), body});
       if (fwd){
         let path = [msg.from];
-        let i = lbuffer.count()-2;
+        let i = lbuffer.size()-2;
         Array.from(fwd).reverse().forEach(f=>{
           let m = lbuffer.get_json(i);
           i--;
@@ -2890,7 +2890,7 @@ describe('peer-relay', function(){
     for (let i=0; i<roles.length; i++)
       xit(name, roles[i], test);
   };
-  describe('nodes', ()=>{
+  describe('nodes_conn', ()=>{
     let t = (name, test)=>t_roles(name, 'X', test);
     t('direct', `mode(msg req) conf(id:a-mXYZn-z) test_node_conn(X)
       Xa>!connect test_node_conn(X:a a:X)

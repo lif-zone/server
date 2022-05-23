@@ -10,7 +10,7 @@ export default class Channels extends EventEmitter {
   constructor(opt){
     super();
     this.map = {};
-    this.count = 0;
+    this.size = 0;
   }
   add(channel){
     let id = channel.id.s;
@@ -19,7 +19,7 @@ export default class Channels extends EventEmitter {
       return channel;
     }
     this.map[id] = channel;
-    this.count++;
+    this.size++;
     this.emit('added', channel);
   }
   remove(id){
@@ -28,7 +28,7 @@ export default class Channels extends EventEmitter {
       return xerr('channel not found %s', id);
     let channel = this.map[id];
     delete this.map[id];
-    this.count--;
+    this.size--;
     this.emit('removed', channel);
     return channel;
   }

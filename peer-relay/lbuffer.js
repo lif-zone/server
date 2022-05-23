@@ -23,7 +23,7 @@ export default class LBuffer {
   }
   add_json(o){ this.add(stringify(o)); }
   add_tail_json(o){ this.add_tail(stringify(o)); }
-  count(){ return this.array.length; }
+  size(){ return this.array.length; }
   get(i){ return this.array[i].data; }
   get_json(i){
     this.array[i].json = this.array[i].json||JSON.parse(this.array[i].data);
@@ -41,12 +41,12 @@ export default class LBuffer {
   }
   path(){
     let o, p = [];
-    for (let i=0; i<this.count() && (o=this.get_json(i)) && o.type=='fwd'; i++)
+    for (let i=0; i<this.size() && (o=this.get_json(i)) && o.type=='fwd'; i++)
       p.unshift(o.from);
     return p;
   }
   nonce(){ return this.msg().nonce; }
-  msg(){ return this.get_json(this.count()-1); }
+  msg(){ return this.get_json(this.size()-1); }
 }
 
 LBuffer.from = function(s){
