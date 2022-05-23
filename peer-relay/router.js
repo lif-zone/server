@@ -125,7 +125,7 @@ export default class Router extends EventEmitter {
     }
     let conn = this.conn.get(dst);
     assert(!conn, 'XXX: support update of connection');
-    conn = new NodeMap.NodeConn(dst, channel);
+    conn = new NodeMap.NodeConn({ids: [this.id, dst], self: channel});
     this.conn.set(dst, conn);
     node.set_conn(this.id, conn);
     this.node.set_conn(dst, conn);

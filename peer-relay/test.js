@@ -1049,6 +1049,9 @@ function cmd_test_node_conn(opt){
     assert(n2!==undefined, 'node '+n.t.name+' not found');
     let s = '';
     Array.from(node.conn.keys()).forEach(id=>{
+      let conn = node.conn.get(id);
+      assert(conn.ids[0].eq(n.id) ? conn.ids[1].s==id :
+        conn.ids[1].eq(n.id) && conn.ids[0].s==id);
       let d = node_from_id(id);
       s += d.t.name;
     });

@@ -3,6 +3,7 @@
 import {EventEmitter} from 'events';
 import Tree from 'avl';
 import NodeId from './node_id.js';
+import assert from 'assert';
 
 export default class NodeMap extends EventEmitter {
 constructor(){
@@ -33,9 +34,11 @@ get_conn(id){ return this.conn.get(id.s); }
 }
 
 class NodeConn extends EventEmitter {
-constructor(id, self){
+constructor(opt){
   super();
-  this.id = id;
+  let {ids, self} = opt;
+  assert(ids.length==2, 'invalid conn ids '+ids);
+  this.ids = Array.from(ids);
   this.self = self;
 }
 }
