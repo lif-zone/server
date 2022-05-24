@@ -1066,7 +1066,7 @@ function cmd_test_node_conn(opt){
     // XXX: fix node_map.get to work also with strings
     // XXX: check also node_map.tree
     assert(n2!==undefined, 'node '+n.t.name+' not found');
-    let s = '',a = Array.from(node.conn.keys());
+    let s = '', a = Array.from(node.conn.keys());
     a.sort((a, b)=>NodeId.from(a).cmp(NodeId.from(b)));
     a.forEach(id=>{
       let conn = node.get_conn(NodeId.from(id));
@@ -2168,7 +2168,7 @@ describe('node_id', function(){
     const t = (s, exp, exp_f)=>{
       let id = NodeId.from(s);
       assert.equal(''+id.i, exp);
-      assert.equal(!id.n ? '0' : ''+id.n, exp_f);
+      assert.equal(!id.d ? '0' : ''+id.d, exp_f);
     };
     t('00000000000000000000', '0', '0');
     t('00000000000000000001', '0', '0');
@@ -2932,6 +2932,14 @@ describe('peer-relay', function(){
       zX:Yz:Yc>msg(type:req) Xa:zX:Yz:Yc>msg(type:req)
       test_node_conn(X(a:100 z:100) a(b:10 X:100) b(a:10 c:20 d:30) c(b:20)
         d(b:30) Y(z:40) z(X:100 Y:40)) `);
+  });
+  describe('node_map', ()=>{
+    describe('find_next', ()=>{
+      let t = (name, test)=>t_roles(name, 'X', test);
+      if (0)
+      t('xxx', `mode(msg req)
+        conf(id(a:0.1 b:0.2 c:0.3 d:0.4))`);
+    })
   });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);

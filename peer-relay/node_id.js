@@ -32,14 +32,14 @@ get i(){
       this._i = BigInt.asUintN(53, BigInt('0x'+this.s.slice(0, 14)));
     return this._i;
 }
-get n(){
-    if (this._n===undefined)
-      this._n = Number(BigInt('0x'+this.s.slice(0, 14))) / divider;
-    return this._n;
+get d(){
+    if (this._d===undefined)
+      this._d = Number(BigInt('0x'+this.s.slice(0, 14))) / divider;
+    return this._d;
 }
 eq(id){ return this.s===id.s; }
 cmp(id){
-  let d = this.n - id.n;
+  let d = this.d - id.d;
   if (d)
     return d > 0 ? 1 : -1;
   if (this.s===id.s)
