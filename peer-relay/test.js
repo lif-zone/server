@@ -29,6 +29,7 @@ const assign = Object.assign;
 const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
 const stringify = JSON.stringify, is_number = util.is_number;
 const ID_BITS = 160; // XXX: check correct value and move to right place
+const DEF_RTT = 100;
 
 function get_fuzzy(name){
   if (name && /[+-]/.test(name[0]))
@@ -342,6 +343,20 @@ function assert_node_ids(val){
   return ret;
 }
 
+function assert_rtt(val){
+  let a = val.split(' ');
+  a.forEach(s=>{
+    if (is_number(s))
+      t_conf.rtt.def = +s;
+    else {
+      let a = s.match(/^([a-zA-Z][a-zA-Z]):([0-9]+)$/);
+      assert(a.length==3, 'invalid rtt '+s+' '+val);
+      let conn = string.sort_char(a[1]);
+      t_conf.rtt.conn[conn] = +a[2];
+    }
+  });
+}
+
 function assert_ack(val){
   if (!val)
     return [];
@@ -635,6 +650,11 @@ class FakeChannel extends EventEmitter {
     this.id = opt.id;
     this.local_id = opt.local_id;
     this.t = {};
+    if (!t_conf) // XXX HACK: rm it, needed for channels test
+      return;
+    let conn = string.sort_char(node_from_id(this.id.s).t.name+
+      node_from_id(this.local_id.s).t.name);
+    this.rtt = t_conf.rtt.conn[conn]||t_conf.rtt.def;
   }
   send = data=>{
     let lbuffer = LBuffer.from(data); // XXX WIP
@@ -954,12 +974,10 @@ const fake_send_msg = (c, msg)=>etask(function*(){
     let lbuffer = new LBuffer(msg); // XXX: WIP
     if (c.fwd){
       for (let i=c.fwd.length-1; i>=0; i--){
-        let msg2 = {
-          from: fwd_s_id(c.fwd, i),
-          to: fwd_d_id(c.fwd, i),
-          type: 'fwd',
-          rt: c.rt2[i],
-        };
+        let rtt = t_conf.rtt.conn[
+          string.sort_char(fwd_s(c.fwd, i)+fwd_d(c.fwd, i))]||t_conf.rtt.def;
+        let msg2 = {from: fwd_s_id(c.fwd, i), to: fwd_d_id(c.fwd, i),
+          type: 'fwd', rtt, rt: c.rt2[i]};
         if (!xutil.get(msg2, ['rt', 'path']))
           msg2.rt = {range: {min: fwd_d_id(c.fwd, i), max: msg.to}};
         lbuffer.add_json(msg2);
@@ -1016,7 +1034,7 @@ function cmd_conf(opt){
     case 'id': ids = assert_node_ids(a.arg); break;
     case 'path': t_conf.path = assert_bool(a.arg); break;
     case 'rt': t_conf.rt = assert_bool(a.arg); break;
-    case 'rtt': t_conf.rtt = assert_int(a.arg); break;
+    case 'rtt': assert_rtt(a.arg); break;
     case '!node': no_node = assert_bool(a.arg); break;
     default: assert(0, 'invalid conf '+a.cmd);
     }
@@ -1048,17 +1066,15 @@ function cmd_test_node_conn(opt){
     // XXX: fix node_map.get to work also with strings
     // XXX: check also node_map.tree
     assert(n2!==undefined, 'node '+n.t.name+' not found');
-    let s = '';
-    Array.from(node.conn.keys()).forEach(id=>{
-      let conn = node.conn.get(id);
+    let s = '',a = Array.from(node.conn.keys());
+    a.sort((a, b)=>NodeId.from(a).cmp(NodeId.from(b)));
+    a.forEach(id=>{
+      let conn = node.get_conn(NodeId.from(id));
       assert(conn.ids[0].eq(n.id) ? conn.ids[1].s==id :
         conn.ids[1].eq(n.id) && conn.ids[0].s==id);
       let d = node_from_id(id);
-      s += d.t.name;
+      s += (s ? ' ' : '')+d.t.name+':'+(conn.rtt||'na');
     });
-    // XXX: string.sort_char
-    s = s.split('').sort((a, b)=>a>b ? -1 : a<b ? 1 : 0).join('');
-    n2 = n2.split('').sort((a, b)=>a>b ? -1 : a<b ? 1 : 0).join('');
     assert.equal(s, n2, 'conn mismatch for '+n.t.name);
     delete exp[n.t.name];
   });
@@ -1915,7 +1931,7 @@ function test_start(role){
   t_cmds_processed = [];
   t_nonce = {};
   t_req = {};
-  t_conf = {};
+  t_conf = {rtt: {def: DEF_RTT, conn: {}}};
   set_id_bits(10);
   set_node_ids();
 }
@@ -2896,21 +2912,26 @@ describe('peer-relay', function(){
   };
   describe('node_conn', ()=>{
     let t = (name, test)=>t_roles(name, 'X', test);
-    t('direct', `mode(msg req) conf(id:a-mXYZn-z rtt(200))
+    t('direct', `mode(msg req) conf(id:a-mXYZn-z rtt(50 aX:10))
       test_node_conn(X)
-      Xa>!connect test_node_conn(X:a a:X)
-      Xb<!connect test_node_conn(X:ab a:X b:X)
-      Xy>!connect test_node_conn(X:aby a:X b:X y:X)
-      Xz<!connect test_node_conn(X:abyz a:X b:X y:X z:X)`);
-    t('from_fwd', `mode(msg req) conf(id:a-mXYZn-z) test_node_conn(X)
-      aX>!connect test_node_conn(X:a a:X)
-      aX:ba:cb:cY>msg(type:req) test_node_conn(X:a a:bX b:ac c:b)
-      aX:ba:db:dY>msg(type:req) test_node_conn(X:a a:bX b:acd c:b d:b)
-      zX>!connect test_node_conn(X:az a:bX b:acd c:b d:b z:X)
+      Xa>!connect test_node_conn(X(a:10) a(X:10))
+      Xb<!connect test_node_conn(X(a:10 b:50) a(X:10) b(X:50))
+      Xy>!connect test_node_conn(X(a:10 b:50 y:50) a(X:10) b(X:50) y(X:50))
+      Xz<!connect test_node_conn(X(a:10 b:50 y:50 z:50) a(X:10) b(X:50) y(X:50)
+        z(X:50))`);
+    t('from_fwd', `mode(msg req)
+      conf(id:a-mXYZn-z rtt(ab:10 bc:20 db:30 zY:40)) test_node_conn(X)
+      aX>!connect test_node_conn(X(a:100) a(X:100))
+      aX:ba:cb:cY>msg(type:req) test_node_conn(X(a:100) a(b:10 X:100)
+        b(a:10 c:20) c(b:20))
+      aX:ba:db:dY>msg(type:req) test_node_conn(X(a:100) a(b:10 X:100)
+        b(a:10 c:20 d:30) c(b:20) d(b:30))
+      zX>!connect test_node_conn(X(a:100 z:100) a(b:10 X:100) b(a:10 c:20 d:30)
+        c(b:20) d(b:30) z(X:100))
       // XXX TODO: zX:Yz:Yc,Xa:zX:Yz:Yc>msg(type:req)
       zX:Yz:Yc>msg(type:req) Xa:zX:Yz:Yc>msg(type:req)
-      test_node_conn(X:az a:bX b:acd c:b d:b Y:z z:YX)`);
-    // XXX derry: conf(rtt(200 ab:100))
+      test_node_conn(X(a:100 z:100) a(b:10 X:100) b(a:10 c:20 d:30) c(b:20)
+        d(b:30) Y(z:40) z(X:100 Y:40)) `);
   });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);
@@ -3993,10 +4014,10 @@ VP:
 * Node_map/Node/NodeConn+test
   + track Node/NodeConn from node self connections
   + track Node/NodeConn from incoming messages
-  * track rtt per connection
-    * conf(rtt(200 ab:50))
-- path selection:
-  - AVL.find (exact)
+  + track rtt per connection
+    + conf(rtt(200 ab:50))
+* path selection:
+  * AVL.find (exact)
   - AVL.find_bidi (closest from both dirs),
   - AVL.find_next (eq or more)
   - AVL.find_prev (eq or less)

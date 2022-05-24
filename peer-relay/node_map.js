@@ -32,13 +32,11 @@ del(id){
   this.tree.remove(id);
 }
 get_conn(opt){
-  let {ids, create, self} = opt, hash = conn_hash(ids);
+  let {ids, create} = opt, hash = conn_hash(ids);
   let conn = this.conn.get(hash);
-  if (!create || conn){
-    assert(!conn || !self, 'XXX: support update of connection self');
+  if (!create || conn)
     return conn;
-  }
-  conn = new NodeMap.NodeConn({ids, self});
+  conn = new NodeMap.NodeConn({ids});
   this.conn.set(hash, conn);
   return conn;
 }
@@ -58,10 +56,18 @@ get_conn(id){ return this.conn.get(id.s); }
 class NodeConn extends EventEmitter {
 constructor(opt){
   super();
-  let {ids, self} = opt;
+  let {ids, self, rtt} = opt;
   assert(ids.length==2, 'invalid conn ids '+ids);
   this.ids = Array.from(ids);
   this.self = self;
+  this.rtt = rtt;
+}
+update_conn(opt){
+  let {self, rtt} = opt;
+  if (typeof self!==undefined)
+    this.self = self;
+  if (typeof rtt!==undefined && rtt)
+    this.rtt = Math.min(rtt, this.rtt||rtt);
 }
 }
 

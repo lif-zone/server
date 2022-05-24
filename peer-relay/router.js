@@ -80,7 +80,8 @@ export default class Router extends EventEmitter {
     if (!channel || channel.id.eq(from))
       return; // XXX: add err msg
     if (!(channel.local_id.eq(from) && channel.id.eq(to))){
-      let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd'};
+      let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
+        rtt: channel.rtt};
       if (msg.to!=msg2.to){
         rt = rt || xutil.get(msg0, ['rt', 'path']) &&
           {path: xutil.get(msg0, ['rt', 'path'])};
@@ -117,8 +118,8 @@ export default class Router extends EventEmitter {
   });
   _onChannelAdded(channel){
     let dst = channel.id, node = this.node_map.get({id: dst, create: true});
-    let conn = this.node_map.get_conn({ids: [this.id, dst], create: true,
-      self: channel});
+    let conn = this.node_map.get_conn({ids: [this.id, dst], create: true});
+    conn.update_conn({self: channel, rtt: channel.rtt});
     node.set_conn(this.id, conn);
     this.node.set_conn(dst, conn);
     channel.on('message', this._on_channel_msg);
@@ -196,6 +197,7 @@ export default class Router extends EventEmitter {
       let nf = this.node_map.get({id: f, create: true});
       let nt = this.node_map.get({id: t, create: true});
       let conn = this.node_map.get_conn({ids: [f, t], create: true});
+      conn.update_conn({rtt: msg.rtt});
       nf.set_conn(t, conn);
       nt.set_conn(f, conn);
     }
