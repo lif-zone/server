@@ -334,10 +334,15 @@ function assert_node_ids(val){
     return test_gen_ids(t_conf.id_bits, NodeId.bits);
   let ids = val.split(' '), ret = {};
   ids.forEach(s=>{
-    let a = s.match(/^([a-zA-Z]+):([0-9]+)$/);
+    let a = s.match(/^([a-zA-Z]+):([0-9.]+)$/);
     assert(a && a.length==3, 'invaid node_ids '+val+' part '+s);
     assert(!ret[a[1]], 'invalid node_ids '+val);
-    ret[a[1]] = NodeId.from(hash_from_int(+a[2], t_conf.id_bits, NodeId.bits));
+    if (/[.]/.test(a[2]))
+      ret[a[1]] = NodeId.from(parseFloat(a[2]));
+    else {
+      ret[a[1]] = NodeId.from(hash_from_int(+a[2],
+        t_conf.id_bits, NodeId.bits));
+    }
   });
   return ret;
 }
@@ -1080,6 +1085,28 @@ function cmd_test_node_conn(opt){
   assert(!Object.keys(exp).length, 'missing nodes '+Object.keys(exp));
 }
 
+function cmd_test_node_find(opt){
+  let {c, event} = opt, arg = xtest.test_parse(c.arg), s, target, next;
+  assert(!event, 'got unexpected '+event);
+  util.forEach(arg, a=>{
+    if (!s){
+      s = N(a.cmd);
+      target = parseFloat(a.arg);
+      return;
+    }
+    switch (a.cmd){
+    case 'next': next = a.arg; break;
+    default: assert.fail('unknown arg '+a.cmd);
+    }
+  });
+  if (t_pre_process || s.t.fake)
+    return;
+  if (next!==undefined){
+    let found = s.router.node_map.find_next(NodeId.from(target));
+    assert.equal(node_from_id(found.id.s).t.name, next, 'next mismatch');
+  }
+}
+
 function cmd_rt_add(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let routes = {};
@@ -1783,7 +1810,6 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'setup': yield cmd_setup(opt); break;
   case 'mode': yield cmd_mode(opt); break;
   case 'conf': yield cmd_conf(opt); break;
-  case 'test_node_conn': yield cmd_test_node_conn(opt); break;
   case 'rt_add': yield cmd_rt_add(opt); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
@@ -1818,6 +1844,8 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*res_end': yield cmd_res(opt); break;
   case '*fail': yield cmd_fail(opt); break;
   case 'ms': yield cmd_ms(opt); break;
+  case 'test_node_conn': yield cmd_test_node_conn(opt); break;
+  case 'test_node_find': yield cmd_test_node_find(opt); break;
   default: assert(false, 'unknown cmd '+c.cmd+ ' '+c.orig);
   }
 });
@@ -2947,9 +2975,19 @@ describe('peer-relay', function(){
   describe('node_map', ()=>{
     describe('find_next', ()=>{
       let t = (name, test)=>t_roles(name, 'X', test);
-      if (0)
-      t('xxx', `mode(msg req)
-        conf(id(a:0.1 b:0.2 c:0.3 d:0.4))`);
+      t('xxx', `mode(msg req) conf(id(a:0.1 b:0.2 X:0.25 c:0.3 d:0.4))
+        Xa,Xb,Xc,Xd>!connect
+        test_node_find(X:0 next:a)
+        test_node_find(X:0.09 next:a)
+        test_node_find(X:0.1 next:a)
+        test_node_find(X:0.19 next:b)
+        test_node_find(X:0.2 next:b)
+        test_node_find(X:0.29 next:c)
+        test_node_find(X:0.3 next:c)
+        test_node_find(X:0.39 next:d)
+        test_node_find(X:0.4 next:d)
+        test_node_find(X:0.49 next:a)
+      `);
     });
   });
   describe('router', ()=>{

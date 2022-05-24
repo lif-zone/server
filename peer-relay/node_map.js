@@ -54,7 +54,7 @@ find_next(id){
     } else if (cmp>0)
       start = mid+1;
     else
-      return key;
+      return curr.data;
 	}
   return best ? best.data : tree.at(0).data;
 }
