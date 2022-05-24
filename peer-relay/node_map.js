@@ -58,10 +58,25 @@ find_next(id){
 	}
   return best ? best.data : tree.at(0).data;
 }
+find_prev(id){
+  let tree=this.tree, start=0, size=tree.size, end=size, best;
+  if (!size)
+    return;
+  while (end>start){
+		var mid = Math.floor((start+end)/2);
+    let curr = tree.at(mid), key = curr.key, cmp = id.cmp(key);
+    if (cmp>0){
+      start = mid+1;
+      best = curr;
+    } else if (cmp<0)
+      end = mid;
+    else
+      return curr.data;
+	}
+  return best ? best.data : tree.at(size-1).data;
+}
 // XXX: TODO
 //  - AVL.find_bidi (closest from both dirs),
-//  - AVL.find_next (eq or more)
-//  - AVL.find_prev (eq or less)
 }
 
 class Node extends EventEmitter {

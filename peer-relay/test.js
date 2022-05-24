@@ -1086,7 +1086,7 @@ function cmd_test_node_conn(opt){
 }
 
 function cmd_test_node_find(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg), s, target, next;
+  let {c, event} = opt, arg = xtest.test_parse(c.arg), s, target, next, prev;
   assert(!event, 'got unexpected '+event);
   util.forEach(arg, a=>{
     if (!s){
@@ -1096,6 +1096,7 @@ function cmd_test_node_find(opt){
     }
     switch (a.cmd){
     case 'next': next = a.arg; break;
+    case 'prev': prev = a.arg; break;
     default: assert.fail('unknown arg '+a.cmd);
     }
   });
@@ -1103,7 +1104,13 @@ function cmd_test_node_find(opt){
     return;
   if (next!==undefined){
     let found = s.router.node_map.find_next(NodeId.from(target));
-    assert.equal(node_from_id(found.id.s).t.name, next, 'next mismatch');
+    assert.equal(node_from_id(found.id.s).t.name, next, 'next mismatch '+
+      c.orig);
+  }
+  if (prev!==undefined){
+    let found = s.router.node_map.find_prev(NodeId.from(target));
+    assert.equal(found && node_from_id(found.id.s).t.name, prev,
+      'prev mismatch '+c.orig);
   }
 }
 
@@ -2973,22 +2980,22 @@ describe('peer-relay', function(){
         d(b:30) Y(z:40) z(X:100 Y:40)) `);
   });
   describe('node_map', ()=>{
-    describe('find_next', ()=>{
-      let t = (name, test)=>t_roles(name, 'X', test);
-      t('xxx', `mode(msg req) conf(id(a:0.1 b:0.2 X:0.25 c:0.3 d:0.4))
-        Xa,Xb,Xc,Xd>!connect
-        test_node_find(X:0 next:a)
-        test_node_find(X:0.09 next:a)
-        test_node_find(X:0.1 next:a)
-        test_node_find(X:0.19 next:b)
-        test_node_find(X:0.2 next:b)
-        test_node_find(X:0.29 next:c)
-        test_node_find(X:0.3 next:c)
-        test_node_find(X:0.39 next:d)
-        test_node_find(X:0.4 next:d)
-        test_node_find(X:0.49 next:a)
-      `);
-    });
+    let t = (name, test)=>t_roles(name, 'X', test);
+    t('find', `mode(msg req)
+      conf(id(a:0.1 b:0.2 X:0.25 c:0.3 d:0.4)) Xa,Xb,Xc,Xd>!connect
+      test_node_find(X:0 next:a prev:d)
+      test_node_find(X:0.09 next:a prev:d)
+      test_node_find(X:0.1 next:a prev:a)
+      test_node_find(X:0.19 next:b prev:a)
+      test_node_find(X:0.2 next:b prev:b)
+      test_node_find(X:0.21 next:X prev:b)
+      test_node_find(X:0.25 next:X prev:X)
+      test_node_find(X:0.29 next:c prev:X)
+      test_node_find(X:0.3 next:c prev:c)
+      test_node_find(X:0.39 next:d prev:c)
+      test_node_find(X:0.4 next:d prev:d)
+      test_node_find(X:0.49 next:a prev:d)
+    `);
   });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);
