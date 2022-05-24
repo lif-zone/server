@@ -28,7 +28,6 @@ import bigInt from 'big-integer';
 const assign = Object.assign;
 const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
 const stringify = JSON.stringify, is_number = util.is_number;
-const ID_BITS = 160; // XXX: check correct value and move to right place
 const DEF_RTT = 100;
 
 function get_fuzzy(name){
@@ -184,13 +183,13 @@ function test_gen_ids(bits, total_bits){
 
 function parse_range(s){
   let a = s.match(/^([0-9]+)-([0-9]+)$/);
-  return a && {min: hash_from_int(+a[1], t_conf.id_bits, ID_BITS),
-    max: hash_from_int(+a[2], t_conf.id_bits, ID_BITS)};
+  return a && {min: hash_from_int(+a[1], t_conf.id_bits, NodeId.bits),
+    max: hash_from_int(+a[2], t_conf.id_bits, NodeId.bits)};
 }
 
 function range_to_str(range){
-  return int_from_hash(range.min, t_conf.id_bits, ID_BITS)+'-'+
-    int_from_hash(range.max, t_conf.id_bits, ID_BITS);
+  return int_from_hash(range.min, t_conf.id_bits, NodeId.bits)+'-'+
+    int_from_hash(range.max, t_conf.id_bits, NodeId.bits);
 }
 
 function rt_to_str(rt, dir){
@@ -332,13 +331,13 @@ function assert_int(val){
 
 function assert_node_ids(val){
   if (val=='a-mXYZn-z')
-    return test_gen_ids(t_conf.id_bits, ID_BITS);
+    return test_gen_ids(t_conf.id_bits, NodeId.bits);
   let ids = val.split(' '), ret = {};
   ids.forEach(s=>{
     let a = s.match(/^([a-zA-Z]+):([0-9]+)$/);
     assert(a && a.length==3, 'invaid node_ids '+val+' part '+s);
     assert(!ret[a[1]], 'invalid node_ids '+val);
-    ret[a[1]] = NodeId.from(hash_from_int(+a[2], t_conf.id_bits, ID_BITS));
+    ret[a[1]] = NodeId.from(hash_from_int(+a[2], t_conf.id_bits, NodeId.bits));
   });
   return ret;
 }
@@ -1162,7 +1161,7 @@ function cmd_node(opt){
   });
   assert_name_new(name);
   if (id)
-    id = NodeId.from(hash_from_int(id, t_conf.id_bits, ID_BITS));
+    id = NodeId.from(hash_from_int(id, t_conf.id_bits, NodeId.bits));
   else
     id = t_conf.node_ids[name];
   let fake = is_fake(name);
@@ -2112,7 +2111,7 @@ describe('buf_util', ()=>{
       assert.equal(ids.z.s, 'ea00');
     });
   it('in_range', ()=>{
-    const v = val=>s2b(hash_from_int(val, 8, ID_BITS));
+    const v = val=>s2b(hash_from_int(val, 8, NodeId.bits));
     const t = (range, id, exp)=>{
       range = {min: v(range.min), max: v(range.max)};
       id = v(id);
@@ -2184,6 +2183,18 @@ describe('node_id', function(){
     t('ffffffffffffff000000', '9007199254740991', '1');
     t('ffffffffffffff100000', '9007199254740991', '1');
     t('ffffffffffffffffffff', '9007199254740991', '1');
+  });
+  it('from_double', function(){
+    const t = (d, exp_s, exp_d)=>{
+      let id = NodeId.from(d);
+      assert.equal(''+id.s, exp_s);
+      assert.equal(''+id.d, exp_d);
+    };
+    t(0, '0000000000000000000000000000000000000000', '0');
+    t(0.25, '3ffffffffffff000000000000000000000000000', '0.24999999999999978');
+    t(0.5, '7ffffffffffff000000000000000000000000000', '0.4999999999999998');
+    t(0.75, 'bffffffffffff000000000000000000000000000', '0.7499999999999998');
+    t(1, 'fffffffffffff000000000000000000000000000', '0.9999999999999998');
   });
   it('cmp', function(){
     const t = (a, b, exp)=>{
@@ -2313,8 +2324,8 @@ describe('api', function(){
   });
 });
 describe('paths', ()=>{
-  const v = val=>hash_from_int(val, 8, ID_BITS);
-  const inv = val=>int_from_hash(val, 8, ID_BITS);
+  const v = val=>hash_from_int(val, 8, NodeId.bits);
+  const inv = val=>int_from_hash(val, 8, NodeId.bits);
   it('eq', ()=>{
     const t = (p1, p2, exp)=>assert.equal(Paths.eq(p1, p2), exp);
     t([v(1)], [v(1)], true);
@@ -2337,7 +2348,7 @@ describe('paths', ()=>{
   });
   it('add', ()=>{
     const t = (s, exp)=>{
-      let ids = test_gen_ids(8, ID_BITS);
+      let ids = test_gen_ids(8, NodeId.bits);
       function id_to_name(id){
         for (let name in ids)
         {
@@ -2494,8 +2505,8 @@ describe('paths', ()=>{
 });
 
 describe('channels', ()=>{
-  const v = val=>hash_from_int(val, 8, ID_BITS);
-  const inv = val=>int_from_hash(val, 8, ID_BITS);
+  const v = val=>hash_from_int(val, 8, NodeId.bits);
+  const inv = val=>int_from_hash(val, 8, NodeId.bits);
   it('get_closest', ()=>{
     const _t = (nodes, val, opt, exp)=>{
       val = parseInt(val);
@@ -2939,7 +2950,7 @@ describe('peer-relay', function(){
       if (0)
       t('xxx', `mode(msg req)
         conf(id(a:0.1 b:0.2 c:0.3 d:0.4))`);
-    })
+    });
   });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);

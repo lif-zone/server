@@ -5,18 +5,23 @@ import {Buffer} from 'buffer';
 import assert from 'assert';
 import buf_util from './buf_util.js';
 const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
-const divider = Math.pow(2, 56);
+const BITS = 160, DIV = Math.pow(2, 56), MAX = Math.pow(2, 52)-1;
 
 export default class NodeId extends EventEmitter {
 constructor(id){
   super();
   if (typeof id=='string'){
     this.s = id;
-    this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / divider;
+    this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / DIV;
+  } else if (typeof id=='number'){
+    assert(id>=0 && id<=1, 'invalid id '+id);
+    let s = (id*MAX).toString(16).slice(0, 13)+'0'.repeat(BITS/4-13);
+    this.s = '0'.repeat(BITS/4-s.length)+s;
+    this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / DIV;
   } else if (Buffer.isBuffer(id)){
     this._b = id;
     this.s = b2s(this._b);
-    this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / divider;
+    this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / DIV;
   }
   else
     assert.fail('invalid id '+id);
@@ -44,3 +49,4 @@ cmp(id){
 
 NodeId.from = function(id){ return new NodeId(id); };
 NodeId.cmp = function(a, b){ return a.cmp(b); };
+NodeId.bits = BITS; // XXX: check correct value
