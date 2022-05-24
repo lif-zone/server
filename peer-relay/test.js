@@ -4024,6 +4024,9 @@ VP:
   + track Node/NodeConn from incoming messages
   + track rtt per connection
     + conf(rtt(200 ab:50))
+* fix NodeId
+  + make s/d properties instead of getter function
+  - allow to create NodeId from double
 * path selection:
   * AVL.find (exact)
   - AVL.find_bidi (closest from both dirs),
@@ -4036,7 +4039,6 @@ VP:
     distance_bits(distance){
       return !distance ? 0 : Math.max(53+Math.log2(distance), 0); }
   - use Node_map+path selection instead existing obsolete code + fix tests
-- fix NodeId - make all properties instead of getter function
 - remove obsolete
   - rename Ws/WrtcChannel to WsConn/WrtcConn
   - remove node.peers

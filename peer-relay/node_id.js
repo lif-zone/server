@@ -10,32 +10,26 @@ const divider = Math.pow(2, 56);
 export default class NodeId extends EventEmitter {
 constructor(id){
   super();
-  if (typeof id=='string')
-    this._s = id;
-  else if (Buffer.isBuffer(id))
+  if (typeof id=='string'){
+    this.s = id;
+    this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / divider;
+  } else if (Buffer.isBuffer(id)){
     this._b = id;
+    this.s = b2s(this._b);
+    this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / divider;
+  }
   else
     assert.fail('invalid id '+id);
 }
-get s(){
-  if (this._s===undefined)
-    this._s = b2s(this._b);
-  return this._s;
-}
 get b(){
   if (this._b===undefined)
-    this._b = s2b(this._s);
+    this._b = s2b(this.s);
   return this._b;
 }
 get i(){
     if (this._i===undefined)
       this._i = BigInt.asUintN(53, BigInt('0x'+this.s.slice(0, 14)));
     return this._i;
-}
-get d(){
-    if (this._d===undefined)
-      this._d = Number(BigInt('0x'+this.s.slice(0, 14))) / divider;
-    return this._d;
 }
 eq(id){ return this.s===id.s; }
 cmp(id){
