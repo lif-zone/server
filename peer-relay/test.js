@@ -1016,6 +1016,7 @@ function cmd_conf(opt){
     case 'id': ids = assert_node_ids(a.arg); break;
     case 'path': t_conf.path = assert_bool(a.arg); break;
     case 'rt': t_conf.rt = assert_bool(a.arg); break;
+    case 'rtt': t_conf.rtt = assert_int(a.arg); break;
     case '!node': no_node = assert_bool(a.arg); break;
     default: assert(0, 'invalid conf '+a.cmd);
     }
@@ -2895,7 +2896,8 @@ describe('peer-relay', function(){
   };
   describe('node_conn', ()=>{
     let t = (name, test)=>t_roles(name, 'X', test);
-    t('direct', `mode(msg req) conf(id:a-mXYZn-z) test_node_conn(X)
+    t('direct', `mode(msg req) conf(id:a-mXYZn-z rtt(200))
+      test_node_conn(X)
       Xa>!connect test_node_conn(X:a a:X)
       Xb<!connect test_node_conn(X:ab a:X b:X)
       Xy>!connect test_node_conn(X:aby a:X b:X y:X)
@@ -3994,9 +3996,14 @@ VP:
   * track rtt per connection
     * conf(rtt(200 ab:50))
 - path selection:
+  - AVL.find (exact)
+  - AVL.find_bidi (closest from both dirs),
+  - AVL.find_next (eq or more)
+  - AVL.find_prev (eq or less)
   - use dijkstra to build path/costs to all destinataions
     https://github.com/lambdabaa/dijkstra/blob/master/index.js
   - select to forward message with the path that has lowest rtt per bit
+    c = Math.abs(a-b); c = c>=0.5 ? 1-c : c;
     distance_bits(distance){
       return !distance ? 0 : Math.max(53+Math.log2(distance), 0); }
   - use Node_map+path selection instead existing obsolete code + fix tests
