@@ -4161,6 +4161,9 @@ VP:
   + AVL.find_bidi (closest from both dirs),
   * use dijkstra to build path/costs to all destinataions
     https://github.com/lambdabaa/dijkstra/blob/master/index.js
+    + implement dijkstra
+    - update path/rtt in real time on each packet
+    - run dijkstra every 1sec (if there was a change)
   - select to forward message with the path that has lowest rtt per bit
     c = Math.abs(a-b); c = c>=0.5 ? 1-c : c;
     distance_bits(distance){
