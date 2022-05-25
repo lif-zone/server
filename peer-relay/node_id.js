@@ -46,7 +46,6 @@ cmp(id){
   return this.s < id.s ? -1 : 1;
 }
 distance(id){
-debugger;
   let d = Math.abs(this.d-id.d);
   return d = d>=0.5 ? 1-d : d;
 }

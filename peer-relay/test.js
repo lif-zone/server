@@ -2264,7 +2264,7 @@ describe('node_id', function(){
     const t = (a, b, exp)=>{
       assert.equal(NodeId.from(a).distance(NodeId.from(b)), exp);
       assert.equal(NodeId.from(b).distance(NodeId.from(a)), exp);
-    }
+    };
     t('00000000000000000000', '00000000000000000000', 0);
     t('00000000000000000000', 'ffffffffffffffffffff', 0);
     t('00000000000000000000', '3fffffffffffffffffff', 0.25);
