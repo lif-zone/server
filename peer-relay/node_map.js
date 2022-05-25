@@ -14,7 +14,8 @@ constructor(){
 }
 set(id, node){
   this.map.set(id.s, node);
-  this.tree.insert(id, node);
+  if (!node.self)
+    this.tree.insert(id, node);
 }
 get(opt){
   if (opt instanceof NodeId)
@@ -48,13 +49,14 @@ find_next(id){
   while (end>start){
 		var mid = Math.floor((start+end)/2);
     let curr = tree.at(mid), key = curr.key, cmp = id.cmp(key);
-    if (cmp<0){
+    if (cmp>0){
+      start = mid+1;
+    }
+    else if (cmp<0){
       end = mid;
       best = curr;
-    } else if (cmp>0)
-      start = mid+1;
-    else
-      return curr.data;
+    } else
+        return curr.data;
 	}
   return best ? best.data : tree.at(0).data;
 }
@@ -75,14 +77,23 @@ find_prev(id){
 	}
   return best ? best.data : tree.at(size-1).data;
 }
-// XXX: TODO
-//  - AVL.find_bidi (closest from both dirs),
+find_bidi(id){
+  let next = this.find_next(id);
+  if (!next || id.eq(next.id))
+    return next;
+  let prev = this.find_prev(id);
+  return id.distance_bits(next.id) <= id.distance_bits(prev.id) ? next : prev;
+}
 }
 
 class Node extends EventEmitter {
-constructor(id){
+constructor(opt){
   super();
+  if (opt instanceof NodeId)
+    opt = {id: opt};
+  let {id, self} = opt;
   this.id = id;
+  this.self = self;
   this.conn = new Map();
 }
 set_conn(id, conn){ this.conn.set(id.s, conn); }

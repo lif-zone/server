@@ -45,6 +45,14 @@ cmp(id){
     return 0;
   return this.s < id.s ? -1 : 1;
 }
+distance(id){
+  let d = Math.abs(this.d-id.d);
+  return d = d>=0.5 ? 1-d : d;
+}
+distance_bits(id){
+  let d = this.distance(id);
+  return !d ? 0 : Math.max(53+Math.log2(d), 0);
+}
 }
 
 NodeId.from = function(id){ return new NodeId(id); };

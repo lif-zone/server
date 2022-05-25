@@ -35,7 +35,7 @@ export default class Router extends EventEmitter {
     this.routes = {};
     this._queue = [];
     this._channels = channels;
-    this.node = new NodeMap.Node(id);
+    this.node = new NodeMap.Node({id, self: this});
     this.node_map.set(id, this.node);
     this._channels.on('added', channel=>this._onChannelAdded(channel));
     this._channels.on('removed', channel=>this._onChannelRemoved(channel));

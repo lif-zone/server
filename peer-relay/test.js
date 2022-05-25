@@ -1087,6 +1087,7 @@ function cmd_test_node_conn(opt){
 
 function cmd_test_node_find(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg), s, target, next, prev;
+  let bidi;
   assert(!event, 'got unexpected '+event);
   util.forEach(arg, a=>{
     if (!s){
@@ -1097,6 +1098,7 @@ function cmd_test_node_find(opt){
     switch (a.cmd){
     case 'next': next = a.arg; break;
     case 'prev': prev = a.arg; break;
+    case 'bidi': bidi = a.arg; break;
     default: assert.fail('unknown arg '+a.cmd);
     }
   });
@@ -1111,6 +1113,11 @@ function cmd_test_node_find(opt){
     let found = s.router.node_map.find_prev(NodeId.from(target));
     assert.equal(found && node_from_id(found.id.s).t.name, prev,
       'prev mismatch '+c.orig);
+  }
+  if (bidi!==undefined){
+    let found = s.router.node_map.find_bidi(NodeId.from(target));
+    assert.equal(found && node_from_id(found.id.s).t.name, bidi,
+      'bidi mismatch '+c.orig);
   }
 }
 
@@ -2988,13 +2995,18 @@ describe('peer-relay', function(){
       test_node_find(X:0.1 next:a prev:a)
       test_node_find(X:0.19 next:b prev:a)
       test_node_find(X:0.2 next:b prev:b)
-      test_node_find(X:0.21 next:X prev:b)
-      test_node_find(X:0.25 next:X prev:X)
-      test_node_find(X:0.29 next:c prev:X)
+      test_node_find(X:0.21 next:c prev:b)
+      test_node_find(X:0.25 next:c prev:b)
+      test_node_find(X:0.29 next:c prev:b)
       test_node_find(X:0.3 next:c prev:c)
       test_node_find(X:0.39 next:d prev:c)
       test_node_find(X:0.4 next:d prev:d)
       test_node_find(X:0.49 next:a prev:d)
+      test_node_find(X:0.24 next:c prev:b bidi:b)
+      test_node_find(X:0.25 next:c prev:b bidi:b)
+      test_node_find(X:0.26 next:c prev:b bidi:c)
+      test_node_find(X:0.41 next:a prev:d bidi:d)
+      test_node_find(X:0.91 next:a prev:d bidi:a)
     `);
   });
   describe('router', ()=>{
@@ -4076,18 +4088,16 @@ freq=8/100
 /*
 VP:
 * Node_map/Node/NodeConn+test
-  + track Node/NodeConn from node self connections
-  + track Node/NodeConn from incoming messages
   + track rtt per connection
     + conf(rtt(200 ab:50))
-* fix NodeId
++ fix NodeId
   + make s/d properties instead of getter function
-  - allow to create NodeId from double
+  + allow to create NodeId from double
 * path selection:
-  * AVL.find (exact)
-  - AVL.find_bidi (closest from both dirs),
-  - AVL.find_next (eq or more)
-  - AVL.find_prev (eq or less)
+  + AVL.find (exact)
+  + AVL.find_bidi (closest from both dirs),
+  + AVL.find_next (eq or more)
+  * AVL.find_prev (eq or less)
   - use dijkstra to build path/costs to all destinataions
     https://github.com/lambdabaa/dijkstra/blob/master/index.js
   - select to forward message with the path that has lowest rtt per bit
