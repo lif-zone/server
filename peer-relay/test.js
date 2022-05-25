@@ -2260,6 +2260,22 @@ describe('node_id', function(){
     t('ffffffffffffffffffff', 'fffffffffffffffffffe', 1);
     t('ffffffffffffffffffff', 'ffffffffffffffffffff', 0);
   });
+  it('distance', function(){
+    const t = (a, b, exp)=>{
+      assert.equal(NodeId.from(a).distance(NodeId.from(b)), exp);
+      assert.equal(NodeId.from(b).distance(NodeId.from(a)), exp);
+    }
+    t('00000000000000000000', '00000000000000000000', 0);
+    t('00000000000000000000', 'ffffffffffffffffffff', 0);
+    t('00000000000000000000', '3fffffffffffffffffff', 0.25);
+    t('00000000000000000000', '7fffffffffffffffffff', 0.5);
+    t('00000000000000000000', 'bfffffffffffffffffff', 0.25);
+    t('3fffffffffffffffffff', '3fffffffffffffffffff', 0);
+    t('3fffffffffffffffffff', '7fffffffffffffffffff', 0.25);
+    t('3fffffffffffffffffff', 'bfffffffffffffffffff', 0.5);
+    t('3fffffffffffffffffff', '00000000000000000000', 0.25);
+    t('3fffffffffffffffffff', 'ffffffffffffffffffff', 0.25);
+  });
 });
 
 describe('api', function(){
@@ -4087,17 +4103,9 @@ freq=8/100
 */
 /*
 VP:
-* Node_map/Node/NodeConn+test
-  + track rtt per connection
-    + conf(rtt(200 ab:50))
-+ fix NodeId
-  + make s/d properties instead of getter function
-  + allow to create NodeId from double
+* NodeId: distance, distance_bits
 * path selection:
-  + AVL.find (exact)
   + AVL.find_bidi (closest from both dirs),
-  + AVL.find_next (eq or more)
-  * AVL.find_prev (eq or less)
   - use dijkstra to build path/costs to all destinataions
     https://github.com/lambdabaa/dijkstra/blob/master/index.js
   - select to forward message with the path that has lowest rtt per bit
