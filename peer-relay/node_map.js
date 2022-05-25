@@ -43,10 +43,10 @@ get_conn(opt){
 }
 find(id){ return this.get(id); }
 find_next(id){
-  if (!this.tree.size)
+  let best, tree = this.tree;
+  if (!tree.size)
     return;
-  let curr = this.tree._root, best;
-  while (curr){
+  for (let curr=tree._root; curr;){
     let cmp = id.cmp(curr.key);
     if (!cmp)
       return curr.data;
@@ -56,13 +56,13 @@ find_next(id){
     } else
       curr = curr.right;
   }
-  return best ? best.data : this.tree.at(0).data;
+  return best ? best.data : tree.at(0).data;
 }
 find_prev(id){
-  if (!this.tree.size)
+  let best, tree = this.tree;
+  if (!tree.size)
     return;
-  let curr = this.tree._root, best;
-  while (curr){
+  for (let curr=tree._root; curr;){
     let cmp = id.cmp(curr.key);
     if (!cmp)
       return curr.data;
@@ -72,7 +72,7 @@ find_prev(id){
     } else
       curr = curr.left;
   }
-  return best ? best.data : this.tree.at(this.tree.size-1).data;
+  return best ? best.data : tree.at(tree.size-1).data;
 }
 find_bidi(id){
   let next = this.find_next(id);
