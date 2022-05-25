@@ -4164,6 +4164,7 @@ VP:
     + implement dijkstra
     - update path/rtt in real time on each packet
     - run dijkstra every 1sec (if there was a change)
+    - Better implementation of FibonacciHeap (current use stringify for key)
   - select to forward message with the path that has lowest rtt per bit
     c = Math.abs(a-b); c = c>=0.5 ? 1-c : c;
     distance_bits(distance){

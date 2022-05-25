@@ -117,11 +117,9 @@ export default class Router extends EventEmitter {
       yield _this._send(lbuffer);
   });
   _onChannelAdded(channel){
-    let dst = channel.id, node = this.node_map.get({id: dst, create: true});
-    let conn = this.node_map.get_conn({ids: [this.id, dst], create: true});
-    conn.update_conn({self: channel, rtt: channel.rtt});
-    node.set_conn(this.id, conn);
-    this.node.set_conn(dst, conn);
+    let dst = channel.id;
+    this.node_map.update_conn({ids: [this.id, dst], self: channel,
+      rtt: channel.rtt});
     channel.on('message', this._on_channel_msg);
     // XXX: check if this can happen during test and add yield
     while (this._queue.length)
@@ -194,12 +192,7 @@ export default class Router extends EventEmitter {
       if (msg.type!='fwd') // XXX: still need to update RTT
         break;
       let f = NodeId.from(msg.from), t = NodeId.from(msg.to);
-      let nf = this.node_map.get({id: f, create: true});
-      let nt = this.node_map.get({id: t, create: true});
-      let conn = this.node_map.get_conn({ids: [f, t], create: true});
-      conn.update_conn({rtt: msg.rtt});
-      nf.set_conn(t, conn);
-      nt.set_conn(f, conn);
+      this.node_map.update_conn({ids: [f, t], rtt: msg.rtt});
     }
   }
 }

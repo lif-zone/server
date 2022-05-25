@@ -46,6 +46,15 @@ get_conn(opt){
   this.conn.set(hash, conn);
   return conn;
 }
+update_conn(opt){
+  let {ids, rtt, self} = opt;
+  let n0 = this.get({id: ids[0], create: true});
+  let n1 = this.get({id: ids[1], create: true});
+  let conn = this.get_conn({ids, create: true});
+  conn.update_conn({rtt, self});
+  n0.set_conn(n1.id, conn);
+  n1.set_conn(n0.id, conn);
+}
 find(id){ return this.get(id); }
 find_next(id){
   let best, tree = this.tree;
