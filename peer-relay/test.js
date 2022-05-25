@@ -3069,11 +3069,13 @@ describe('peer-relay', function(){
       test_node_find(X:0.41 next:a prev:d bidi:d)
       test_node_find(X:0.91 next:a prev:d bidi:a)`);
     t('graph', `mode(msg req)
-      conf(id:a-mXYZn-z rtt(100))
+      conf(id:a-mXYZn-z rtt(100 zX:500))
       aX>!connect test_node_graph(X aX:100)
       aX:ba:bX>msg(type:req) test_node_graph(X aX:100 baX:200)
       aX:ba:cb:cX>msg(type:req) test_node_graph(X aX:100 baX:200 cbaX:300)
       aX:ca:cX>msg(type:req) test_node_graph(X aX:100 baX:200 caX:200)
+      zX>!connect test_node_graph(X aX:100 baX:200 caX:200 zX:500)
+      aX:za:zX>msg(type:req) test_node_graph(X aX:100 baX:200 caX:200 zaX:200)
     `);
   });
   describe('router', ()=>{
