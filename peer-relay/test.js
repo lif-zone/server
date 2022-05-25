@@ -1121,6 +1121,31 @@ function cmd_test_node_find(opt){
   }
 }
 
+function cmd_test_node_graph(opt){
+  let {c, event} = opt, arg = xtest.test_parse(c.arg), s, exp = {};
+  assert(!event, 'got unexpected '+event);
+  util.forEach(arg, a=>{
+    if (!s){
+      s = N(a.cmd);
+      assert(!a.arg);
+      exp[a.cmd] = '0';
+      return;
+    }
+    exp[a.cmd] = a.arg;
+  });
+  if (t_pre_process || s.t.fake)
+    return;
+  s.router.node_map.build_distance_graph();
+  let ret = {};
+  for (let [, node] of s.router.node_map.map){
+    let p = '';
+    for (let curr=node; curr; curr = curr.graph.prev)
+      p += node_from_id(curr.id.s).t.name;
+    ret[p] = ''+node.graph.dist;
+  }
+  assert.deepEqual(ret, exp);
+}
+
 function cmd_rt_add(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let routes = {};
@@ -1860,6 +1885,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'ms': yield cmd_ms(opt); break;
   case 'test_node_conn': yield cmd_test_node_conn(opt); break;
   case 'test_node_find': yield cmd_test_node_find(opt); break;
+  case 'test_node_graph': yield cmd_test_node_graph(opt); break;
   default: assert(false, 'unknown cmd '+c.cmd+ ' '+c.orig);
   }
 });
@@ -3041,7 +3067,13 @@ describe('peer-relay', function(){
       test_node_find(X:0.25 next:c prev:b bidi:b)
       test_node_find(X:0.26 next:c prev:b bidi:c)
       test_node_find(X:0.41 next:a prev:d bidi:d)
-      test_node_find(X:0.91 next:a prev:d bidi:a)
+      test_node_find(X:0.91 next:a prev:d bidi:a)`);
+    t('graph', `mode(msg req)
+      conf(id:a-mXYZn-z rtt(100))
+      aX>!connect test_node_graph(X aX:100)
+      aX:ba:bX>msg(type:req) test_node_graph(X aX:100 baX:200)
+      aX:ba:cb:cX>msg(type:req) test_node_graph(X aX:100 baX:200 cbaX:300)
+      aX:ca:cX>msg(type:req) test_node_graph(X aX:100 baX:200 caX:200)
     `);
   });
   describe('router', ()=>{

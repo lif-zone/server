@@ -2,6 +2,7 @@
 'use strict'; /*jslint node:true, browser:true*/
 import {EventEmitter} from 'events';
 import Tree from 'avl';
+import {FibonacciHeap} from 'fibonacci-heap';
 import NodeId from './node_id.js';
 import assert from 'assert';
 
@@ -16,6 +17,10 @@ set(id, node){
   this.map.set(id.s, node);
   if (!node.self)
     this.tree.insert(id, node);
+  else {
+    assert(!this.self);
+    this.id = node.id;
+  }
 }
 get(opt){
   if (opt instanceof NodeId)
@@ -81,6 +86,38 @@ find_bidi(id){
   let prev = this.find_prev(id);
   return id.distance_bits(next.id) <= id.distance_bits(prev.id) ? next : prev;
 }
+build_distance_graph(){
+  assert(this.id, 'missing graph source');
+  let queue = new FibonacciHeap(), dist={}, prev={};
+  // XXX: need better FibonacciHeap (that can store id, value). current
+  // implemention use key === stringify(value)
+  for (let [, node] of this.map){
+    let d = this.id.eq(node.id) ? 0 : Infinity;
+    node.graph.dist = dist[node.id.s] = d;
+    node.graph.prev = prev[node.id.s] = null;
+    queue.insert({value: node.id.s, priority: d});
+  }
+  while (queue.trees()){
+    var next_key = queue.deleteMin().value;
+    let next = this.map.get(next_key);
+    // XXX: add test for this scenario
+    if (dist[next_key]===Infinity) // disconnected nodes
+      break;
+    for (let [, conn] of next.conn){
+      let neighbor_key = conn.ids[0].eq(next.id) ?
+        conn.ids[1].s : conn.ids[0].s;
+      let neighbor = this.map.get(neighbor_key);
+      assert(conn.rtt, 'missing rtt for '+next.id.s+neighbor.id.s);
+      let alt = dist[next_key] + conn.rtt;
+      if (alt < dist[neighbor_key]){
+        neighbor.graph.dist = dist[neighbor_key] = alt;
+        neighbor.graph.prev = prev[neighbor_key] = next;
+        queue.update({value: neighbor.id.s, priority: alt});
+      }
+    }
+  }
+  return prev;
+}
 }
 
 class Node extends EventEmitter {
@@ -92,6 +129,7 @@ constructor(opt){
   this.id = id;
   this.self = self;
   this.conn = new Map();
+  this.graph = {};
 }
 set_conn(id, conn){ this.conn.set(id.s, conn); }
 del_conn(id){ throw new Error('XXX del_conn'); }
