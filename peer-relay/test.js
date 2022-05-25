@@ -1135,7 +1135,7 @@ function cmd_test_node_graph(opt){
   });
   if (t_pre_process || s.t.fake)
     return;
-  s.router.node_map.build_distance_graph();
+  s.router.node_map.build_rtt_graph();
   let ret = {};
   for (let [, node] of s.router.node_map.map){
     let p = '';

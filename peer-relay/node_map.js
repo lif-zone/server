@@ -51,9 +51,12 @@ update_conn(opt){
   let n0 = this.get({id: ids[0], create: true});
   let n1 = this.get({id: ids[1], create: true});
   let conn = this.get_conn({ids, create: true});
+  if (conn.rtt==rtt && conn.self==self)
+    return;
   conn.update_conn({rtt, self});
   n0.set_conn(n1.id, conn);
   n1.set_conn(n0.id, conn);
+  this.schedule_build_rtt_graph();
 }
 find(id){ return this.get(id); }
 find_next(id){
@@ -95,7 +98,9 @@ find_bidi(id){
   let prev = this.find_prev(id);
   return id.distance_bits(next.id) <= id.distance_bits(prev.id) ? next : prev;
 }
-build_distance_graph(){
+schedule_build_rtt_graph(){
+}
+build_rtt_graph(){
   assert(this.id, 'missing graph source');
   let queue = new FibonacciHeap(), dist={}, prev={};
   // XXX: need better FibonacciHeap (that can store id, value). current
