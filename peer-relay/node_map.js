@@ -43,39 +43,36 @@ get_conn(opt){
 }
 find(id){ return this.get(id); }
 find_next(id){
-  let tree=this.tree, start=0, size=tree.size, end=size, best;
-  if (!size)
+  if (!this.tree.size)
     return;
-  while (end>start){
-		var mid = Math.floor((start+end)/2);
-    let curr = tree.at(mid), key = curr.key, cmp = id.cmp(key);
-    if (cmp>0){
-      start = mid+1;
-    }
-    else if (cmp<0){
-      end = mid;
+  let curr = this.tree._root, best;
+  while (curr){
+    let cmp = id.cmp(curr.key);
+    if (!cmp)
+      return curr.data;
+    if (cmp<0){
       best = curr;
+      curr = curr.left;
     } else
-        return curr.data;
-	}
-  return best ? best.data : tree.at(0).data;
+      curr = curr.right;
+  }
+  return best ? best.data : this.tree.at(0).data;
 }
 find_prev(id){
-  let tree=this.tree, start=0, size=tree.size, end=size, best;
-  if (!size)
+  if (!this.tree.size)
     return;
-  while (end>start){
-		var mid = Math.floor((start+end)/2);
-    let curr = tree.at(mid), key = curr.key, cmp = id.cmp(key);
-    if (cmp>0){
-      start = mid+1;
-      best = curr;
-    } else if (cmp<0)
-      end = mid;
-    else
+  let curr = this.tree._root, best;
+  while (curr){
+    let cmp = id.cmp(curr.key);
+    if (!cmp)
       return curr.data;
-	}
-  return best ? best.data : tree.at(size-1).data;
+    if (cmp>0){
+      best = curr;
+      curr = curr.right;
+    } else
+      curr = curr.left;
+  }
+  return best ? best.data : this.tree.at(this.tree.size-1).data;
 }
 find_bidi(id){
   let next = this.find_next(id);
