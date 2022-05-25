@@ -4122,10 +4122,10 @@ freq=8/100
 */
 /*
 VP:
-* NodeId: distance, distance_bits
++ NodeId: distance, distance_bits
 * path selection:
   + AVL.find_bidi (closest from both dirs),
-  - use dijkstra to build path/costs to all destinataions
+  * use dijkstra to build path/costs to all destinataions
     https://github.com/lambdabaa/dijkstra/blob/master/index.js
   - select to forward message with the path that has lowest rtt per bit
     c = Math.abs(a-b); c = c>=0.5 ? 1-c : c;
