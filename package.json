@@ -12,6 +12,7 @@
     "test": "mocha peer-relay/test.js --timeout 10000"
   },
   "dependencies": {
+    "heap": "0.2.7",
     "fibonacci-heap": "0.0.4",
     "avl": "1.5.3",
     "buffershift": "0.0.2",
