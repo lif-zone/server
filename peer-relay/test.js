@@ -3067,27 +3067,28 @@ describe('peer-relay', function(){
       test_node_find(X:0.26 next:c prev:b bidi:c)
       test_node_find(X:0.41 next:a prev:d bidi:d)
       test_node_find(X:0.91 next:a prev:d bidi:a)`);
-    t('graph', `mode(msg req)
-      conf(id:a-mXYZn-z rtt(100 zX:500))
-      aX>!connect 999ms test_node_graph(X aX:100) 1ms test_node_graph(X aX:100)
-      aX:ba:bX>msg(type:req) // XXX test_node_graph(X aX:100 baX:200)
-      1s test_node_graph(X aX:100 baX:200)
-      aX:ba:cb:cX>msg(type:req) 1s test_node_graph(X aX:100 baX:200 cbaX:300)
-      aX:ca:cX>msg(type:req) 1s test_node_graph(X aX:100 baX:200 caX:200)
-      zX>!connect 1s test_node_graph(X aX:100 baX:200 caX:200 zX:500)
-      aX:za:zX>msg(type:req) 1s
-      test_node_graph(X aX:100 baX:200 caX:200 zaX:200)
-    `);
-    t('graph_xxx', `mode(msg req) conf(id(a:0.1 b:0.2 X:0.3 c:0.4 d:0.5 e:0.6))
-      ab,bX,Xc,cd,da,eX>!connect
-      1s test_node_graph(X bX:100 cX:100 eX:100)
-      eX.c.d>!req(body:ping res:ping_r)
-      1s test_node_graph(X bX:100 cX:100 eX:100 dcX:200)
-      cX[e]:dc[Xe]:ad[cXe]:ae>msg(type:res body:ping_r)
-      Xe:cX[e]:dc[Xe]:ad[cXe]:ae>msg(type:res body:ping_r)
-      //XXX test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
-      1s test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
+    describe('graph', ()=>{
+      t('basic', `mode(msg req) conf(id:a-mXYZn-z rtt(100 zX:500)) aX>!connect
+        999ms test_node_graph(X aX:100) 1ms test_node_graph(X aX:100)
+        aX:ba:bX>msg(type:req) // XXX test_node_graph(X aX:100 baX:200)
+        1s test_node_graph(X aX:100 baX:200)
+        aX:ba:cb:cX>msg(type:req) 1s test_node_graph(X aX:100 baX:200 cbaX:300)
+        aX:ca:cX>msg(type:req) 1s test_node_graph(X aX:100 baX:200 caX:200)
+        zX>!connect 1s test_node_graph(X aX:100 baX:200 caX:200 zX:500)
+        aX:za:zX>msg(type:req) 1s
+        test_node_graph(X aX:100 baX:200 caX:200 zaX:200)
       `);
+      t('ring', `mode(msg req) conf(id(a:0.1 b:0.2 X:0.3 c:0.4 d:0.5 e:0.6))
+        ab,bX,Xc,cd,da,eX>!connect
+        1s test_node_graph(X bX:100 cX:100 eX:100)
+        eX.c.d>!req(body:ping res:ping_r)
+        1s test_node_graph(X bX:100 cX:100 eX:100 dcX:200)
+        cX[e]:dc[Xe]:ad[cXe]:ae>msg(type:res body:ping_r)
+        Xe:cX[e]:dc[Xe]:ad[cXe]:ae>msg(type:res body:ping_r)
+        //XXX test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
+        1s test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
+        `);
+      });
   });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);

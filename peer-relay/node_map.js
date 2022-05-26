@@ -115,18 +115,16 @@ schedule_build_rtt_graph(){
 }
 build_rtt_graph(){
   let queue = new FibonacciHeap(), dist={}, prev={};
-  let map = {};
+  let map = new Map();
   for (let [, node] of this.map){
     let d = this.id.eq(node.id) ? 0 : Infinity;
     node.graph.rtt = dist[node.id.s] = d;
     node.graph.prev = prev[node.id.s] = null;
-    map[node.id.s] = queue.insert(d, node.id.s);
+    map.set(node.id.s, queue.insert(d, node));
   }
   while (!queue.isEmpty()){
-    let next_key = queue.extractMinimum().value;
-    let next = this.map.get(next_key);
-    // XXX: disconnected nodes (can it happen?)
-    if (dist[next_key]===Infinity)
+    let next = queue.extractMinimum().value, next_key = next.id.s;
+    if (dist[next_key]===Infinity) // XXX: disconnected nodes (can it happen?)
       break;
     for (let [, conn] of next.conn){
       let neighbor_key = conn.ids[0].eq(next.id) ?
@@ -137,7 +135,7 @@ build_rtt_graph(){
       if (alt < dist[neighbor_key]){
         neighbor.graph.rtt = dist[neighbor_key] = alt;
         neighbor.graph.prev = prev[neighbor_key] = next;
-        queue.decreaseKey(map[neighbor.id.s], alt);
+        queue.decreaseKey(map.get(neighbor.id.s), alt);
       }
     }
   }
