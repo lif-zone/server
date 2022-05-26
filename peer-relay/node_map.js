@@ -2,8 +2,7 @@
 'use strict'; /*jslint node:true, browser:true*/
 import {EventEmitter} from 'events';
 import Tree from 'avl';
-import {FibonacciHeap} from 'fibonacci-heap';
-import Heap from 'heap';
+import FibonacciHeap from 'js-fibonacci-heap';
 import NodeId from './node_id.js';
 import assert from 'assert';
 import etask from '../util/etask.js';
@@ -115,55 +114,19 @@ schedule_build_rtt_graph(){
   });
 }
 build_rtt_graph(){
-  if (1){ // XXX: bug in FibonacciHeap
-    let queue = new Heap((a, b)=>a.priority-b.priority), dist={}, prev={};
-    // XXX: need better FibonacciHeap (that can store id, value). current
-    // implemention use key === stringify(value)
-    let x = {};
-    for (let [, node] of this.map){
-      let d = this.id.eq(node.id) ? 0 : Infinity;
-      node.graph.rtt = dist[node.id.s] = d;
-      node.graph.prev = prev[node.id.s] = null;
-      x[node.id.s] = {value: node.id.s, priority: d};
-      queue.push(x[node.id.s]);
-    }
-    while (!queue.empty()){
-      let next_key = queue.pop().value;
-      let next = this.map.get(next_key);
-      // XXX: add test for this scenario
-      if (dist[next_key]===Infinity) // disconnected nodes
-        break;
-      for (let [, conn] of next.conn){
-        let neighbor_key = conn.ids[0].eq(next.id) ?
-          conn.ids[1].s : conn.ids[0].s;
-        let neighbor = this.map.get(neighbor_key);
-        assert(conn.rtt, 'missing rtt for '+next.id.s+neighbor.id.s);
-        let alt = dist[next_key] + conn.rtt;
-        if (alt < dist[neighbor_key]){
-          neighbor.graph.rtt = dist[neighbor_key] = alt;
-          neighbor.graph.prev = prev[neighbor_key] = next;
-          x[neighbor.id.s].priority = alt;
-          queue.updateItem(x[neighbor.id.s]);
-        }
-      }
-    }
-    return prev;
-  }
-  assert(this.id, 'missing graph source');
   let queue = new FibonacciHeap(), dist={}, prev={};
-  // XXX: need better FibonacciHeap (that can store id, value). current
-  // implemention use key === stringify(value)
+  let map = {};
   for (let [, node] of this.map){
     let d = this.id.eq(node.id) ? 0 : Infinity;
     node.graph.rtt = dist[node.id.s] = d;
     node.graph.prev = prev[node.id.s] = null;
-    queue.insert({value: node.id.s, priority: d});
+    map[node.id.s] = queue.insert(d, node.id.s);
   }
-  while (queue.trees()){
-    let next_key = queue.deleteMin().value;
+  while (!queue.isEmpty()){
+    let next_key = queue.extractMinimum().value;
     let next = this.map.get(next_key);
-    // XXX: add test for this scenario
-    if (dist[next_key]===Infinity) // disconnected nodes
+    // XXX: disconnected nodes (can it happen?)
+    if (dist[next_key]===Infinity)
       break;
     for (let [, conn] of next.conn){
       let neighbor_key = conn.ids[0].eq(next.id) ?
@@ -174,7 +137,7 @@ build_rtt_graph(){
       if (alt < dist[neighbor_key]){
         neighbor.graph.rtt = dist[neighbor_key] = alt;
         neighbor.graph.prev = prev[neighbor_key] = next;
-          queue.update({value: neighbor.id.s, priority: alt});
+        queue.decreaseKey(map[neighbor.id.s], alt);
       }
     }
   }
