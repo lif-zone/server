@@ -188,14 +188,10 @@ export default class Router extends EventEmitter {
     routes[d].push({path: Array.from(path)});
   }
   update_conn(lbuffer){
-    let i;
-    for (i=0; i<lbuffer.size(); i++){
+    for (let i=0; i<lbuffer.size(); i++){
       let msg = lbuffer.get_json(i);
       if (msg.type!='fwd')
         break;
-    }
-    for (i--; i>=0; i--){
-      let msg = lbuffer.get_json(i);
       let f = NodeId.from(msg.from), t = NodeId.from(msg.to);
       this.node_map.update_conn({ids: [f, t], rtt: msg.rtt||DEF_RTT});
     }
