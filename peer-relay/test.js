@@ -4177,13 +4177,13 @@ VP:
 + NodeId: distance, distance_bits
 * path selection:
   + AVL.find_bidi (closest from both dirs),
-  * use dijkstra to build path/costs to all destinataions
+  + use dijkstra to build paths+rtt to all nodes
     https://github.com/lambdabaa/dijkstra/blob/master/index.js
     + implement dijkstra
-    * update path/rtt in real time on each packet
-    * run dijkstra every 1sec (if there was a change)
-    - efficient implementation of FibonacciHeap (current use stringify for key)
-  - NodeItr
+    + update path/rtt in real time on each packet
+    + run dijkstra every 1sec (if there was a change)
+    + replace bad implementation of FibonacciHeap
+  * NodeItr
   - select to forward message with the path that has lowest rtt per bit
     c = Math.abs(a-b); c = c>=0.5 ? 1-c : c;
     distance_bits(distance){
