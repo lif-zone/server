@@ -139,6 +139,7 @@ export default class Node extends EventEmitter {
       return;
     this.emit('destroy');
     this.destroyed = true;
+    this.router.destroy();
     this.wsConnector.destroy(cb);
     this.wrtcConnector.destroy();
     var peers = this.peers.toArray();

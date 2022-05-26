@@ -3,8 +3,10 @@
 import {EventEmitter} from 'events';
 import Tree from 'avl';
 import {FibonacciHeap} from 'fibonacci-heap';
+import Heap from 'heap';
 import NodeId from './node_id.js';
 import assert from 'assert';
+import etask from '../util/etask.js';
 
 export default class NodeMap extends EventEmitter {
 constructor(){
@@ -54,6 +56,11 @@ update_conn(opt){
   if (conn.rtt==rtt && conn.self==self)
     return;
   conn.update_conn({rtt, self});
+  if (self){
+    let n = this.id.eq(n0.id) ? n1 : n0;
+    n.graph.rtt = rtt;
+    n.graph.prev = n0===n ? n1 : n0;
+  }
   n0.set_conn(n1.id, conn);
   n1.set_conn(n0.id, conn);
   this.schedule_build_rtt_graph();
@@ -99,20 +106,61 @@ find_bidi(id){
   return id.distance_bits(next.id) <= id.distance_bits(prev.id) ? next : prev;
 }
 schedule_build_rtt_graph(){
+  if (this.build_rtt_timer)
+    return;
+  this.build_rtt_timer = etask({'this': this}, function*build_rtt_timer(){
+    yield etask.sleep(1000);
+    this.this.build_rtt_timer = undefined;
+    this.this.build_rtt_graph();
+  });
 }
 build_rtt_graph(){
+  if (1){ // XXX: bug in FibonacciHeap
+    let queue = new Heap((a, b)=>a.priority-b.priority), dist={}, prev={};
+    // XXX: need better FibonacciHeap (that can store id, value). current
+    // implemention use key === stringify(value)
+    let x = {};
+    for (let [, node] of this.map){
+      let d = this.id.eq(node.id) ? 0 : Infinity;
+      node.graph.rtt = dist[node.id.s] = d;
+      node.graph.prev = prev[node.id.s] = null;
+      x[node.id.s] = {value: node.id.s, priority: d};
+      queue.push(x[node.id.s]);
+    }
+    while (!queue.empty()){
+      let next_key = queue.pop().value;
+      let next = this.map.get(next_key);
+      // XXX: add test for this scenario
+      if (dist[next_key]===Infinity) // disconnected nodes
+        break;
+      for (let [, conn] of next.conn){
+        let neighbor_key = conn.ids[0].eq(next.id) ?
+          conn.ids[1].s : conn.ids[0].s;
+        let neighbor = this.map.get(neighbor_key);
+        assert(conn.rtt, 'missing rtt for '+next.id.s+neighbor.id.s);
+        let alt = dist[next_key] + conn.rtt;
+        if (alt < dist[neighbor_key]){
+          neighbor.graph.rtt = dist[neighbor_key] = alt;
+          neighbor.graph.prev = prev[neighbor_key] = next;
+          x[neighbor.id.s].priority = alt;
+          queue.updateItem(x[neighbor.id.s]);
+        }
+      }
+    }
+    return prev;
+  }
   assert(this.id, 'missing graph source');
   let queue = new FibonacciHeap(), dist={}, prev={};
   // XXX: need better FibonacciHeap (that can store id, value). current
   // implemention use key === stringify(value)
   for (let [, node] of this.map){
     let d = this.id.eq(node.id) ? 0 : Infinity;
-    node.graph.dist = dist[node.id.s] = d;
+    node.graph.rtt = dist[node.id.s] = d;
     node.graph.prev = prev[node.id.s] = null;
     queue.insert({value: node.id.s, priority: d});
   }
   while (queue.trees()){
-    var next_key = queue.deleteMin().value;
+    let next_key = queue.deleteMin().value;
     let next = this.map.get(next_key);
     // XXX: add test for this scenario
     if (dist[next_key]===Infinity) // disconnected nodes
@@ -124,13 +172,18 @@ build_rtt_graph(){
       assert(conn.rtt, 'missing rtt for '+next.id.s+neighbor.id.s);
       let alt = dist[next_key] + conn.rtt;
       if (alt < dist[neighbor_key]){
-        neighbor.graph.dist = dist[neighbor_key] = alt;
+        neighbor.graph.rtt = dist[neighbor_key] = alt;
         neighbor.graph.prev = prev[neighbor_key] = next;
-        queue.update({value: neighbor.id.s, priority: alt});
+          queue.update({value: neighbor.id.s, priority: alt});
       }
     }
   }
   return prev;
+}
+destroy(){
+  if (this.build_rtt_timer)
+    this.build_rtt_timer.return();
+  this.build_rtt_timer = undefined;
 }
 }
 

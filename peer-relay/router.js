@@ -195,6 +195,7 @@ export default class Router extends EventEmitter {
       this.node_map.update_conn({ids: [f, t], rtt: msg.rtt});
     }
   }
+  destroy(){ this.node_map.destroy(); }
 }
 
 function state_hash(from, to){
