@@ -1137,9 +1137,7 @@ function cmd_test_node_graph(opt){
     return;
   let ret = {};
   for (let [, node] of s.router.node_map.map){
-    let p = '';
-    for (let curr=node; curr; curr = curr.graph.prev)
-      p += node_from_id(curr.id.s).t.name;
+    let p = path_to_str(node.graph.path, '<')+s.t.name;
     ret[p] = ''+(node.graph.rtt||0);
   }
   assert.deepEqual(ret, exp);
@@ -3070,7 +3068,8 @@ describe('peer-relay', function(){
     describe('graph', ()=>{
       t('basic', `mode(msg req) conf(id:a-mXYZn-z rtt(100 zX:500)) aX>!connect
         999ms test_node_graph(X aX:100) 1ms test_node_graph(X aX:100)
-        aX:ba:bX>msg(type:req) // XXX test_node_graph(X aX:100 baX:200)
+        aX:ba:bX>msg(type:req)
+        // XXX test_node_graph(X aX:100 baX:200)
         1s test_node_graph(X aX:100 baX:200)
         aX:ba:cb:cX>msg(type:req) 1s test_node_graph(X aX:100 baX:200 cbaX:300)
         aX:ca:cX>msg(type:req) 1s test_node_graph(X aX:100 baX:200 caX:200)
@@ -4189,9 +4188,9 @@ VP:
   - remove node.channels
   - remove path.js
 - rtt calculation - calculate it during the connection and pass it along fwd
+  + if missing rtt, assume default 1000
 - fix parser
   - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
   - a,b,c=node === a,b,c=node:wss (make wss the default)
   - aX>!ping
 */
-

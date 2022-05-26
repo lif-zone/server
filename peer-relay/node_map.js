@@ -59,6 +59,7 @@ update_conn(opt){
     let n = this.id.eq(n0.id) ? n1 : n0;
     n.graph.rtt = rtt;
     n.graph.prev = n0===n ? n1 : n0;
+    n.graph.path = [n.id.s];
   }
   n0.set_conn(n1.id, conn);
   n1.set_conn(n0.id, conn);
@@ -114,32 +115,32 @@ schedule_build_rtt_graph(){
   });
 }
 build_rtt_graph(){
-  let queue = new FibonacciHeap(), dist={}, prev={};
+  let queue = new FibonacciHeap();
   let map = new Map();
   for (let [, node] of this.map){
-    let d = this.id.eq(node.id) ? 0 : Infinity;
-    node.graph.rtt = dist[node.id.s] = d;
-    node.graph.prev = prev[node.id.s] = null;
+    let d = node.graph.rtt = this.id.eq(node.id) ? 0 : Infinity;
+    node.graph.prev = null;
+    node.graph.path = [];
     map.set(node.id.s, queue.insert(d, node));
   }
   while (!queue.isEmpty()){
-    let next = queue.extractMinimum().value, next_key = next.id.s;
-    if (dist[next_key]===Infinity) // XXX: disconnected nodes (can it happen?)
+    let next = queue.extractMinimum().value;
+    if (next.graph.rtt===Infinity) // XXX: disconnected nodes (can it happen?)
       break;
     for (let [, conn] of next.conn){
       let neighbor_key = conn.ids[0].eq(next.id) ?
         conn.ids[1].s : conn.ids[0].s;
       let neighbor = this.map.get(neighbor_key);
       assert(conn.rtt, 'missing rtt for '+next.id.s+neighbor.id.s);
-      let alt = dist[next_key] + conn.rtt;
-      if (alt < dist[neighbor_key]){
-        neighbor.graph.rtt = dist[neighbor_key] = alt;
-        neighbor.graph.prev = prev[neighbor_key] = next;
+      let alt = next.graph.rtt + conn.rtt;
+      if (alt < neighbor.graph.rtt){
+        neighbor.graph.rtt = neighbor.graph.rtt = alt;
+        neighbor.graph.prev = next;
+        neighbor.graph.path = next.graph.path.concat(neighbor.id.s);
         queue.decreaseKey(map.get(neighbor.id.s), alt);
       }
     }
   }
-  return prev;
 }
 destroy(){
   if (this.build_rtt_timer)
@@ -157,7 +158,7 @@ constructor(opt){
   this.id = id;
   this.self = self;
   this.conn = new Map();
-  this.graph = {};
+  this.graph = {path: []};
 }
 set_conn(id, conn){ this.conn.set(id.s, conn); }
 del_conn(id){ throw new Error('XXX del_conn'); }

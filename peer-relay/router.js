@@ -16,6 +16,7 @@ import LBuffer from './lbuffer.js';
 const log = xlog('router');
 const s2b = buf_util.buf_from_str;
 const stringify = JSON.stringify;
+const DEF_RTT = 1000;
 
 // XXX: need safe emit support
 export default class Router extends EventEmitter {
@@ -81,7 +82,7 @@ export default class Router extends EventEmitter {
       return; // XXX: add err msg
     if (!(channel.local_id.eq(from) && channel.id.eq(to))){
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
-        rtt: channel.rtt};
+        rtt: channel.rtt||DEF_RTT};
       if (msg.to!=msg2.to){
         rt = rt || xutil.get(msg0, ['rt', 'path']) &&
           {path: xutil.get(msg0, ['rt', 'path'])};
@@ -119,7 +120,7 @@ export default class Router extends EventEmitter {
   _onChannelAdded(channel){
     let dst = channel.id;
     this.node_map.update_conn({ids: [this.id, dst], self: channel,
-      rtt: channel.rtt});
+      rtt: channel.rtt||DEF_RTT});
     channel.on('message', this._on_channel_msg);
     // XXX: check if this can happen during test and add yield
     while (this._queue.length)
@@ -187,12 +188,16 @@ export default class Router extends EventEmitter {
     routes[d].push({path: Array.from(path)});
   }
   update_conn(lbuffer){
-    for (let i=0; i<lbuffer.size(); i++){
+    let i;
+    for (i=0; i<lbuffer.size(); i++){
       let msg = lbuffer.get_json(i);
-      if (msg.type!='fwd') // XXX: still need to update RTT
+      if (msg.type!='fwd')
         break;
+    }
+    for (i--; i>=0; i--){
+      let msg = lbuffer.get_json(i);
       let f = NodeId.from(msg.from), t = NodeId.from(msg.to);
-      this.node_map.update_conn({ids: [f, t], rtt: msg.rtt});
+      this.node_map.update_conn({ids: [f, t], rtt: msg.rtt||DEF_RTT});
     }
   }
   destroy(){ this.node_map.destroy(); }
