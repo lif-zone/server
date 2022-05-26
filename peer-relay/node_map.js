@@ -11,13 +11,15 @@ export default class NodeMap extends EventEmitter {
 constructor(){
   super();
   this.map = new Map();
-  this.tree = new Tree(NodeId.cmp, true);
+  this.avl = new Tree(NodeId.cmp, true);
   this.conn = new Map();
 }
 set(id, node){
   this.map.set(id.s, node);
-  if (!node.self)
-    this.tree.insert(id, node);
+  if (!node.self){
+    node.avl_node = this.avl.insert(id, node);
+    node.avl = this.avl;
+  }
   else {
     assert(!this.self);
     this.id = node.id;
@@ -36,7 +38,7 @@ get(opt){
 }
 del(id){
   this.map.delete(id.s);
-  this.tree.remove(id);
+  this.avl.remove(id);
 }
 get_conn(opt){
   let {ids, create} = opt, hash = conn_hash(ids);
@@ -67,10 +69,10 @@ update_conn(opt){
 }
 find(id){ return this.get(id); }
 find_next(id){
-  let best, tree = this.tree;
-  if (!tree.size)
+  let best, avl = this.avl;
+  if (!avl.size)
     return;
-  for (let curr=tree._root; curr;){
+  for (let curr=avl._root; curr;){
     let cmp = id.cmp(curr.key);
     if (!cmp)
       return curr.data;
@@ -80,13 +82,13 @@ find_next(id){
     } else
       curr = curr.right;
   }
-  return best ? best.data : tree.at(0).data;
+  return best ? best.data : avl.at(0).data;
 }
 find_prev(id){
-  let best, tree = this.tree;
-  if (!tree.size)
+  let best, avl = this.avl;
+  if (!avl.size)
     return;
-  for (let curr=tree._root; curr;){
+  for (let curr=avl._root; curr;){
     let cmp = id.cmp(curr.key);
     if (!cmp)
       return curr.data;
@@ -96,7 +98,7 @@ find_prev(id){
     } else
       curr = curr.left;
   }
-  return best ? best.data : tree.at(tree.size-1).data;
+  return best ? best.data : avl.at(avl.size-1).data;
 }
 find_bidi(id){
   let next = this.find_next(id);
@@ -142,6 +144,7 @@ build_rtt_graph(){
     }
   }
 }
+node_itr(id){ return new NodeItr(this, id); }
 destroy(){
   if (this.build_rtt_timer)
     this.build_rtt_timer.return();
@@ -163,6 +166,14 @@ constructor(opt){
 set_conn(id, conn){ this.conn.set(id.s, conn); }
 del_conn(id){ throw new Error('XXX del_conn'); }
 get_conn(id){ return this.conn.get(id.s); }
+next(){
+  let avl_node = this.avl.next(this.avl_node)||this.avl.at(0);
+  return avl_node && avl_node.data;
+}
+prev(){
+  let avl_node = this.avl.prev(this.avl_node)||this.avl.at(this.avl.size-1);
+  return avl_node && avl_node.data;
+}
 }
 
 class NodeConn extends EventEmitter {
@@ -186,6 +197,47 @@ update_conn(opt){
 function conn_hash(ids){ return ids[0].cmp(ids[1])<0 ?
   ids[0].s+'_'+ids[1].s : ids[1].s+'_'+ids[0].s; }
 
+class NodeItr extends EventEmitter {
+constructor(node_map, id){
+  super();
+  if (typeof id=='number')
+    this.start = new NodeId(id);
+  else if (typeof id=='string')
+    this.start = new NodeId(id);
+  else if (id instanceof NodeId)
+    this.start = id;
+  else if (id instanceof Node){
+    assert.fail('XXX TODO');
+    this.start = id.id;
+    this.n = id;
+  } else
+    assert();
+  this.node_map = node_map;
+  this.n = this.n || node_map.find_next(this.start);
+  this.p = this.n && this.n.prev();
+}
+next(){
+  if (!this.n)
+    return null;
+  if (this.n===this.p){
+    this.n = null;
+    return this.p;
+  }
+  let at;
+  let n_diff = this.n.id.distance(this.start);
+  let p_diff = this.p.id.distance(this.start);
+  if (n_diff<p_diff){
+    at = this.n;
+    this.n = this.n.next();
+  } else {
+    at = this.p;
+    this.p = this.p.prev();
+  }
+  return at;
+}
+}
+
 NodeMap.Node = Node;
+NodeMap.NodeItr = NodeItr;
 NodeMap.NodeConn = NodeConn;
 NodeMap.conn_hash = conn_hash;

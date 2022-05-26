@@ -4,6 +4,7 @@
 import assert from 'assert';
 import Node from './node.js';
 import NodeId from './node_id.js';
+import NodeMap from './node_map.js';
 import Req from './req.js';
 import Channels from './channels.js';
 import Paths from './paths.js';
@@ -1068,7 +1069,7 @@ function cmd_test_node_conn(opt){
   s.router.node_map.map.forEach(node=>{
     let n = node_from_id(node.id.s), n2 = exp[n.t.name];
     // XXX: fix node_map.get to work also with strings
-    // XXX: check also node_map.tree
+    // XXX: check also node_map.avl
     assert(n2!==undefined, 'node '+n.t.name+' not found');
     let s = '', a = Array.from(node.conn.keys());
     a.sort((a, b)=>NodeId.from(a).cmp(NodeId.from(b)));
@@ -3065,6 +3066,34 @@ describe('peer-relay', function(){
       test_node_find(X:0.26 next:c prev:b bidi:c)
       test_node_find(X:0.41 next:a prev:d bidi:d)
       test_node_find(X:0.91 next:a prev:d bidi:a)`);
+    it('node_itr', ()=>{
+      const t = (val, exp)=>assert.equal(val, exp);
+      let node_map = new NodeMap(NodeId.from(0.44));
+      let n1 = node_map.get({id: NodeId.from(0.43), create: true});
+      let n2 = node_map.get({id: NodeId.from(0.42), create: true});
+      let n3 = node_map.get({id: NodeId.from(0.41), create: true});
+      t(n1.next(), n3);
+      t(n2.next(), n1);
+      t(n3.next(), n2);
+      t(n1.prev(), n2);
+      t(n2.prev(), n3);
+      t(n3.prev(), n1);
+      let n4 = node_map.get({id: NodeId.from(0.4), create: true});
+      let n5 = node_map.get({id: NodeId.from(0.5), create: true});
+      let n6 = node_map.get({id: NodeId.from(0.1), create: true});
+      let n7 = node_map.get({id: NodeId.from(0.99), create: true});
+      let n8 = node_map.get({id: NodeId.from(0.9), create: true});
+      let itr = node_map.node_itr(0.429);
+      t(itr.next().id.d, n1.id.d);
+      t(itr.next().id.d, n2.id.d);
+      t(itr.next().id.d, n3.id.d);
+      t(itr.next().id.d, n4.id.d);
+      t(itr.next().id.d, n5.id.d);
+      t(itr.next().id.d, n6.id.d);
+      t(itr.next().id.d, n7.id.d);
+      t(itr.next().id.d, n8.id.d);
+      t(itr.next(), null);
+    });
     describe('graph', ()=>{
       t('basic', `mode(msg req) conf(id:a-mXYZn-z rtt(100 zX:500)) aX>!connect
         999ms test_node_graph(X aX:100) 1ms test_node_graph(X aX:100)
@@ -4183,7 +4212,7 @@ VP:
     + update path/rtt in real time on each packet
     + run dijkstra every 1sec (if there was a change)
     + replace bad implementation of FibonacciHeap
-  * NodeItr
+  + NodeItr
   - select to forward message with the path that has lowest rtt per bit
     c = Math.abs(a-b); c = c>=0.5 ? 1-c : c;
     distance_bits(distance){
