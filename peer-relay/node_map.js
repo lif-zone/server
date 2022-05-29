@@ -105,7 +105,7 @@ find_bidi(id){
   if (!next || id.eq(next.id))
     return next;
   let prev = this.find_prev(id);
-  return id.distance_bits(next.id) <= id.distance_bits(prev.id) ? next : prev;
+  return id.dist_bits(next.id) <= id.dist_bits(prev.id) ? next : prev;
 }
 schedule_build_rtt_graph(){
   if (this.build_rtt_timer)
@@ -224,8 +224,8 @@ next(){
     return this.p;
   }
   let at;
-  let n_diff = this.n.id.distance(this.start);
-  let p_diff = this.p.id.distance(this.start);
+  let n_diff = this.n.id.dist(this.start);
+  let p_diff = this.p.id.dist(this.start);
   if (n_diff<p_diff){
     at = this.n;
     this.n = this.n.next();

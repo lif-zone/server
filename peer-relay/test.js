@@ -2284,10 +2284,10 @@ describe('node_id', function(){
     t('ffffffffffffffffffff', 'fffffffffffffffffffe', 1);
     t('ffffffffffffffffffff', 'ffffffffffffffffffff', 0);
   });
-  it('distance', function(){
+  it('dist', function(){
     const t = (a, b, exp)=>{
-      assert.equal(NodeId.from(a).distance(NodeId.from(b)), exp);
-      assert.equal(NodeId.from(b).distance(NodeId.from(a)), exp);
+      assert.equal(NodeId.from(a).dist(NodeId.from(b)), exp);
+      assert.equal(NodeId.from(b).dist(NodeId.from(a)), exp);
     };
     t('00000000000000000000', '00000000000000000000', 0);
     t('00000000000000000000', 'ffffffffffffffffffff', 0);
@@ -2300,10 +2300,10 @@ describe('node_id', function(){
     t('3fffffffffffffffffff', '00000000000000000000', 0.25);
     t('3fffffffffffffffffff', 'ffffffffffffffffffff', 0.25);
   });
-  it('distance_bits', function(){
+  it('dist_bits', function(){
     const t = (a, b, exp)=>{
-      assert.equal(NodeId.from(a).distance_bits(NodeId.from(b)), exp);
-      assert.equal(NodeId.from(b).distance_bits(NodeId.from(a)), exp);
+      assert.equal(NodeId.from(a).dist_bits(NodeId.from(b)), exp);
+      assert.equal(NodeId.from(b).dist_bits(NodeId.from(a)), exp);
     };
     t('00000000000000000000', '00000000000000000000', 0);
     t('00000000000000000000', '00000000000001000000', 0);
@@ -4203,7 +4203,8 @@ freq=8/100
 */
 /*
 VP:
-+ NodeId: distance, distance_bits
++ NodeId: dist, dist_bits
++ if missing rtt, assume default 1000
 * path selection:
   + AVL.find_bidi (closest from both dirs),
   + use dijkstra to build paths+rtt to all nodes
@@ -4213,10 +4214,8 @@ VP:
     + run dijkstra every 1sec (if there was a change)
     + replace bad implementation of FibonacciHeap
   + NodeItr
+  * calc_rtt_ob_via
   - select to forward message with the path that has lowest rtt per bit
-    c = Math.abs(a-b); c = c>=0.5 ? 1-c : c;
-    distance_bits(distance){
-      return !distance ? 0 : Math.max(53+Math.log2(distance), 0); }
   - use Node_map+path selection instead existing obsolete code + fix tests
 - remove obsolete
   - rename Ws/WrtcChannel to WsConn/WrtcConn
@@ -4224,7 +4223,6 @@ VP:
   - remove node.channels
   - remove path.js
 - rtt calculation - calculate it during the connection and pass it along fwd
-  + if missing rtt, assume default 1000
 - fix parser
   - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
   - a,b,c=node === a,b,c=node:wss (make wss the default)
