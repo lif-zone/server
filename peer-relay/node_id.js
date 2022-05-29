@@ -48,7 +48,7 @@ cmp(id){
 dist(id){ return dist(this, id); }
 dist_bits(id){ return dist_bits(this, id); }
 
-calc_rtt_pb_via(src, dst, via, via_rtt){
+rtt_pb_via(src, dst, via, via_rtt){
   let src_dst_diff = src.dist(dst);
   let via_dst_diff = via.dist(dst);
   if (src_dst_diff<=via_dst_diff)
@@ -76,3 +76,4 @@ NodeId.cmp = function(a, b){ return a.cmp(b); };
 NodeId.bits = BITS; // XXX: check correct value
 NodeId.dist = dist;
 NodeId.dist_bits = dist_bits;
+NodeId.rtt_pb_via = rtt_pb_via;
