@@ -48,7 +48,20 @@ cmp(id){
 dist(id){ return dist(this, id); }
 dist_bits(id){ return dist_bits(this, id); }
 
-rtt_pb_via(src, dst, via, via_rtt){
+rtt_pb_via(dst, via, via_rtt){ return rtt_pb_via(this.id, dst, via, via_rtt); }
+}
+
+function dist(a, b){
+  let d = Math.abs(a.d-b.d);
+  return d = d>=0.5 ? 1-d : d;
+}
+
+function dist_bits(a, b){
+  let d = b===undefined ? a : dist(a, b);
+  return !d ? 0 : Math.max(53+Math.log2(d), 0);
+}
+
+function rtt_pb_via(src, dst, via, via_rtt){
   let src_dst_diff = src.dist(dst);
   let via_dst_diff = via.dist(dst);
   if (src_dst_diff<=via_dst_diff)
@@ -58,17 +71,6 @@ rtt_pb_via(src, dst, via, via_rtt){
   ret.dist_done = src_dst_diff-via_dst_diff;
   ret.rtt_pb = via_rtt/NodeId.dist_bits(ret.dist_done);
   return ret;
-}
-}
-
-function dist(a, b){
-  let d = Math.abs(a.d-b.d);
-  return d = d>=0.5 ? 1-d : d;
-}
-
-function dist_bits(a, b){
-  let d = dist(a, b);
-  return !d ? 0 : Math.max(53+Math.log2(d), 0);
 }
 
 NodeId.from = function(id){ return new NodeId(id); };
