@@ -2326,26 +2326,41 @@ describe('node_id', function(){
       if (exp.good!==false)
         exp.good = true;
       if (ret.good){
-        ret.dist_dst = ret.dist_dst.toFixed(2);
-        ret.dist_done = ret.dist_done.toFixed(2);
-        ret.rtt_pb = ret.rtt_pb.toFixed(4);
+        ret.dist_dst = +ret.dist_dst.toFixed(2);
+        ret.dist_done = +ret.dist_done.toFixed(2);
+        ret.rtt_pb = +ret.rtt_pb.toFixed(4);
       }
       assert.deepEqual(ret, exp);
     };
-    t('00000000000000000000', '7fffffffffffffffffff', '00000000100000000000',
+    t('00000000000000000000', '8000000000000000000', '00000000100000000000',
       {rtt_pb: 5.8824, dist_dst: 0.5, dist_done: 0});
-    t('00000000000000000000', '7fffffffffffffffffff', '00000000100010000000',
+    t('00000000000000000000', '8000000000000000000', '00000000100010000000',
       {rtt_pb: 5.8823, dist_dst: 0.5, dist_done: 0});
-    t('00000000000000000000', '7fffffffffffffffffff', '01000000000000000000',
+    t('00000000000000000000', '8000000000000000000', '01000000000000000000',
       {rtt_pb: 2.2222, dist_dst: 0.5, dist_done: 0});
-    t('00000000000000000000', '7fffffffffffffffffff', '10000000000000000000',
+    t('00000000000000000000', '8000000000000000000', '10000000000000000000',
       {rtt_pb: 2.0408, dist_dst: 0.44, dist_done: 0.06});
-    t('01000000000000000000', '7fffffffffffffffffff', '10000000000000000000',
+    t('01000000000000000000', '8000000000000000000', '10000000000000000000',
       {rtt_pb: 2.0447, dist_dst: 0.44, dist_done: 0.06});
-    t('00000000000000000000', '7fffffffffffffffffff', '5fffffffffffffffffff',
+    t('00000000000000000000', '8000000000000000000', '60000000000000000000',
       {rtt_pb: 1.9385, dist_dst: 0.13, dist_done: 0.38});
-    t('00000000000000000000', '7fffffffffffffffffff', '6fffffffffffffffffff',
+    t('00000000000000000000', '8000000000000000000', '7000000000000000000',
       {rtt_pb: 1.9302, dist_dst: 0.06, dist_done: 0.44});
+    t('00000000000000000000', '8000000000000000000', '7fffffffffffffffffff',
+      {rtt_pb: 1.9231, dist_dst: 0, dist_done: 0.5});
+    t('60000000000000000000', '7000000000000000000', '60100000000000000000',
+      {rtt_pb: 2.439, dist_dst: 0.06, dist_done: 0});
+    t('60000000000000000000', '7000000000000000000', '68000000000000000000',
+      {rtt_pb: 2.0833, dist_dst: 0.03, dist_done: 0.03});
+    t('60000000000000000000', '7000000000000000000', '6f000000000000000000',
+      {rtt_pb: 2.0447, dist_dst: 0, dist_done: 0.06});
+    t('60000000000000000000', '7000000000000000000', '6fffffffffffffffffff',
+      {rtt_pb: 2.0408, dist_dst: 0, dist_done: 0.06});
+    t('60000000000000000000', '7000000000000000000', '5fffffffffffffffffff',
+      {good: false});
+    // XXX: review with derry
+    t('60000000000000000000', '7000000000000000000', '60000000000001000000',
+      {good: false});
   });
 });
 
