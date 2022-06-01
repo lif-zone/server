@@ -3660,11 +3660,8 @@ describe('test_lib', ()=>{
       t('a>bc', {s: 'a', d: '', dir: '>', cmd: 'bc'});
       t('ab>c', {s: 'a', d: 'b', dir: '>', cmd: 'c'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
-      t('a+b>c', {s: 'a', d: '+b', dir: '>', cmd: 'c'});
-      t('a-b>c', {s: 'a', d: '-b', dir: '>', cmd: 'c'});
-      t('a-b>c', {s: 'a', d: '-b', dir: '>', cmd: 'c'});
-      t('+ab<c', {s: 'b', d: '+a', dir: '<', cmd: 'c'});
-      t('-ab<c', {s: 'b', d: '-a', dir: '<', cmd: 'c'});
+      t('a~b>c', {s: 'a', d: '~b', dir: '>', cmd: 'c'});
+      t('~ab<c', {s: 'b', d: '~a', dir: '<', cmd: 'c'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
       t('a>b(c)', {s: 'a', d: '', dir: '>', cmd: 'b(c)'});
       t('a>!b', {s: 'a', d: '', dir: '>', cmd: '!b'});
@@ -3689,24 +3686,20 @@ describe('test_lib', ()=>{
         {s: 'b', d: 'c', dir: '>'}], cmd: 'd'});
       t('abc<d', {s: 'c', d: 'a', dir: '<', loop: [{s: 'c', d: 'b', dir: '<'},
         {s: 'b', d: 'a', dir: '<'}], cmd: 'd'});
-      t('ab+c>d', {s: 'a', d: '+c', dir: '>', loop:
-        [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: '+c', dir: '>'}], cmd: 'd'});
-      t('ab-c>d', {s: 'a', d: '-c', dir: '>', loop:
-        [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: '-c', dir: '>'}], cmd: 'd'});
-      t('+abc<d', {s: 'c', d: '+a', dir: '<', loop:
-        [{s: 'c', d: 'b', dir: '<'}, {s: 'b', d: '+a', dir: '<'}], cmd: 'd'});
-      t('-abc<d', {s: 'c', d: '-a', dir: '<', loop:
-        [{s: 'c', d: 'b', dir: '<'}, {s: 'b', d: '-a', dir: '<'}], cmd: 'd'});
+      t('ab~c>d', {s: 'a', d: '~c', dir: '>', loop:
+        [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: '~c', dir: '>'}], cmd: 'd'});
+      t('~abc<d', {s: 'c', d: '~a', dir: '<', loop:
+        [{s: 'c', d: 'b', dir: '<'}, {s: 'b', d: '~a', dir: '<'}], cmd: 'd'});
       t('abcd>e', {s: 'a', d: 'd', dir: '>', loop: [{s: 'a', d: 'b', dir: '>'},
         {s: 'b', d: 'c', dir: '>'}, {s: 'c', d: 'd', dir: '>'}], cmd: 'e'});
       t('abcd<e', {s: 'd', d: 'a', dir: '<', loop: [{s: 'd', d: 'c', dir: '<'},
         {s: 'c', d: 'b', dir: '<'}, {s: 'b', d: 'a', dir: '<'}], cmd: 'e'});
-      t('abc+d>e', {s: 'a', d: '+d', dir: '>',
+      t('abc~d>e', {s: 'a', d: '~d', dir: '>',
         loop: [{s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>'},
-        {s: 'c', d: '+d', dir: '>'}], cmd: 'e'});
-      t('+abcd<e', {s: 'd', d: '+a', dir: '<',
+        {s: 'c', d: '~d', dir: '>'}], cmd: 'e'});
+      t('~abcd<e', {s: 'd', d: '~a', dir: '<',
         loop: [{s: 'd', d: 'c', dir: '<'}, {s: 'c', d: 'b', dir: '<'},
-        {s: 'b', d: '+a', dir: '<'}], cmd: 'e'});
+        {s: 'b', d: '~a', dir: '<'}], cmd: 'e'});
       t('a.bc>z', {s: 'a', d: 'c', dir: '>', loop: [
         {s: 'a', d: 'b', dir: '>', dot: true},
         {s: 'b', d: 'c', dir: '>'}], cmd: 'z'});
@@ -3730,11 +3723,11 @@ describe('test_lib', ()=>{
         {s: 'c', d: 'd', dir: '>'}, {s: 'd', d: 'e', dir: '>'},
         {s: 'e', d: 'f', dir: '>', dot: true}, {s: 'f', d: 'g', dir: '>'},
         {s: 'g', d: 'h', dir: '>'}, {s: 'h', d: 'i', dir: '>'}], cmd: 'z'});
-      t('ab.cde.fgh+i>z', {s: 'a', d: '+i', dir: '>', loop: [
+      t('ab.cde.fgh~i>z', {s: 'a', d: '~i', dir: '>', loop: [
         {s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>', dot: true},
         {s: 'c', d: 'd', dir: '>'}, {s: 'd', d: 'e', dir: '>'},
         {s: 'e', d: 'f', dir: '>', dot: true}, {s: 'f', d: 'g', dir: '>'},
-        {s: 'g', d: 'h', dir: '>'}, {s: 'h', d: '+i', dir: '>'}], cmd: 'z'});
+        {s: 'g', d: 'h', dir: '>'}, {s: 'h', d: '~i', dir: '>'}], cmd: 'z'});
       t('ab.c<z', {s: 'c', d: 'a', dir: '<', loop: [
         {s: 'c', d: 'b', dir: '<', dot: true},
         {s: 'b', d: 'a', dir: '<'}], cmd: 'z'});
@@ -3759,11 +3752,11 @@ describe('test_lib', ()=>{
         {s: 'e', d: 'd', dir: '<'}, {s: 'd', d: 'c', dir: '<'},
         {s: 'c', d: 'b', dir: '<', dot: true}, {s: 'b', d: 'a', dir: '<'}],
         cmd: 'z'});
-      t('+ab.cde.fghi<z', {s: 'i', d: '+a', dir: '<', loop: [
+      t('~ab.cde.fghi<z', {s: 'i', d: '~a', dir: '<', loop: [
         {s: 'i', d: 'h', dir: '<'}, {s: 'h', d: 'g', dir: '<'},
         {s: 'g', d: 'f', dir: '<'}, {s: 'f', d: 'e', dir: '<', dot: true},
         {s: 'e', d: 'd', dir: '<'}, {s: 'd', d: 'c', dir: '<'},
-        {s: 'c', d: 'b', dir: '<', dot: true}, {s: 'b', d: '+a', dir: '<'}],
+        {s: 'c', d: 'b', dir: '<', dot: true}, {s: 'b', d: '~a', dir: '<'}],
         cmd: 'z'});
     });
     it('parse_cmd_dir_invalid', ()=>{
@@ -3781,9 +3774,9 @@ describe('test_lib', ()=>{
       t('ab+>e', 'invalid ab^^^+>e');
       t('a+.b>e', 'invalid a^^^+.b>e');
       t('ab.>e', 'invalid ab.^^^>e');
-      t('a+bc>e', 'invalid a^^^+bc>e');
-      t('+ab>e', 'invalid ^^^+ab>e');
-      t('a+b<e', 'invalid a^^^+b<e');
+      t('a~bc>e', 'invalid a^^^~bc>e');
+      t('~ab>e', 'invalid ^^^~ab>e');
+      t('a~b<e', 'invalid a^^^~b<e');
       t('ab+<e', 'invalid ab^^^+<e');
     });
     it('parse', ()=>{

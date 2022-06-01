@@ -863,8 +863,8 @@ E.parse_cmd_dir = function(s){
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
-    assert_invalid(/[a-z,.<>=+-]/i.test(ch), s, i);
-    if (/[+-]/.test(ch)){
+    assert_invalid(/[a-z,.<>=~]/i.test(ch), s, i);
+    if (ch=='~'){
       assert_invalid(!sign && /[a-zA-Z]/.test(s[i+1]), s, i);
       assert_invalid(dir=='>' ? s[i+2]=='>' : !i, s, i);
       sign = ch;

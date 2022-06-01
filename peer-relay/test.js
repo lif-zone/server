@@ -33,7 +33,7 @@ const stringify = JSON.stringify, is_number = util.is_number;
 const DEF_RTT = 100;
 
 function get_fuzzy(name){
-  if (name && /[+-]/.test(name[0]))
+  if (name && name[0]=='~')
     return name[0];
   return '';
 }
@@ -44,7 +44,7 @@ function N(name, opt){
     assert(get_fuzzy(name), 'must be fuzzy '+name);
   if (!name)
     return;
-  name = /[+-]/.test(name[0]) ? name[1] : name;
+  name = name[0]=='~' ? name[1] : name;
   assert(/^[a-zA-Z]$/.test(name), 'invalid name '+name);
   let node = t_nodes[name];
   assert(node, 'missing node '+name);
@@ -183,7 +183,6 @@ function test_gen_ids(bits, total_bits){
   return ret;
 }
 
-
 function parse_range(s){
   let a = s.match(/^([0-9]+)-([0-9]+)$/);
   return a && {min: hash_from_int(+a[1], t_conf.id_bits, NodeId.bits),
@@ -266,7 +265,7 @@ function rev_c(c){ return rev_trim(dir_str(c.s, c.d, c.dir)); }
 
 function loop_str(loop){
   let s = loop[0].s;
-  loop.forEach(o=>s+=/[+-]/.test(o.d) ? '' : (o.dot ? '.' : '')+o.d);
+  loop.forEach(o=>s+=/[~]/.test(o.d) ? '' : (o.dot ? '.' : '')+o.d);
   return s;
 }
 
@@ -2909,21 +2908,20 @@ describe('peer-relay', function(){
         t('abcd<fwd(ac>msg(body:x))', `cd<fwd(ac>msg(body(x)) rt(ab))
           bc<fwd(cd<fwd(ac>msg(body(x)) rt(ab)) rt(a))
           ab<fwd(bc<fwd(cd<fwd(ac>msg(body(x)) rt(ab)) rt(a)))`);
-        t('a-b>!get_peer', `a-b>!get_peer`);
-        t('a+b>!get_peer', `a+b>!get_peer`);
-        t('+ab<!get_peer', `+ab<!get_peer`);
-        _T('mode(msg req)', 'ab.c+d>!get_peer', `a+d>!get_peer
-          ab.c>fwd(a+d>msg(type:req cmd:get_peer)) ac>*get_peer
+        t('a~b>!get_peer', `a~b>!get_peer`);
+        t('~ab<!get_peer', `~ab<!get_peer`);
+        _T('mode(msg req)', 'ab.c~d>!get_peer', `a~d>!get_peer
+          ab.c>fwd(a~d>msg(type:req cmd:get_peer)) ac>*get_peer
           cba>fwd(ca>msg(type:res cmd:get_peer)) ac<*get_peer_r`);
-        T('ab.c+d>msg(type:req cmd:get_peer)',
-          `ab.c>fwd(a+d>msg(type:req cmd:get_peer))`);
-        T('+dc.ba<msg(type:req cmd:get_peer)',
-          `c.ba<fwd(+da<msg(type:req cmd:get_peer))`);
+        T('ab.c~d>msg(type:req cmd:get_peer)',
+          `ab.c>fwd(a~d>msg(type:req cmd:get_peer))`);
+        T('~dc.ba<msg(type:req cmd:get_peer)',
+          `c.ba<fwd(~da<msg(type:req cmd:get_peer))`);
         T('ab>get_peer_r', `ab>msg(type:res cmd:get_peer)`);
-        T('ab.c+d>get_peer', `ab.c+d>msg(type:req cmd:get_peer)`);
+        T('ab.c~d>get_peer', `ab.c~d>msg(type:req cmd:get_peer)`);
         T('ab.c>get_peer_r', `ab.c>msg(type:res cmd:get_peer)`);
-        _T('mode(msg req)', 'ab+c>!get_peer', `a+c>!get_peer
-          ab:a+c>msg(type:req cmd:get_peer) ab>*get_peer
+        _T('mode(msg req)', 'ab~c>!get_peer', `a~c>!get_peer
+          ab:a~c>msg(type:req cmd:get_peer) ab>*get_peer
           ba>get_peer_r ab<*get_peer_r`);
         if (0) // XXX: TODO
         T('ab.c>fwd(ac>get_peer_r)', `ab.c>get_peer_r`);
@@ -3313,25 +3311,22 @@ describe('peer-relay', function(){
        aX.Y.b>!req(body:ping res:ping_r)
      `);
   });
+  if (0) // XXX: WIP
   describe('get_peer', ()=>{
     let t = (name, test)=>t_roles(name, 'abXcde', test);
     t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       ab,bX,Xc,cd,da,eX>!connect eX.c.d>!req(body:ping res:ping_r)
       eX.c.d.a>!req(body:ping res:ping_r)`);
-    t('long:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      ab,bX,Xc,cd,da,eX>!connect e-e>!get_peer eX.c.d.a-e>get_peer ea>*get_peer
+    t('long:abXcde~e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      ab,bX,Xc,cd,da,eX>!connect e~e>!get_peer eX.c.d.a~e>get_peer ea>*get_peer
       eXcda<get_peer_r ea<*get_peer_r`);
-    t('long:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      ab,bX,Xc,cd,da,eX>!connect e+e>!get_peer eX.b.a.d+e>get_peer ed>*get_peer
-      eXbad<get_peer_r ed<*get_peer_r`);
-    t('short:abXcde-e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      ab,bX,Xc,cd,da,eX>!connect eX.c.d.a-e>!get_peer`);
-    t('short:abXcde+e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      ab,bX,Xc,cd,da,eX>!connect eX.b.a.d+e>!get_peer`);
+    t('short:abXcde~e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
+      ab,bX,Xc,cd,da,eX>!connect eX.c.d.a~e>!get_peer`);
     t('multiple:abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
       ab,bX,Xc,cd,da,eX>!connect eX.c.d>!req(body:ping res:ping_r)
-      eX.c.d.a>!req(body:ping res:ping_r) eX.c.d.a-e>!get_peer
-      eX.b.a.d+e>!get_peer`);
+      eX.c.d.a>!req(body:ping res:ping_r)
+      eX.c.d.a~e>!get_peer
+      eX.c.d.a~e>!get_peer`);
   });
   if (0) // XXX: fixme
   describe('get_peer2', ()=>{
