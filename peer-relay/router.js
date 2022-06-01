@@ -72,9 +72,16 @@ export default class Router extends EventEmitter {
       (channel = _this.get_channel_from_path(rt.path)));
     else if (!msg.fuzzy && (channel = _this.get_channel_from_state(msg)));
     else {
-      channel = _this._channels.get_closest(msg.to,
-        {range: xutil.get(msg, ['rt', 'range']), exclude: msg0.from,
-        bigger: msg.fuzzy=='+'});
+      if (Router.xxx_rtt_pb && !msg.fuzzy){
+        let route = _this.node_map.get_best_route(to);
+        channel = _this.get_channel_from_path(route);
+        assert(channel, 'channel not found for route');
+      }
+      else {
+        channel = _this._channels.get_closest(msg.to,
+          {range: xutil.get(msg, ['rt', 'range']), exclude: msg0.from,
+          bigger: msg.fuzzy=='+'});
+      }
     }
     if (!channel && msg.fuzzy) // XXX: why it was not handle in fuzzy part
       return _this.emit('message', lbuffer);
@@ -209,3 +216,6 @@ export default class Router extends EventEmitter {
 
 function state_hash(from, to){
   return from.localeCompare(to)<0 ? from+'_'+to : to+'_'+from; }
+
+Router.xxx_rtt_pb = false;
+Router.t = {};

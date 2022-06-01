@@ -40,6 +40,7 @@ del(id){
   this.map.delete(id.s);
   this.avl.remove(id);
 }
+
 get_conn(opt){
   let {ids, create} = opt, hash = conn_hash(ids);
   let conn = this.conn.get(hash);
@@ -150,6 +151,15 @@ destroy(){
     this.build_rtt_timer.return();
   this.build_rtt_timer = undefined;
 }
+get_best_route(dst){
+  let best, src = this.id;
+  for (let i=0, itr=this.node_itr(dst), at; i<16 && (at = itr.next(dst)); i++){
+    let rtt = src.rtt_pb_via(dst, at.id, at.graph.rtt);
+    if (rtt.good && (!best || rtt.rtt_pb < best.rtt_pb))
+      best = {rtt_pb: rtt.rtt_pb, path: at.graph.path};
+  }
+  return best && best.path;
+}
 }
 
 class Node extends EventEmitter {
@@ -194,6 +204,7 @@ update_conn(opt){
 }
 }
 
+// XXX: optimize, if ids is node_map.id, then just use dst for hash
 function conn_hash(ids){ return ids[0].cmp(ids[1])<0 ?
   ids[0].s+'_'+ids[1].s : ids[1].s+'_'+ids[0].s; }
 
