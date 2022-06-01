@@ -2368,6 +2368,10 @@ describe('node_id', function(){
       rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
     t({s: '0', d: '.5', v: '.375', rtt: 100}, {done: 2,
       rtt_pb: 50, dist_bits_sd: 52, dist_bits_vd: 50});
+    t({s: '0', d: '.5', v: '.4375', rtt: 100}, {done: 3,
+      rtt_pb: 33.333, dist_bits_sd: 52, dist_bits_vd: 49});
+    t({s: '0', d: '.5', v: '.46875', rtt: 100}, {done: 4,
+      rtt_pb: 25, dist_bits_sd: 52, dist_bits_vd: 48});
     t({s: '0', d: '.5', v: '.499', rtt: 100}, {done: 8.966,
       rtt_pb: 11.154, dist_bits_sd: 52, dist_bits_vd: 43.034});
     t({s: '0', d: '.5', v: '.5', rtt: 100}, {done: 52,
