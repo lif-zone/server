@@ -7,8 +7,6 @@ import Router from './router.js';
 import NodeId from './node_id.js';
 import NodeMap from './node_map.js';
 import Req from './req.js';
-import Channels from './channels.js';
-import Paths from './paths.js';
 import buf_util from './buf_util.js';
 import ReqHandler from './req_handler.js';
 import etask from '../util/etask.js';
@@ -183,22 +181,11 @@ function test_gen_ids(bits, total_bits){
   return ret;
 }
 
-function parse_range(s){
-  let a = s.match(/^([0-9]+)-([0-9]+)$/);
-  return a && {min: hash_from_int(+a[1], t_conf.id_bits, NodeId.bits),
-    max: hash_from_int(+a[2], t_conf.id_bits, NodeId.bits)};
-}
-
-function range_to_str(range){
-  return int_from_hash(range.min, t_conf.id_bits, NodeId.bits)+'-'+
-    int_from_hash(range.max, t_conf.id_bits, NodeId.bits);
-}
-
 function rt_to_str(rt, dir){
   if (!rt)
     return '';
   assert(util.xor(rt.range, rt.path));
-  return rt.range ? range_to_str(rt.range) : path_to_str(rt.path, dir);
+  return path_to_str(rt.path, dir);
 }
 
 function normalize(e){
@@ -396,11 +383,9 @@ function assert_host(host){
 function assert_path(s, dir){ return parse_path(s, dir); }
 
 function assert_rt(s, dir){
-  let range, path;
-  if (!(range = parse_range(s, dir)))
-    path = parse_path(s, dir);
-  assert(range||path, 'invalid rt '+s);
-  return {range, path};
+  let path = parse_path(s, dir);
+  assert(path, 'invalid rt '+s);
+  return {path};
 }
 
 function assert_support_wrtc(name){
@@ -2506,292 +2491,6 @@ describe('api', function(){
     });
   });
 });
-describe('paths', ()=>{
-  const v = val=>hash_from_int(val, 8, NodeId.bits);
-  const inv = val=>int_from_hash(val, 8, NodeId.bits);
-  it('eq', ()=>{
-    const t = (p1, p2, exp)=>assert.equal(Paths.eq(p1, p2), exp);
-    t([v(1)], [v(1)], true);
-    t([v(1)], [v(2)], false);
-    t([v(1), v(2)], [v(1)], false);
-    t([v(1)], [v(1), v(2)], false);
-    t([v(1), v(2)], [v(1), v(2)], true);
-  });
-  it('cmp', ()=>{
-    const t = (a, b, exp)=>assert.equal(Paths.cmp(s2b(a), s2b(b)),
-      exp);
-    t(v(1), v(1), 0);
-    t(v(1), v(2), -1);
-    t(v(2), v(1), 1);
-    t(v(2), v(2), 0);
-    let max = Math.pow(2, 8)-1;
-    t(v(max-1), v(max), -1);
-    t(v(max), v(max-1), 1);
-    t(v(max-1), v(max-1), 0);
-  });
-  it('add', ()=>{
-    const t = (s, exp)=>{
-      let ids = test_gen_ids(8, NodeId.bits);
-      function id_to_name(id){
-        for (let name in ids)
-        {
-          if (ids[name].s==id)
-            return name;
-        }
-        assert(0, 'id not found '+id);
-      }
-      function path_to_str(p){
-        let ret = '';
-        p.forEach(id=>ret = ret + id_to_name(id));
-        return ret;
-      }
-      let tree = new Paths();
-      let a = s.split(' ');
-      xsinon.clock_set({now: 1});
-      a.forEach(p=>{
-        let path = [];
-        p.split('').forEach(name=>path.push(ids[name].s));
-        tree.add(path);
-        xsinon.tick(1);
-      });
-      let ret = [];
-      tree.tree.forEach(o=>{
-        let data = o.data;
-        let paths = [];
-        data.paths.forEach(p=>paths.push(path_to_str(p.path)+':'+p.ts));
-        ret.push(id_to_name(b2s(data.id))+'['+paths.join(' ')+']');
-      });
-      assert.equal(ret.join(' '), exp);
-      xsinon.uninit();
-    };
-    t('ba a', 'a[a:2 ba:1]');
-    t('a', 'a[a:1]');
-    t('a a', 'a[a:2]');
-    t('a b', 'a[a:1] b[b:2]');
-    t('a b c', 'a[a:1] b[b:2] c[c:3]');
-    t('c b a', 'a[a:3] b[b:2] c[c:1]');
-    t('a ba', 'a[a:1 ba:2]');
-    t('ba a', 'a[a:2 ba:1]');
-    t('ba ca', 'a[ca:2 ba:1]');
-    t('ca ba', 'a[ba:2 ca:1]');
-    t('ca ba a', 'a[a:3 ba:2 ca:1]');
-    t('ba ca a', 'a[a:3 ca:2 ba:1]');
-    t('ca ba ca', 'a[ca:3 ba:2]');
-    t('ba cda a', 'a[a:3 ba:1 cda:2]');
-    t('ba cda a ba', 'a[a:3 ba:4 cda:2]');
-    t('ba cda a ba a', 'a[a:5 ba:4 cda:2]');
-  });
-  it('get_closest', ()=>{
-    const _t = (nodes, val, opt, exp)=>{
-      val = parseInt(val);
-      let a = nodes ? nodes.split(' ') : [];
-      a.forEach((s, i)=>a[i] = +s);
-      let tree = new Paths();
-      a.forEach(id=>tree.add([v(id)]));
-      let id = tree.get_closest(s2b(v(val)), opt);
-      assert.equal(id ? inv(b2s(id)) : '', exp);
-    };
-    let t = (nodes, val, exp)=>_t(nodes, val, {dir: '-'}, exp);
-    t('', 10, '');
-    t('10', 9, 10);
-    t('10', 10, 10);
-    t('10', 11, 10);
-    t('10 15', 9, 15);
-    t('10 15', 10, 10);
-    t('10 15', 11, 10);
-    t('10 15', 15, 15);
-    t('10 15', 16, 15);
-    t('10 15 20', 9, 20);
-    t('10 15 20', 10, 10);
-    t('10 15 20', 11, 10);
-    t('10 15 20', 15, 15);
-    t('10 15 20', 16, 15);
-    t('10 15 20', 20, 20);
-    t('10 15 20', 21, 20);
-    t('20 40', 10, 40);
-    if (0){ // XXX: WIP
-    t = (nodes, val, range, exp)=>_t(nodes, val, {dir: '-',
-      range: {min: s2b(range.min), max: s2b(range.max)}}, exp);
-    t('10 15', 9, {min: s2b(v(10)), max: s2b(v(16))}, 15);
-    t('10 15', 9, {min: s2b(v(15)), max: s2b(v(15))}, 10);
-    t('10 15', 9, {min: s2b(v(10)), max: s2b(v(15))}, '');
-    t('10 15', 10, {min: s2b(v(10)), max: s2b(v(16))}, 15);
-    }
-    t = (nodes, val, exp)=>_t(nodes, val, {dir: '+'}, exp);
-    t('10 20 25 30 40 50', 9, 10);
-    t('10 20 25 30 40 50', 10, 10);
-    t('10 20 25 30 40 50', 11, 20);
-    t('10 20 25 30 40 50', 24, 25);
-    t('10 20 25 30 40 50', 25, 25);
-    t('10 20 25 30 40 50', 26, 30);
-    t('10 20 25 30 40 50', 49, 50);
-    t('10 20 25 30 40 50', 50, 50);
-    t('10 20 25 30 40 50', 51, 10);
-    if (0){ // XXX: WIP
-    t = (nodes, val, range, exp)=>_t(nodes, val, {dir: '+',
-      range: {min: s2b(range.min), max: s2b(range.max)}}, exp);
-    t('10 20 25 30 40 50', 26, {min: v(29), max: v(50)}, 30);
-    t('10 20 25 30 40 50', 26, {min: v(30), max: v(50)}, 40);
-    t('10 20 25 30 40 50', 26, {min: v(40), max: v(51)}, 50);
-    t('10 20 25 30 40 50', 26, {min: v(50), max: v(10)}, '');
-    t('10 20 25 30 40 50', 26, {min: v(50), max: v(11)}, 10);
-    t('10 20 25 30 40 50', 26, {min: v(39), max: v(11)}, 40);
-    t('10 20 25 30 40 50', 51, {min: v(39), max: v(11)}, 10);
-    t('10 20 25 30 40 50', 51, {min: v(39), max: v(39)}, 10);
-    t('10 20 25 30 40 50', 31, {min: v(10), max: v(30)}, 20);
-    }
-    t = (nodes, val, exp)=>_t(nodes, val, {dir: '+', skip_self: true}, exp);
-    t('10 20 25 30 40 50', 9, 10);
-    t('10 20 25 30 40 50', 10, 20);
-    t('10 20 25 30 40 50', 11, 20);
-    t('10 20 25 30 40 50', 24, 25);
-    t('10 20 25 30 40 50', 25, 30);
-    t('10 20 25 30 40 50', 26, 30);
-    t('10 20 25 30 40 50', 49, 50);
-    t('10 20 25 30 40 50', 50, 10);
-    t('10 20 25 30 40 50', 51, 10);
-    t = (nodes, val, exp)=>_t(nodes, val, {dir: '-'}, exp);
-    t('10 20 25 30 40 50', 9, 50);
-    t('10 20 25 30 40 50', 10, 10);
-    t('10 20 25 30 40 50', 11, 10);
-    t('10 20 25 30 40 50', 24, 20);
-    t('10 20 25 30 40 50', 25, 25);
-    t('10 20 25 30 40 50', 26, 25);
-    t('10 20 25 30 40 50', 49, 40);
-    t('10 20 25 30 40 50', 50, 50);
-    t('10 20 25 30 40 50', 51, 50);
-    if (0){ // XXX: WIP
-    t = (nodes, val, range, exp)=>_t(nodes, val, {dir: '-',
-      range: {min: s2b(range.min), max: s2b(range.max)}}, exp);
-    t('10 20 25 30 40 50', 30, {min: v(10), max: v(31)}, 30);
-    t('10 20 25 30 40 50', 30, {min: v(10), max: v(30)}, 25);
-    t('10 20 25 30 40 50', 30, {min: v(10), max: v(25)}, 20);
-    t('10 20 25 30 40 50', 30, {min: v(10), max: v(20)}, '');
-    t('10 20 25 30 40 50', 30, {min: v(49), max: v(20)}, 10);
-    t('10 20 25 30 40 50', 30, {min: v(49), max: v(10)}, 50);
-    t('10 20 25 30 40 50', 30, {min: v(49), max: v(50)}, '');
-    t('10 20 25 30 40 50', 30, {min: v(39), max: v(50)}, 40); // XXX: need +
-    t('10 20 25 30 40 50', 30, {min: v(39), max: v(40)}, '');
-    t('10 20 25 30 40 50', 30, {min: v(39), max: v(39)}, 30); // XXX: ?
-    }
-    t = (nodes, val, exp)=>_t(nodes, val, {dir: '-', skip_self: true}, exp);
-    t('10 20 25 30 40 50', 9, 50);
-    t('10 20 25 30 40 50', 10, 50);
-    t('10 20 25 30 40 50', 11, 10);
-    t('10 20 25 30 40 50', 24, 20);
-    t('10 20 25 30 40 50', 25, 20);
-    t('10 20 25 30 40 50', 26, 25);
-    t('10 20 25 30 40 50', 49, 40);
-    t('10 20 25 30 40 50', 50, 40);
-    t('10 20 25 30 40 50', 51, 50);
-  });
-});
-
-describe('channels', ()=>{
-  const v = val=>hash_from_int(val, 8, NodeId.bits);
-  const inv = val=>int_from_hash(val, 8, NodeId.bits);
-  it('get_closest', ()=>{
-    const _t = (nodes, val, opt, exp)=>{
-      val = parseInt(val);
-      let a = nodes ? nodes.split(' ') : [];
-      a.forEach((s, i)=>a[i] = +s);
-      let channels = new Channels();
-      a.forEach(id=>channels.add(new FakeChannel({id: NodeId.from(v(id))})));
-      let ch = channels.get_closest(v(val), opt);
-      assert.equal(ch ? inv(ch.id.s) : '', exp);
-    };
-    let t = (nodes, val, exp)=>_t(nodes, val, {bigger: false}, exp);
-    t('', 10, '');
-    t('10', 9, 10);
-    t('10', 10, 10);
-    t('10', 11, 10);
-    t('10 15', 9, 15);
-    t('10 15', 10, 10);
-    t('10 15', 11, 10);
-    t('10 15', 15, 15);
-    t('10 15', 16, 15);
-    t('10 15 20', 9, 20);
-    t('10 15 20', 10, 10);
-    t('10 15 20', 11, 10);
-    t('10 15 20', 15, 15);
-    t('10 15 20', 16, 15);
-    t('10 15 20', 20, 20);
-    t('10 15 20', 21, 20);
-    t('20 40', 10, 40);
-    t = (nodes, val, range, exp)=>_t(nodes, val, {bigger: false, range}, exp);
-    t('10 15', 9, {min: v(10), max: v(16)}, 15);
-    t('10 15', 9, {min: v(15), max: v(15)}, 10);
-    t('10 15', 9, {min: v(10), max: v(15)}, '');
-    t('10 15', 10, {min: v(10), max: v(16)}, 15);
-    /* XXX: TODO (and rename get_closest2 -> get_closest
-    t([10, 15], 10, '', {min: v(10), max: v(16)}, v(15));
-    t([10, 15], 10, 10, {min: v(9), max: v(16)}, v(15));
-    */
-    t = (nodes, val, exp)=>_t(nodes, val, {bigger: true}, exp);
-    t('10 20 25 30 40 50', 9, 10);
-    t('10 20 25 30 40 50', 10, 10);
-    t('10 20 25 30 40 50', 11, 20);
-    t('10 20 25 30 40 50', 24, 25);
-    t('10 20 25 30 40 50', 25, 25);
-    t('10 20 25 30 40 50', 26, 30);
-    t('10 20 25 30 40 50', 49, 50);
-    t('10 20 25 30 40 50', 50, 50);
-    t('10 20 25 30 40 50', 51, 10);
-    t = (nodes, val, range, exp)=>_t(nodes, val, {bigger: true, range}, exp);
-    t('10 20 25 30 40 50', 26, {min: v(29), max: v(50)}, 30);
-    t('10 20 25 30 40 50', 26, {min: v(30), max: v(50)}, 40);
-    t('10 20 25 30 40 50', 26, {min: v(40), max: v(51)}, 50);
-    t('10 20 25 30 40 50', 26, {min: v(50), max: v(10)}, '');
-    t('10 20 25 30 40 50', 26, {min: v(50), max: v(11)}, 10);
-    t('10 20 25 30 40 50', 26, {min: v(39), max: v(11)}, 40);
-    t('10 20 25 30 40 50', 51, {min: v(39), max: v(11)}, 10);
-    t('10 20 25 30 40 50', 51, {min: v(39), max: v(39)}, 10);
-    t('10 20 25 30 40 50', 31, {min: v(10), max: v(30)}, 20);
-    t = (nodes, val, exp)=>_t(nodes, val,
-      {bigger: true, skip_self: true}, exp);
-    t('10 20 25 30 40 50', 9, 10);
-    t('10 20 25 30 40 50', 10, 20);
-    t('10 20 25 30 40 50', 11, 20);
-    t('10 20 25 30 40 50', 24, 25);
-    t('10 20 25 30 40 50', 25, 30);
-    t('10 20 25 30 40 50', 26, 30);
-    t('10 20 25 30 40 50', 49, 50);
-    t('10 20 25 30 40 50', 50, 10);
-    t('10 20 25 30 40 50', 51, 10);
-    t = (nodes, val, exp)=>_t(nodes, val, {bigger: false}, exp);
-    t('10 20 25 30 40 50', 9, 50);
-    t('10 20 25 30 40 50', 10, 10);
-    t('10 20 25 30 40 50', 11, 10);
-    t('10 20 25 30 40 50', 24, 20);
-    t('10 20 25 30 40 50', 25, 25);
-    t('10 20 25 30 40 50', 26, 25);
-    t('10 20 25 30 40 50', 49, 40);
-    t('10 20 25 30 40 50', 50, 50);
-    t('10 20 25 30 40 50', 51, 50);
-    t = (nodes, val, range, exp)=>_t(nodes, val, {bigger: false, range}, exp);
-    t('10 20 25 30 40 50', 30, {min: v(10), max: v(31)}, 30);
-    t('10 20 25 30 40 50', 30, {min: v(10), max: v(30)}, 25);
-    t('10 20 25 30 40 50', 30, {min: v(10), max: v(25)}, 20);
-    t('10 20 25 30 40 50', 30, {min: v(10), max: v(20)}, '');
-    t('10 20 25 30 40 50', 30, {min: v(49), max: v(20)}, 10);
-    t('10 20 25 30 40 50', 30, {min: v(49), max: v(10)}, 50);
-    t('10 20 25 30 40 50', 30, {min: v(49), max: v(50)}, '');
-    t('10 20 25 30 40 50', 30, {min: v(39), max: v(50)}, 40);
-    t('10 20 25 30 40 50', 30, {min: v(39), max: v(40)}, '');
-    t('10 20 25 30 40 50', 30, {min: v(39), max: v(39)}, 30); // XXX: ?
-    t = (nodes, val, exp)=>_t(nodes, val,
-      {bigger: false, skip_self: true}, exp);
-    t('10 20 25 30 40 50', 9, 50);
-    t('10 20 25 30 40 50', 10, 50);
-    t('10 20 25 30 40 50', 11, 10);
-    t('10 20 25 30 40 50', 24, 20);
-    t('10 20 25 30 40 50', 25, 20);
-    t('10 20 25 30 40 50', 26, 25);
-    t('10 20 25 30 40 50', 49, 40);
-    t('10 20 25 30 40 50', 50, 40);
-    t('10 20 25 30 40 50', 51, 50);
-  });
-});
 
 describe('wallet', ()=>{
   let key = t_keys.a;
@@ -2884,8 +2583,6 @@ describe('peer-relay', function(){
         t('bc:ab>msg(body:x)', `bc>fwd(ab>msg(body(x)))`);
         t('bc>fwd(ab>msg(body:x) rt:d)', `bc>fwd(ab>msg(body(x)) rt(d))`);
         t('bc[d]:ab>msg(body:x)', `bc>fwd(ab>msg(body(x)) rt(d))`);
-        t('bc[10-20]:ab>msg(body:x)', `bc>fwd(ab>msg(body(x)) rt(10-20))`);
-        t('bc>fwd(ab>msg(body:x) rt:1-2)', `bc>fwd(ab>msg(body(x)) rt(1-2))`);
         t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
         t('bc>fwd(de>fwd(ab>msg(body:x) rt:c) rt:e)',
           `bc>fwd(de>fwd(ab>msg(body(x)) rt(c)) rt(e))`);
@@ -2952,8 +2649,6 @@ describe('peer-relay', function(){
         t('cd>fwd(ab>msg path:abc)', `cd>fwd(ab>msg path(abc))`);
         t('cd<fwd(ab<msg path:abc)', `cd<fwd(ab<msg path(abc))`);
         t('cd>fwd(ab>msg path(abc))', `cd>fwd(ab>msg path(abc))`);
-        t('cd>fwd(ab>msg rt:10-20)', `cd>fwd(ab>msg rt(10-20))`);
-        t('cd>fwd(ab>msg rt(10-20))', `cd>fwd(ab>msg rt(10-20))`);
         t('cd>fwd(ab>msg rt:abc)', `cd>fwd(ab>msg rt(abc))`);
         t('cd>fwd(ab>msg rt(abc))', `cd>fwd(ab>msg rt(abc))`);
         if (0) // XXX NOW: TODO
@@ -3251,15 +2946,6 @@ describe('peer-relay', function(){
       adc>!req(id:r1 body:ping res:ping_r) 59s -
       // a.bc<!req(id:r2 body:ping res:ping_r) 60s -
       // a.bc<!req(id:r3 body:ping res:ping_r) -`);
-    // XXX WIP: in the response, need rt:a and not and rt:abc
-    t('4_nodes_ring_range', `conf(path rt id_bits:8 id(a:10 b:20 c:30 d:40))
-      ab,bc,cd,da>!connect - ac>!req(id:r1 body:ping res:ping_r !e)
-      ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30)
-      bc>fwd(ab>fwd(ac>msg(id:r1 type:req body:ping) path:a rt:20-30) path:ab)
-      ac>*req(id:r1 body:ping)
-      bc<fwd(ac<msg(id:r1 type:res body:ping_r) path:c rt:a)
-      ab<fwd(bc<fwd(ac<msg(id:r1 type:res body:ping_r) path:c rt:a) path:bc)
-      ac<*res(id:r1 body:ping_r)`);
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       ab,bc,cd,de,ea>!connect ae.d>!req(id:r1 body:ping res:ping_r) 59s -
@@ -4325,8 +4011,9 @@ VP:
 + NodeId: dist, dist_bits
 + if missing rtt, assume default 1000
 * path selection:
-  - fix 4_nodes_ring_state_timeout
+  + rm obsolete rt.range
 	- rm/unite get_peer/get_peer2 test
+  - fix 4_nodes_ring_state_timeout
 	- need tests where we pass route info when selecting best rtt
   * calc_rtt_ob_via
     - review XXX with derry in test
@@ -4337,7 +4024,6 @@ VP:
   * use Node_map+path selection instead existing obsolete code + fix tests
 - remove obsolete
   - review all 'xxx' tests
-  - rm rt.range
   - check all NodeId.from in router
   - rename Ws/WrtcChannel to WsConn/WrtcConn
   - remove node.peers

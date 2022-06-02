@@ -3,7 +3,7 @@
 import {EventEmitter} from 'events';
 import xerr from '../util/xerr.js';
 import buf_util from './buf_util.js';
-const b2s = buf_util.buf_to_str, s2b = buf_util.buf_from_str;
+const b2s = buf_util.buf_to_str;
 
 // XXX: need test
 export default class Channels extends EventEmitter {
@@ -42,53 +42,6 @@ export default class Channels extends EventEmitter {
     for (let id in this.map)
       a.push(this.map[id]);
     return a;
-  }
-  get_closest(id, opt){
-    opt = opt||{};
-    let {range, skip_self, bigger} = opt;
-    let exclude = opt.exclude &&
-      (typeof opt.exclude=='string' ? s2b(opt.exclude) : opt.exclude);
-    id = typeof id=='string' ? s2b(id) : id;
-    // XXX: wrap it in buf_util.js
-    range = range &&
-      {min: typeof range.min=='string' ? s2b(range.min) : range.min,
-      max: typeof range.max=='string' ? s2b(range.max) : range.max};
-    let a = this.toArray(), best;
-    for (let i=0; i<a.length; i++){
-      let ch = a[i];
-      if (exclude && !ch.id.b.compare(exclude))
-        continue;
-      if (range && !buf_util.in_range(range, ch.id.b))
-        continue;
-      if (!skip_self && !ch.id.b.compare(id)){
-        best = ch;
-        break;
-      }
-      else if (!bigger && ch.id.b.compare(id)<0 &&
-        (!best || best.id.b.compare(ch.id.b)<0)||
-        bigger && ch.id.b.compare(id)>0 &&
-        (!best || best.id.b.compare(ch.id.b)>0)){
-        best = ch;
-      }
-    }
-    if (best)
-      return best;
-    // it's a ring, so the minimum is the closest
-    for (let i=0; i<a.length; i++){
-      let ch = a[i];
-      if (exclude && !ch.id.b.compare(exclude))
-        continue;
-      if (range && !buf_util.in_range(range, ch.id.b))
-        continue;
-      if (!best){
-        best = ch;
-      }
-      else if (!bigger && ch.id.b.compare(best.id.b)>0 ||
-        bigger && ch.id.b.compare(best.id.b)<0){
-        best = ch;
-      }
-    }
-    return best;
   }
 }
 

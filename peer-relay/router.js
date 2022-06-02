@@ -9,7 +9,6 @@ import NodeId from './node_id.js';
 import NodeMap from './node_map.js';
 import xutil from '../util/util.js';
 import {dbg_msg} from './util.js';
-import Paths from './paths.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
 const log = xlog('router');
@@ -87,8 +86,6 @@ export default class Router extends EventEmitter {
           rt = {path: Array.from(rt.path)};
           rt.path.shift();
         }
-        if (!rt) // XXX: rm
-          rt = {range: {min: channel.id.s, max: msg.to}};
         msg2.rt = rt;
       }
       _this.track_out(msg2, channel);
@@ -173,7 +170,7 @@ export default class Router extends EventEmitter {
     let routes=this.routes, d=path[path.length-1];
     if (!routes[d])
       return false;
-    return !!routes[d].find(rt=>Paths.eq(rt.path, path));
+    return !!routes[d].find(rt=>path_eq(rt.path, path));
   }
   add_route(path){
     let routes=this.routes;
@@ -206,5 +203,14 @@ export default class Router extends EventEmitter {
 
 function state_hash(from, to){
   return from.localeCompare(to)<0 ? from+'_'+to : to+'_'+from; }
+
+// XXX: mv to other place
+function path_eq(p1, p2){
+  if (p1.length!=p2.length)
+    return false;
+  let i;
+  for (i=0; i<p1.length && p1[i]==p2[i]; i++);
+  return i==p1.length;
+}
 
 Router.t = {};
