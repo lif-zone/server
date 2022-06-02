@@ -5,7 +5,6 @@ import assert from 'assert';
 import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import date from '../util/date.js';
-import buf_util from './buf_util.js';
 import NodeId from './node_id.js';
 import NodeMap from './node_map.js';
 import xutil from '../util/util.js';
@@ -14,7 +13,6 @@ import Paths from './paths.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
 const log = xlog('router');
-const s2b = buf_util.buf_from_str;
 const stringify = JSON.stringify;
 const DEF_RTT = 1000;
 
@@ -61,27 +59,19 @@ export default class Router extends EventEmitter {
       return xerr('drop msg max hop reached');
     if (!_this._channels.size) // XXX: verify and test it
       return _this._queue.push(lbuffer);
-    if (msg.fuzzy=='-' && buf_util.in_range(
-      {min: s2b(msg0.from), max: s2b(msg0.to)}, s2b(msg.to)) ||
-      msg.fuzzy=='+' && buf_util.in_range(
-      {min: s2b(msg0.to), max: s2b(msg0.from)}, s2b(msg.to))){
-        return _this.emit('message', lbuffer);
-    }
-    if (channel = _this.get_channel_from_rt(msg));
+    if (!msg.fuzzy &&
+      (channel = _this.get_channel_from_id(NodeId.from(msg.to))));
+    else if (channel = _this.get_channel_from_rt(msg0));
     else if ((rt = _this.get_route(msg.to)) &&
       (channel = _this.get_channel_from_path(rt.path)));
     else if (!msg.fuzzy && (channel = _this.get_channel_from_state(msg)));
     else {
-      if (Router.xxx_rtt_pb && !msg.fuzzy){
-        let route = _this.node_map.get_best_route(to);
-        channel = _this.get_channel_from_path(route);
-        assert(channel, 'channel not found for route');
-      }
-      else {
-        channel = _this._channels.get_closest(msg.to,
-          {range: xutil.get(msg, ['rt', 'range']), exclude: msg0.from,
-          bigger: msg.fuzzy=='+'});
-      }
+      let route = _this.node_map.get_best_route(to);
+      channel = _this.get_channel_from_path(route);
+      if (!channel && msg.fuzzy)
+        return _this.emit('message', lbuffer);
+      else if (!channel)
+        return;
     }
     if (!channel && msg.fuzzy) // XXX: why it was not handle in fuzzy part
       return _this.emit('message', lbuffer);
@@ -97,7 +87,7 @@ export default class Router extends EventEmitter {
           rt = {path: Array.from(rt.path)};
           rt.path.shift();
         }
-        if (!rt)
+        if (!rt) // XXX: rm
           rt = {range: {min: channel.id.s, max: msg.to}};
         msg2.rt = rt;
       }
@@ -217,5 +207,4 @@ export default class Router extends EventEmitter {
 function state_hash(from, to){
   return from.localeCompare(to)<0 ? from+'_'+to : to+'_'+from; }
 
-Router.xxx_rtt_pb = false;
 Router.t = {};
