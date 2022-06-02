@@ -4324,13 +4324,18 @@ VP:
 + NodeId: dist, dist_bits
 + if missing rtt, assume default 1000
 * path selection:
+  - fix 4_nodes_ring_state_timeout
+	- rm/unite get_peer/get_peer2 test
+	- need tests where we pass route info when selecting best rtt
   * calc_rtt_ob_via
+    - review XXX with derry in test
     - check XXX on dist (!d && a.eq(b))
   * replace +- fuzzy with ~ fuzzy
     - when we got to closets, make one more jump over it
   * select to forward message with the path that has lowest rtt per bit
   * use Node_map+path selection instead existing obsolete code + fix tests
 - remove obsolete
+  - review all 'xxx' tests
   - rm rt.range
   - check all NodeId.from in router
   - rename Ws/WrtcChannel to WsConn/WrtcConn
