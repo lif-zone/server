@@ -14,134 +14,128 @@ export default WrtcConnector;
 
 inherits(WrtcConnector, EventEmitter);
 function WrtcConnector(id, router, wrtc){
-  var self = this;
-  self.id = id;
-  self.destroyed = false;
-  self.supported = wrtc != null || SimplePeer.WEBRTC_SUPPORT;
-  self._wrtc = wrtc;
-  self._pending = {};
-  self._router = router;
-  self._router.on('message', onMessage);
+  var _this = this;
+  this.id = id;
+  this.destroyed = false;
+  this.supported = wrtc != null || SimplePeer.WEBRTC_SUPPORT;
+  this._wrtc = wrtc;
+  this._pending = {};
+  this._router = router;
+  this._router.on('message', onMessage);
 
   function onMessage(msg){
     if (!msg.body)
       return xerr('wrtc: missing body');
     if (msg.cmd === 'signal')
-      self._onSignal(msg.body.data, s2b(msg.from));
+      _this._onSignal(msg.body.data, s2b(msg.from));
   }
 }
 
 WrtcConnector.prototype.connect = function(remoteID){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  self._setupSimplePeer(remoteID);
+  this._setupSimplePeer(remoteID);
 };
 
 WrtcConnector.prototype._onSignal = function(signal, from){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  var sp = self._pending[from];
+  var sp = this._pending[from];
   if (sp != null)
     sp.signal(signal);
   else
-    self._setupSimplePeer(from, signal);
+    this._setupSimplePeer(from, signal);
 };
 
 WrtcConnector.prototype._setupSimplePeer = function(remoteID, offer){
-  var self = this;
+  var _this = this;
   var sp = new SimplePeer({initiator: offer == null, trickle: true,
-    wrtc: self._wrtc});
+    wrtc: this._wrtc});
   sp.on('signal', onSignal);
   sp.on('connect', onConnect);
   sp.on('close', onClose);
   sp.on('error', onError);
   if (offer != null)
     sp.signal(offer);
-  self._pending[remoteID] = sp;
+  this._pending[remoteID] = sp;
 
   function onSignal(signal){
-    self._debug('SIGNAL', signal);
-    self._router.send(remoteID, {cmd: 'signal', data: signal});
+    _this._debug('SIGNAL', signal);
+    _this._router.send(remoteID, {cmd: 'signal', data: signal});
   }
 
   function onConnect(){
-    self._debug('CONNECT');
-    delete self._pending[remoteID];
+    _this._debug('CONNECT');
+    delete _this._pending[remoteID];
     sp.removeListener('signal', onSignal);
     sp.removeListener('connect', onConnect);
     sp.removeListener('close', onClose);
     sp.removeListener('error', onError);
-    self.emit('connection', new WrtcChannel(sp, NodeId.from(remoteID)));
+    _this.emit('connection', new WrtcChannel(sp, NodeId.from(remoteID)));
   }
 
   function onClose(){
-    self._debug('CLOSE');
-    delete self._pending[remoteID];
+    _this._debug('CLOSE');
+    delete _this._pending[remoteID];
     sp.removeListener('signal', onSignal);
     sp.removeListener('connect', onConnect);
     sp.removeListener('close', onClose);
     sp.removeListener('error', onError);
   }
 
-  function onError(err){ self._debug('ERROR', err); }
+  function onError(err){ _this._debug('ERROR', err); }
 };
 
 WrtcConnector.prototype.destroy = function(){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  self.destroyed = true;
-  for (var id in self._pending)
-    self._pending[id].destroy();
+  this.destroyed = true;
+  for (var id in this._pending)
+    this._pending[id].destroy();
 };
 
 WrtcConnector.prototype._debug = function(){
-  var self = this;
-  var prepend = '[' + self.id.toString('hex', 0, 2) + ']  ';
+  var prepend = '[' + this.id.toString('hex', 0, 2) + ']  ';
   arguments[0] = prepend + arguments[0];
   debug.apply(null, arguments);
 };
 
 inherits(WrtcChannel, EventEmitter);
 function WrtcChannel(sp, id){
-  var self = this;
-  self.destroyed = false;
-  self.id = id;
-  self._sp = sp;
-  self._sp.on('data', onData);
-  self._sp.on('close', onClose);
-  self._sp.on('error', onError);
+  var _this = this;
+  this.destroyed = false;
+  this.id = id;
+  this._sp = sp;
+  this._sp.on('data', onData);
+  this._sp.on('close', onClose);
+  this._sp.on('error', onError);
 
   function onData(data){
-    if (self.destroyed)
+    if (_this.destroyed)
       return;
-    self.emit('message', data, self);
+    _this.emit('message', data, _this);
   }
 
-  function onClose(){ self.destroy(); }
+  function onClose(){ _this.destroy(); }
 
   function onError(err){
-    if (self.destroyed)
+    if (_this.destroyed)
       return;
-    self.emit('error', err);
+    _this.emit('error', err);
   }
 }
 
 WrtcChannel.prototype.send = function(data){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  self._sp.send(data);
+  this._sp.send(data);
 };
 
 WrtcChannel.prototype.destroy = function(){
-  var self = this;
-  if (self.destroyed)
+  if (this.destroyed)
     return;
-  self.destroyed = true;
-  self._sp.destroy();
-  self._sp = null;
-  self.emit('close');
+  this.destroyed = true;
+  this._sp.destroy();
+  this._sp = null;
+  this.emit('close');
 };
