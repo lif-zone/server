@@ -24,8 +24,7 @@ constructor(id){
     this._b = id;
     this.s = b2s(this._b);
     this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / DIV;
-  }
-  else
+  } else
     assert.fail('invalid id '+id);
   if (0) // XXX: TODO
   assert.equal(this.s.length, CHARS, 'invalid id len '+this.s.length+'!='+
