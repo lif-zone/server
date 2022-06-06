@@ -4030,6 +4030,9 @@ VP:
   - remove node.channels (and get_closest/get_closest2)
   - remove path.js
   - cleanup path/rt/route/range usage
+- /util
+  - rm set.js
+  - etask({'_': this})
 - lbuffer - how to get msg0 efficiently
 - memory leaks (when we remove stuff from cache eg, routes)
 - rtt calculation - calculate it during the connection and pass it along fwd
