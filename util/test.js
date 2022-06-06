@@ -1,5 +1,5 @@
 // author: derry. coder: arik.
-'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach,before,after*/
+'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
 // XXX: need jslint mocha: true
 import etask from './etask.js';
 import date from './date.js';
@@ -1975,46 +1975,6 @@ describe('array', ()=>{
         t('hello', ['hello']);
         t({a: 1}, [{a: 1}]);
         t([1, 2, 3], [1, 2, 3]);
-    });
-    describe('Array.prototype', ()=>{
-        before(()=>array.prototype_install());
-        after(()=>array.prototype_uninstall());
-        it('sed', ()=>{
-            let t = (val, regex, replace, res)=>
-                assert.deepStrictEqual(val.sed(regex, replace), res);
-            t(['a', 'bb', 'b'], /b/, 'B', ['a', 'Bb', 'B']);
-            t(['a', 'bb', 'b'], /b$/, 'B', ['a', 'bB', 'B']);
-        });
-        it('grep', ()=>{
-            let t = (val, regex, replace, res)=>
-                assert.deepStrictEqual(val.grep(regex, replace), res);
-            t(['a', 'bb', 'b'], /b$/, 'B', ['bB', 'B']);
-            t(['a', 'bb', 'b'], /b/g, 'B', ['BB', 'B']);
-        });
-        it('to_nl', ()=>{
-            let t = (val, sep, res)=>assert.deepStrictEqual(
-                val.to_nl(sep), res);
-            t([], undefined, '');
-            t(['a', 1], '\t', 'a\t1\t');
-        });
-        it('push_a', ()=>{
-            let t = (val, args, res)=>{
-                assert.strictEqual(val.push_a(...args), res.length);
-                assert.deepStrictEqual(val, res);
-            };
-            t([], [null, undefined, '', 3], [null, undefined, '', 3]);
-            t([3], [[1, 2], 'string', [null, 4]],
-                [3, 1, 2, 'string', null, 4]);
-        });
-        it('unshift_a', ()=>{
-            let t = (val, args, res)=>{
-                assert.strictEqual(val.unshift_a(...args), res.length);
-                assert.deepStrictEqual(val, res);
-            };
-            t([], [null, undefined, '', 3], [null, undefined, '', 3]);
-            t([3, '1'], [[1, 2], 'str', [null, 4]],
-                [1, 2, 'str', null, 4, 3, '1']);
-        });
     });
 });
 

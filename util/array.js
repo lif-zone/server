@@ -181,24 +181,4 @@ proto.push_a = function(){
     return E.push.apply(null, [this].concat(Array.from(arguments))); };
 proto.unshift_a = function(){
     return E.unshift.apply(null, [this].concat(Array.from(arguments))); };
-var installed;
-E.prototype_install = function(){
-    if (installed)
-        return;
-    installed = true;
-    for (var i in proto)
-    {
-        Object.defineProperty(Array.prototype, i,
-            {value: proto[i], configurable: true, enumerable: false,
-            writable: true});
-    }
-};
-E.prototype_uninstall = function(){
-    if (!installed)
-        return;
-    installed = false;
-    // XXX: store orig proto, then load it back
-    for (var i in proto)
-        delete Array.prototype[i];
-};
 
