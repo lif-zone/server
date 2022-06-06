@@ -16,7 +16,7 @@ import match from './match.js';
 import events from './events.js';
 import assert from 'assert';
 import xsinon from './sinon.js';
-import sinon from '@hola.org/sinon';
+import sinon from 'sinon';
 import D from 'd.js';
 import _ from 'underscore';
 import when from 'when';

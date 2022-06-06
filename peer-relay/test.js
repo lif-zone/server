@@ -1924,9 +1924,8 @@ function expand_loop_repeat(c){
   return _set_push_cmd(c, a);
 }
 
+// XXX: check if we still really need it
 const cmd_run_if_next_fake = event=>etask(function*cmd_run_if_next_fake(){
-  if (true) // XXX: decide if still needed
-    return;
   assert(!t_pre_process);
   if (t_role=='fake')
     return;

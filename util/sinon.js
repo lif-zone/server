@@ -1,6 +1,6 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true*/ /*global afterEach*/
-import sinon from '@hola.org/sinon';
+import sinon from 'sinon';
 import etask from './etask.js';
 import xutil from './util.js';
 import date from './date.js';
@@ -91,6 +91,49 @@ E.wait = function(){
         return this.wait();
     }]);
 };
+
+// copy from github/sinon/src/sinon.js
+function compareTimers(a, b){
+  // Sort first by absolute timing
+  if (a.callAt < b.callAt)
+    return -1;
+  if (a.callAt > b.callAt)
+    return 1;
+  // Sort next by immediate, immediate timers take precedence
+  if (a.immediate && !b.immediate)
+    return -1;
+  if (!a.immediate && b.immediate)
+    return 1;
+  // Sort next by creation time, earlier-created timers take precedence
+  if (a.createdAt < b.createdAt)
+    return -1;
+  if (a.createdAt > b.createdAt)
+    return 1;
+  // Sort next by id, lower-id timers take precedence
+  if (a.id < b.id)
+    return -1;
+  if (a.id > b.id)
+    return 1;
+  // As timer ids are unique, no fallback `0` is necessary
+}
+
+// copy from github/sinon/src/sinon.js
+function firstTimerInRange(clock, from, to){
+  const inRange = (from, to, timer)=>timer &&
+    timer.callAt >= from && timer.callAt <= to;
+  var timers = clock.timers, timer = null, id, isInRange;
+  for (id in timers){
+    // eslint-disable-next-line no-prototype-builtins
+    if (timers.hasOwnProperty(id)){
+      isInRange = inRange(from, to, timers[id]);
+      if (isInRange && (!timer || compareTimers(timer, timers[id]) === 1))
+        timer = timers[id];
+    }
+  }
+  return timer;
+}
+
+
 E.clock_set = function(opt){
     E.uninit();
     opt = opt||{};
@@ -98,6 +141,7 @@ E.clock_set = function(opt){
     opt.date = opt.date||date;
     is_auto_inc = opt.auto_inc;
     clock = sinon.useFakeTimers.apply(null, [opt.now]);
+    clock.firstTimerInRange = (from, to)=>firstTimerInRange(clock, from, to);
     clock_restore = clock.restore;
     clock_tick = clock.tick;
     var _monotonic = opt.date.monotonic;
