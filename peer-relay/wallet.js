@@ -13,16 +13,13 @@ export default class Wallet {
   constructor(opt){
     opt = opt||{};
     let {priv, pub} = opt.keys||{};
-    if (priv || pub)
-    {
+    if (priv || pub){
       assert(priv && pub, 'must specify both priv/pub keys');
       // XXX assert valid priv/pub keys and that they match
       this.keys = {priv, pub};
       if (b2s(priv)=='00')
         this.test = true;
-    }
-    else
-    {
+    } else {
       let {publicKey, secretKey} = hcrypto.keyPair();
       this.keys = {priv: secretKey, pub: publicKey};
     }

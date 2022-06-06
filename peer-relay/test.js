@@ -4050,6 +4050,8 @@ VP:
   - rm set.js
   - etask({'_': this})
 - rm warning React... in eslint
+- optimize mocha tests - improve sinon time api - by default, don't wait for
+  external time to finish (eg. mongo/ls)
 - lbuffer - how to get msg0 efficiently
 - memory leaks (when we remove stuff from cache eg, routes)
 - rtt calculation - calculate it during the connection and pass it along fwd

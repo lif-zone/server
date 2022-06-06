@@ -51,8 +51,7 @@ function del_req(req_id){
 }
 
 function destroy_cb(){
-  for (let id in reqs)
-  {
+  for (let id in reqs){
     let req = reqs[id].req;
     if (req.node===this)
       del_req(id);
@@ -109,8 +108,7 @@ export default class Req extends EventEmitter {
       ack = opt.ack;
       this.ack = this.ack.filter(s=>!ack.find(
         s2=>new RegExp('^'+xescape.regex(''+s)+'$').test(s2)));
-    }
-    else
+    } else
       this.ack = [];
     log.debug('send %s %s %s %s:%s', dbg_sd(this.src, this.dst),
       cmd, type, req_id, seq);
@@ -163,8 +161,7 @@ export default class Req extends EventEmitter {
         this.res_seq = 0;
       else
         opt = this.push_ooo(msg);
-    }
-    else {
+    } else {
       if (seq==this.res_seq+1)
         this.res_seq++;
       else if (seq<this.res_seq+1)

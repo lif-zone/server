@@ -172,8 +172,7 @@ function req_handler_cb(lbuffer){
     let dup = res.req_seq==0;
     res.req_seq = 0;
     req_handler.emit(type, msg, res, {dup});
-  }
-  else {
+  } else {
     res.emit_ooo(msg);
     res.emit_ooo_queue();
   }
