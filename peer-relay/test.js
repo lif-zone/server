@@ -3013,7 +3013,7 @@ describe('peer-relay', function(){
       eX.c.d.a~e>!get_peer`);
   });
   describe('get_peer2', ()=>{
-    let t = (name, test)=>t_roles(name, 'abXnopz', test);
+    let t = (name, test)=>t_roles(name, 'abXYnopz', test);
     t('long:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect
       p~p>!get_peer
@@ -3033,6 +3033,13 @@ describe('peer-relay', function(){
       pX.o~p>!get_peer`);
     t('ring:abXnoz~z', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,zX>!connect zX.b.a~z>!get_peer`);
+    // XY aX bY
+    t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
+      XY,aX>!connect aX~a>!get_peer bY>!connect
+      aX.Y>!req(body:ping res:ping_r)
+      // XXX: b.YXa~b>!get_peer
+      bY.X.a~b>!get_peer
+    `);
   });
   // XXX: unite with get_peer tests
   if (0) // XXX: fixme
