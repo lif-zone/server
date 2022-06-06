@@ -2042,7 +2042,7 @@ const test_pre_process = test=>etask(function*test_preprocess(){
 });
 
 const test_run = (role, test)=>etask(function*test_run(){
-  xsinon.clock_set({now: 1, idle_time: 1});
+  xsinon.clock_set({now: 1});
   xerr.notice('pre_process run');
   let cmds = yield test_pre_process(test);
   cmds = xtest.test_parse(test_to_str(cmds));

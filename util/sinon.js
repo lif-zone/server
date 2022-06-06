@@ -13,7 +13,8 @@ var is_auto_inc;
 var clock_restore;
 var clock_tick;
 var clock;
-var idle_time = 30;
+const IDLE_TIME = 1;
+var idle_time;
 var event_funcs = [
     {obj: global, funcs: ['setTimeout', 'setInterval', 'setImmediate']},
     {obj: global.process, funcs: ['nextTick']},
@@ -107,8 +108,9 @@ E.clock_set = function(opt){
         clock.tick = clock_tick;
         clock_restore.apply(clock, arguments);
     };
+    idle_time = IDLE_TIME;
     if (typeof opt.idle_time=='number')
-        idle_time = opt.idle_time||idle_time;
+        idle_time = opt.idle_time;
     clock.tick = E.tick;
     clock._tick = clock_tick;
     if (is_auto_inc)

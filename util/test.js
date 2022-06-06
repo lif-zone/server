@@ -46,7 +46,7 @@ describe('sinon', function(){
         });
         it('auto-increments', ()=>{
             xsinon.clock_set({now: '2013-08-13 14:00:00',
-                auto_inc: true});
+                auto_inc: true, idle_time: 30});
             let t = exp=>assert.strictEqual(+date(exp), Date.now());
             return etask(function*(){
                 t('2013-08-13 14:00:00');
@@ -107,7 +107,7 @@ describe('sinon', function(){
     });
     describe('tick', ()=>{
         beforeEach(()=>xsinon.clock_set({now: 100,
-            auto_inc: true}));
+            auto_inc: true, idle_time: 30}));
         afterEach(()=>xsinon.uninit());
         it('does not call too early', ()=>{
             let cb = sinon.spy();
@@ -178,7 +178,7 @@ describe('sinon', function(){
     });
     it('etask', etask.fn(function*(){
         let now = +date('2013-08-13 14:00:00');
-        xsinon.clock_set({now, auto_inc: true});
+        xsinon.clock_set({now, auto_inc: true, idle_time: 30});
         assert.strictEqual(Date.now(), now);
         yield etask.sleep(0);
         assert.strictEqual(Date.now(), now);
