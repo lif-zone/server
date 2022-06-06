@@ -983,12 +983,7 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   assert(!event, 'unexpected event '+event);
   if (t_pre_process)
     return;
-  if (0) // XXX HACK: make test very slow
-    yield xsinon.wait();
-  else {
-    for (let i=0; i<100; i++)
-      yield xsinon.tick();
-  }
+  yield xsinon.wait();
 });
 
 function cmd_mode(opt){
@@ -2047,7 +2042,7 @@ const test_pre_process = test=>etask(function*test_preprocess(){
 });
 
 const test_run = (role, test)=>etask(function*test_run(){
-  xsinon.clock_set({now: 1});
+  xsinon.clock_set({now: 1, idle_time: 1});
   xerr.notice('pre_process run');
   let cmds = yield test_pre_process(test);
   cmds = xtest.test_parse(test_to_str(cmds));
