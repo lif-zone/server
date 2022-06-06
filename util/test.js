@@ -11,7 +11,6 @@ import xurl from './url.js';
 import url from 'url';
 import sprintf from './sprintf.js';
 import xescape from './escape.js';
-import set from './set.js';
 import rate_limit from './rate_limit.js';
 import match from './match.js';
 import events from './events.js';
@@ -2599,113 +2598,6 @@ describe('sprintf', ()=>{
         _t(o, null, '{"a":{"b":"__CIRCULAR__"}}');
         o.a = o;
         _t(o, null, '{"a":"__CIRCULAR__"}');
-    });
-});
-
-describe('set', ()=>{
-    it('escape', ()=>{
-        let t = (unesc, esc)=>assert.strictEqual(set.escape(unesc), esc);
-        t('a', 'a');
-        t('(\ta\r\n)', '\\(\\ta\\r\\n\\)');
-        t(')\na b)\t\r', '\\)\\na b\\)\\t\\r');
-    });
-    it('from_str to_str', ()=>{
-        let t = (set_str, json, s2j, j2s, opt)=>{
-            let opt2;
-            if (opt && opt.remove_top===false)
-                opt2 = {wrap: false};
-            if (s2j || s2j===undefined)
-            {
-                try {
-                    assert.deepStrictEqual(set.from_str(set_str, opt), json);
-                } catch(e){ assert.strictEqual(e, json); }
-            }
-            if (j2s || j2s===undefined)
-            {
-                try { assert.strictEqual(set.to_str(json, opt2), set_str); }
-                catch(e){ assert.strictEqual(e, set_str); }
-            }
-        };
-        t('(a)', null, true, false);
-        t('(a))', 'Extra -1 elements', true, false);
-        t('((a)', 'Extra 1 elements', true, false);
-        t('((a)b))', 'Unexpected element b', true, false);
-        t('((a))', {a: null});
-        t('()', null);
-        t('(())', {'': null});
-        t('((a()))', {a: {'': null}});
-        t('((a((()))))', {a: {'': {'': {'': null}}}});
-        t('(a(1)(2))', {1: null, 2: null}, true, false);
-        t('(a("1")(2))', {'"1"': null, 2: null}, true, false);
-        t('(a(b(1)))', {b: '1'}, true, false, {normalize: true});
-        t('(a(b()))', {a: {b: ''}}, true, true,
-            {normalize: true, remove_top: false});
-        t('(a(b(0)))', {a: {b: '0'}}, true, true,
-            {normalize: true, remove_top: false});
-        t('(a(b(1)))', {a: {b: '1'}}, true, true,
-            {normalize: true, remove_top: false});
-        t('(a(b(c(1))))', {a: {b: {c: '1'}}}, true,
-            false, {normalize: true, remove_top: false});
-        t('(a(b(c(1))(d(1))))', {a: {b: {c: '1', d: '1'}}}, true,
-            false, {normalize: true, remove_top: false});
-        t('((a(1)(2)))', {a: {'1': null, '2': null}});
-        t('((a(b(c(d(e(f(g(h(i(j(k))))))))))))',
-            {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {k: null}}}}}}}}}}});
-        t('((\\(\\ta b\\n(\\r1)))', {'(\ta b\n': {'\r1': null}});
-        t('((\\(\\ta(\\(1\\t\\n\\))))', {'(\ta': {'(1\t\n)': null}}, true,
-            false);
-        t('((\\a\\b(\\1\\\\)))', {ab: {'1\\': null}}, true, false);
-        t('\n\n( (a\t(a b( c (1\n\t))\t)\n) \t )\n',
-            {a: {'a b': {c: {1: null}}}}, true, false);
-        t('((a(1)(2)(-1)(\\-3)))', {a: {2: null, '-3': null}}, true, false);
-    });
-    it('cmp', ()=>{
-        let t = (a, b, exp)=>{
-            assert(match.cmp_norm(set.cmp(a, b)) === exp);
-            assert(match.cmp_norm(set.cmp(b, a)) === -exp);
-        };
-        t('0', 'a', -1);
-        t('a', 'aa', -1);
-        t('aa', 'aaa', -1);
-        t('aaa', 'ab', -1);
-        t('ab', 'b', -1);
-        t('aa', 'aa', 0);
-        t('1', '2', -1);
-        t('3', '20', -1);
-        t('20', '111', -1);
-        t('10', 'a', 1);
-    });
-    it('cd', ()=>{
-        let s;
-        let t = (arg, exp)=>{
-            arg.unshift(s);
-            assert.deepStrictEqual(set.cd(...arg), exp);
-        };
-        s = set.from_str('(parent(45)(46(46a)(46b(46b1))))');
-        t([], s);
-        t(['46'], s['46']);
-        t(['46', '46b'], s['46']['46b']);
-        t(['notfound'], undefined);
-        s = set.from_str('((a(nother(number(17))(string(new string)))))');
-        t(['a', 'nother', 'string'], s.a.nother.string);
-        t(['a', 'nother', 'number'], s.a.nother.number);
-    });
-    it('get', ()=>{
-        let s;
-        let t = (arg, exp, exp_null)=>{
-            arg.unshift(s);
-            if (exp_null===undefined)
-                exp_null = exp;
-            assert.strictEqual(set.get(...arg), exp);
-            assert.strictEqual(set.get_null(...arg), exp_null);
-        };
-        s = set.from_str('(parent(45)(46(46a)(46b(46b1))))');
-        t(['46', '46b'], '46b1');
-        t([], '45');
-        t(['notfound'], '', null);
-        s = set.from_str('((a(nother(number(17))(string(new string)))))');
-        t(['a', 'nother', 'string'], 'new string');
-        t(['a', 'nother', 'number'], '17');
     });
 });
 
