@@ -2780,7 +2780,8 @@ describe('peer-relay', function(){
       });
     });
   });
-  const xit = (name, role, test)=>it(name+'_'+role, ()=>test_run(role, test));
+  const xit = (name, role, test)=>it(name+'_'+role, ()=>test_run(role, test))
+  .timeout(4000); // XXX HACK: check why tests are slow
   // XXX TODO:
   // - check etask error handling of unchaught errors
   // - add test for failures (missing events, event mismatch etc)
