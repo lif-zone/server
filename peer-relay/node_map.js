@@ -19,8 +19,7 @@ set(id, node){
   if (!node.self){
     node.avl_node = this.avl.insert(id, node);
     node.avl = this.avl;
-  }
-  else {
+  } else {
     assert(!this.self);
     this.id = node.id;
   }
@@ -40,7 +39,6 @@ del(id){
   this.map.delete(id.s);
   this.avl.remove(id);
 }
-
 get_conn(opt){
   let {ids, create} = opt, hash = conn_hash(ids);
   let conn = this.conn.get(hash);
