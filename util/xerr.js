@@ -315,8 +315,7 @@ E.log_max_size = 200;
 E.buffered = false;
 chrome = self.chrome;
 E.conf = self.conf;
-E.level = self.is_tpopup ? L.CRITICAL : E.conf && E.conf.xerr_level ?
-    L[self.conf.xerr_level] : L.WARN;
+E.level = E.conf && E.conf.xerr_level ? L[self.conf.xerr_level] : L.WARN;
 
 var console_method = function(l){
     return l<=L.ERR ? 'error' : !chrome ? 'log' : l===L.WARN ? 'warn' :
