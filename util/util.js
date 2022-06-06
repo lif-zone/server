@@ -205,19 +205,6 @@ E.clone = function(obj){ // like _.clone
     return E.extend({}, obj);
 };
 
-E.freeze_deep = function(obj){
-    if (typeof obj=='object')
-    {
-        for (var prop in obj)
-        {
-            // eslint-disable-next-line no-prototype-builtins
-            if (obj.hasOwnProperty(prop))
-                E.freeze_deep(obj[prop]);
-        }
-    }
-    return Object.freeze(obj);
-};
-
 // Limitations:
 // We know that not every data type can be reliably compared for equivalence
 // (other than with ===). In equal_deep, we try to be conservative, returning
