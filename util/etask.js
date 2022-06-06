@@ -113,7 +113,7 @@ function Etask(opt, states){
     this.name = this._name = this.parent = this.cancelable =
     this.tm_create = this._alarm = this.tm_completed = this.parent_type =
     this.info = this.then_waiting = this.free = this.parent_guess =
-    this.child_guess = this.wait_retval = this.this = undefined;
+    this.child_guess = this.wait_retval = this.this = this._ = undefined;
     // init fields
     this.name = opt.name;
     this._name = this.name===undefined ? 'noname' : this.name;
@@ -127,6 +127,7 @@ function Etask(opt, states){
     this.tm_create = Date.now();
     this.info = {};
     this.this = opt.this;
+    this._ = opt._;
     var idx = this.states.idx = {};
     for (var i=0; i<states.length; i++)
     {
