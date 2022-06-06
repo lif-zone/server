@@ -6,34 +6,6 @@ const is_node = typeof window==='undefined';
 const E = {};
 export default E;
 
-// XXX: rm, use date.monotonic
-E.monotonic = function(){
-    let now = Date.now(), last = E.monotonic.last||0;
-    if (now < last)
-        now = last;
-    last = now;
-    return now;
-};
-
-// XXX: rm, use etask
-E.sleep = function(ms){
-  let wait = E.wait();
-  setTimeout(()=>wait.continue(), ms);
-  return wait;
-};
-
-// XXX: rm, use etask
-E.wait = function(){
-  let resolve, reject;
-  let p = new Promise((_resolve, _reject)=>{
-    resolve = _resolve;
-    reject = _reject;
-  });
-  p.continue = o=>resolve(o);
-  p.throw = error=>reject(error);
-  return p;
-};
-
 E.is_inspect = function(){
   return !!process.execArgv.find(s=>/inspect/.test(s)); };
 
