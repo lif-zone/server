@@ -77,13 +77,13 @@ class Res extends EventEmitter {
     let {req_id, timeout} = this;
     assert(!this.sent[seq], 'timeout already set '+seq);
     this.sent[seq] = {};
-    this.sent[seq].et_timeout = etask({'this': this}, function*res_timeout(){
+    this.sent[seq].et_timeout = etask({_: this}, function*res_timeout(){
       yield etask.sleep(timeout);
-      delete this.this.sent[seq];
-      this.this.emit('fail', {error: 'timeout', req_id, seq});
+      delete this._.sent[seq];
+      this._.emit('fail', {error: 'timeout', req_id, seq});
       // XXX: support per-req timeout and allow to specify if fatal or retry
       // XXX: close req
-      this.this.clr_timeout();
+      this._.clr_timeout();
     });
   }
   clr_timeout(ack){

@@ -111,10 +111,10 @@ find_bidi(id){
 schedule_build_rtt_graph(){
   if (this.build_rtt_timer)
     return;
-  this.build_rtt_timer = etask({'this': this}, function*build_rtt_timer(){
+  this.build_rtt_timer = etask({_: this}, function*build_rtt_timer(){
     yield etask.sleep(1000);
-    this.this.build_rtt_timer = undefined;
-    this.this.build_rtt_graph();
+    this._.build_rtt_timer = undefined;
+    this._.build_rtt_graph();
   });
 }
 build_rtt_graph(){

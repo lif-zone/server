@@ -63,8 +63,8 @@ export default class Node extends EventEmitter {
   // switch (a){
   // for (...){
   // } else {
-  _onConnection = channel=>etask({'this': this}, function*_onConnection(){
-    let _this = this.this;
+  _onConnection = channel=>etask({_: this}, function*_onConnection(){
+    let _this = this._;
     const onClose = ()=>{
       delete _this.pending[channel.id];
       _this.peers.remove(channel.id);
@@ -118,9 +118,9 @@ export default class Node extends EventEmitter {
     let req = new Req({node: this, dst});
     req.send(body);
   }
-  _on_conn_info_r = msg=>etask({'this': this}, function*(){
+  _on_conn_info_r = msg=>etask({_: this}, function*(){
     let {from} = msg;
-    let _this = this.this;
+    let _this = this._;
     from = s2b(from);
     log.debug('conn_info_r');
     if (_this.peers.get(from))

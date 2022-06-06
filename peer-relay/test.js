@@ -604,8 +604,8 @@ class FakeWsConnector extends EventEmitter {
       this.url = 'wss://'+host+':'+port;
     }
   }
-  connect = url=>etask({'this': this}, function*connect(){
-    let _this = this.this;
+  connect = url=>etask({_: this}, function*connect(){
+    let _this = this._;
     let d = node_from_url(url), s = node_from_id(_this.id);
     assert(d, 'node not found for url '+url);
     let channel = new FakeChannel({local_id: s.id, id: d.id});
@@ -623,8 +623,8 @@ class FakeWrtcConnector extends EventEmitter {
     this.id = id;
     this.supported = wrtc;
   }
-  connect = _d=>etask({'this': this}, function*connect(){
-    let _this = this.this;
+  connect = _d=>etask({_: this}, function*connect(){
+    let _this = this._;
     let d = node_from_id(_d), s = node_from_id(_this.id);
     let channel = new FakeChannel({local_id: s.id, id: d.id});
     channel.wrtcConnector = _this;
@@ -4049,6 +4049,7 @@ VP:
 - /util
   - rm set.js
   - etask({'_': this})
+- rm warning React... in eslint
 - lbuffer - how to get msg0 efficiently
 - memory leaks (when we remove stuff from cache eg, routes)
 - rtt calculation - calculate it during the connection and pass it along fwd

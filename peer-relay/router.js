@@ -50,9 +50,9 @@ export default class Router extends EventEmitter {
     let lbuffer = new LBuffer(msg); // XXX: WIP
     this._send(lbuffer);
   }
-  _send = lbuffer=>etask({'this': this}, function*(){
+  _send = lbuffer=>etask({_: this}, function*(){
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
-    let _this = this.this, channel, rt;
+    let _this = this._, channel, rt;
     let from = NodeId.from(msg.from), to = NodeId.from(msg.to);
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
@@ -71,6 +71,8 @@ export default class Router extends EventEmitter {
         return _this.emit('message', lbuffer);
       else if (!channel)
         return;
+      if (route.length>1)
+        rt = {path: Array.from(route)};
     }
     if (!channel && msg.fuzzy) // XXX: why it was not handle in fuzzy part
       return _this.emit('message', lbuffer);
@@ -93,11 +95,11 @@ export default class Router extends EventEmitter {
     }
     yield channel.send(lbuffer.to_str());
   });
-  _on_channel_msg = (data, channel)=>etask({'this': this},
+  _on_channel_msg = (data, channel)=>etask({_: this},
     function*_on_channel_msg(){
     let lbuffer = LBuffer.from(data); // XXX: WIP
     let msg = lbuffer.msg();
-    let _this = this.this, nonce = lbuffer.nonce();
+    let _this = this._, nonce = lbuffer.nonce();
     _this.update_conn(lbuffer);
     if (!nonce)
       return log('invalid message nonce %s', dbg_msg(msg));
@@ -157,9 +159,9 @@ export default class Router extends EventEmitter {
     state.ts = o.ts = ts;
     if (state.et_timeout)
       state.et_timeout.return();
-    state.et_timeout = etask({'this': this}, function*track_timeout(){
-      yield etask.sleep(this.this.state_timeout);
-      delete this.this.state[hash];
+    state.et_timeout = etask({_: this}, function*track_timeout(){
+      yield etask.sleep(this._.state_timeout);
+      delete this._.state[hash];
     });
   }
   get_route(d){
