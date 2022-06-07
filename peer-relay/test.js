@@ -2922,7 +2922,8 @@ describe('peer-relay', function(){
       bc.d>!req(body:ping res:ping_r) 60s cb.a>!req(body:ping res:ping_r) 60s
       cb>!req(body:ping res:ping_r) 60s cd>!req(body:ping res:ping_r) 60s
       da>!req(body:ping res:ping_r) 60s da.b>!req(body:ping res:ping_r) 60s
-      dc>!req(body:ping res:ping_r)`);
+      dc>!req(body:ping res:ping_r) 60s
+      bc.d>!req(body:ping res:ping_r) dc.b>!req(body:ping res:ping_r)`);
     t('4_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       rt_add(a:dc b:ad c:da d:cb)
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
