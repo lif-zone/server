@@ -58,22 +58,25 @@ export default class Router extends EventEmitter {
       return xerr('drop msg max hop reached');
     if (!_this._channels.size) // XXX: verify and test it
       return _this._queue.push(lbuffer);
-    if (!msg.fuzzy &&
-      (channel = _this.get_channel_from_id(NodeId.from(msg.to))));
-    else if (channel = _this.get_channel_from_rt(msg0));
-    else if ((rt = _this.get_route(msg.to)) &&
-      (channel = _this.get_channel_from_path(rt.path)));
-    else if (!msg.fuzzy && (channel = _this.get_channel_from_state(msg)));
-    else {
-      let route = _this.node_map.get_best_route(to);
-      channel = _this.get_channel_from_path(route);
-      if (!channel && msg.fuzzy)
-        return _this.emit('message', lbuffer);
-      else if (!channel)
-        return;
-      if (route.length>1)
-        rt = {path: Array.from(route)};
-    }
+    if (!msg.fuzzy){
+      if (channel = _this.get_channel_from_id(NodeId.from(msg.to)));
+      else if (channel = _this.get_channel_from_rt(msg0));
+      else if ((rt = _this.get_route(msg.to)) &&
+        (channel = _this.get_channel_from_path(rt.path)));
+      // XXX: need to get also route/path when using state
+      else if (channel = _this.get_channel_from_state(msg));
+      else {
+        let route = _this.node_map.get_best_route(to);
+        channel = _this.get_channel_from_path(route);
+        if (!channel && msg.fuzzy)
+          return _this.emit('message', lbuffer);
+        else if (!channel)
+          return;
+        if (route.length>1)
+          rt = {path: Array.from(route)};
+      }
+    } else
+      assert.fail(); // XXX: TODO
     if (!channel && msg.fuzzy) // XXX: why it was not handle in fuzzy part
       return _this.emit('message', lbuffer);
     if (!channel || channel.id.eq(from))

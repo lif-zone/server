@@ -2293,12 +2293,12 @@ describe('node_id', function(){
       assert.equal(NodeId.from(a).dist(NodeId.from(b)), exp);
       assert.equal(NodeId.from(b).dist(NodeId.from(a)), exp);
     };
-    t('00000000000000000000', '00000000000000000000', 0.5);
+    t('00000000000000000000', '00000000000000000000', 0);
     t('00000000000000000000', 'ffffffffffffffffffff', 0);
     t('00000000000000000000', '3fffffffffffffffffff', 0.25);
     t('00000000000000000000', '7fffffffffffffffffff', 0.5);
     t('00000000000000000000', 'bfffffffffffffffffff', 0.25);
-    t('3fffffffffffffffffff', '3fffffffffffffffffff', 0.5);
+    t('3fffffffffffffffffff', '3fffffffffffffffffff', 0);
     t('3fffffffffffffffffff', '7fffffffffffffffffff', 0.25);
     t('3fffffffffffffffffff', 'bfffffffffffffffffff', 0.5);
     t('3fffffffffffffffffff', '00000000000000000000', 0.25);
@@ -2309,7 +2309,7 @@ describe('node_id', function(){
       assert.equal(NodeId.from(a).dist_bits(NodeId.from(b)), exp);
       assert.equal(NodeId.from(b).dist_bits(NodeId.from(a)), exp);
     };
-    t('00000000000000000000', '00000000000000000000', 52);
+    t('00000000000000000000', '00000000000000000000', 0);
     t('00000000000000000000', '00000000000001000000', 0);
     t('00000000000000000000', '00000000000010000000', 1);
     t('00000000000000000000', '00000000000100000000', 5);
@@ -2327,6 +2327,7 @@ describe('node_id', function(){
     t('0', '.37', '51.56559717585422');
     t('0', '.375', '51.584962500721154');
     t('0', '.38', '51.60407132366886');
+    t('0', '.4999', '51.99971143213407');
     t('0', '.5', 52);
     t('0', '.75', 51);
   });
@@ -2354,8 +2355,8 @@ describe('node_id', function(){
       rtt_pb: 25, dist_bits_sd: 52, dist_bits_vd: 48});
     t({s: '0', d: '.5', v: '.499', rtt: 100}, {done: 8.966,
       rtt_pb: 11.154, dist_bits_sd: 52, dist_bits_vd: 43.034});
-    // XXX derry: review
-    t({s: '0', d: '.5', v: '.5', rtt: 100}, {good: false});
+    t({s: '0', d: '.5', v: '.5', rtt: 100}, {done: 52,
+      rtt_pb: 1.923, dist_bits_sd: 52, dist_bits_vd: 0});
     t({s: '0', d: '.5', v: '.75', rtt: 100}, {done: 1,
       rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
     t({s: '.25', d: '.5', v: '.375', rtt: 100}, {done: 1,
@@ -2366,9 +2367,7 @@ describe('node_id', function(){
       rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
     t({s: '.0025', d: '.0075', v: '.005', rtt: 100}, {done: 1,
       rtt_pb: 100, dist_bits_sd: 45.356, dist_bits_vd: 44.356});
-    // XXX derry: review
-    t({s: '0', d: '0', v: '.25', rtt: 100}, {done: 1,
-      rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
+    t({s: '0', d: '0', v: '.25', rtt: 100}, {good: false});
     t({s: '0', d: '.5', v: '0', rtt: 100}, {good: false});
     t({s: '0', d: '.5', v: '1', rtt: 100}, {good: false});
     t({s: '.25', d: '.5', v: '.24', rtt: 100}, {good: false});
@@ -2850,8 +2849,8 @@ describe('peer-relay', function(){
       t(n2.prev(), n3);
       t(n3.prev(), n1);
     });
-    it('node_itr2', ()=>{
-      const t = (s, d, peers, exp)=>{
+    it('node_itr', ()=>{
+      const _t = (s, d, peers, exp)=>{
         let map = new NodeMap(NodeId.from(s));
         peers.split(' ')
         .forEach(p=>map.get({id: NodeId.from(p), create: true}));
@@ -2863,17 +2862,28 @@ describe('peer-relay', function(){
         let n = itr.next();
         assert.equal(n && n.id.d, null);
       };
-      // XXX: BUG
-      t('.49', '.1', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
-        '.9 0.8 .7 .6 .5 .4 .3 .2 .1');
-      // XXX: BUG
-      t('.51', '.1', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
-        '.9 0.8 .7 .6 .5 .4 .3 .2 .1');
-      t('.51', '.51', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      const t = (d, peers, exp)=>{
+        _t('.1', d, peers, exp);
+        _t('.5', d, peers, exp);
+        _t('.9', d, peers, exp);
+      };
+      t('.09', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+        '.1 .2 .9 .3 .8 .4 .7 .5 .6');
+      t('.1', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+        '.1 .2 .3 .9 .8 .4 .5 .7 .6');
+      t('.11', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+        '.1 .2 .3 .9 .4 .8 .5 .7 .6');
+      t('.51', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
         '.5 .6 .4 .7 .3 .8 .2 .9 .1');
-      t('.51', '.49', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t('.49', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
         '.5 .4 .6 .3 .7 .2 .8 .1 .9');
-      t('.44', '.429', '.1 .4 .41 .42 .43 .5 .9 .99',
+      t('.89', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+        '.9 .8 .7 .1 .6 .2 .5 .3 .4');
+      t('.9', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+        '.9 .8 .7 .1 .6 .2 .5 .3 .4');
+      t('.91', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+        '.9 .8 .1 .7 .2 .6 .3 .5 .4');
+      t('.429', '.1 .4 .41 .42 .43 .5 .9 .99',
         '.43 .42 .41 .4 .5 .1 .99 .9');
     });
     describe('graph', ()=>{
@@ -2925,16 +2935,17 @@ describe('peer-relay', function(){
       ab,bc,ca>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r) -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
-    // XXX: implement stateful req
     t('4_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
       ab.c>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
       ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
-      bc.d>!req(body:ping res:ping_r) 60s cb.a>!req(body:ping res:ping_r) 60s
+      bc.d>!req(body:ping res:ping_r) 60s cba>!req(body:ping res:ping_r) 60s
       cb>!req(body:ping res:ping_r) 60s cd>!req(body:ping res:ping_r) 60s
-      da>!req(body:ping res:ping_r) 60s da.b>!req(body:ping res:ping_r) 60s
+      da>!req(body:ping res:ping_r) 60s dcb>!req(body:ping res:ping_r) 60s
       dc>!req(body:ping res:ping_r) 60s
-      bc.d>!req(body:ping res:ping_r) dc.b>!req(body:ping res:ping_r)`);
+      bcd>!req(body:ping res:ping_r)
+      dc.b>!req(body:ping2 res:ping_r) // XXX BUG in state handling
+      60s dcb>!req(body:ping2 res:ping_r)`);
     t('4_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       rt_add(a:dc b:ad c:da d:cb)
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
@@ -2957,7 +2968,7 @@ describe('peer-relay', function(){
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       ab,bc,cd,de,ea>!connect ae.d>!req(id:r1 body:ping res:ping_r) 59s -
       a.ed<!req(id:r2 body:ping res:ping_r) 60s -
-      a.b.cd<!req(id:r3 body:ping res:ping_r) 60s -
+      aed<!req(id:r3 body:ping res:ping_r) 60s -
       `);
     t('5_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       ab,bc,cd,de,ea>!connect rt_add(a:bcd d:ea)
@@ -3018,6 +3029,7 @@ describe('peer-relay', function(){
       eX.c.d.a~e>!get_peer
       eX.c.d.a~e>!get_peer`);
   });
+  if (0) // XXX TODO
   describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXYnopz', test);
     t('long:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
@@ -3049,7 +3061,8 @@ describe('peer-relay', function(){
       ab,bX,Xn,no,oa,zX>!connect zX.b.a~z>!get_peer`);
     // XXX: complete and fix test
     t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
-      XY,aX>!connect aX~a>!get_peer bY>!connect
+      XY,aX>!connect aX~a>!get_peer
+      bY>!connect
       aX.Y>!req(body:ping res:ping_r) // XXX: rm
       b.YXa~b>!get_peer
     `);
@@ -4043,6 +4056,10 @@ VP:
     - when we got to closets, make one more jump over it
   * select to forward message with the path that has lowest rtt per bit
   * use Node_map+path selection instead existing obsolete code + fix tests
+- with derry:
+  - rtt_pb_via
+    - what to do when distances are 0 but nodes not equal?
+    - how to handle when s===d (for fuzzy)
 - remove obsolete
   - review all 'xxx' tests
   - check all NodeId.from in router

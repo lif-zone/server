@@ -57,9 +57,7 @@ rtt_pb_via(dst, via, via_rtt){ return rtt_pb_via(this, dst, via, via_rtt); }
 
 function dist(a, b){
   let d = Math.abs(a.d-b.d);
-  if (!d && a.eq(b)) // XXX: review logic
-    return 0.5;
-  return d = d>=0.5 ? 1-d : d;
+  return d>=0.5 ? 1-d : d;
 }
 
 function dist_bits(a, b){
