@@ -2837,7 +2837,7 @@ describe('peer-relay', function(){
       test_node_find(X:0.26 next:c prev:b bidi:c)
       test_node_find(X:0.41 next:a prev:d bidi:d)
       test_node_find(X:0.91 next:a prev:d bidi:a)`);
-    it('node_itr', ()=>{
+    it('next_prev', ()=>{
       const t = (val, exp)=>assert.equal(val, exp);
       let node_map = new NodeMap(NodeId.from(0.44));
       let n1 = node_map.get({id: NodeId.from(0.43), create: true});
@@ -2849,21 +2849,20 @@ describe('peer-relay', function(){
       t(n1.prev(), n2);
       t(n2.prev(), n3);
       t(n3.prev(), n1);
-      let n4 = node_map.get({id: NodeId.from(0.4), create: true});
-      let n5 = node_map.get({id: NodeId.from(0.5), create: true});
-      let n6 = node_map.get({id: NodeId.from(0.1), create: true});
-      let n7 = node_map.get({id: NodeId.from(0.99), create: true});
-      let n8 = node_map.get({id: NodeId.from(0.9), create: true});
-      let itr = node_map.node_itr(0.429);
-      t(itr.next().id.d, n1.id.d);
-      t(itr.next().id.d, n2.id.d);
-      t(itr.next().id.d, n3.id.d);
-      t(itr.next().id.d, n4.id.d);
-      t(itr.next().id.d, n5.id.d);
-      t(itr.next().id.d, n6.id.d);
-      t(itr.next().id.d, n7.id.d);
-      t(itr.next().id.d, n8.id.d);
-      t(itr.next(), null);
+    });
+    it('node_itr2', ()=>{
+      const t = (s, d, peers, exp)=>{
+        let map = new NodeMap(NodeId.from(s));
+        peers.split(' ')
+        .forEach(p=>map.get({id: NodeId.from(p), create: true}));
+        let itr = map.node_itr(NodeId.from(d));
+        exp.split(' ').forEach(e=>{
+          let n = itr.next();
+          assert.equal(n && n.id.d, e ? NodeId.from(e).d : null);
+        });
+      };
+      t('.44', '.429', '.1 .4 .41 .42 .43 .5 .9 .99',
+        '.43 .42 .41 .4 .5 .1 .99 .9');
     });
     describe('graph', ()=>{
       t('basic', `mode(msg req) conf(id:a-mXYZn-z rtt(100 zX:500)) aX>!connect
