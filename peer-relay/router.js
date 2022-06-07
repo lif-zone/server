@@ -85,8 +85,11 @@ export default class Router extends EventEmitter {
         rt = rt || xutil.get(msg0, ['rt', 'path']) &&
           {path: xutil.get(msg0, ['rt', 'path'])};
         if (rt && Array.isArray(rt.path)){
-          rt = {path: Array.from(rt.path)};
-          rt.path.shift();
+          if (rt.path.length>1){
+            rt = {path: Array.from(rt.path)};
+            rt.path.shift();
+          } else
+            rt = undefined;
         }
         msg2.rt = rt;
       }

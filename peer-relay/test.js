@@ -3036,8 +3036,7 @@ describe('peer-relay', function(){
       pX.o~p>!get_peer`);
     t('ring:abXnoz~z', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,zX>!connect zX.b.a~z>!get_peer`);
-    // XY aX bY
-    if (0) // XXX: fixme
+    // XXX: complete and fix test
     t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
       XY,aX>!connect aX~a>!get_peer bY>!connect
       aX.Y>!req(body:ping res:ping_r) // XXX: rm
