@@ -2850,11 +2850,14 @@ describe('peer-relay', function(){
       t(n3.prev(), n1);
     });
     it('node_itr', ()=>{
-      const _t = (s, d, peers, exp)=>{
+      const _t = (s, d, peers, exclude, range, exp)=>{
         let map = new NodeMap(NodeId.from(s));
         peers.split(' ')
         .forEach(p=>map.get({id: NodeId.from(p), create: true}));
-        let itr = map.node_itr(NodeId.from(d));
+        let itr = map.node_itr(NodeId.from(d),
+          {exclude: exclude && NodeId.from(exclude),
+          range: range && {min: NodeId.from(range[0]),
+          max: NodeId.from(range[1])}});
         exp.split(' ').forEach(e=>{
           let n = itr.next();
           assert.equal(n && n.id.d, e ? NodeId.from(e).d : null);
@@ -2862,29 +2865,53 @@ describe('peer-relay', function(){
         let n = itr.next();
         assert.equal(n && n.id.d, null);
       };
-      const t = (d, peers, exp)=>{
-        _t('.1', d, peers, exp);
-        _t('.5', d, peers, exp);
-        _t('.9', d, peers, exp);
+      const t = (opt, exp)=>{
+        _t('.1', opt.d, opt.peers, opt.exclude, opt.range, exp);
+        _t('.5', opt.d, opt.peers, opt.exclude, opt.range, exp);
+        _t('.9', opt.d, opt.peers, opt.exclude, opt.range, exp);
       };
-      t('.09', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t({d: '.09', peers: '.1 .2 .3 .4 .5 .6 .7 .8 .9'},
         '.1 .2 .9 .3 .8 .4 .7 .5 .6');
-      t('.1', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t({d: '.1', peers: '.1 .2 .3 .4 .5 .6 .7 .8 .9'},
         '.1 .2 .3 .9 .8 .4 .5 .7 .6');
-      t('.11', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t({d: '.11', peers: '.1 .2 .3 .4 .5 .6 .7 .8 .9'},
         '.1 .2 .3 .9 .4 .8 .5 .7 .6');
-      t('.51', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t({d: '.51', peers: '.1 .2 .3 .4 .5 .6 .7 .8 .9'},
         '.5 .6 .4 .7 .3 .8 .2 .9 .1');
-      t('.49', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t({d: '.49', peers: '.1 .2 .3 .4 .5 .6 .7 .8 .9'},
         '.5 .4 .6 .3 .7 .2 .8 .1 .9');
-      t('.89', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t({d: '.89', peers: '.1 .2 .3 .4 .5 .6 .7 .8 .9'},
         '.9 .8 .7 .1 .6 .2 .5 .3 .4');
-      t('.9', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t({d: '.9', peers: '.1 .2 .3 .4 .5 .6 .7 .8 .9'},
         '.9 .8 .7 .1 .6 .2 .5 .3 .4');
-      t('.91', '.1 .2 .3 .4 .5 .6 .7 .8 .9',
+      t({d: '.91', peers: '.1 .2 .3 .4 .5 .6 .7 .8 .9'},
         '.9 .8 .1 .7 .2 .6 .3 .5 .4');
-      t('.429', '.1 .4 .41 .42 .43 .5 .9 .99',
+      t({d: '.429', peers: '.1 .4 .41 .42 .43 .5 .9 .99'},
         '.43 .42 .41 .4 .5 .1 .99 .9');
+    /* XXX: derry TODO
+    abXnop
+    a:0.05 b:0.1 x:0.5 n:0.55 o:0.6 p:0.65
+    at p: [any] !p [any]
+    at X: [X+1, X-1] !p (X,X)
+    at n: [n+1, X-1] !p (n,X)
+    at o: [o+1, X-1] !p (o,X)
+    at a: [o+1, a-1] !p (o,a): p is not in range - so END
+    */
+      // at p:0.65
+      t({d: '.65', peers: '.5 .65'}, '.65 .5');
+      t({d: '.65', peers: '.5 .65', exclude: '.65'}, '.5');
+      t({d: '.65', peers: '.5 .65', exclude: '.5'}, '.65');
+      // at X:0.5
+      t({d: '.65', peers: '0.1 0.55 .65'}, '.65 .55 .1');
+      t({d: '.65', peers: '0.1 0.55 .65', exclude: '.65'}, '.55 .1');
+      t({d: '.65', peers: '0.1 0.55 .65', exclude: '.65', range: ['.5', '.5']},
+        '.55 .1');
+      // at n:0.55
+      t({d: '.65', peers: '0.5 0.55 .6'}, '.6 .55 .5');
+      t({d: '.65', peers: '0.5 0.55 .6', exclude: '.55'}, '.6 .5');
+      if (0)
+      t({d: '.65', peers: '0.5 0.55 .6', exclude: '.55', range: ['.55', '.5']},
+         '.6');
     });
     describe('graph', ()=>{
       t('basic', `mode(msg req) conf(id:a-mXYZn-z rtt(100 zX:500)) aX>!connect

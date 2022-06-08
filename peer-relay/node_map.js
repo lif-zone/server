@@ -143,7 +143,7 @@ build_rtt_graph(){
     }
   }
 }
-node_itr(id){ return new NodeItr(this, id); }
+node_itr(id, opt){ return new NodeItr(this, id, opt); }
 destroy(){
   if (this.build_rtt_timer)
     this.build_rtt_timer.return();
@@ -207,8 +207,9 @@ function conn_hash(ids){ return ids[0].cmp(ids[1])<0 ?
   ids[0].s+'_'+ids[1].s : ids[1].s+'_'+ids[0].s; }
 
 class NodeItr extends EventEmitter {
-constructor(node_map, id){
+constructor(node_map, id, opt){
   super();
+  this.opt = opt||{};
   if (typeof id=='number')
     this.start = new NodeId(id);
   else if (typeof id=='string')
@@ -226,10 +227,13 @@ constructor(node_map, id){
   this.p = this.n && this.n.prev();
 }
 next(){
+  let {exclude} = this.opt;
   if (!this.n)
     return null;
   if (this.n===this.p){
     this.n = null;
+    if (exclude && exclude.eq(this.p.id))
+      return null;
     return this.p;
   }
   let at;
@@ -242,6 +246,8 @@ next(){
     at = this.p;
     this.p = this.p.prev();
   }
+  if (exclude && exclude.eq(at.id))
+    return this.next();
   return at;
 }
 }

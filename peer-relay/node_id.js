@@ -40,7 +40,7 @@ get i(){
       this._i = BigInt.asUintN(53, BigInt('0x'+this.s.slice(0, 14)));
     return this._i;
 }
-eq(id){ return this.s===id.s; }
+eq(id){ return !this.cmp(id); }
 cmp(id){
   let d = this.d - id.d;
   if (d)
