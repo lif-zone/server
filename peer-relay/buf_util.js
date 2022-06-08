@@ -7,6 +7,3 @@ export default E;
 
 E.buf_to_str = function(b){ return b ? b.toString('hex') : ''; };
 E.buf_from_str = function(s){ return Buffer.from(s, 'hex'); };
-
-// XXX: need test
-E.cmp = function(a, b){ return a.compare(b); };
