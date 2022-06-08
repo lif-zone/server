@@ -227,12 +227,14 @@ constructor(node_map, id, opt){
   this.p = this.n && this.n.prev();
 }
 next(){
-  let {exclude} = this.opt;
+  let {exclude, range} = this.opt;
   if (!this.n)
     return null;
   if (this.n===this.p){
     this.n = null;
     if (exclude && exclude.eq(this.p.id))
+      return null;
+    if (range && !this.p.id.in_range(range))
       return null;
     return this.p;
   }
@@ -247,6 +249,8 @@ next(){
     this.p = this.p.prev();
   }
   if (exclude && exclude.eq(at.id))
+    return this.next();
+  if (range && !at.id.in_range(range))
     return this.next();
   return at;
 }

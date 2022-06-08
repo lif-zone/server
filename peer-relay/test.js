@@ -2887,30 +2887,37 @@ describe('peer-relay', function(){
         '.9 .8 .1 .7 .2 .6 .3 .5 .4');
       t({d: '.429', peers: '.1 .4 .41 .42 .43 .5 .9 .99'},
         '.43 .42 .41 .4 .5 .1 .99 .9');
-    /* XXX: derry TODO
-    abXnop
-    a:0.05 b:0.1 x:0.5 n:0.55 o:0.6 p:0.65
-    at p: [any] !p [any]
-    at X: [X+1, X-1] !p (X,X)
-    at n: [n+1, X-1] !p (n,X)
-    at o: [o+1, X-1] !p (o,X)
-    at a: [o+1, a-1] !p (o,a): p is not in range - so END
-    */
-      // at p:0.65
+      // abXno~p a:0.05 b:0.1 x:0.5 n:0.55 o:0.6 p:0.65
+      // at p: [any] !p [any]
+      // at X: [X+1, X-1] !p (X,X)
+      // at n: [n+1, X-1] !p (n,X)
+      // at o: [o+1, X-1] !p (o,X)
+      // at a: [o+1, a-1] !p (o,a): p is not in range - so END
+      // at p:.65
       t({d: '.65', peers: '.5 .65'}, '.65 .5');
       t({d: '.65', peers: '.5 .65', exclude: '.65'}, '.5');
       t({d: '.65', peers: '.5 .65', exclude: '.5'}, '.65');
-      // at X:0.5
-      t({d: '.65', peers: '0.1 0.55 .65'}, '.65 .55 .1');
-      t({d: '.65', peers: '0.1 0.55 .65', exclude: '.65'}, '.55 .1');
-      t({d: '.65', peers: '0.1 0.55 .65', exclude: '.65', range: ['.5', '.5']},
-        '.55 .1');
-      // at n:0.55
-      t({d: '.65', peers: '0.5 0.55 .6'}, '.6 .55 .5');
-      t({d: '.65', peers: '0.5 0.55 .6', exclude: '.55'}, '.6 .5');
-      if (0)
-      t({d: '.65', peers: '0.5 0.55 .6', exclude: '.55', range: ['.55', '.5']},
-         '.6');
+      // at X:.5
+      t({d: '.65', peers: '.05 .55 .65'}, '.65 .55 .05');
+      t({d: '.65', peers: '.05 .55 .65', exclude: '.65'}, '.55 .05');
+      t({d: '.65', peers: '.05 .55 .65', range: ['.5', '.5']},
+        '.65 .55 .05');
+      t({d: '.65', peers: '.05 .55 .65', exclude: '.65',
+        range: ['.5', '.5']}, '.55 .05');
+      // at n:.55
+      t({d: '.65', peers: '.5 .55 .6'}, '.6 .55 .5');
+      t({d: '.65', peers: '.5 .55 .6', exclude: '.55'}, '.6 .5');
+      t({d: '.65', peers: '.5 .55 .6', range: ['.55', '.5']}, '.6');
+      // at o:.6
+      t({d: '.65', peers: '.05 .55 .6'}, '.6 .55 .05');
+      t({d: '.65', peers: '.05 .55 .6', exclude: '.6'}, '.55 .05');
+      t({d: '.65', peers: '.05 .55 .6', range: ['.6', '.5']}, '.05');
+      t({d: '.65', peers: '.05 .55 .6', exclude: '.6', range: ['.6', '.5']},
+         '.05');
+      // at a:.05
+      t({d: '.65', peers: '.05 0.1 .6'}, '.6 .05 .1');
+      t({d: '.65', peers: '.05 0.1 .6', exclude: '.65'}, '.6 .05 .1');
+      t({d: '.65', peers: '.05 0.1 .6', range: ['.6', '.05']}, '');
     });
     describe('graph', ()=>{
       t('basic', `mode(msg req) conf(id:a-mXYZn-z rtt(100 zX:500)) aX>!connect
@@ -4068,20 +4075,18 @@ freq=8/100
 */
 /*
 VP:
-+ NodeId: dist, dist_bits
-+ if missing rtt, assume default 1000
++ node_itr exclude/range support
+* implement fuzzy routing with node_itr/range
 * path selection:
   + rm obsolete rt.range
-	- rm/unite get_peer/get_peer2 test
+    - rm/unite get_peer/get_peer2 test
   - fix 4_nodes_ring_state_timeout
-	- need tests where we pass route info when selecting best rtt
+    - need tests where we pass route info when selecting best rtt
   * calc_rtt_ob_via
     - review XXX with derry in test
     - check XXX on dist (!d && a.eq(b))
-  * replace +- fuzzy with ~ fuzzy
+  + replace +- fuzzy with ~ fuzzy
     - when we got to closets, make one more jump over it
-  * select to forward message with the path that has lowest rtt per bit
-  * use Node_map+path selection instead existing obsolete code + fix tests
 - with derry:
   - rtt_pb_via
     - what to do when distances are 0 but nodes not equal?
@@ -4098,7 +4103,7 @@ VP:
 - /util
   - rm set.js
   - etask({'_': this})
-- rm warning React... in eslint
++ rm warning React... in eslint
 - optimize mocha tests - improve sinon time api - by default, don't wait for
   external time to finish (eg. mongo/ls)
 - lbuffer - how to get msg0 efficiently
