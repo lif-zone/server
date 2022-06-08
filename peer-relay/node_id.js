@@ -49,6 +49,11 @@ cmp(id){
     return 0;
   return this.s < id.s ? -1 : 1;
 }
+in_range(range){
+  return range.min.cmp(range.max)>=0 ?
+    this.cmp(range.min)>0 || this.cmp(range.max)<0 :
+    this.cmp(range.min)>0 && this.cmp(range.max)<0;
+}
 dist(id){ return dist(this, id); }
 dist_bits(id){ return dist_bits(this, id); }
 
