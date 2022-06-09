@@ -182,7 +182,6 @@ function test_gen_ids(bits, total_bits){
 function rt_to_str(rt, dir){
   if (!rt)
     return '';
-  assert(util.xor(rt.range, rt.path));
   return path_to_str(rt.path, dir);
 }
 
@@ -386,6 +385,28 @@ function assert_rt(s, dir){
   return {path};
 }
 
+function range_to_str(range){
+  let min, max;
+  for (let name in t_conf.node_ids){
+    if (range.min.eq(t_conf.node_ids[name]))
+      min = name;
+    if (range.max.eq(t_conf.node_ids[name]))
+      max = name;
+  }
+  assert(min, 'range.min not found');
+  assert(max, 'range.max not found');
+  return min+'-'+max;
+}
+
+function assert_range(s){
+  let m = s.match(/^([a-zA-Z])-([a-zA-Z])/);
+  assert(m.length==3, 'invalid range '+s);
+  let min = t_conf.node_ids[m[1]], max = t_conf.node_ids[m[2]];
+  assert(min, s+' min not found '+m[1]);
+  assert(min, s+' max not found '+m[2]);
+  return {min, max};
+}
+
 function assert_support_wrtc(name){
   assert(support_wrtc(N(name)), 'node '+name+' does not support wrtc');
   return true;
@@ -470,13 +491,16 @@ function assert_event_c2(c, orig, fwd, event, call){
       assert(Array.isArray(fwd), 'invalid fwd '+stringify(fwd));
       expected = normalize(orig);
       let _rt = Array.from(c.rt2||[]);
+      let _range = Array.from(c.range2||[]);
       let _path = Array.from(c.path2||[]);
       Array.from(fwd).reverse().forEach(f=>{
         let rt = _rt.pop();
+        let range = _range.pop();
         let path = _path.pop();
         expected = build_cmd(normalize(f)+'fwd', expected+
           (path ? ' '+build_cmd('path', path_to_str(path)) : '')+
-          (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : ''));
+          (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
+          (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
       });
     }
     assert_event(event, expected);
@@ -694,9 +718,11 @@ class FakeChannel extends EventEmitter {
             build_cmd('rt', rt_to_str(m.rt)) : '';
           if (!t_conf.rt && xutil.get(m, ['rt', 'path']))
             srt = build_cmd('rt', rt_to_str(m.rt));
+          let srange = m.range && build_cmd('range',
+            range_to_str(NodeId.range_from_msg(m.range)));
           e = build_cmd(f+'fwd', e+
             (t_conf.path&&fwd ? ' '+build_cmd('path', path_to_str(path||[]))
-            : '')+(srt ? ' '+srt : ''));
+            : '')+(srt ? ' '+srt : '')+(srange ? ' '+srange : ''));
           path.push(fwd_d_id(f));
         });
       }
@@ -966,9 +992,8 @@ const fake_send_msg = (c, msg)=>etask(function*(){
         let rtt = t_conf.rtt.conn[
           string.sort_char(fwd_s(c.fwd, i)+fwd_d(c.fwd, i))]||t_conf.rtt.def;
         let msg2 = {from: fwd_s_id(c.fwd, i), to: fwd_d_id(c.fwd, i),
-          type: 'fwd', rtt, rt: c.rt2[i]};
-        if (!xutil.get(msg2, ['rt', 'path']))
-          msg2.rt = {range: {min: fwd_d_id(c.fwd, i), max: msg.to}};
+          type: 'fwd', rtt, rt: c.rt2[i],
+          range: NodeId.range_to_msg(c.range2[i])};
         lbuffer.add_json(msg2);
       }
     }
@@ -1764,10 +1789,11 @@ const cmd_fail = opt=>etask(function*req(){
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
-  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, path;
+  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range, path;
   util.forEach(arg, a=>{
     switch (a.cmd){
     case 'rt': rt = assert_rt(a.arg, c.dir); break;
+    case 'range': range = assert_range(a.arg); break;
     case 'path': path = assert_path(a.arg, c.dir); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
@@ -1778,6 +1804,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   f.path2.push(path);
   f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here!
   f.rt2.push(rt);
+  f.range2 = Array.from(c.range2||[]); // XXX: rm from here!
+  f.range2.push(range);
   if (t_pre_process){
     if (c.loop)
       return expand_loop_fwd(c);
@@ -1786,7 +1814,9 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   if (t_pre_process){
     return set_orig(c, _build_cmd(f.orig+
       (path ? ' '+build_cmd('path', path_to_str(path, c.dir)) : '')+
-      (rt ? ' '+build_cmd('rt', rt_to_str(rt, c.dir)) : ''), [dir_c(c)]));
+      (rt ? ' '+build_cmd('rt', rt_to_str(rt, c.dir)) : '')+
+      (range ? ' '+build_cmd('range', range_to_str(range, c.dir)) : ''),
+      [dir_c(c)]));
   }
   yield cmd_run_if_next_fake();
 });
@@ -2087,34 +2117,38 @@ function test_transform(s){
   if (_d==-1)
     return s;
   let dir = s[_d], pre = s.substr(0, _d), post = s.substr(_d+1, Infinity);
-  let a = [], p='', rt='';
+  let a = [], p='', rt='', range='';
   for (let i=0, open=false; i<pre.length; i++){
     let ch = s[i];
-    if (ch=='[')
-      open = true;
-    else if (ch==']')
+    if (['[', '{'].includes(ch))
+      open = ch;
+    else if ([']', '}'].includes(ch)){
+      assert(open=='[' && ch==']' || open=='{' && ch=='}');
       open = false;
-    else if (open)
+    } else if (open=='[')
       rt += ch;
+    else if (open=='{')
+      range += ch;
     else if (ch==':'){
-      assert(!open, 'missing ] for '+s);
-      rt = rt ? ' rt('+rt+')' : '';
-      a.push({pre: p+dir, rt});
-      p = rt = '';
+      assert(!open, 'missing '+open+' close for '+s);
+      a.push({pre: p+dir, rt: rt ? ' rt('+rt+')' : '',
+        range: range ? ' range('+range+')' : ''});
+      p = rt = range = '';
     }
     else
       p += ch;
   }
   rt = rt ? ' rt('+rt+')' : '';
+  range = range ? ' range('+range+')' : '';
   let ret = '';
   if (dir=='>'){
-    a.push({pre: p+dir+post, rt});
+    a.push({pre: p+dir+post, rt, range});
     a = a.reverse();
   } else {
-    a.push({pre: p+dir, rt});
+    a.push({pre: p+dir, rt, range});
     a[0].pre += post;
   }
-  a.forEach((c, i)=>ret = !i ? c.pre : c.pre+'fwd('+ret+c.rt+')');
+  a.forEach((c, i)=>ret = !i ? c.pre : c.pre+'fwd('+ret+c.rt+c.range+')');
   return ret;
 }
 
@@ -2264,7 +2298,7 @@ describe('node_id', function(){
   });
   it('in_range', ()=>{
     const t = (range, id, exp)=>{
-      range = {min: NodeId.from(range.min), max: NodeId.from(range.max)};
+      range = NodeId.range_from_msg(range);
       id = NodeId.from(id);
       assert.equal(id.in_range(range), exp);
     };
@@ -2387,9 +2421,13 @@ describe('api', function(){
    t('bc:ab:ad>msg', `bc>fwd(ab>fwd(ad>msg))`);
    t('cd:bc:ab:ad>msg', `cd>fwd(bc>fwd(ab>fwd(ad>msg)))`);
    t('ab[c]:ad>msg', `ab>fwd(ad>msg rt(c))`);
+   t('ab{c-d}:ad>msg', `ab>fwd(ad>msg range(c-d))`);
+   t('ab[abc]{c-d}:ad>msg', `ab>fwd(ad>msg rt(abc) range(c-d))`);
    t('ab[cd]:ad>msg', `ab>fwd(ad>msg rt(cd))`);
    t('cd[x]:bc[y]:ab[z]:ad>msg',
      `cd>fwd(bc>fwd(ab>fwd(ad>msg rt(z)) rt(y)) rt(x))`);
+   t('cd{e-f}:bc{g-h}:ab{i-j}:ad>msg',
+     `cd>fwd(bc>fwd(ab>fwd(ad>msg range(i-j)) range(g-h)) range(e-f))`);
    t('ab:ad<msg', `ad<fwd(ab<msg)`);
    t('bc:ab:ad<msg', `ad<fwd(ab<fwd(bc<msg))`);
    t('cd:bc:ab:ad<msg', `ad<fwd(ab<fwd(bc<fwd(cd<msg)))`);
@@ -3062,31 +3100,22 @@ describe('peer-relay', function(){
       eX.c.d.a~e>!get_peer
       eX.c.d.a~e>!get_peer`);
   });
-  if (0) // XXX TODO
   describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXYnopz', test);
-    t('long:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
-      ab,bX,Xn,no,oa,pX>!connect
-      p~p>!get_peer
-      pX:p~p>msg(type:req cmd:get_peer)
-      Xn:pX:p~p>msg(type:req cmd:get_peer)
-      no:Xn:pX:p~p>msg(type:req cmd:get_peer)
-      // XXX missing one fwd oa>
-      po>*get_peer
-      on[Xp]:op>msg(type:res cmd:get_peer)
-      nX[p]:on[Xp]:op>msg(type:res cmd:get_peer)
-      Xp:nX[p]:on[Xp]:op>msg(type:res cmd:get_peer)
-      op>*get_peer_r`);
+    t('long:abXno~p', `mode(msg req) conf(id:a-mXYZn-z)
+      ab,bX,Xn,no,oa,pX>!connect p~p>!get_peer
+      pX{X-X}:p~p>msg(type:req cmd:get_peer)
+      Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
+      no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
+      oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
+      pa>*get_peer ao[nXp]:ap>msg(type:res cmd:get_peer)
+      on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
+      nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
+      Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer) ap>*get_peer_r`);
+    if (true) // XXX: WIP
+      return;
     t('ring:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect pX.n.o~p>!get_peer`);
-    /* XXX: derry TODO
-    abXnop
-    at p: [any] !p [any]
-    at X: [X+1, X-1] !p (X,X)
-    at n: [n+1, X-1] !p (n,X)
-    at o: [o+1, X-1] !p (o,X)
-    at a: [o+1, a-1] !p (o,a): p is not in range - so END
-    */
     t('star:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,aX,oX,pX>!connect
       pX.o~p>!get_peer`);

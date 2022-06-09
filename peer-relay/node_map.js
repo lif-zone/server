@@ -158,6 +158,12 @@ get_best_route(dst){
   }
   return best && best.path;
 }
+// XXX WIP: copy rtt_pb logic
+get_fuzzy_route(dst, exclude, range){
+  let itr = this.node_itr(dst, {exclude, range}), at;
+  at = itr.next();
+  return at && at.graph.path;
+}
 }
 
 class Node extends EventEmitter {

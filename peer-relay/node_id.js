@@ -84,9 +84,16 @@ function rtt_pb_via(src, dst, via, via_rtt){
   return ret;
 }
 
+function range_from_msg(range){ return range &&
+  {min: NodeId.from(range.min), max: NodeId.from(range.max)}; }
+function range_to_msg(range){ return range &&
+  {min: range.min.s, max: range.max.s}; }
+
 NodeId.from = function(id){ return new NodeId(id); };
 NodeId.cmp = function(a, b){ return a.cmp(b); };
 NodeId.bits = BITS; // XXX: check correct value
 NodeId.dist = dist;
 NodeId.dist_bits = dist_bits;
 NodeId.rtt_pb_via = rtt_pb_via;
+NodeId.range_from_msg = range_from_msg;
+NodeId.range_to_msg = range_to_msg;
