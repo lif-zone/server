@@ -59,16 +59,20 @@ export default class Router extends EventEmitter {
     if (!_this._channels.size) // XXX: verify and test it
       return _this._queue.push(lbuffer);
     if (msg.fuzzy){
-      range = NodeId.range_from_msg(msg0.range);
+      range = lbuffer.range();
       let route = _this.node_map.get_fuzzy_route(to, from, range);
       channel = _this.get_channel_from_path(route);
       if (!channel)
         return _this.emit('message', lbuffer);
-      if (route.length>1)
+      if (route.length>1){
         rt = {path: Array.from(route)};
-      range = !range ? {min: channel.id, max: channel.id} :
-        channel.id.cmp(range.min)>0 ? {min: channel.id, max: range.max} :
-        {min: range.min, max: channel.id};
+        range = undefined;
+      }
+      else {
+        range = !range ? {min: channel.id, max: channel.id} :
+          channel.id.cmp(range.min)>0 ? {min: channel.id, max: range.max} :
+          {min: range.min, max: channel.id};
+      }
     } else {
       if (channel = _this.get_channel_from_id(to));
       else if (channel = _this.get_channel_from_rt(msg0));

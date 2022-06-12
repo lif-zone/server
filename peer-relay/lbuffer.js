@@ -1,6 +1,7 @@
 // author: derry. coder: arik.
 'use strict'; /*jslint node:true, browser:true*/
 import xutil from '../util/util.js';
+import NodeId from './node_id.js';
 const stringify = JSON.stringify;
 
 export default class LBuffer {
@@ -47,6 +48,13 @@ export default class LBuffer {
   }
   nonce(){ return this.msg().nonce; }
   msg(){ return this.get_json(this.size()-1); }
+  range(){
+    for (let i=0; i<this.size(); i++){
+      let o = this.get_json(i);
+      if (o.range)
+        return NodeId.range_from_msg(o.range);
+    }
+  }
 }
 
 LBuffer.from = function(s){

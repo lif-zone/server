@@ -1928,14 +1928,16 @@ function expand_loop_fwd(c){
     for (let j=i+1; !l[i].dot && j<end && !l[j].dot; j++)
       rt += l[j].d;
     if (fuzzy){
-      let next = t_conf.node_ids[l[i].d];
-      assert(next, l[i].d+' missing id');
-      range = !range ? {min: next, max: next} : next.cmp(range.min)>0 ?
-        {min: next, max: range.max} : {min: range.min, max: next};
+      if (!rt){
+        let next = t_conf.node_ids[l[i].d];
+        assert(next, l[i].d+' missing id');
+        range = !range ? {min: next, max: next} : next.cmp(range.min)>0 ?
+          {min: next, max: range.max} : {min: range.min, max: next};
+      }
     }
     o.arg = prev+(rt ? ' rt('+
       (dir=='>' ? rt : rt.split('').reverse().join(''))+')' : '')+
-      (fuzzy ? ' range('+range_to_str(range)+')' : '');
+      (fuzzy && !rt ? ' range('+range_to_str(range)+')' : '');
     prev = _build_cmd(o.arg, [dir_c(o)]);
     set_orig(o, prev);
     a.push(o);
@@ -2652,14 +2654,22 @@ describe('peer-relay', function(){
         _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'pX.n.o>fwd(p~p>msg)',
           `pX:p~p>msg Xn:pX:p~p>msg no:Xn:pX:p~p>msg`);
         _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'pX.n.o~p>fwd(p~p>msg)',
-          `pX{X-X}:p~p>msg
-          Xn{n-X}:pX{X-X}:p~p>msg
-          no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg
-          `);
+          `pX{X-X}:p~p>msg Xn{n-X}:pX{X-X}:p~p>msg
+          no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg`);
         _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'pX.n.o.a~p>fwd(p~p>msg)',
           `pX{X-X}:p~p>msg Xn{n-X}:pX{X-X}:p~p>msg
           no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg
           oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg`);
+        _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'p.Xno~p>fwd(p~p>msg)',
+          `pX{X-X}:p~p>msg
+          Xn[o]:pX{X-X}:p~p>msg
+          no{o-X}:Xn[o]:pX{X-X}:p~p>msg`);
+        _T('mode(msg req) conf(id:a-mXYZn-z !node)',
+          'p.Xno.abcd~p>fwd(p~p>msg)', `pX{X-X}:p~p>msg Xn[o]:pX{X-X}:p~p>msg
+          no{o-X}:Xn[o]:pX{X-X}:p~p>msg oa{o-a}:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
+          ab[cd]:oa{o-a}:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
+          bc[d]:ab[cd]:oa{o-a}:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
+          cd{o-d}:bc[d]:ab[cd]:oa{o-a}:no{o-X}:Xn[o]:pX{X-X}:p~p>msg`);
         t('a~b>!get_peer', `a~b>!get_peer`);
         t('~ab<!get_peer', `~ab<!get_peer`);
         _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'pX.n.o.a~p>!get_peer',
@@ -3087,6 +3097,7 @@ describe('peer-relay', function(){
       abcd>!req(id:r1 body:ping res:ping_r) 59s -
       aed<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
+    // XXX: test for selecting best rtt with multi-path
   });
   describe('xxx', ()=>{
     if (true)
@@ -3160,15 +3171,11 @@ describe('peer-relay', function(){
       pX.o.a~p>!get_peer`);
     t('ring:abXnoz~z', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,zX>!connect zX.b.a.o~z>!get_peer`);
-    if (true) // XXX: WIP
-      return;
-    // XXX: complete and fix test
+    // XXX: add more multi-path tests
     t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
-      XY,aX>!connect aX~a>!get_peer
-      bY>!connect
-      aX.Y>!req(body:ping res:ping_r) // XXX: rm
-      b.YXa~b>!get_peer
-    `);
+      XY,aX>!connect aX.Y~a>!get_peer bY>!connect b.YXa~b>!get_peer`);
+    // XXX: verify that rt is not ignored
+    // XXX: test for selecting best rtt
   });
   // XXX: unite with get_peer tests
   if (0) // XXX: fixme
@@ -4157,6 +4164,7 @@ VP:
     - check XXX on dist (!d && a.eq(b))
   + replace +- fuzzy with ~ fuzzy
     - when we got to closets, make one more jump over it
+  - add test for selecign best rtt path with fuzzy/no-fuzzy dest + multi-path
 - with derry:
   - rtt_pb_via
     - what to do when distances are 0 but nodes not equal?
