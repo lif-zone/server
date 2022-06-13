@@ -27,7 +27,6 @@ export default class Router extends EventEmitter {
     this.maxHops = 20;
     // XXX: rm _ from properites + methods
     // XXX: memory leak - no cleanup for all
-    this._touched = {};
     this.state = {};
     this.node_map = new NodeMap();
     this.routes = {};
@@ -42,7 +41,6 @@ export default class Router extends EventEmitter {
   }
   send_msg(dst, msg){
     let nonce=''+Math.floor(1e15*Math.random());
-    this._touched[nonce] = true;
     msg.from = this.id.s;
     msg.to = dst;
     msg.nonce = nonce; // XXX: need test that will fail is this is missing
@@ -77,9 +75,15 @@ export default class Router extends EventEmitter {
         range = undefined;
       }
       else {
-        range = !range ? {min: channel.id, max: channel.id} :
-          channel.id.cmp(_this.id)>0 ? {min: channel.id, max: range.max} :
-          {min: range.min, max: channel.id};
+        if (!range)
+          range = {min: channel.id, max: channel.id};
+        else {
+          let range2 = {min: channel.id, max: range.max};
+          if (to.in_range(range2))
+            range = range2;
+          else
+            range = {min: range.min, max: channel.id};
+        }
       }
     } else {
       if (channel = _this.get_channel_from_rt(msg0));
@@ -97,8 +101,6 @@ export default class Router extends EventEmitter {
           rt = {path: Array.from(route)};
       }
     }
-    if (channel.id.eq(from))
-      return; // XXX: add err msg
     if (!(channel.local_id.eq(from) && channel.id.eq(to))){
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
@@ -128,16 +130,11 @@ export default class Router extends EventEmitter {
     _this.update_conn(lbuffer);
     if (!nonce)
       return log('invalid message nonce %s', dbg_msg(msg));
-    /* XXX: remove
-    if (nonce in _this._touched)
-      return log.debug('channel-msg dup %s', dbg_msg(msg));
-    */
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track_in(msg, channel);
-    _this._touched[nonce] = true;
     if (msg.to==_this.id.s)
       _this.emit('message', lbuffer);
-    else // relay
+    else
       yield _this._send(lbuffer);
   });
   _onChannelAdded(channel){

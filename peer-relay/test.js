@@ -1070,6 +1070,24 @@ function cmd_conf(opt){
       s += (s ? ' ' : '')+name+'=node:wss';
     push_cmd(s);
   }
+  if (t_pre_process)
+    return;
+}
+
+function cmd_sp(opt){
+  let {c, event} = opt, s = c.s && N(c.s);
+  assert(!event, 'got unexpected '+event);
+  assert(!c.arg, 'invalid arg '+c.orig);
+  assert(!c.d, 'invalid arg '+c.orig);
+  if (t_pre_process || s&&s.t.fake)
+    return;
+  if (s)
+    s.router.node_map.build_rtt_graph();
+  for (let name in t_nodes){
+    let node = t_nodes[name];
+    if (!node.t.fake)
+      node.router.node_map.build_rtt_graph();
+  }
 }
 
 function cmd_test_node_conn(opt){
@@ -1902,6 +1920,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*res_end': yield cmd_res(opt); break;
   case '*fail': yield cmd_fail(opt); break;
   case 'ms': yield cmd_ms(opt); break;
+  case '!sp': yield cmd_sp(opt); break;
   case 'test_node_conn': yield cmd_test_node_conn(opt); break;
   case 'test_node_find': yield cmd_test_node_find(opt); break;
   case 'test_node_graph': yield cmd_test_node_graph(opt); break;
@@ -1915,6 +1934,7 @@ function expand_loop_fwd(c){
   assert(t_pre_process);
   let a = [], l = c.loop, dir = l[0].dir, prev = c.arg;
   let fuzzy = get_fuzzy(l[l.length-1].d);
+  let to = N(l[l.length-1].d).id;
   assert(['fwd', 'msg'].includes(c.cmd), 'invalid loop '+c.cmd);
   if (c.cmd=='msg')
     prev = build_cmd(dir_str(l[0].s, l[l.length-1].d, l[0].dir)+c.cmd, c.arg);
@@ -1925,14 +1945,21 @@ function expand_loop_fwd(c){
     o.cmd = 'fwd';
     let end = i+1;
     for (; end<(fuzzy ? l.length-1 : l.length) && !l[end].dot; end++);
-    for (let j=i+1; !l[i].dot && j<end && !l[j].dot; j++)
+    for (let j=i+1; j<end && !l[j].dot; j++)
       rt += l[j].d;
     if (fuzzy){
       if (!rt){
         let next = t_conf.node_ids[l[i].d];
         assert(next, l[i].d+' missing id');
-        range = !range ? {min: next, max: next} : next.cmp(range.min)>0 ?
-          {min: next, max: range.max} : {min: range.min, max: next};
+        if (!range)
+          range = {min: next, max: next};
+        else {
+          let range2 = {min: next, max: range.max};
+          if (to.in_range(range2))
+            range = range2;
+          else
+            range = {min: range.min, max: next};
+        }
       }
     }
     o.arg = prev+(rt ? ' rt('+
@@ -2585,9 +2612,9 @@ describe('peer-relay', function(){
           ()=>etask(function*(){
           test_start();
           mode = mode||'mode(req)';
-          let setup = 'a=node(wss) b=node(wss) c=node(wss) d=node(wss) '+
-            'f=node(wss) e=node(wss) n=node(wss) o=node(wss) p=node(wss) '+
-            'X=node(wss) '+(mode ? mode+' ' : '');
+          let setup = (mode ? mode+' ' : '')+'a=node(wss) b=node(wss) '+
+            'c=node(wss) d=node(wss) f=node(wss) e=node(wss) n=node(wss) '+
+            'o=node(wss) p=node(wss) X=node(wss) ';
           let regex = new RegExp('^'+xescape.regex(setup));
           let res = yield test_pre_process(setup+test);
           if (both){
@@ -2629,12 +2656,12 @@ describe('peer-relay', function(){
           `bc>fwd(de>fwd(ab>msg(body(x)) rt(c)) rt(e))`);
         t('ab.c>msg(body:x)', `ab>fwd(ac>msg(body(x)))
           bc>fwd(ab>fwd(ac>msg(body(x))))`);
-        t('a.bcd>msg(body:x)', `ab>fwd(ad>msg(body(x)))
+        t('a.bcd>msg(body:x)', `ab>fwd(ad>msg(body(x)) rt(cd))
+          bc>fwd(ab>fwd(ad>msg(body(x)) rt(cd)) rt(d))
+          cd>fwd(bc>fwd(ab>fwd(ad>msg(body(x)) rt(cd)) rt(d)))`);
+        t('ab.cd>msg(body:x)', `ab>fwd(ad>msg(body(x)))
           bc>fwd(ab>fwd(ad>msg(body(x))) rt(d))
           cd>fwd(bc>fwd(ab>fwd(ad>msg(body(x))) rt(d)))`);
-        t('ab.cd>msg(body:x)', `ab>fwd(ad>msg(body(x)))
-          bc>fwd(ab>fwd(ad>msg(body(x))))
-          cd>fwd(bc>fwd(ab>fwd(ad>msg(body(x)))))`);
         t('abc.d>msg(body:x)', `ab>fwd(ad>msg(body(x)) rt(c))
           bc>fwd(ab>fwd(ad>msg(body(x)) rt(c)))
           cd>fwd(bc>fwd(ab>fwd(ad>msg(body(x)) rt(c))))`);
@@ -2660,16 +2687,31 @@ describe('peer-relay', function(){
           `pX{X-X}:p~p>msg Xn{n-X}:pX{X-X}:p~p>msg
           no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg
           oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg`);
-        _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'p.Xno~p>fwd(p~p>msg)',
-          `pX{X-X}:p~p>msg
-          Xn[o]:pX{X-X}:p~p>msg
-          no{o-X}:Xn[o]:pX{X-X}:p~p>msg`);
         _T('mode(msg req) conf(id:a-mXYZn-z !node)',
-          'p.Xno.abcd~p>fwd(p~p>msg)', `pX{X-X}:p~p>msg Xn[o]:pX{X-X}:p~p>msg
-          no{o-X}:Xn[o]:pX{X-X}:p~p>msg oa{o-a}:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
-          ab[cd]:oa{o-a}:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
-          bc[d]:ab[cd]:oa{o-a}:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
-          cd{o-d}:bc[d]:ab[cd]:oa{o-a}:no{o-X}:Xn[o]:pX{X-X}:p~p>msg`);
+          'p.X.no.abcd>fwd(pd>msg)', `pX:pd>msg Xn[o]:pX:pd>msg
+          no:Xn[o]:pX:pd>msg oa[bcd]:no:Xn[o]:pX:pd>msg
+          ab[cd]:oa[bcd]:no:Xn[o]:pX:pd>msg
+          bc[d]:ab[cd]:oa[bcd]:no:Xn[o]:pX:pd>msg
+          cd:bc[d]:ab[cd]:oa[bcd]:no:Xn[o]:pX:pd>msg`);
+        _T('mode(msg req) conf(id:a-mXYZn-z !node)',
+          'pX.no.abcd~p>fwd(p~p>msg)', `pX{X-X}:p~p>msg Xn[o]:pX{X-X}:p~p>msg
+          no{o-X}:Xn[o]:pX{X-X}:p~p>msg oa[bcd]:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
+          ab[cd]:oa[bcd]:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
+          bc[d]:ab[cd]:oa[bcd]:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
+          cd{o-d}:bc[d]:ab[cd]:oa[bcd]:no{o-X}:Xn[o]:pX{X-X}:p~p>msg`);
+        _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'bX.a~b>get_peer',
+          `bX{X-X}:b~b>msg(type:req cmd:get_peer)
+           Xa{a-X}:bX{X-X}:b~b>msg(type:req cmd:get_peer)`);
+        _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'p.Xno~p>fwd(p~p>msg)',
+          `pX[no]:p~p>msg
+          Xn[o]:pX[no]:p~p>msg
+          no{o-o}:Xn[o]:pX[no]:p~p>msg`);
+        _T('mode(msg req) conf(id:a-mXYZn-z !node)',
+          'p.Xno.abcd~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
+          no{o-o}:Xn[o]:pX[no]:p~p>msg oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
+          ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
+          bc[d]:ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
+          cd{o-d}:bc[d]:ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg`);
         t('a~b>!get_peer', `a~b>!get_peer`);
         t('~ab<!get_peer', `~ab<!get_peer`);
         _T('mode(msg req) conf(id:a-mXYZn-z !node)', 'pX.n.o.a~p>!get_peer',
@@ -2976,7 +3018,21 @@ describe('peer-relay', function(){
         '.9 .8 .1 .7 .2 .6 .3 .5 .4');
       t({d: '.429', peers: '.1 .4 .41 .42 .43 .5 .9 .99'},
         '.43 .42 .41 .4 .5 .1 .99 .9');
-      // abXno~p a:0.05 b:0.1 x:0.5 n:0.55 o:0.6 p:0.65
+      // aXY -> abXY~b a:0.1 b:0.2 X:0.5 Y:0.51
+      // at b [any] !b
+      // at a (a-a) !b
+      // at X (X-a) !b
+      // at Y (Y-a) !b
+      // at b:.2
+      t({d: '.2', peers: '.1'}, '.1');
+      // at a:.1
+      t({d: '.2', peers: '.5 .51', range: ['.1', '.1']}, '.5 .51');
+      // at X:.5
+      t({d: '.2', peers: '.1 .51', range: ['.5', '.1']}, '.51');
+      // at Y:.51
+      t({d: '.2', peers: '.1 .5', range: ['.5', '.1']}, '');
+      // at X:.5
+      // abXno~p a:0.05 b:0.1 X:0.5 n:0.55 o:0.6 p:0.65
       // at p: [any] !p [any]
       // at X: [X+1, X-1] !p (X,X)
       // at n: [n+1, X-1] !p (n,X)
@@ -3153,6 +3209,29 @@ describe('peer-relay', function(){
       eX.c.d.a~e>!get_peer`);
   });
   describe('get_peer2', ()=>{
+    // XXX derry: review
+    // abXno~p a:0.05 b:0.1 X:0.5 n:0.55 o:0.6 p:0.65 (pX>!connect)
+    // at p: [any] !p
+    // at X: (X-X) !p
+    // at n: (n-X) !p
+    // at o: (o-X) !p
+    // at a: (o-a) !p: p is not in range - so END
+    // abXno~p a:0.05 b:0.1 X:0.5 n:0.55 o:0.6 p:0.65 (po>!connect)
+    // at p [any] !p
+    // at o (o-o) !p
+    // at n (o-n) !p
+    // at X (o-X) !p
+    // at b (o-b) !p
+    // at a (o-a) !p
+    // aXY -> abXY~b a:0.1 b:0.2 X:0.5 Y:0.51 (ba>!connect)
+    // at b [any] ~b
+    // at a (a-a) ~b
+    // at X (a-X) ~b
+    // ...................b...............D.....t............
+    // XXX: Why do we need this range iterator? why not used stanard node_itr
+    // that progress without range. When reaching best, then do another move
+    // the otehr direction of the last one.
+    // XXX: each node need to know who is the 8 closests (in unittest only 2)
     let t = (name, test)=>t_roles(name, 'abXYnopz', test);
     t('ring_long:abXno~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect p~p>!get_peer
@@ -3166,16 +3245,35 @@ describe('peer-relay', function(){
       Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer) ap>*get_peer_r`);
     t('ring_short:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!get_peer`);
+    t('ring_short:abXnop~p,po>!connect', `mode(msg req) conf(id:a-mXYZn-z)
+      ab,bX,Xn,no,oa,po>!connect po.n.X.b.a~p>!get_peer`);
+    t('ring_step_by_step:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
+      aX>!connect // XXX: fixme aX~X>!get_peer
+      bX>!connect bX.a~b>!get_peer
+      nX>!connect nX.b.Xa~n>!get_peer oX>!connect oX.n.XbXa~o>!get_peer
+      pX>!connect pX.o.XnXbXa~p>!get_peer`);
+    t('ring_step_by_step2:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
+      aX>!connect // XXX: fixme aX~X>!get_peer
+      bX>!connect bX.a~b>!get_peer
+      nX>!connect nX.b.Xa~n>!get_peer !sp oX>!connect oX.n.Xa~o>!get_peer
+      !sp pX>!connect pX.o.Xa~p>!get_peer`);
+    t('ring_step_by_step3:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
+      aX>!connect // XXX: fixme aX~X>!get_peer
+      bX>!connect bX.a~b>!get_peer
+      nX>!connect nX.b.Xa~n>!get_peer oX>!connect oX.n.XbXa~o>!get_peer
+      !sp oXn.X.a~o>!get_peer !sp pX>!connect pX.o.Xa~p>!get_peer`);
     t('star:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,aX,oX,pX>!connect
       pX.o.a~p>!get_peer`);
     t('ring:abXnoz~z', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,zX>!connect zX.b.a.o~z>!get_peer`);
-    // XXX: add more multi-path tests
+    t = (name, test)=>t_roles(name, 'abcdXY', test);
     t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
-      XY,aX>!connect aX.Y~a>!get_peer bY>!connect b.YXa~b>!get_peer`);
+      XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
+      dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.Yb.Yd~c>!get_peer`);
     // XXX: verify that rt is not ignored
     // XXX: test for selecting best rtt
+    // XXX: test behavior when distance is very close
   });
   // XXX: unite with get_peer tests
   if (0) // XXX: fixme
