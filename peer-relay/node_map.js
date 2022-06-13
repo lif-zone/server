@@ -152,9 +152,9 @@ destroy(){
 get_best_route(dst){
   let best, src = this.id;
   for (let i=0, itr=this.node_itr(dst), at; i<16 && (at = itr.next(dst)); i++){
-    let rtt = src.rtt_pb_via(dst, at.id, at.graph.rtt);
-    if (rtt.good && (!best || rtt.rtt_pb < best.rtt_pb))
-      best = {rtt_pb: rtt.rtt_pb, path: at.graph.path};
+    let o = src.rtt_pb_via(dst, at.id, at.graph.rtt);
+    if (o.good && (!best || o.rtt_pb < best.rtt_pb))
+      best = {rtt_pb: o.rtt_pb, path: at.graph.path};
   }
   return best && best.path;
 }
