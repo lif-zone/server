@@ -65,7 +65,7 @@ export default class Router extends EventEmitter {
         range = lbuffer.range();
       } else {
         range = lbuffer.range();
-        route = _this.node_map.get_fuzzy_route(to, from, range);
+        route = _this.node_map.get_route_by_range(to, from, range);
         channel = _this.get_channel_from_path(route);
         if (!channel)
           return _this.emit('message', lbuffer);
