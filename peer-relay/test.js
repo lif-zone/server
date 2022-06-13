@@ -2446,8 +2446,20 @@ describe('node_id', function(){
       {done: 1, rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
     t({s: '0', d: '8000000000000000000', v: '6000000000000000000', rtt: 100},
       {done: 2, rtt_pb: 50, dist_bits_sd: 52, dist_bits_vd: 50});
-    // XXX derry: review this - is this correct?
-    t({s: '0', d: '0.5', v: '0000000000000000001', rtt: 100}, {good: false});
+    // when dist_bit is almost 0
+    t({s: '0', d: '.5', v: '00000000000000000001', rtt: 100}, {done: 0.000,
+      rtt_pb: 1000000000});
+    t({s: '0', d: '0000000000000000002', v: '00000000000000000001', rtt: 100},
+      {done: 0.000, rtt_pb: 1000000000});
+    t({s: '0', d: '00000000000000000001', v: '0000000000000000002', rtt: 100},
+      {good: false});
+    t({s: '0000000000000000001', d: '0.5', v: '0', rtt: 100}, {good: false});
+    t({s: '7ffffffffffffffffffd', d: '7fffffffffffffffffff',
+      v: '7ffffffffffffffffffe', rtt: 100}, {done: 0.000, rtt_pb: 1000000000});
+    t({s: '00000000000000000002', d: '0', v: '00000000000000000001', rtt: 100},
+      {done: 0.000, rtt_pb: 1000000000});
+    t({s: '00000000000000000001', d: '0', v: '00000000000000000002', rtt: 100},
+      {good: false});
   });
 });
 

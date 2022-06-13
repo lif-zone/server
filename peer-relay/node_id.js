@@ -69,18 +69,25 @@ function dist_bits(a, b){
   let d = b===undefined ? a : dist(a, b);
   return !d ? 0 : Math.max(53+Math.log2(d), 0);
 }
-
 function rtt_pb_via(src, dst, via, via_rtt){
   let src_dst_diff = src.dist(dst);
   let via_dst_diff = via.dist(dst);
-  if (src_dst_diff<=via_dst_diff)
-    return {good: false};
+  if (src_dst_diff<=via_dst_diff){
+    // XXX: when src/via/dst are so close that they appear the same because
+    // we just use 53 bits for the float value
+    // 0.5**53 1.1102230246251565e-16 1e-16
+    if (src_dst_diff!=via_dst_diff)
+      return {good: false};
+    if (!(via.cmp(src)>0 && via.cmp(dst)<0 ||
+      via.cmp(src)<0 && via.cmp(dst)>0))
+      return {good: false};
+  }
   let ret = {good: true};
   let bits_done = dst.dist_bits(src) - dst.dist_bits(via);
   ret.dist_dst = via_dst_diff;
   ret.dist_done = src_dst_diff-via_dst_diff;
   ret.bits_done = bits_done;
-  ret.rtt_pb = via_rtt/bits_done;
+  ret.rtt_pb = bits_done ? via_rtt/bits_done : 1000000000;
   return ret;
 }
 
