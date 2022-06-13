@@ -3021,16 +3021,13 @@ describe('peer-relay', function(){
       // aXY -> abXY~b a:0.1 b:0.2 X:0.5 Y:0.51
       // at b [any] !b
       // at a (a-a) !b
-      // at X (X-a) !b
-      // at Y (Y-a) !b
+      // at X (a-X) !b
       // at b:.2
       t({d: '.2', peers: '.1'}, '.1');
       // at a:.1
       t({d: '.2', peers: '.5 .51', range: ['.1', '.1']}, '.5 .51');
       // at X:.5
-      t({d: '.2', peers: '.1 .51', range: ['.5', '.1']}, '.51');
-      // at Y:.51
-      t({d: '.2', peers: '.1 .5', range: ['.5', '.1']}, '');
+      t({d: '.2', peers: '.1 .51', range: ['.1', '.5']}, '');
       // at X:.5
       // abXno~p a:0.05 b:0.1 X:0.5 n:0.55 o:0.6 p:0.65
       // at p: [any] !p [any]
