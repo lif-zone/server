@@ -162,6 +162,7 @@ get_best_route(dst){
 get_route_by_range(dst, exclude, range){
   let itr = this.node_itr(dst, {exclude, range}), at;
   at = itr.next();
+  // XXX: do we need to select accoding to best rtt_pb
   return at && at.graph.path;
 }
 }

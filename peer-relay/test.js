@@ -3206,29 +3206,6 @@ describe('peer-relay', function(){
       eX.c.d.a~e>!get_peer`);
   });
   describe('get_peer2', ()=>{
-    // XXX derry: review
-    // abXno~p a:0.05 b:0.1 X:0.5 n:0.55 o:0.6 p:0.65 (pX>!connect)
-    // at p: [any] !p
-    // at X: (X-X) !p
-    // at n: (n-X) !p
-    // at o: (o-X) !p
-    // at a: (o-a) !p: p is not in range - so END
-    // abXno~p a:0.05 b:0.1 X:0.5 n:0.55 o:0.6 p:0.65 (po>!connect)
-    // at p [any] !p
-    // at o (o-o) !p
-    // at n (o-n) !p
-    // at X (o-X) !p
-    // at b (o-b) !p
-    // at a (o-a) !p
-    // aXY -> abXY~b a:0.1 b:0.2 X:0.5 Y:0.51 (ba>!connect)
-    // at b [any] ~b
-    // at a (a-a) ~b
-    // at X (a-X) ~b
-    // ...................b...............D.....t............
-    // XXX: Why do we need this range iterator? why not used stanard node_itr
-    // that progress without range. When reaching best, then do another move
-    // the otehr direction of the last one.
-    // XXX: each node need to know who is the 8 closests (in unittest only 2)
     let t = (name, test)=>t_roles(name, 'abXYnopz', test);
     t('ring_long:abXno~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect p~p>!get_peer
