@@ -3217,7 +3217,7 @@ describe('peer-relay', function(){
       on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
       nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
       Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer) ap>*get_peer_r`);
-    t('ring_short:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
+    t('ring_short:abXnop~p,pX>!connect', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!get_peer`);
     t('ring_short:abXnop~p,po>!connect', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,po>!connect po.n.X.b.a~p>!get_peer`);
@@ -3248,6 +3248,18 @@ describe('peer-relay', function(){
     // XXX: verify that rt is not ignored
     // XXX: test for selecting best rtt
     // XXX: test behavior when distance is very close
+    // XXX derry: REVIEW
+    // TODO: path-folding: obvious path optimization XbXa -> Xa
+    // - allow to enable/disable in tests
+    // activate shortest path on graph incremental
+    // closed nodes may know better how to get destination (fuzzy/regular)
+    // - allow two routing mode. exact or optional
+    // - optionial - if direct connected, do it direct. if router knows
+    //   how to compare original path (he finds your path and can compare to
+    //   his best path and verify rtt_pb on that partial)
+    // - and also send rtt_pb
+    // - how to connect on the 8 closets nodes to me
+    //   get_peer to neighbours (with exclude to itself)
   });
   // XXX: unite with get_peer tests
   if (0) // XXX: fixme
@@ -4237,10 +4249,6 @@ VP:
   + replace +- fuzzy with ~ fuzzy
     - when we got to closets, make one more jump over it
   - add test for selecign best rtt path with fuzzy/no-fuzzy dest + multi-path
-- with derry:
-  - rtt_pb_via
-    - what to do when distances are 0 but nodes not equal?
-    - how to handle when s===d (for fuzzy)
 - remove obsolete
   - review all 'xxx' tests
   - rm buf_util
@@ -4250,9 +4258,13 @@ VP:
   - remove node.channels (and get_closest/get_closest2)
   - remove path.js
   - cleanup path/rt/route/range usage
-- /util
-  - rm set.js
-  - etask({'_': this})
+- get 8 closets nodes to me (in tests, default is 2)
+  get_peer to neighbours (with exclude to itself)
+- exact/optional routing modes for both fuzzy/regular routing
+  - send rtt_pb with route info
+  - if router can calculate all rtt (either it knows it or it get it) and have
+    better route, use it (eg, connected directly)
+- incremental shortest-path updates
 + rm warning React... in eslint
 - optimize mocha tests - improve sinon time api - by default, don't wait for
   external time to finish (eg. mongo/ls)
