@@ -4251,15 +4251,11 @@ VP:
 * implement fuzzy routing with node_itr/range
 * path selection:
   + rm obsolete rt.range
-    - rm/unite get_peer/get_peer2 test
   - fix 4_nodes_ring_state_timeout
     - need tests where we pass route info when selecting best rtt
   * calc_rtt_ob_via
     - review XXX with derry in test
     - check XXX on dist (!d && a.eq(b))
-  + replace +- fuzzy with ~ fuzzy
-    - when we got to closets, make one more jump over it
-  - add test for selecign best rtt path with fuzzy/no-fuzzy dest + multi-path
   - fix state handling for routing
 - remove obsolete
   - fix node roles used to be automatic (check which nodes are used during
