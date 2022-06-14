@@ -3312,40 +3312,14 @@ describe('peer-relay', function(){
     // - how to connect on the 8 closets nodes to me
     //   get_peer to neighbours (with exclude to itself)
   });
-  // XXX: unite with get_peer tests
-  if (0) // XXX: fixme
-  describe('discovery', ()=>{
-    let t = (name, test)=>t_roles(name, 'abcdeX', test);
-    t('abcdeX', `mode(msg req) conf(id:a-mXYZn-z)
-      aX>!connect aX+a>!get_peer // XXX aX>!ping
-      // abX b+:X
-      bX>!connect bX.a+b>!get_peer
-      // bX.Xa.X.Xa+b>!get_peer
-      // XXX: bXa>!ping
-      `);
-    if (true) return; // XXX: WIP
-    // - go right
-    // + go left
-    // XXX: binary search tree: https://www.npmjs.com/package/avl
-    t('xxx', `mode(msg req) conf(id:a-mXYZn-z) a,b,c,d,e,X=node:wss
-      aX>!connect aX+a>get_peer aX>ping
-      // abX b-:a b+:X
-      bX>!connect bX.Xa.X-b,bX.Xa.X.Xa+b>announce bX,bXa>ping
-      // abcX c-:b c+:X
-      cX>!connect cX.Xa.Xb.X-c,cX.Xb.Xa.X.Xb+c>announce cX,cXb>ping
-      // abcdX d-:c d+:X
-      dX>!connect dX.X.Xa.Xb.Xc.X+d,dX.Xc.Xb.Xa.X.Xc-d>announce dX,dXc>ping
-    `);
-   /* XXX: compact path:
-     bX.Xa.X -> bXaX -> bX
-     bX.Xa.X.Xa -> bXaXa -> bXa
-     cX.Xa.Xb.X -> cXaXbX -> cX
-     cX.Xb.Xa.X.Xb -> cXbXaXb -> cXb
-     dX.X.Xa.Xb.Xc.X -> dXaXbXcX -> dX
-     dX.Xc.Xb.Xa.X.Xc -> dXcXbXaXc -> dXc
-   */
-  });
-
+  /* XXX: compact path:
+    bX.Xa.X -> bXaX -> bX
+    bX.Xa.X.Xa -> bXaXa -> bXa
+    cX.Xa.Xb.X -> cXaXbX -> cX
+    cX.Xb.Xa.X.Xb -> cXbXaXb -> cXb
+    dX.X.Xa.Xb.Xc.X -> dXaXbXcX -> dX
+    dX.Xc.Xb.Xa.X.Xc -> dXcXbXaXc -> dXc
+  */
   /* XXX derry: examples
   // XXX TODO:
   t('a,b=node:wss', `a=node(wss) b=node(wss)`);
