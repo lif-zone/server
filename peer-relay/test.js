@@ -3187,6 +3187,10 @@ describe('peer-relay', function(){
       Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer) ap>*get_peer_r`);
     t('ring_short:abXnop~p,pX>!connect', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!get_peer`);
+    t('ring_short:rtt_ok', `mode(msg req) conf(id:a-mXYZn-z rtt(100 oa:223))
+      ab,bX,Xn,no,oa,ob,pX>!connect pX.n.o.a~p>!get_peer`);
+    t('ring_short:rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 oa:224))
+      ab,bX,Xn,no,oa,ob,pX>!connect pX.n.o.b.a~p>!get_peer`);
     t('ring_short:abXnop~p,po>!connect', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,po>!connect po.n.X.b.a~p>!get_peer`);
     t('ring_step_by_step:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
@@ -3252,6 +3256,7 @@ describe('peer-relay', function(){
     1. need to ignore any at.id that is already in best.path
     2. rtt_pb_via doesn't work for fuzzy (s~s and when getting beyoned
        last node (eg. ring_long)
+       ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!get_peer
     for (best = at = itr(dest)..next() && i<16){
        if (at.rtt_pb<best.rtt_pb)
          best = at;
