@@ -86,12 +86,12 @@ export default class Router extends EventEmitter {
         }
       }
     } else {
+      // XXX TODO: fix state handling
+      // else if (channel = _this.get_channel_from_state(msg));
       if (channel = _this.get_channel_from_rt(msg0));
       else if (channel = _this.get_channel_from_id(to));
       else if ((rt = _this.get_route(msg.to)) &&
         (channel = _this.get_channel_from_path(rt.path)));
-      // XXX: need to get also route/path when using state
-      else if (channel = _this.get_channel_from_state(msg));
       else {
         let route = _this.node_map.get_best_route(to);
         channel = _this.get_channel_from_path(route);

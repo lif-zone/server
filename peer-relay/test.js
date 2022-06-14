@@ -2954,7 +2954,7 @@ describe('peer-relay', function(){
       zX>!connect test_node_conn(X(a:100 z:100) a(b:10 X:100) b(a:10 c:20 d:30)
         c(b:20) d(b:30) z(X:100))
       // XXX TODO: zX:Yz:Yc,Xa:zX:Yz:Yc>msg(type:req)
-      zX:Yz:Yc>msg(type:req) Xa:zX:Yz:Yc>msg(type:req)
+      zX:Yz:Yc>msg(type:req) Xa[bc]:zX:Yz:Yc>msg(type:req)
       test_node_conn(X(a:100 z:100) a(b:10 X:100) b(a:10 c:20 d:30) c(b:20)
         d(b:30) Y(z:40) z(X:100 Y:40)) `);
   });
@@ -3132,7 +3132,7 @@ describe('peer-relay', function(){
       da>!req(body:ping res:ping_r) 60s dcb>!req(body:ping res:ping_r) 60s
       dc>!req(body:ping res:ping_r) 60s
       bcd>!req(body:ping res:ping_r)
-      dc.b>!req(body:ping2 res:ping_r) // XXX BUG in state handling
+      dcb>!req(body:ping2 res:ping_r)
       60s dcb>!req(body:ping2 res:ping_r)`);
     t('4_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
       rt_add(a:dc b:ad c:da d:cb)
@@ -3155,7 +3155,7 @@ describe('peer-relay', function(){
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
       ab,bc,cd,de,ea>!connect ae.d>!req(id:r1 body:ping res:ping_r) 59s -
-      a.ed<!req(id:r2 body:ping res:ping_r) 60s -
+      aed<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -
       `);
     t('5_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
@@ -3260,10 +3260,11 @@ describe('peer-relay', function(){
     // XXX: test for selecting best rtt with multi-path
     t = (name, test)=>t_roles(name, 'abcX', test);
     t('rtt-abcX', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
-      aX,bX,cX>!connect
-      aX.b~a>!get_peer
-      bXa.X.c~b>!get_peer
-      c.XaXb.Xa.X~c>!get_peer`);
+      aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
+      c.XaXb.Xa.X~c>!get_peer cXa>!req(body:ping res:ping_r)
+      cXaXb>!req(body:ping res:ping_r)
+      !sp cXa>!req(body:ping res:ping_r) cXb>!req(body:ping res:ping_r)
+    `);
     // XXX: verify that rt is not ignored
     // XXX: test for selecting best rtt
     // XXX: test behavior when distance is very close
