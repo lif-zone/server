@@ -502,13 +502,10 @@ function assert_event_c2(c, orig, fwd, event, call){
       expected = normalize(orig);
       let _rt = Array.from(c.rt2||[]);
       let _range = Array.from(c.range2||[]);
-      let _path = Array.from(c.path2||[]);
       Array.from(fwd).reverse().forEach(f=>{
         let rt = _rt.pop();
         let range = _range.pop();
-        let path = _path.pop();
         expected = build_cmd(normalize(f)+'fwd', expected+
-          (path ? ' '+build_cmd('path', path_to_str(path)) : '')+
           (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
           (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
       });
@@ -731,8 +728,7 @@ class FakeChannel extends EventEmitter {
           let srange = m.range && build_cmd('range',
             range_to_str(NodeId.range_from_msg(m.range)));
           e = build_cmd(f+'fwd', e+
-            (t_conf.path&&fwd ? ' '+build_cmd('path', path_to_str(path||[]))
-            : '')+(srt ? ' '+srt : '')+(srange ? ' '+srange : ''));
+            (srt ? ' '+srt : '')+(srange ? ' '+srange : ''));
           path.push(fwd_d_id(f));
         });
       }
@@ -1055,7 +1051,6 @@ function cmd_conf(opt){
     switch (a.cmd){
     case 'id_bits': set_id_bits(assert_int(a.arg)); break;
     case 'id': ids = assert_node_ids(a.arg); break;
-    case 'path': t_conf.path = assert_bool(a.arg); break;
     case 'rt': t_conf.rt = assert_bool(a.arg); break;
     case 'rtt': assert_rtt(a.arg); break;
     case '!node': no_node = assert_bool(a.arg); break;
@@ -1820,19 +1815,16 @@ const cmd_fail = opt=>etask(function*req(){
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
-  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range, path;
+  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'rt': rt = assert_rt(a.arg, c.dir); break;
     case 'range': range = assert_range(a.arg); break;
-    case 'path': path = assert_path(a.arg, c.dir); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   f.fwd = Array.from(c.fwd||[]);
   f.fwd.push(dir_c(c));
-  f.path2 = Array.from(c.path2||[]); // XXX: rm from here!
-  f.path2.push(path);
   f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here!
   f.rt2.push(rt);
   f.range2 = Array.from(c.range2||[]); // XXX: rm from here!
@@ -1844,7 +1836,6 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
     return set_orig(c, _build_cmd(f.orig+
-      (path ? ' '+build_cmd('path', path_to_str(path, c.dir)) : '')+
       (rt ? ' '+build_cmd('rt', rt_to_str(rt, c.dir)) : '')+
       (range ? ' '+build_cmd('range', range_to_str(range, c.dir)) : ''),
       [dir_c(c)]));
@@ -2813,9 +2804,6 @@ describe('peer-relay', function(){
           bc>fwd(ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws)) rt(c)))
           ac>*conn_info_r(ws)`);
         t('cd>fwd(ab>msg)', `cd>fwd(ab>msg)`);
-        t('cd>fwd(ab>msg path:abc)', `cd>fwd(ab>msg path(abc))`);
-        t('cd<fwd(ab<msg path:abc)', `cd<fwd(ab<msg path(abc))`);
-        t('cd>fwd(ab>msg path(abc))', `cd>fwd(ab>msg path(abc))`);
         t('cd>fwd(ab>msg rt:abc)', `cd>fwd(ab>msg rt(abc))`);
         t('cd>fwd(ab>msg rt(abc))', `cd>fwd(ab>msg rt(abc))`);
         if (0) // XXX NOW: TODO
