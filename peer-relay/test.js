@@ -3261,8 +3261,15 @@ describe('peer-relay', function(){
     t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
       dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.Yb.Yd~c>!get_peer`);
+    t = (name, test)=>t_roles(name, 'aXbY', test);
+    t('select_best_path_circular', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
+      aX,Xb,bY,Ya>!connect aX.b.Y~a>!get_peer bXa.X~b>!get_peer
+      XbY.b~X>!get_peer YbX.b.Xa~Y>!get_peer aXb>!req(body:ping res:ping_r)
+      aYb>!req(body:ping res:ping_r rt:Yb) !sp aXb>!req(body:ping res:ping_r)
+      conf(rtt(100 Yb:1)) aYb>!req(body:ping res:ping_r rt:Yb)
+      !sp aYb>!req(body:ping res:ping_r)`);
     t = (name, test)=>t_roles(name, 'abcXY', test);
-    t('select_best_path', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
+    t('select_best_path_multi', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
       aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
       c.XaXb.Xa.X~c>!get_peer cXa>!req(body:ping res:ping_r)
       cXaXb>!req(body:ping res:ping_r) !sp cXa>!req(body:ping res:ping_r)
@@ -3273,8 +3280,7 @@ describe('peer-relay', function(){
       !sp YaXc>!req(body:ping res:ping_r)
       YbXc>!req(body:ping res:ping_r rt:bXc)
       YaXc>!req(body:ping res:ping_r rt:aXc)
-      !sp YbXc>!req(body:ping res:ping_r)
-    `);
+      !sp YbXc>!req(body:ping res:ping_r)`);
     t = (name, test)=>t_roles(name, 'bcXY', test);
     t('sub_rtt_is_ignored', `mode(msg req) conf(id:a-mXYZn-z rtt(1000))
       Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
