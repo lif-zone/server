@@ -3173,42 +3173,6 @@ describe('peer-relay', function(){
     t('best_path_circular2', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:200))
       ab,bX,Xz,za>!connect Xz.a>!req(body:ping res:ping_r)`);
   });
-  describe('xxx', ()=>{
-    if (true)
-      return; // XXX FIXME
-    let t = (name, test)=>t_roles(name, 'abcefgh', test);
-     t('xxx', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
-       ab,bc,cd,de,ef,fg,gh,ha>!connect
-       ah.g>!req(body:ping res:ping_r)
-       ab.c>!req(body:ping res:ping_r)
-       ab.c.d.e>!req(body:ping res:ping_r)
-     `);
-    // abXY
-    t = (name, test)=>t_roles(name, 'abXY', test);
-     t('xxx2', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
-       XY,aX>!connect
-       aX.Y-a>!get_peer
-       bY>!connect
-       bY.X-b>!get_peer
-       aX.Y.b>!req(body:ping res:ping_r)
-     `);
-    t = (name, test)=>t_roles(name, 'abcXYZ', test);
-     t('xxx3', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
-       XY,XZ,YZ>!connect
-       YX.Z-Y>!get_peer
-       aX>!connect
-       aX.Z.Y-a>!get_peer
-       bY>!connect
-       bY.Z-b>!get_peer
-       // aX.Z.Y.b>!req(body:ping res:ping_r)
-     `);
-    t = (name, test)=>t_roles(name, 'abXYno', test);
-     t('xxx10', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
-       aX,bY,nX,oY,XY>!connect
-       aX.n>!req(body:ping res:ping_r)
-       aX.Y.b>!req(body:ping res:ping_r)
-     `);
-  });
   describe('get_peer', ()=>{
     let t = (name, test)=>t_roles(name, 'abXYnopz', test);
     t('ring_long:abXno~p', `mode(msg req) conf(id:a-mXYZn-z)
