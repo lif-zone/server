@@ -101,7 +101,10 @@ export default class Router extends EventEmitter {
           rt = {path: Array.from(route)};
       }
     }
-    if (!(channel.local_id.eq(from) && channel.id.eq(to))){
+    // XXX: review this logic. we need it avoid sending forward direct msg
+    // but we need a better way (this is obsolete logic from old peer-relay)
+    if (msg0.type=='fwd' ||
+      !(channel.local_id.eq(from) && channel.id.eq(to))){
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
       if (msg.to!=msg2.to){

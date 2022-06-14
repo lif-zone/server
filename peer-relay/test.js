@@ -1205,6 +1205,7 @@ function cmd_comment(opt){
     return set_orig(c, c.cmd+c.arg+'\r');
   if (t_i<t_cmds.length)
     return cmd_run(event);
+  assert(!event, 'unexpected event '+event);
 }
 
 function cmd_dbg(opt){
@@ -3162,7 +3163,6 @@ describe('peer-relay', function(){
       abcd>!req(id:r1 body:ping res:ping_r) 59s -
       aed<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
-    // XXX: test for selecting best rtt with multi-path
   });
   describe('xxx', ()=>{
     if (true)
@@ -3257,6 +3257,13 @@ describe('peer-relay', function(){
     t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
       dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.Yb.Yd~c>!get_peer`);
+    // XXX: test for selecting best rtt with multi-path
+    t = (name, test)=>t_roles(name, 'abcX', test);
+    t('rtt-abcX', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
+      aX,bX,cX>!connect
+      aX.b~a>!get_peer
+      bXa.X.c~b>!get_peer
+      c.XaXb.Xa.X~c>!get_peer`);
     // XXX: verify that rt is not ignored
     // XXX: test for selecting best rtt
     // XXX: test behavior when distance is very close
@@ -4262,6 +4269,8 @@ VP:
     - when we got to closets, make one more jump over it
   - add test for selecign best rtt path with fuzzy/no-fuzzy dest + multi-path
 - remove obsolete
+  - fix node roles used to be automatic (check which nodes are used during
+    pre-process)
   - review all 'xxx' tests
   - rm buf_util
   - check all NodeId.from in router
