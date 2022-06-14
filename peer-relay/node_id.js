@@ -58,6 +58,7 @@ dist(id){ return dist(this, id); }
 dist_bits(id){ return dist_bits(this, id); }
 
 rtt_pb_via(dst, via, via_rtt){ return rtt_pb_via(this, dst, via, via_rtt); }
+rtt_pb_via2(dst, via, via_rtt){ return rtt_pb_via2(dst, via, via_rtt); }
 }
 
 function dist(a, b){
@@ -74,7 +75,7 @@ function rtt_pb_via(src, dst, via, via_rtt){
   let via_dst_diff = via.dist(dst);
   if (src_dst_diff<=via_dst_diff){
     // XXX: when src/via/dst are so close that they appear the same because
-    // we just use 53 bits for the float value
+    // we just use 52 bits for the float value
     // 0.5**53 1.1102230246251565e-16 1e-16
     if (src_dst_diff!=via_dst_diff)
       return {good: false};
@@ -91,6 +92,15 @@ function rtt_pb_via(src, dst, via, via_rtt){
   return ret;
 }
 
+// XXX: rename to rtt_pb_closest?
+function rtt_pb_via2(dst, via, via_rtt){
+  let ret = {good: true};
+  let bits_done = 52 - dst.dist_bits(via);
+  ret.bits_done = bits_done;
+  ret.rtt_pb = bits_done ? via_rtt/bits_done : 1000000000;
+  return ret;
+}
+
 function range_from_msg(range){ return range &&
   {min: NodeId.from(range.min), max: NodeId.from(range.max)}; }
 function range_to_msg(range){ return range &&
@@ -102,5 +112,6 @@ NodeId.bits = BITS; // XXX: check correct value
 NodeId.dist = dist;
 NodeId.dist_bits = dist_bits;
 NodeId.rtt_pb_via = rtt_pb_via;
+NodeId.rtt_pb_via2 = rtt_pb_via2;
 NodeId.range_from_msg = range_from_msg;
 NodeId.range_to_msg = range_to_msg;

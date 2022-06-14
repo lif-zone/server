@@ -165,10 +165,25 @@ get_best_route(dst){
 }
 // XXX WIP: copy rtt_pb logic
 get_route_by_range(dst, exclude, range){
-  let itr = this.node_itr(dst, {exclude, range}), at;
-  at = itr.next();
-  // XXX: do we need to select accoding to best rtt_pb
-  return at && at.graph.path;
+  if (0){ // XXX: rm
+    let itr = this.node_itr(dst, {exclude, range}), at;
+    at = itr.next();
+    // XXX: do we need to select accoding to best rtt_pb
+    return at && at.graph.path;
+  }
+  let best, src = this.id;
+  for (let i=0, itr=this.node_itr(dst, {exclude, range}), at;
+    i<16 && (at = itr.next(dst));){
+    if (best && best.path.includes(at.id.s))
+      continue;
+    let o = src.rtt_pb_via2(dst, at.id, at.graph.rtt);
+    if (!o.good)
+      continue;
+    if (!best || o.rtt_pb < best.rtt_pb)
+      best = {rtt_pb: o.rtt_pb, path: at.graph.path};
+    i++;
+  }
+  return best && best.path;
 }
 }
 

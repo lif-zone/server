@@ -3168,9 +3168,9 @@ describe('peer-relay', function(){
       aed<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
     t = (name, test)=>t_roles(name, 'abXz', test);
-    t('best_path_circular1', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
+    t('best_path_circular1', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:109))
       ab,bX,Xz,za>!connect Xb.a>!req(body:ping res:ping_r)`);
-    t('best_path_circular2', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:200))
+    t('best_path_circular2', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:110))
       ab,bX,Xz,za>!connect Xz.a>!req(body:ping res:ping_r)`);
   });
   describe('get_peer', ()=>{
@@ -3209,11 +3209,20 @@ describe('peer-relay', function(){
       pX.o.a~p>!get_peer`);
     t('ring:abXnoz~z', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,zX>!connect zX.b.a.o~z>!get_peer`);
+    t = (name, test)=>t_roles(name, 'abcd', test);
+    t('ring_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:136))
+      ab,bc,ca>!connect da>!connect da.c~d>!get_peer`);
+    t('ring_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:137))
+      ab,bc,ca>!connect da>!connect da.b.c~d>!get_peer`);
     t = (name, test)=>t_roles(name, 'abcdXY', test);
-    t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
+    t('multi_path_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:146))
+      XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
+      dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.a.XYb.Yd~c>!get_peer`);
+    t('multi_path_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:147))
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
       dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.Yb.Yd~c>!get_peer`);
     t = (name, test)=>t_roles(name, 'aXbY', test);
+    // XXX: check if test really test anything
     t('best_path_circular', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
       aX,Xb,bY,Ya>!connect aX.b.Y~a>!get_peer bXa.X~b>!get_peer
       XbY.b~X>!get_peer YbX.b.Xa~Y>!get_peer aXb>!req(body:ping res:ping_r)
@@ -3234,12 +3243,15 @@ describe('peer-relay', function(){
       YaXc>!req(body:ping res:ping_r rt:aXc)
       !sp YbXc>!req(body:ping res:ping_r)`);
     t = (name, test)=>t_roles(name, 'bcXY', test);
-    t('sub_rtt_is_ignored', `mode(msg req) conf(id:a-mXYZn-z rtt(1000))
+    t('sub_rtt_is_ignored', `mode(msg req) conf(id:a-mXYZn-z rtt:1000)
       Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
       Yb.Xc>!req(body:ping res:ping_r) YbXc>!req(body:ping res:ping_r)
       !sp YbXc>!req(body:ping res:ping_r) conf(rtt(1000 Yb:1))
       YbXc>!req(body:ping res:ping_r) !sp YbXc>!req(body:ping res:ping_r)`);
     /* XXX: review with derry
+    1. need to ignore any at.id that is already in best.path
+    2. rtt_pb_via doesn't work for fuzzy (s~s and when getting beyoned
+       last node (eg. ring_long)
     for (best = at = itr(dest)..next() && i<16){
        if (at.rtt_pb<best.rtt_pb)
          best = at;
