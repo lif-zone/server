@@ -3204,24 +3204,7 @@ describe('peer-relay', function(){
        aX.Y.b>!req(body:ping res:ping_r)
      `);
   });
-  if (0) // XXX: WIP
   describe('get_peer', ()=>{
-    let t = (name, test)=>t_roles(name, 'abXcde', test);
-    t('abXcde_req', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      ab,bX,Xc,cd,da,eX>!connect eX.c.d>!req(body:ping res:ping_r)
-      eX.c.d.a>!req(body:ping res:ping_r)`);
-    t('long:abXcde~e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      ab,bX,Xc,cd,da,eX>!connect e~e>!get_peer eX.c.d.a~e>get_peer ea>*get_peer
-      eXcda<get_peer_r ea<*get_peer_r`);
-    t('short:abXcde~e', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      ab,bX,Xc,cd,da,eX>!connect eX.c.d.a~e>!get_peer`);
-    t('multiple:abXcde', `mode(msg req) conf(id(a:10 b:20 X:25 c:30 d:40 e:50))
-      ab,bX,Xc,cd,da,eX>!connect eX.c.d>!req(body:ping res:ping_r)
-      eX.c.d.a>!req(body:ping res:ping_r)
-      eX.c.d.a~e>!get_peer
-      eX.c.d.a~e>!get_peer`);
-  });
-  describe('get_peer2', ()=>{
     let t = (name, test)=>t_roles(name, 'abXYnopz', test);
     t('ring_long:abXno~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect p~p>!get_peer
