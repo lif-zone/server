@@ -56,7 +56,8 @@ xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 let t_nodes = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_reprocess, t_conf, t_req_id_last;
-Router.t.t_nodes = t_nodes;
+NodeMap.t.t_nodes = Router.t.t_nodes = t_nodes;
+NodeMap.t.node_from_id = Router.t.node_from_id = node_from_id;
 let t_keys = {
   a: {pub: 'aaec01a08b0640361bd3c0e327e3406255c301f5fe32305a2ca2a50803af76fb',
     priv: 'ba186102e13ec32e5273a30df6da2b6c9428258b4ea83ac88df7322e7645b864a'+
@@ -341,6 +342,7 @@ function assert_node_ids(val){
   return ret;
 }
 
+// XXX: fix assert_rtt to return value (not set t_conf.rtt)
 function assert_rtt(val){
   let a = val.split(' ');
   a.forEach(s=>{
@@ -1567,7 +1569,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
   assert(t_pre_process||!c.loop);
-  let emit_api=false, ooo=false, dup=false, close=false;
+  let emit_api=false, ooo=false, dup=false, close=false, rt;
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
   let type = c.cmd.replace(/[!*]/, ''), e=call;
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
@@ -1584,6 +1586,7 @@ const cmd_req = opt=>etask(function*req(){
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
     case 'ack': ack = assert_ack(a.arg); break;
+    case 'rt': rt = assert_rt(a.arg, c.dir); break;
     case 'res':
       assert(call, 'res only valid for !req');
       res = a.arg;
@@ -1597,6 +1600,7 @@ const cmd_req = opt=>etask(function*req(){
   cmd = cmd||'';
   if (t_pre_process){
     set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, cmd, seq, ack, body, res,
+      rt: call && rt ? rt_to_str(rt, c.dir) : undefined,
       '!e': !call ? undefined : true, emit_api, ooo, dup, close}));
     if (e){
       let s = '';
@@ -1655,13 +1659,13 @@ const cmd_req = opt=>etask(function*req(){
   if (!s.t.fake){
     if (type=='req'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
-      let req = new Req({node: s, dst: d.id.s, req_id: id});
+      let req = new Req({node: s, dst: d.id.s, req_id: id, rt});
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send({seq, ack}, body);
     } else if (type=='req_start'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
       let req = new Req({node: s, stream: true, dst: d.id.s, req_id: id,
-        cmd});
+        cmd, rt});
       if (emit_api){
         let cb = (o, opt)=>cmd_run(build_cmd_o(c.s+'>*'+o.type, {id: o.req_id,
           cmd: o.cmd,
@@ -3257,13 +3261,51 @@ describe('peer-relay', function(){
     t('multi_path', `mode(msg req) conf(id:a-mXYZn-z)
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
       dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.Yb.Yd~c>!get_peer`);
-    // XXX: test for selecting best rtt with multi-path
-    t = (name, test)=>t_roles(name, 'abcX', test);
-    t('rtt-abcX', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
+    t = (name, test)=>t_roles(name, 'abcXY', test);
+    t('select_best_path', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
       aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
       c.XaXb.Xa.X~c>!get_peer cXa>!req(body:ping res:ping_r)
-      cXaXb>!req(body:ping res:ping_r)
-      !sp cXa>!req(body:ping res:ping_r) cXb>!req(body:ping res:ping_r)
+      cXaXb>!req(body:ping res:ping_r) !sp cXa>!req(body:ping res:ping_r)
+      cXb>!req(body:ping res:ping_r) Ya,Yb>!connect Yb.X.a~Y>!get_peer
+      Yb.Xc>!req(body:ping res:ping_r) YbXc>!req(body:ping res:ping_r)
+      YaXc>!req(body:ping res:ping_r rt:aXc) YbXc>!req(body:ping res:ping_r)
+      !sp YaXc>!req(body:ping res:ping_r) conf(rtt(100 Yb:10))
+      !sp YaXc>!req(body:ping res:ping_r)
+      YbXc>!req(body:ping res:ping_r rt:bXc)
+      YaXc>!req(body:ping res:ping_r rt:aXc)
+      !sp YbXc>!req(body:ping res:ping_r)
+    `);
+    t = (name, test)=>t_roles(name, 'bcXY', test);
+    t('sub_rtt_is_ignored', `mode(msg req) conf(id:a-mXYZn-z rtt(1000))
+      Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
+      Yb.Xc>!req(body:ping res:ping_r) YbXc>!req(body:ping res:ping_r)
+      !sp YbXc>!req(body:ping res:ping_r) conf(rtt(1000 Yb:1))
+      YbXc>!req(body:ping res:ping_r) !sp YbXc>!req(body:ping res:ping_r)`);
+    /* XXX: review with derry
+    for (best = at = itr(dest)..next() && i<16){
+       if (at.rtt_pb<best.rtt_pb)
+         best = at;
+    }
+    src = Y; dst = c; at = c,b,X
+    players: bcXY
+    conn/rtt: Y -10- b -100- X -100- c
+    Yb: rtt:10 done_bits:1 rtt_via: 10
+    YbX: rtt:110 done_bits:2 rtt_via: 55
+    YbXc: rtt:220 done_bits 3 rtt_via: 73.3
+    */
+    if (0) // XXX: review with derry
+    t('xxx', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
+      Yb,Xb>!connect
+      Xb.Y~X>!get_peer
+      cX>!connect
+      cX.b~c>!get_peer
+      Yb.Xc>!req(body:ping res:ping_r)
+      YbXc>!req(body:ping res:ping_r)
+      !sp YbXc>!req(body:ping res:ping_r)
+      conf(rtt(100 Yb:10))
+      YbXc>!req(body:ping res:ping_r)
+      // XXX BUG: GOOD is YbXc>!req
+      !sp Yb.Xc>!req(body:ping res:ping_r)
     `);
     // XXX: verify that rt is not ignored
     // XXX: test for selecting best rtt
@@ -4269,6 +4311,7 @@ VP:
   + replace +- fuzzy with ~ fuzzy
     - when we got to closets, make one more jump over it
   - add test for selecign best rtt path with fuzzy/no-fuzzy dest + multi-path
+  - fix state handling for routing
 - remove obsolete
   - fix node roles used to be automatic (check which nodes are used during
     pre-process)

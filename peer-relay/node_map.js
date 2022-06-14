@@ -151,10 +151,15 @@ destroy(){
 }
 get_best_route(dst){
   let best, src = this.id;
-  for (let i=0, itr=this.node_itr(dst), at; i<16 && (at = itr.next(dst)); i++){
+  for (let i=0, itr=this.node_itr(dst), at; i<16 && (at = itr.next(dst));){
+    if (best && best.path.includes(at.id.s))
+      continue;
     let o = src.rtt_pb_via(dst, at.id, at.graph.rtt);
-    if (o.good && (!best || o.rtt_pb < best.rtt_pb))
+    if (!o.good)
+      continue;
+    if (!best || o.rtt_pb < best.rtt_pb)
       best = {rtt_pb: o.rtt_pb, path: at.graph.path};
+    i++;
   }
   return best && best.path;
 }
@@ -263,6 +268,7 @@ next(){
 }
 }
 
+NodeMap.t = {};
 NodeMap.Node = Node;
 NodeMap.NodeItr = NodeItr;
 NodeMap.NodeConn = NodeConn;

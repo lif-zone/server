@@ -62,7 +62,7 @@ function destroy_cb(){
 export default class Req extends EventEmitter {
   constructor(opt){
     super();
-    let {node, dst, fuzzy, stream, req_id, cmd, timeout} = opt;
+    let {node, dst, fuzzy, stream, req_id, cmd, timeout, rt} = opt;
     assert(node, 'must provide node');
     assert(dst, 'must provide dst');
     assert(!fuzzy || !stream, 'fuzzy dst cannot be used with stream');
@@ -75,6 +75,7 @@ export default class Req extends EventEmitter {
     this.stream = stream;
     this.timeout = timeout = timeout||REQ_TIMEOUT;
     this.seq = 0;
+    this.rt = rt;
     this.ack = [];
     this.sent = {};
     this.ooo = {};
@@ -97,13 +98,12 @@ export default class Req extends EventEmitter {
       opt = {};
     }
     opt = opt||{};
-    let ts=date.monotonic(), req_id = this.req_id, seq = this.seq++;
-    let fuzzy = this.fuzzy;
+    let {req_id, ack, cmd, rt, fuzzy} = this;
+    let ts=date.monotonic(), seq = this.seq++;
     if (util.is_mocha() && opt.seq)
       seq = opt.seq;
     let type = !this.stream ? 'req' : opt.end||opt.close ? 'req_end' : !seq ?
       'req_start' : 'req_next';
-    let ack = this.ack, cmd = this.cmd;
     if (opt.ack){
       ack = opt.ack;
       this.ack = this.ack.filter(s=>!ack.find(
@@ -113,6 +113,8 @@ export default class Req extends EventEmitter {
     log.debug('send %s %s %s %s:%s', dbg_sd(this.src, this.dst),
       cmd, type, req_id, seq);
     let msg = {ts, fuzzy, type, req_id, seq, ack, cmd, body};
+    if (rt)
+      msg.rt = rt;
     if (!opt.close)
       this.set_timeout(seq);
     this.router.send_msg(this.dst, msg);
