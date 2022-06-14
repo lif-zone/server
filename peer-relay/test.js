@@ -6,6 +6,7 @@ import Node from './node.js';
 import Router from './router.js';
 import NodeId from './node_id.js';
 import NodeMap from './node_map.js';
+import * as util from './util.js';
 import Req from './req.js';
 import buf_util from './buf_util.js';
 import ReqHandler from './req_handler.js';
@@ -16,7 +17,6 @@ import LBuffer from './lbuffer.js';
 import xescape from '../util/escape.js';
 import xutil from '../util/util.js';
 import xsinon from '../util/sinon.js';
-import util from '../util/util.js';
 import string from '../util/string.js';
 import xtest from '../util/test_lib.js';
 import xerr from '../util/xerr.js';
@@ -25,7 +25,7 @@ import {EventEmitter} from 'events';
 import bigInt from 'big-integer';
 const assign = Object.assign;
 const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
-const stringify = JSON.stringify, is_number = util.is_number;
+const stringify = JSON.stringify, is_number = xutil.is_number;
 const DEF_RTT = 100;
 
 function get_fuzzy(name){
@@ -293,7 +293,7 @@ function set_push_cmd(c, cmd){ _set_push_cmd(c, xtest.test_parse(cmd)); }
 
 function is_fake(p){ return t_role!=p; }
 
-function wss_from_node(node){ return util.get(node, 't.wss.url'); }
+function wss_from_node(node){ return xutil.get(node, 't.wss.url'); }
 
 function node_from_url(url){
   for (let name in t_nodes){
@@ -361,7 +361,7 @@ function assert_ack(val){
   if (!val)
     return [];
   let a = val.split(',');
-  util.forEach(a, ack=>assert_int(ack));
+  xutil.forEach(a, ack=>assert_int(ack));
   return a;
 }
 
@@ -424,7 +424,7 @@ function assert_support_wrtc(name){
 
 function assert_wss(val){
   let host = 'lif.zone', port, arg = xtest.test_parse(val);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'host': host = assert_host(a.arg); break;
     case 'port': port = assert_port(a.arg); break;
@@ -912,7 +912,7 @@ function name_to_id(name){ return N(name).id.s; }
 /* XXX: decide if to remove
 function array_id_to_name(a){
   let ret = [];
-  a.forEach(id=>ret.push(node_from_id(util.buf_from_str(id)).t.name));
+  a.forEach(id=>ret.push(node_from_id(xutil.buf_from_str(id)).t.name));
   return ret;
 }
 
@@ -920,7 +920,7 @@ function array_name_to_id(a){
   let ret = [];
   a.forEach(name=>{
     assert_exist(name);
-    ret.push(util.buf_to_str(N(name).id));
+    ret.push(xutil.buf_to_str(N(name).id));
   });
   return ret;
 }
@@ -1012,7 +1012,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
 });
 
 const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
-  let event = util.get(opt, 'event');
+  let event = xutil.get(opt, 'event');
   assert(!event, 'unexpected event '+event);
   if (t_pre_process)
     return;
@@ -1023,7 +1023,7 @@ function cmd_mode(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let mode = {req: false, msg: false}, pop;
   assert(!event, 'got unexpected '+event);
-  util.forEach(arg, m=>{
+  xutil.forEach(arg, m=>{
     switch (m.cmd){
     case 'req': mode.req = true; break;
     case 'msg': mode.msg = true; break;
@@ -1051,7 +1051,7 @@ function cmd_conf(opt){
   // XXX conf(id:a-mXYZn-z !node) - in order NOT to create the nodes
   // XXX conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
   // XXX a,b,c=node === a,b,c=node:wss
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id_bits': set_id_bits(assert_int(a.arg)); break;
     case 'id': ids = assert_node_ids(a.arg); break;
@@ -1095,7 +1095,7 @@ function cmd_sp(opt){
 function cmd_test_node_conn(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg), s, exp = {};
   assert(!event, 'got unexpected '+event);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     if (!s)
       s = N(a.cmd);
     exp[a.cmd] = a.arg||'';
@@ -1126,7 +1126,7 @@ function cmd_test_node_find(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg), s, target, next, prev;
   let bidi;
   assert(!event, 'got unexpected '+event);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     if (!s){
       s = N(a.cmd);
       target = parseFloat(a.arg);
@@ -1161,7 +1161,7 @@ function cmd_test_node_find(opt){
 function cmd_test_node_graph(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg), s, exp = {};
   assert(!event, 'got unexpected '+event);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     if (!s){
       s = N(a.cmd);
       assert(!a.arg);
@@ -1184,7 +1184,7 @@ function cmd_rt_add(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let routes = {};
   assert(!event, 'got unexpected '+event);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     let node = N(a.cmd);
     assert(node, 'invalid rt_add '+a.cmd);
     let path = assert_path(a.arg);
@@ -1196,7 +1196,7 @@ function cmd_rt_add(opt){
   });
   if (t_pre_process)
     return;
-  util.forEach(routes, (o, n)=>{
+  xutil.forEach(routes, (o, n)=>{
     o.forEach(path=>N(n).router.add_route(path));
   });
 }
@@ -1224,7 +1224,7 @@ function cmd_setup(opt){
   if (!t_pre_process)
     return;
   // XXX: proper assert setup params
-  util.forEach(arg, m=>{
+  xutil.forEach(arg, m=>{
     switch (m.cmd){
     case '2_nodes':
       M(`a=node(id:10) b=node(id:20 wss) - ab>!connect`);
@@ -1251,7 +1251,7 @@ function cmd_node(opt){
   let arg = xtest.test_parse(c.arg);
   if (c.dir=='=')
     name = c.s;
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'wss': wss = assert_wss(a.arg); break;
     case 'wrtc': wrtc = assert_wrtc(a.arg); break;
@@ -1289,7 +1289,7 @@ const cmd_connect = opt=>etask(function*(){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd[0]=='!';
   let r = true;
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'wss': wss = assert_wss_url(c.d, a.arg); break;
     case 'wrtc': wrtc = assert_support_wrtc(d.t.name); break;
@@ -1298,7 +1298,7 @@ const cmd_connect = opt=>etask(function*(){
     }
   });
   assert(d, 'unknown node '+c.d);
-  if (!wss && !wrtc && util.xor(support_wss(d), support_wrtc(d))){
+  if (!wss && !wrtc && xutil.xor(support_wss(d), support_wrtc(d))){
     wss = wss_from_node(d);
     wrtc = support_wrtc(d);
   }
@@ -1354,7 +1354,7 @@ const cmd_connected = opt=>etask(function*cmd_connected(){
 const cmd_conn_info = opt=>etask(function cmd_conn_info(){
   let {c, event} = opt, r, nr, basic = !/[*!]/.test(c.cmd[0]);
   let arg = xtest.test_parse(c.arg);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case '!r': nr = true; break;
     case 'r':
@@ -1394,7 +1394,7 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
 const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
   let {c, event} = opt, s = N(c.s), basic = !/[*!]/.test(c.cmd[0]);
   let arg = xtest.test_parse(c.arg), ws, wrtc;
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     // XXX: assert and verify ws is correct url
     case 'ws': ws = wss_from_node(s); break;
@@ -1465,7 +1465,7 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
 const cmd_get_peer_r = opt=>etask(function cmd_get_peer_r(){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   let arg = xtest.test_parse(c.arg);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     default: assert(0, 'unknown arg '+a.cmd);
     }
@@ -1492,7 +1492,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse(c.arg), body;
   let id, type, cmd, seq, ack, a;
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case 'type': type = a.arg; break;
@@ -1574,7 +1574,7 @@ const cmd_req = opt=>etask(function*req(){
   let type = c.cmd.replace(/[!*]/, ''), e=call;
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid type '+c.cmd);
-  util.forEach(arg, a=>{ // XXX: proper assert of values
+  xutil.forEach(arg, a=>{ // XXX: proper assert of values
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case 'body': body = a.arg; break;
@@ -1731,7 +1731,7 @@ const cmd_res = opt=>etask(function*req(){
   assert(s, 'invalid event '+c.orig);
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid type '+c.cmd);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case '!e': e = !assert_bool(a.arg); break;
@@ -1803,7 +1803,7 @@ const cmd_fail = opt=>etask(function*req(){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && !d, 'invalid event '+c.orig);
   let error, id, seq, arg = xtest.test_parse(c.arg);
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
@@ -1821,7 +1821,7 @@ const cmd_fail = opt=>etask(function*req(){
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
   let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range, path;
-  util.forEach(arg, a=>{
+  xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'rt': rt = assert_rt(a.arg, c.dir); break;
     case 'range': range = assert_range(a.arg); break;
@@ -2146,7 +2146,7 @@ const test_end = ()=>etask(function*(){
   xerr.notice('*** test_done');
 });
 
-if (!util.is_inspect())
+if (!xutil.is_inspect())
   beforeEach(function(){ xerr.set_buffered(true, 1000); });
 
 afterEach(function(){
@@ -2238,6 +2238,33 @@ describe('buf_util', ()=>{
   });
 });
 
+describe('util', function(){
+  it('basic', function(){
+    const t = (s, exp)=>{
+      let a = s.split('');
+      let ret = util.path_fold(a);
+      assert.equal(ret.join(''), exp);
+      if (s==exp)
+        assert.equal(ret, a);
+      else
+        assert(ret!==a);
+    };
+    t('', '');
+    t('a', 'a');
+    t('aa', 'a');
+    t('ab', 'ab');
+    t('aab', 'ab');
+    t('aba', 'a');
+    t('abc', 'abc');
+    t('aXbXdefdg', 'aXdg');
+    t('bXaX', 'bX');
+    t('bXaXa', 'bXa');
+    t('cXaXbX', 'cX');
+    t('cXbXaXb', 'cXb');
+    t('dXaXbXcX', 'dX');
+    t('dXcXbXaXc', 'dXc');
+  });
+});
 describe('node_id', function(){
   it('basic', function(){
     const i2b = val=>s2b(hash_from_int(val, 80, 80));
@@ -2620,7 +2647,7 @@ describe('peer-relay', function(){
   beforeEach(function(){
     xtest.set(Node, 'WsConnector', FakeWsConnector);
     xtest.set(Node, 'WrtcConnector', FakeWrtcConnector);
-    xtest.set(util, 'test_on_connection', test_on_connection);
+    xtest.set(xutil, 'test_on_connection', test_on_connection);
   });
   describe('test_api', function(){
     describe('pre_process', function(){

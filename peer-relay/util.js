@@ -27,3 +27,18 @@ export function undefined_to_null(key, value){
 export function undefined_to_null2(value){
   return value===undefined ? null : value; }
 
+export function path_fold(_path){
+  let path = _path;
+  for (let i=0; i<path.length; i++){
+    let curr = path[i], at;
+    for (let j=i+1; j<path.length; j++){
+      if (curr==path[j])
+        at = j;
+    }
+    if (at===undefined)
+      continue;
+    path = path===_path ? Array.from(path) : path;
+    path.splice(i+1, at-i);
+  }
+  return path;
+}
