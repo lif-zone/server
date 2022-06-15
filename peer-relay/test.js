@@ -3314,46 +3314,6 @@ describe('peer-relay', function(){
     // - how to connect on the 8 closets nodes to me
     //   get_peer to neighbours (with exclude to itself)
   });
-  /* XXX: compact path:
-    bX.Xa.X -> bXaX -> bX
-    bX.Xa.X.Xa -> bXaXa -> bXa
-    cX.Xa.Xb.X -> cXaXbX -> cX
-    cX.Xb.Xa.X.Xb -> cXbXaXb -> cXb
-    dX.X.Xa.Xb.Xc.X -> dXaXbXcX -> dX
-    dX.Xc.Xb.Xa.X.Xc -> dXcXbXaXc -> dXc
-  */
-  /* XXX derry: examples
-  // XXX TODO:
-  t('a,b=node:wss', `a=node(wss) b=node(wss)`);
-  t('ab,bc>!connect', `ab>!connect bc>!connect`);
-  t('ab-c>msg', `ab>fwd(a-c>msg)`);
-  t('abc.d>msg', `ab>fwd(ad>msg rt:abc) bc>fwd(ab>fwd(ad>msg rt:abc) rt:abc)
-    cd>fwd(bc>fwd(ab>fwd(ad>msg rt:abc) rt:abc) rt:cd)`);
-  t('abc.d>msg', `ab(rt:abc):ad>msg bc(rt:abc):ab(rt:abc):ad>msg
-    cd(rt:cd):bc(rt:abc):ab(rt:abc):ad>msg`);
-  // XXX derry
-  t('abc.d>msg', `ab>fwd(ad>msg rt:c) bc>fwd(ab>fwd(ad>msg rt:c))
-    cd>fwd(bc>fwd(ab>fwd(ad>msg rt:c)))`);
-  t('abc.d>msg', `$i=ab>fwd(ad>msg rt:c) bc>fwd($i++) cd>fwd($i++)`);
-  t('abc.d>msg', `ab[c]:ad>msg bc:ab[c]:ad>msg cd:bc:ab[c]:ad>msg`);
-  abcdefghijklmnXYZopqrstuvwxyz
-  b-a = 2^128/26 X=n+(o-n)/2 Y=X+1 Z=X+2
-  a startup, X min conn: aX.o.p.q.~.x.y.z.b-a>get_peer
-  a startup, X good conn: aX.t.w.y.z.b-a>get_peer
-  a startup, X good conn 2nd time: aX.t.w.y.z.b-a>get_peer
-  a startup, X good conn isp hops force: aX.Yt.YZw.ZYy.YZz.ZYb-a>get_peer
-  the isp connections: X:a Y:tyb Z:w (XYZ connected)
-  a startup, X good conn isp hops no-force: aX.Y[t].Zz.ZYb-a>get_peer
-    into a kbucket: aXYZz aXYb
-  ab+> empty a X tbl:
-  full a tbl:
-  a X --> ??? --> Y --> f.
-  t('axyb.yc.def>msg', ``);
-  // end derry
-  t('abc.d>msg', `ab[abc]:ad>msg bc[abc]:ab[abc]:ad>msg
-    cd[cd]:bc[abc]:ab[abc]:ad>msg`);
-  t('abc.d>msg', `ab[abc]:ad>msg bc:ab:ad>msg cd:bc:ab:ad>msg`); // auto rt
-  */
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());
     // afterEach(()=>xtest.xerr_level(xerr.L.ERR));
@@ -4261,4 +4221,5 @@ VP:
   - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
   - a,b,c=node === a,b,c=node:wss (make wss the default)
   - aX>!ping
+  t('abc.d>msg', `$i=ab>fwd(ad>msg rt:c) bc>fwd($i++) cd>fwd($i++)`);
 */
