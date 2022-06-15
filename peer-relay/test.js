@@ -4012,6 +4012,7 @@ VP:
   - remove node.channels (and get_closest/get_closest2)
   - remove path.js
   - cleanup path/rt/route/range usage
+  - organize Node/Router logic
 - protect against invalid msg
 - get 8 closets nodes to me (in tests, default is 2)
   get_peer to neighbours (with exclude to itself)
