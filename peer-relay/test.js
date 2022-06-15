@@ -4020,6 +4020,8 @@ VP:
   - if router can calculate all rtt (either it knows it or it get it) and have
     better route, use it (eg, connected directly)
 - incremental shortest-path updates
+- connect/auto-connect when two nodes learn on each other (wrtc)
+- move get_peer to be automatic in Node
 + rm warning React... in eslint
 - optimize mocha tests - improve sinon time api - by default, don't wait for
   external time to finish (eg. mongo/ls)

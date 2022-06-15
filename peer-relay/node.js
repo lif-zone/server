@@ -32,17 +32,8 @@ export default class Node extends EventEmitter {
     this.peers.on('removed', channel=>channel.destroy());
     this.router = new Router({channels: this.peers, id, wallet: this.wallet});
     this.conn_handler = new ReqHandler({node: this, cmd: 'conn_info'})
-    .on('req', (msg, res)=>{
-     let from = s2b(msg.from);
-      if (this.peers.get(from))
-          return;
-      // XXX: review this logic. looks wrong
-      if (this.pending[from]==null || from.compare(id.b)<0){
-        this.pending[from] = true;
-        res.send({ws: this.wsConnector.url,
-          wrtc: this.wrtcConnector.supported});
-      }
-    });
+    .on('req', (msg, res)=>res.send({ws: this.wsConnector.url,
+      wrtc: this.wrtcConnector.supported}));
     this.get_peer_handler = new ReqHandler({node: this, cmd: 'get_peer'})
     .on('req', (msg, res)=>res.send({id: id.s}));
     if (opt.port)
