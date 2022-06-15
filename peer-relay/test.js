@@ -4009,8 +4009,7 @@ VP:
   - check all NodeId.from in router
   - rename Ws/WrtcChannel to WsConn/WrtcConn
   - remove node.peers
-  - remove node.channels (and get_closest/get_closest2)
-  - remove path.js
+  - remove node.channels
   - cleanup path/rt/route/range usage
   - organize Node/Router logic
 - protect against invalid msg
