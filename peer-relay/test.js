@@ -3414,7 +3414,6 @@ describe('peer-relay', function(){
       });
       describe('no_route', ()=>{
         // XXX: no_route should fail with error(no_route)
-        if (0) // XXX: fixme
         t('req', `mode:req setup:2_nodes c=node cb>!req(id:r0 body:ping) -
         19999ms - 1ms c>*fail(id:r0 error:timeout)`);
         t('msg', `mode:msg setup:2_nodes c=node cb>!req(id:r0 body:ping !e) -
