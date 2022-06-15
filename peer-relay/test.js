@@ -546,9 +546,7 @@ function track_seq_req(s, d, id, cmd, type, seq, call){
     t_req[id] = {s, d, id, cmd, req: {seq: 0}};
   else if (/req_next|req_end/.test(type) && !t_req[id].req.call)
     t_req[id].req.seq++;
-  if (0) // XXX NOW: enable
   assert(s==t_req[id].s, 'invalid s '+s+'!='+t_req[id].s+' req '+id);
-  if (0) // XXX NOW: enable
   assert(d==t_req[id].d, 'invalid d '+d+'!='+t_req[id].d+' req '+id);
   t_req[id].req.call = call;
   return seq===undefined ? t_req[id].req.seq : seq;
@@ -562,9 +560,7 @@ function track_seq_res(s, d, id, type, seq, call){
     t_req[id].res = {seq: 0};
   else if (/res_next|res_end/.test(type) && !t_req[id].res.call)
     t_req[id].res.seq++;
-  if (0) // XXX NOW: enable
   assert(s==t_req[id].d, 'invalid s '+s+'!='+t_req[id].d+' req '+id);
-  if (0) // XXX NOW: enable
   assert(d==t_req[id].s, 'invalid d '+d+'!='+t_req[id].s+' req '+id);
   t_req[id].res.call = call;
   return seq===undefined ? t_req[id].res.seq : seq;
