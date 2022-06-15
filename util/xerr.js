@@ -248,7 +248,7 @@ var __xerr = function(level, args){
     if (!xerr.buffered)
       console.error(res);
     log_tail_push(res);
-    xerr_cb.forEach(cb=>cb(level, args));
+    xerr_cb.forEach(cb=>cb(level, args, msg, res));
 };
 
 E.set_logger = function(logger){
