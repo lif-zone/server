@@ -80,9 +80,9 @@ export default class Router extends EventEmitter {
       // XXX TODO: fix state handling
       // else if (channel = _this.get_channel_from_state(msg));
       if (channel = _this.get_channel_from_rt(rt));
-      else if (channel = _this.get_channel_from_id(to));
+      else if (channel = _this.get_channel_from_id(to)); /* eslint-disable */
       else if ((rt = _this.get_route(msg.to)) &&
-        (channel = _this.get_channel_from_rt(rt)));
+        (channel = _this.get_channel_from_rt(rt))); /* eslint-enable */
       else {
         rt = _this.node_map.get_best_route(to);
         if (!(channel = _this.get_channel_from_rt(rt)))
