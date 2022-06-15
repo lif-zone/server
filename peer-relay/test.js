@@ -1050,6 +1050,7 @@ function cmd_conf(opt){
     case 'rt': t_conf.rt = assert_bool(a.arg); break;
     case 'rtt': assert_rtt(a.arg); break;
     case '!node': no_node = assert_bool(a.arg); break;
+    case 'xerr': xtest.xerr_level(a.arg); break;
     default: assert(0, 'invalid conf '+a.cmd);
     }
   });
@@ -2131,6 +2132,7 @@ const test_end = ()=>etask(function*(){
     'req handler node exists on test end '+
     stringify(Object.keys(ReqHandler.t.nodes)));
   xerr.notice('*** test_done');
+  xtest.xerr_level(xerr.L.ERR);
 });
 
 if (!xutil.is_inspect())
@@ -3647,8 +3649,7 @@ describe('peer-relay', function(){
           a>*req_end(id:r0 seq:6 cmd:test body:b6)`);
         // XXX: the last req_end(dup) should not be emitted. need to close
         // connection
-        if (0) // XXX NOW: fixme (add xerr to expext errors)
-        t('req_dup', `mode:req setup:2_nodes
+        t('req_dup', `mode:req setup:2_nodes conf(xerr)
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
           ab<*req_start(id:r0 seq:0 cmd:test body:b0)
@@ -3662,8 +3663,7 @@ describe('peer-relay', function(){
           ab<*req_end(id:r0 seq:2 body:b2)
           a>*req_end(id:r0 seq:2 cmd:test body:b2 dup)
           `);
-        if (0) // XXX NOW: fixme (add xerr to expext errors)
-        t('req_dup_ooo', `mode:req setup:2_nodes
+        t('req_dup_ooo', `mode:req setup:2_nodes conf(xerr)
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
           ab<*req_next(id:r0 seq:2 body:b1)
@@ -3671,7 +3671,6 @@ describe('peer-relay', function(){
           ab<*req_next(id:r0 seq:2 body:b1)
           a>*req_next(id:r0 seq:2 cmd:test body:b1 ooo dup)
         `);
-        if (true) return; // XXX NOW: review all test below and copy relevant
         t('req_many', `mode:req setup:3_nodes_wss
           ab<!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           a>*req_start(id:r0 seq:0 cmd:test body:b0)
@@ -3727,8 +3726,7 @@ describe('peer-relay', function(){
           a>*res_next(id:r0 seq:5 cmd:test body:c5)
           ab<*res_end(id:r0 seq:6 ack body:c3)
           a>*res_end(id:r0 seq:6 cmd:test body:c3)`);
-        if (0) // XXX NOW: fixme (add xerr to expext errors)
-        t('res_dup', `mode:req setup:2_nodes
+        t('res_dup', `mode:req setup:2_nodes conf(xerr)
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_start(id:r0 seq:0 ack:0 body:c0)
           a>*res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
@@ -3742,8 +3740,7 @@ describe('peer-relay', function(){
           a>*res_end(id:r0 seq:2 cmd:test body:c3)
           ab<*res_end(id:r0 seq:2 ack body:c3)
           a>*res_end(id:r0 seq:2 cmd:test body:c3 dup)`);
-        if (0) // XXX NOW: fixme (add xerr to expext errors)
-        t('res_dup_ooo', `mode:req setup:2_nodes
+        t('res_dup_ooo', `mode:req setup:2_nodes conf(xerr)
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_start(id:r0 seq:0 ack:0 body:c0)
           a>*res_start(id:r0 seq:0 ack:0 cmd:test body:c0)
@@ -3751,7 +3748,6 @@ describe('peer-relay', function(){
           a>*res_next(id:r0 seq:2 cmd:test body:c1 ooo)
           ab<*res_next(id:r0 seq:2 ack body:c1)
           a>*res_next(id:r0 seq:2 cmd:test body:c1 ooo dup)`);
-        if (true) return; // XXX NOW: review all test below and copy relevant
         t('res_many', `mode:req setup:3_nodes_wss
           ab>!req_start(id:r0 seq:0 cmd:test body:b0 emit_api)
           ab<*res_start(id:r0 seq:0 ack:0 body:b0)
