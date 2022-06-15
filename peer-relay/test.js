@@ -3273,6 +3273,7 @@ describe('peer-relay', function(){
        last node (eg. ring_long)
        ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!get_peer
     for (best = at = itr(dest)..next() && i<16){
+       // XXX: need to skip best.path.includes(at.id)
        if (at.rtt_pb<best.rtt_pb)
          best = at;
     }
