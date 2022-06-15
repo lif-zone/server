@@ -99,13 +99,9 @@ export default class Router extends EventEmitter {
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
       if (msg.to!=msg2.to){
-        if (rt){
-          rt = Array.from(rt);
-          rt.splice(0, 1);
-          if (rt.length)
-            msg2.rt = rt;
-        }
-        if (range)
+        if (rt && rt.length>1)
+          (msg2.rt = Array.from(rt)).splice(0, 1);
+        else if (range)
           msg2.range = NodeId.range_to_msg(range);
       }
       _this.track_out(msg2, channel);
