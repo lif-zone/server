@@ -58,20 +58,20 @@ export default class Router extends EventEmitter {
       return _this._queue.push(lbuffer);
     if (msg.fuzzy){
       let route;
-      if (xutil.get(msg0, ['rt', 'path'])){
-        if (!(channel = _this.get_channel_from_rt(msg0)))
+      if (msg0.rt){
+        if (!(channel = _this.get_channel_from_rt(msg0.rt)))
           return xerr('channel not found in route');
-        route = Array.from(xutil.get(msg0, ['rt', 'path']));
+        route = Array.from(msg0.rt);
         range = lbuffer.range();
       } else {
         range = lbuffer.range();
         route = _this.node_map.get_route_by_range(to, from, range);
-        channel = _this.get_channel_from_path(route);
+        channel = _this.get_channel_from_rt(route);
         if (!channel)
           return _this.emit('message', lbuffer);
       }
       if (route.length>1){
-        rt = {path: Array.from(route)};
+        rt = Array.from(route);
         range = undefined;
       }
       else {
@@ -88,17 +88,17 @@ export default class Router extends EventEmitter {
     } else {
       // XXX TODO: fix state handling
       // else if (channel = _this.get_channel_from_state(msg));
-      if (channel = _this.get_channel_from_rt(msg0));
+      if (channel = _this.get_channel_from_rt(msg0.rt));
       else if (channel = _this.get_channel_from_id(to));
       else if ((rt = _this.get_route(msg.to)) &&
-        (channel = _this.get_channel_from_path(rt.path)));
+        (channel = _this.get_channel_from_rt(rt)));
       else {
         let route = _this.node_map.get_best_route(to);
-        channel = _this.get_channel_from_path(route);
+        channel = _this.get_channel_from_rt(route);
         if (!channel)
           return;
         if (route.length>1)
-          rt = {path: Array.from(route)};
+          rt = Array.from(route);
       }
     }
     // XXX: review this logic. we need it avoid sending forward direct msg
@@ -108,12 +108,11 @@ export default class Router extends EventEmitter {
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
       if (msg.to!=msg2.to){
-        rt = rt || xutil.get(msg0, ['rt', 'path']) &&
-          {path: xutil.get(msg0, ['rt', 'path'])};
-        if (rt && Array.isArray(rt.path)){
-          if (rt.path.length>1){
-            rt = {path: Array.from(rt.path)};
-            rt.path.shift();
+        rt = rt || msg0.rt;
+        if (rt){
+          if (rt.length>1){
+            rt = Array.from(rt);
+            rt.shift();
           } else
             rt = undefined;
         }
@@ -157,14 +156,12 @@ export default class Router extends EventEmitter {
   get_channel_from_id(id){
     return this._channels.get(id.s);
   }
-  get_channel_from_path(path){
+  get_channel_from_rt(path){
     let dst = path && path[0] && NodeId.from(path[0]);
     if (!dst)
       return;
     return this.get_channel_from_id(dst);
   }
-  get_channel_from_rt(msg){
-    return this.get_channel_from_path(xutil.get(msg, ['rt', 'path'])); }
   get_channel_from_state(msg){
     let {from, to} = msg, state = this.state[state_hash(from, to)];
     if (!state)
@@ -199,7 +196,7 @@ export default class Router extends EventEmitter {
     let routes=this.routes, d=path[path.length-1];
     if (!routes[d])
       return false;
-    return !!routes[d].find(rt=>path_eq(rt.path, path));
+    return !!routes[d].find(rt=>path_eq(rt, path));
   }
   add_route(path){
     let routes=this.routes;
@@ -208,7 +205,7 @@ export default class Router extends EventEmitter {
     routes[d] = routes[d]||[];
     if (this.has_route(path))
       return;
-    routes[d].push({path: Array.from(path)});
+    routes[d].push(Array.from(path));
   }
   update_conn(lbuffer){
     let path = [], rtt = 0;

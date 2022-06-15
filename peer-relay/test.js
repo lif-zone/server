@@ -191,7 +191,7 @@ function test_gen_ids(bits, total_bits){
 function rt_to_str(rt, dir){
   if (!rt)
     return '';
-  return path_to_str(rt.path, dir);
+  return path_to_str(rt, dir);
 }
 
 function normalize(e){
@@ -392,7 +392,7 @@ function assert_path(s, dir){ return parse_path(s, dir); }
 function assert_rt(s, dir){
   let path = parse_path(s, dir);
   assert(path, 'invalid rt '+s);
-  return {path};
+  return path;
 }
 
 function range_to_str(range){
@@ -723,7 +723,7 @@ class FakeChannel extends EventEmitter {
           i--;
           let srt = t_conf.rt&&fwd&&m.rt ?
             build_cmd('rt', rt_to_str(m.rt)) : '';
-          if (!t_conf.rt && xutil.get(m, ['rt', 'path']))
+          if (!t_conf.rt && m.rt)
             srt = build_cmd('rt', rt_to_str(m.rt));
           let srange = m.range && build_cmd('range',
             range_to_str(NodeId.range_from_msg(m.range)));
@@ -943,7 +943,7 @@ function fake_emit(c, msg){
   msg.to = to;
   msg.from = from;
   let nonce = t_nonce[nonce_hash(msg)];
-  assign(msg, {to, from, nonce, path: [from]});
+  assign(msg, {to, from, nonce});
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
   assert(!c.fwd, 'fwd not allowed in fake_emit');
@@ -966,7 +966,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
   msg.from = from;
   if (fuzzy)
     msg.fuzzy = fuzzy;
-  assign(msg, {to, from, path: [from]});
+  assign(msg, {to, from});
   if (c.fwd){
     s = N(fwd_s(c.fwd, 0));
     d = N(fwd_d(c.fwd, 0));
@@ -1555,8 +1555,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
   }
   let rt; // XXX: rm this logic. just pass c.rt
-  if (xutil.get(c, ['rt', 'path']))
-    rt = {path: parse_path(rt_to_str(c.rt), c.dir)};
+  if (c.rt)
+    rt = parse_path(rt_to_str(c.rt), c.dir);
   yield fake_send_msg(c, {rt, req_id: id, type, seq, ack, cmd, body});
   yield cmd_run_if_next_fake();
 });
@@ -4284,6 +4284,7 @@ VP:
   - remove node.channels (and get_closest/get_closest2)
   - remove path.js
   - cleanup path/rt/route/range usage
+- protect against invalid msg
 - get 8 closets nodes to me (in tests, default is 2)
   get_peer to neighbours (with exclude to itself)
 - exact/optional routing modes for both fuzzy/regular routing
