@@ -693,6 +693,7 @@ class FakeChannel extends EventEmitter {
         switch (cmd){
         case 'conn_info': body= ''; break;
         case 'get_peer': body= ''; break;
+        case 'ping': body= ''; break;
         case '': break;
         default: assert(0, 'invalid cmd '+cmd);
         }
@@ -701,6 +702,7 @@ class FakeChannel extends EventEmitter {
         switch (cmd){
         case 'conn_info': body = conn_opts(body); break;
         case 'get_peer': body= ''; break;
+        case 'ping': body= ''; break;
         case '': break;
         default: assert(0, 'invalid cmd ', cmd);
         }
@@ -761,6 +763,7 @@ function req_hook(lbuffer){
     break;
   case '':
   case 'test':
+  case 'ping':
     e = build_cmd_o(from.t.name+to.t.name+'>*'+type,
       {id: req_id, seq, ack: ack && ack.join(','), cmd, body});
     break;
@@ -827,6 +830,7 @@ function res_hook(msg){
     e = build_cmd(from.t.name+to.t.name+'>*get_peer_r', body);
     break;
   case 'test':
+  case 'ping':
   case '':
     e = build_cmd_o(from.t.name+to.t.name+'>*'+type, {id: req_id,
       seq, ack: ack && ack.join(','), cmd, body});
@@ -1528,6 +1532,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     switch (cmd){
     case 'conn_info': break;
     case 'get_peer': break;
+    case 'ping': break;
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
     }
@@ -1547,6 +1552,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       });
       break;
     case 'get_peer': body= ''; break;
+    case 'ping': body= ''; break;
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
     }
@@ -1581,7 +1587,7 @@ const cmd_req = opt=>etask(function*req(){
     case 'rt': rt = assert_rt(a.arg, c.dir); break;
     case 'res':
       assert(call, 'res only valid for !req');
-      res = a.arg;
+      res = a.arg||'';
       break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
@@ -1605,7 +1611,7 @@ const cmd_req = opt=>etask(function*req(){
      }
      s += t_mode.req ? (s ? ' ' : '')+ build_cmd_o(dir_c(c)+'*'+type,
        {id, cmd, seq, ack, body, close}) : '';
-     if (res){
+     if (res!==undefined){
         if (c.loop){
           s += t_mode.msg ? (s ? ' ' : '')+
             build_cmd(rev_loop_str(c.loop)+'>fwd', build_cmd_o(rev_c(c)+'msg',
@@ -1651,7 +1657,7 @@ const cmd_req = opt=>etask(function*req(){
   if (!s.t.fake){
     if (type=='req'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
-      let req = new Req({node: s, dst: d.id.s, req_id: id, rt});
+      let req = new Req({node: s, dst: d.id.s, req_id: id, cmd, rt});
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send({seq, ack}, body);
     } else if (type=='req_start'){
@@ -1685,7 +1691,8 @@ const cmd_req = opt=>etask(function*req(){
   if (!d.t.fake){
     let req_handler = d.t.req_handler; // XXX: need to hash it by cmd
     if (!req_handler){
-      req_handler = new ReqHandler({node: d, cmd});
+      req_handler = ReqHandler.get(d.id, cmd) ||
+        new ReqHandler({node: d, cmd});
       d.t.req_handler = req_handler;
       if (emit_api){
         let cb = (o, res, opt)=>cmd_run(build_cmd_o(c.d+'>*'+o.type,
@@ -3123,6 +3130,11 @@ describe('peer-relay', function(){
   });
   describe('router', ()=>{
     let t = (name, test)=>t_roles(name, 'abc', test);
+    // XXX: WIP
+    t('xxx', `conf(id_bits:8) setup:2_nodes
+      ab>!req(cmd:ping) ab<msg(type:res cmd:ping)
+      ab<*res(cmd:ping)
+    `);
     t('2_nodes', `conf(id_bits:8) setup:2_nodes
       ab>!req(body:ping res:ping_r)`);
     t('2_nodes_wss', `conf(id_bits:8) a,b=node:wss
@@ -4012,6 +4024,8 @@ VP:
   - remove node.channels
   - cleanup path/rt/route/range usage
   - organize Node/Router logic
+  - organize all tests (2_nodes, 3_nodes are already in router)
+  - mode mode(req,msg) the default and also nodes abcdefghijklmXYZnopqrstuvwxyz
 - protect against invalid msg
 - get 8 closets nodes to me (in tests, default is 2)
   get_peer to neighbours (with exclude to itself)

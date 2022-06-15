@@ -106,7 +106,8 @@ function range_from_msg(range){ return range &&
 function range_to_msg(range){ return range &&
   {min: range.min.s, max: range.max.s}; }
 
-NodeId.from = function(id){ return new NodeId(id); };
+NodeId.from = function(id){
+  return id instanceof NodeId ? id : new NodeId(id); };
 NodeId.cmp = function(a, b){ return a.cmp(b); };
 NodeId.bits = BITS; // XXX: check correct value
 NodeId.dist = dist;

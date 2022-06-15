@@ -31,6 +31,8 @@ export default class Node extends EventEmitter {
     this.peers = new Channels();
     this.peers.on('removed', channel=>channel.destroy());
     this.router = new Router({channels: this.peers, id, wallet: this.wallet});
+    this.ping_handler = new ReqHandler({node: this, cmd: 'ping'})
+    .on('req', (msg, res)=>res.send('ping_r'));
     this.conn_handler = new ReqHandler({node: this, cmd: 'conn_info'})
     .on('req', (msg, res)=>res.send({ws: this.wsConnector.url,
       wrtc: this.wrtcConnector.supported}));

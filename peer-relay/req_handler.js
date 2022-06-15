@@ -4,6 +4,7 @@ import assert from 'assert';
 import {EventEmitter} from 'events';
 import util from '../util/util.js';
 import buf_util from './buf_util.js';
+import NodeId from './node_id.js';
 import xerr from '../util/xerr.js';
 import xescape from '../util/escape.js';
 import date from '../util/date.js';
@@ -189,7 +190,7 @@ export default class ReqHandler extends EventEmitter {
     this.timeout = timeout||RES_TIMEOUT;
     let id = this.id = router.id.s;
     // XXX: need unregister + cleanup
-    assert(!util.get(nodes, [id, cmd]), 'handler already exists '+cmd);
+    assert(!ReqHandler.has(id, cmd), 'handler already exists '+cmd);
     nodes[id] = nodes[id]||{cmd: {}};
     nodes[id].cmd[cmd] = {req_handler: this};
     if (!router.req_handler_attached){ // XXX: cleanup
@@ -199,5 +200,9 @@ export default class ReqHandler extends EventEmitter {
     }
   }
 }
+
+ReqHandler.get = function(id, cmd){
+  return util.get(nodes, [NodeId.from(id).s, 'cmd', cmd]); };
+ReqHandler.has = function(id, cmd){ return !!ReqHandler.get(id, cmd); };
 
 ReqHandler.t = {nodes, req_handler_cb};
