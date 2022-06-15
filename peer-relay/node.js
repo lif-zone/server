@@ -49,11 +49,6 @@ export default class Node extends EventEmitter {
         this.wsConnector.connect(uri);
     });
   }
-  // XXX derry: update js_code and fix existing code
-  // if (...){
-  // switch (a){
-  // for (...){
-  // } else {
   _onConnection = channel=>etask({_: this}, function*_onConnection(){
     let _this = this._;
     const onClose = ()=>{
