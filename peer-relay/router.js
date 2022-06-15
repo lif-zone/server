@@ -50,55 +50,46 @@ export default class Router extends EventEmitter {
   }
   _send = lbuffer=>etask({_: this}, function*(){
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
-    let _this = this._, channel, rt;
+    let _this = this._, channel, rt = msg0.rt;
     let from = NodeId.from(msg.from), to = NodeId.from(msg.to);
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
     if (!_this._channels.size) // XXX: verify and test it
       return _this._queue.push(lbuffer);
     if (msg.fuzzy){
-      let route;
-      if (msg0.rt){
+      if (rt){
         if (!(channel = _this.get_channel_from_rt(msg0.rt)))
           return xerr('channel not found in route');
-        route = Array.from(msg0.rt);
         range = lbuffer.range();
       } else {
         range = lbuffer.range();
-        route = _this.node_map.get_route_by_range(to, from, range);
-        channel = _this.get_channel_from_rt(route);
+        rt = _this.node_map.get_route_by_range(to, from, range);
+        channel = _this.get_channel_from_rt(rt);
         if (!channel)
           return _this.emit('message', lbuffer);
       }
-      if (route.length>1){
-        rt = Array.from(route);
+      if (rt.length>1)
         range = undefined;
-      }
       else {
         if (!range)
           range = {min: channel.id, max: channel.id};
         else {
           let range2 = {min: channel.id, max: range.max};
-          if (to.in_range(range2))
-            range = range2;
-          else
-            range = {min: range.min, max: channel.id};
+          range = to.in_range(range2) ? range2 :
+            {min: range.min, max: channel.id};
         }
       }
     } else {
       // XXX TODO: fix state handling
       // else if (channel = _this.get_channel_from_state(msg));
-      if (channel = _this.get_channel_from_rt(msg0.rt));
+      if (channel = _this.get_channel_from_rt(rt));
       else if (channel = _this.get_channel_from_id(to));
       else if ((rt = _this.get_route(msg.to)) &&
         (channel = _this.get_channel_from_rt(rt)));
       else {
-        let route = _this.node_map.get_best_route(to);
-        channel = _this.get_channel_from_rt(route);
-        if (!channel)
+        rt = _this.node_map.get_best_route(to);
+        if (!(channel = _this.get_channel_from_rt(rt)))
           return;
-        if (route.length>1)
-          rt = Array.from(route);
       }
     }
     // XXX: review this logic. we need it avoid sending forward direct msg
@@ -108,16 +99,14 @@ export default class Router extends EventEmitter {
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
       if (msg.to!=msg2.to){
-        rt = rt || msg0.rt;
         if (rt){
-          if (rt.length>1){
-            rt = Array.from(rt);
-            rt.shift();
-          } else
-            rt = undefined;
+          rt = Array.from(rt);
+          rt.splice(0, 1);
+          if (rt.length)
+            msg2.rt = rt;
         }
-        msg2.rt = rt;
-        msg2.range = NodeId.range_to_msg(range);
+        if (range)
+          msg2.range = NodeId.range_to_msg(range);
       }
       _this.track_out(msg2, channel);
       lbuffer.add_json(msg2);
