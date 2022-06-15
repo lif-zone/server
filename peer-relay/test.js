@@ -3354,44 +3354,6 @@ describe('peer-relay', function(){
     cd[cd]:bc[abc]:ab[abc]:ad>msg`);
   t('abc.d>msg', `ab[abc]:ad>msg bc:ab:ad>msg cd:bc:ab:ad>msg`); // auto rt
   */
-  // XXX: support: a,b,c,d,e=node(wss) ab,bc,cd,de,ea>!connect
-  // abcDefg dx>connect dxd+e>announce(r:bcfg) dxd-c>announce(r:abef)
-  // dxe,dxc>online
-  // min online: abcdefg dx>connect dx+d.e,dx-d.c>announce dxe,dxc>online
-  // more min: abcdefg dx>connect dx+d.e>announce(r:c) dxe,dxc>online
-  // better: abcdefg dx>connect dx+d.e>announce(r:bcfg) dxe,dxc>online
-  // min min: abcdefg dx>connect dx+d.e>announce acd.ed>ping
-  // example route abcde.h ab> bc> cd> dh>
-  // example for finding out (b c d h): ab*e.c.d.he
-  describe('ring_connect', ()=>{
-    if (true) return; // XXX WIP
-    let t = (name, test)=>t_roles(name, 'abcd', test);
-    let s = 'conf(a:10 b:20 c:30 d:40 e:50';
-    t('a', s+=`a=node:wss`);
-    // XXX: b=node(boot:a) instead of hard-code connect/join and make join
-    // option of connect
-    t('ab', s+=` b=node:wss ab<!connect ab<!join`);
-    /* XXX: WIP
-    let t = ()=>{}, s;
-    // a:48 b:53 c:294 d:385 e:403 f:746 g:940
-    t('b', s=`b=node(id:53)`);
-    t('ab', s+=`a=node(id:48 boot:b) ab>connect ab>get_peer(a 53-48)
-      ba<get_peer_r(b) ab>online -`);
-    t('abc', s+=`c=node(id:294 boot:b) cb>connect cb>get_peer(c 53-294)
-      cb<get_peer_r(ab) ca>connect ca>online cb>online -`);
-    // XXX: db>fwd(53-385,dd*>get_peer:d) bc>fwd(294-385,dd*>get_peer:d)
-    t('abcd', s+=`d=node(id:385 boot:b) db>connect
-      dbcd~>get_peer(d 53-385)
-      bc>get_peer(d 294-385) dbc<get_peer_r(ac) da>connect dc>connect
-      dc>online dc>online`);
-    t('abcdg', s+=`g=node(id:940 boot:b) gb>connect gb>get_peer(g 53-940)
-      bd>(g 385-940) dbg<(da) gd>connect ga>connect gd>online ga>online`);
-    t('xxx', `setup(ring:abcef) g=node(id:940 boot:b) gb>get_peer(g 53-940)
-      bc>get_peer(g 294-940) cd>get_peer(g 385-940) de>get_peer(g 403-940)
-      ef>get_peer(g 746-940) gbcdef<get_peer_r(af) ga>connect gf>connect
-      ga>online gf>online`);
-    */
-  });
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());
     // afterEach(()=>xtest.xerr_level(xerr.L.ERR));
@@ -4263,16 +4225,13 @@ freq=8/100
 */
 /*
 VP:
-+ node_itr exclude/range support
 * implement fuzzy routing with node_itr/range
 * path selection:
-  + rm obsolete rt.range
-  - fix 4_nodes_ring_state_timeout
-    - need tests where we pass route info when selecting best rtt
   * calc_rtt_ob_via
     - review XXX with derry in test
     - check XXX on dist (!d && a.eq(b))
   - fix state handling for routing
+    - fix 4_nodes_ring_state_timeout
 - remove obsolete
   - fix node roles used to be automatic (check which nodes are used during
     pre-process)
