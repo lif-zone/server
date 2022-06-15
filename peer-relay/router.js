@@ -57,20 +57,17 @@ export default class Router extends EventEmitter {
     if (!_this._channels.size) // XXX: verify and test it
       return _this._queue.push(lbuffer);
     if (msg.fuzzy){
+      range = lbuffer.range();
       if (rt){
         if (!(channel = _this.get_channel_from_rt(msg0.rt)))
           return xerr('channel not found in route');
-        range = lbuffer.range();
       } else {
-        range = lbuffer.range();
         rt = _this.node_map.get_route_by_range(to, from, range);
         channel = _this.get_channel_from_rt(rt);
         if (!channel)
           return _this.emit('message', lbuffer);
       }
-      if (rt.length>1)
-        range = undefined;
-      else {
+      if (!rt || rt.length==1){
         if (!range)
           range = {min: channel.id, max: channel.id};
         else {
