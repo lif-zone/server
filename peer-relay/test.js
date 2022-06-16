@@ -3286,22 +3286,19 @@ describe('peer-relay', function(){
       ab,bX,Xn,no,oa,po>!connect po.n.X.b.a~p>!get_peer`);
     t('ring_step_by_step:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       aX>!connect // XXX: fixme aX~X>!get_peer
-      bX>!connect bX.a~b>!get_peer
-      nX>!connect nX.b.Xa~n>!get_peer oX>!connect oX.n.XbXa~o>!get_peer
-      pX>!connect pX.o.XnXbXa~p>!get_peer`);
+      bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer
+      oX>!connect oX.n.XbXa~o>!get_peer pX>!connect pX.o.XnXbXa~p>!get_peer`);
     t('ring_step_by_step2:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       aX>!connect // XXX: fixme aX~X>!get_peer
-      bX>!connect bX.a~b>!get_peer
-      nX>!connect nX.b.Xa~n>!get_peer !sp oX>!connect oX.n.Xa~o>!get_peer
-      !sp pX>!connect pX.o.Xa~p>!get_peer`);
+      bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer !sp
+      oX>!connect oX.n.Xa~o>!get_peer !sp pX>!connect pX.o.Xa~p>!get_peer`);
     t('ring_step_by_step3:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       aX>!connect // XXX: fixme aX~X>!get_peer
-      bX>!connect bX.a~b>!get_peer
-      nX>!connect nX.b.Xa~n>!get_peer oX>!connect oX.n.XbXa~o>!get_peer
-      !sp oXn.X.a~o>!get_peer !sp pX>!connect pX.o.Xa~p>!get_peer`);
+      bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer
+      oX>!connect oX.n.XbXa~o>!get_peer !sp oXn.X.a~o>!get_peer
+      !sp pX>!connect pX.o.Xa~p>!get_peer`);
     t('star:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
-      ab,bX,Xn,no,oa,aX,oX,pX>!connect
-      pX.o.a~p>!get_peer`);
+      ab,bX,Xn,no,oa,aX,oX,pX>!connect pX.o.a~p>!get_peer`);
     t('ring:abXnoz~z', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,zX>!connect zX.b.a.o~z>!get_peer`);
     t = (name, test)=>t_roles(name, 'abcd', test);
@@ -3320,29 +3317,23 @@ describe('peer-relay', function(){
     // XXX: check if test really test anything
     t('best_path_circular', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
       aX,Xb,bY,Ya>!connect aX.b.Y~a>!get_peer bXa.X~b>!get_peer
-      XbY.b~X>!get_peer YbX.b.Xa~Y>!get_peer aXb>!req(body:ping res:ping_r)
-      aYb>!req(body:ping res:ping_r rt:Yb) !sp aXb>!req(body:ping res:ping_r)
-      conf(rtt(100 Yb:1)) aYb>!req(body:ping res:ping_r rt:Yb)
-      !sp aYb>!req(body:ping res:ping_r)`);
+      XbY.b~X>!get_peer YbX.b.Xa~Y>!get_peer aXb>!ping
+      aYb>!req(body:ping res:ping_r rt:Yb) !sp aXb>!ping
+      conf(rtt(100 Yb:1)) aYb>!req(body:ping res:ping_r rt:Yb) !sp aYb>!ping`);
     t = (name, test)=>t_roles(name, 'abcXY', test);
     t('best_path_multi', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
       aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
-      c.XaXb.Xa.X~c>!get_peer cXa>!req(body:ping res:ping_r)
-      cXaXb>!req(body:ping res:ping_r) !sp cXa>!req(body:ping res:ping_r)
-      cXb>!req(body:ping res:ping_r) Ya,Yb>!connect Yb.X.a~Y>!get_peer
-      Yb.Xc>!req(body:ping res:ping_r) YbXc>!req(body:ping res:ping_r)
-      YaXc>!req(body:ping res:ping_r rt:aXc) YbXc>!req(body:ping res:ping_r)
-      !sp YaXc>!req(body:ping res:ping_r) conf(rtt(100 Yb:10))
-      !sp YaXc>!req(body:ping res:ping_r)
+      c.XaXb.Xa.X~c>!get_peer cXa>!ping cXaXb>!ping !sp cXa>!ping
+      cXb>!ping Ya,Yb>!connect Yb.X.a~Y>!get_peer Yb.Xc>!ping YbXc>!ping
+      YaXc>!req(body:ping res:ping_r rt:aXc) YbXc>!ping
+      !sp YaXc>!ping conf(rtt(100 Yb:10)) !sp YaXc>!ping
       YbXc>!req(body:ping res:ping_r rt:bXc)
-      YaXc>!req(body:ping res:ping_r rt:aXc)
-      !sp YbXc>!req(body:ping res:ping_r)`);
+      YaXc>!req(body:ping res:ping_r rt:aXc) !sp YbXc>!ping`);
     t = (name, test)=>t_roles(name, 'bcXY', test);
     t('sub_rtt_is_ignored', `mode(msg req) conf(id:a-mXYZn-z rtt:1000)
       Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
-      Yb.Xc>!req(body:ping res:ping_r) YbXc>!req(body:ping res:ping_r)
-      !sp YbXc>!req(body:ping res:ping_r) conf(rtt(1000 Yb:1))
-      YbXc>!req(body:ping res:ping_r) !sp YbXc>!req(body:ping res:ping_r)`);
+      Yb.Xc>!ping YbXc>!ping !sp YbXc>!ping conf(rtt(1000 Yb:1))
+      YbXc>!ping !sp YbXc>!ping`);
     /* XXX: review with derry
     1. need to ignore any at.id that is already in best.path
     2. rtt_pb_via doesn't work for fuzzy (s~s and when getting beyoned
