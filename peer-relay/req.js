@@ -7,6 +7,7 @@ import xescape from '../util/escape.js';
 import etask from '../util/etask.js';
 import util from '../util/util.js';
 import xlog from '../util/xlog.js';
+import NodeId from './node_id.js';
 import {dbg_sd, dbg_msg} from './util.js';
 const log = xlog('req');
 const assign = Object.assign;
@@ -68,8 +69,9 @@ export default class Req extends EventEmitter {
     assert(!fuzzy || !stream, 'fuzzy dst cannot be used with stream');
     this.node = node;
     let router = this.router = node.router;
+    // XXX: replace src/dst with NodeId
     this.src = node.id.b;
-    this.dst = dst;
+    this.dst = NodeId.from(dst).s;
     this.fuzzy = fuzzy;
     this.cmd = cmd;
     this.stream = stream;

@@ -1422,6 +1422,61 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
   fake_emit(c, {type: 'res', cmd: 'conn_info', body: {ws, wrtc}});
 });
 
+const cmd_ping = opt=>etask(function cmd_ping(){
+  let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
+  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true;
+  let arg = xtest.test_parse(c.arg);
+  xutil.forEach(arg, a=>{
+    switch (a.cmd){
+    case '!e': e = !assert_bool(a.arg); break;
+    default: assert(0, 'unknown arg '+a.cmd);
+    }
+  });
+  if (t_pre_process){
+    let s;
+    if (basic){
+      s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
+        {type: 'req', cmd: 'ping'});
+      set_push_cmd(c, s);
+    } else if (call && e){
+      s = build_cmd_o(c.s+c.d+'>!ping(!e)');
+      s += t_mode.msg ? ' '+build_cmd_o(
+        c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
+        {type: 'req', cmd: 'ping'}) : '';
+      s += t_mode.req ? build_cmd_o(dir_c(c)+'*req', {cmd: 'ping'}) : '';
+      s += t_mode.msg ? ' '+build_cmd_o(
+        c.loop ? rev_loop_str(c.loop)+'>msg' : rev_c(c)+'msg',
+        {type: 'res', cmd: 'ping'}) : '';
+      s += t_mode.req ? build_cmd_o(rev_c(c)+'*res', {cmd: 'ping'}) : '';
+    } else if (c.cmd[0]=='*')
+      s = t_mode.req ? build_cmd_o(dir_c(c)+'*req', {cmd: 'ping'}) : '';
+    if (s)
+      set_push_cmd(c, s);
+    return;
+  }
+  if (!call)
+    return;
+  if (!s.t.fake)
+    s.ping(d.id);
+});
+
+const cmd_ping_r = opt=>etask(function cmd_ping(){
+  let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
+  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d);
+  assert(!c.arg, 'invalid arg '+c.orig);
+  if (t_pre_process){
+    let s = '';
+    if (basic){
+      s = t_mode.msg ? build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' :
+        dir_c(c)+'msg', {type: 'res', cmd: 'ping'}) : '';
+    } else if (c.cmd[0]=='*')
+      s = t_mode.req ? build_cmd_o(dir_c(c)+'*res', {cmd: 'ping'}) : '';
+    if (s)
+      set_push_cmd(c, s);
+    return;
+  }
+});
+
 const cmd_get_peer = opt=>etask(function cmd_get_peer(){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
@@ -1451,7 +1506,7 @@ const cmd_get_peer = opt=>etask(function cmd_get_peer(){
     if (id && t_msg[id] && t_msg[id].active)
       delete t_msg[id];
     if (!s.t.fake)
-      s.get_peer(d.id.s, {fuzzy});
+      s.get_peer(d.id, {fuzzy});
     return;
   }
   assert_event_c(c, event);
@@ -1900,6 +1955,11 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*get_peer': yield cmd_get_peer(opt); break;
   case 'get_peer_r': yield cmd_get_peer_r(opt); break;
   case '*get_peer_r': yield cmd_get_peer_r(opt); break;
+  case '*ping': yield cmd_ping(opt); break;
+  case 'ping': yield cmd_ping(opt); break;
+  case '!ping': yield cmd_ping(opt); break;
+  case '*ping_r': yield cmd_ping_r(opt); break;
+  case 'ping_r': yield cmd_ping_r(opt); break;
   case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
   case '!req': yield cmd_req(opt); break;
@@ -2937,6 +2997,19 @@ describe('peer-relay', function(){
           ab>*res_start(id(r1) cmd(test))`);
         t('x,y=node:wss', `x=node(wss) y=node(wss)`);
         T('ab,bc>!connect', `ab>!connect bc>!connect`);
+        describe('ping', function(){
+          _T('mode(msg req)', 'ab>*ping_r', `ab>*res(cmd:ping)`);
+          _T('mode(msg req)', 'ab>ping_r', `ab>msg(type:res cmd:ping)`);
+          _T('mode(msg req)', 'abc>ping_r', `abc>msg(type:res cmd:ping)`);
+          _T('mode(msg req)', 'ab>*ping', `ab>*req(cmd:ping)`);
+          _T('mode(msg req)', 'ab>ping', `ab>msg(type:req cmd:ping)`);
+          _T('mode(msg req)', 'abc>ping', `abc>msg(type:req cmd:ping)`);
+          _T('mode(msg req)', 'ab>!ping(!e)', `ab>!ping(!e)`);
+          _T('mode(msg req)', 'ab>!ping', `ab>!ping(!e) ab>ping ab>*ping
+            ab<ping_r ab<*ping_r`);
+          _T('mode(msg req)', 'abc>!ping', `ac>!ping(!e) abc>ping ac>*ping
+            abc<ping_r ac<*ping_r`);
+        });
       });
     });
   });
@@ -3129,12 +3202,16 @@ describe('peer-relay', function(){
       });
   });
   describe('router', ()=>{
+    describe('ping', ()=>{
+      let t = (name, test)=>t_roles(name, 'abc', test);
+      t('2_nodes_ping_raw', `setup:2_nodes ab>!req(cmd:ping !e)
+        ab>msg(type:req cmd:ping) ab>*req(cmd:ping) ab<msg(type:res cmd:ping)
+        ab<*res(cmd:ping)`);
+      t('2_nodes_ping_long', `setup:2_nodes ab>!ping(!e) ab>ping ab>*ping
+        ab<ping_r ab<*ping_r`);
+      t('2_nodes_ping_short', `setup:2_nodes ab>!ping`);
+    });
     let t = (name, test)=>t_roles(name, 'abc', test);
-    // XXX: WIP
-    t('xxx', `conf(id_bits:8) setup:2_nodes
-      ab>!req(cmd:ping) ab<msg(type:res cmd:ping)
-      ab<*res(cmd:ping)
-    `);
     t('2_nodes', `conf(id_bits:8) setup:2_nodes
       ab>!req(body:ping res:ping_r)`);
     t('2_nodes_wss', `conf(id_bits:8) a,b=node:wss
@@ -4026,6 +4103,8 @@ VP:
   - organize Node/Router logic
   - organize all tests (2_nodes, 3_nodes are already in router)
   - mode mode(req,msg) the default and also nodes abcdefghijklmXYZnopqrstuvwxyz
+  - implement all complex commands with simple req/msg api
+   - verify Req/ReqHander use src/dst as NodeId and not string/bufffer
 - protect against invalid msg
 - get 8 closets nodes to me (in tests, default is 2)
   get_peer to neighbours (with exclude to itself)

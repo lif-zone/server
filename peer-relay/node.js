@@ -134,6 +134,11 @@ export default class Node extends EventEmitter {
     for (var i = 0; i < peers.length; i++)
       peers[i].destroy();
   }
+  ping(dst){
+    let req = new Req({node: this, dst, cmd: 'ping'});
+    req.send('');
+    return req;
+  }
   get_peer(dst, opt){
     let req = new Req({node: this, dst, fuzzy: opt.fuzzy, cmd: 'get_peer'});
     req.send('');
