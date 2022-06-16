@@ -3213,12 +3213,9 @@ describe('peer-relay', function(){
       t('2_nodes_ping_short', `setup:2_nodes ab>!ping`);
     });
     let t = (name, test)=>t_roles(name, 'abc', test);
-    t('2_nodes', `setup:2_nodes
-      ab>!ping`);
-    t('2_nodes_wss', `a,b=node:wss
-      ab>!connect ab>!ping`);
-    t('3_nodes', `a,b,c=node:wss ab,ac>!connect
-      ab>!ping ac>!ping`);
+    t('2_nodes', `setup:2_nodes ab>!ping`);
+    t('2_nodes_wss', `a,b=node:wss ab>!connect ab>!ping`);
+    t('3_nodes', `a,b,c=node:wss ab,ac>!connect ab>!ping ac>!ping`);
     t('3_nodes_route_b', `conf(id(a:10 b:20 c:30 d:21 e:31))
       ab,ac>!connect ad>!req(id:r1 body:ping !e)
       ab>fwd(ad>msg(id:r1 type:req body:ping)) -
@@ -3226,8 +3223,7 @@ describe('peer-relay', function(){
     t('3_nodes_route_c', `conf(id(a:10 b:20 c:30 d:21 e:31))
       ab,ac>!connect ae>!req(id:r1 body:ping !e)
       ac:ae>msg(id:r1 type:req body:ping) - 20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_ring', `conf(id(a:10 b:20 c:30))
-      ab,bc,ca>!connect ab>!ping
+    t('3_nodes_ring', `conf(id(a:10 b:20 c:30)) ab,bc,ca>!connect ab>!ping
       ac>!ping -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
     // XXX: check why if we change to ping it fails (req tracking bug)
