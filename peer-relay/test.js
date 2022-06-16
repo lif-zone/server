@@ -3254,15 +3254,10 @@ describe('peer-relay', function(){
       // a.bc<!req(id:r3 body:ping res:ping_r) -`);
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id(a:10 b:20 c:30 d:40 e:50))
-      ab,bc,cd,de,ea>!connect ae.d>!req(id:r1 body:ping res:ping_r) 59s -
-      aed<!req(id:r2 body:ping res:ping_r) 60s -
-      aed<!req(id:r3 body:ping res:ping_r) 60s -
-      `);
+      ab,bc,cd,de,ea>!connect ae.d>!ping 59s - aed<!ping 60s - aed<!ping 60s`);
     t('5_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40 e:50))
-      ab,bc,cd,de,ea>!connect rt_add(a:bcd d:ea)
-      abcd>!req(id:r1 body:ping res:ping_r) 59s -
-      aed<!req(id:r2 body:ping res:ping_r) 60s -
-      aed<!req(id:r3 body:ping res:ping_r) 60s -`);
+      ab,bc,cd,de,ea>!connect rt_add(a:bcd d:ea) abcd>!ping 59s -
+      aed<!ping 60s - aed<!ping 60s -`);
     t = (name, test)=>t_roles(name, 'abXz', test);
     t('best_path_circular1', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:109))
       ab,bX,Xz,za>!connect Xb.a>!ping`);
