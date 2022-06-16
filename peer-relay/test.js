@@ -3230,12 +3230,13 @@ describe('peer-relay', function(){
       ab,bc,ca>!connect ab>!ping
       ac>!ping -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
+    // XXX: check why if we change to ping it fails (req tracking bug)
     t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40))
-      ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
-      ab.c>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
-      ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
-      bc.d>!req(body:ping res:ping_r) 60s cba>!req(body:ping res:ping_r) 60s
-      cb>!req(body:ping res:ping_r) 60s cd>!req(body:ping res:ping_r) 60s
+      ab,bc,cd,da>!connect - ab>!ping 60s
+      ab.c>!ping 60s ad>!ping 60s
+      ba>!req(body:ping res:ping_r) 60s bc>!ping 60s
+      bc.d>!ping 60s cba>!req(body:ping res:ping_r) 60s
+      cb>!req(body:ping res:ping_r) 60s cd>!ping 60s
       da>!req(body:ping res:ping_r) 60s dcb>!req(body:ping res:ping_r) 60s
       dc>!req(body:ping res:ping_r) 60s
       bcd>!req(body:ping res:ping_r)
@@ -3272,9 +3273,9 @@ describe('peer-relay', function(){
       aed<!req(id:r3 body:ping res:ping_r) 60s -`);
     t = (name, test)=>t_roles(name, 'abXz', test);
     t('best_path_circular1', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:109))
-      ab,bX,Xz,za>!connect Xb.a>!req(body:ping res:ping_r)`);
+      ab,bX,Xz,za>!connect Xb.a>!ping`);
     t('best_path_circular2', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:110))
-      ab,bX,Xz,za>!connect Xz.a>!req(body:ping res:ping_r)`);
+      ab,bX,Xz,za>!connect Xz.a>!ping`);
   });
   describe('get_peer', ()=>{
     let t = (name, test)=>t_roles(name, 'abXYnopz', test);
