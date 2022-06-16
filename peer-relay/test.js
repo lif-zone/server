@@ -3197,7 +3197,7 @@ describe('peer-relay', function(){
       t('ring', `mode(msg req) conf(id(a:0.1 b:0.2 X:0.3 c:0.4 d:0.5 e:0.6))
         ab,bX,Xc,cd,da,eX>!connect test_node_graph(X bX:100 cX:100 eX:100)
         1s test_node_graph(X bX:100 cX:100 eX:100)
-        eX.c.d>!req(body:ping res:ping_r)
+        eX.c.d>!ping
         test_node_graph(X bX:100 cX:100 eX:100 dcX:200)
         1s test_node_graph(X bX:100 cX:100 eX:100 dcX:200)
         cX[e]:dc[Xe]:ad[cXe]:ae>msg(type:res body:ping_r)
@@ -3366,13 +3366,13 @@ describe('peer-relay', function(){
       Xb.Y~X>!get_peer
       cX>!connect
       cX.b~c>!get_peer
-      Yb.Xc>!req(body:ping res:ping_r)
-      YbXc>!req(body:ping res:ping_r)
-      !sp YbXc>!req(body:ping res:ping_r)
+      Yb.Xc>!ping
+      YbXc>!ping
+      !sp YbXc>!ping
       conf(rtt(100 Yb:10))
-      YbXc>!req(body:ping res:ping_r)
+      YbXc>!ping
       // XXX BUG: GOOD is YbXc>!req
-      !sp Yb.Xc>!req(body:ping res:ping_r)
+      !sp Yb.Xc>!ping
     `);
     // XXX: verify that rt is not ignored
     // XXX: test for selecting best rtt
