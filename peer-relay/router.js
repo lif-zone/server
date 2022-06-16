@@ -50,7 +50,7 @@ export default class Router extends EventEmitter {
   }
   _send = lbuffer=>etask({_: this}, function*(){
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
-    let _this = this._, channel, rt = msg0.rt;
+    let _this = this._, channel, rt = msg0.rt, path = rt?.path;
     let from = NodeId.from(msg.from), to = NodeId.from(msg.to);
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
@@ -58,16 +58,16 @@ export default class Router extends EventEmitter {
       return _this._queue.push(lbuffer);
     if (msg.fuzzy){
       range = lbuffer.range();
-      if (rt){
-        if (!(channel = _this.get_channel_from_rt(msg0.rt)))
+      if (path){
+        if (!(channel = _this.get_channel_from_path(path)))
           return xerr('channel not found in route');
       } else {
-        rt = _this.node_map.get_route_by_range(to, from, range);
-        channel = _this.get_channel_from_rt(rt);
+        path = _this.node_map.get_route_by_range(to, from, range);
+        channel = _this.get_channel_from_path(path);
         if (!channel)
           return _this.emit('message', lbuffer);
       }
-      if (!rt || rt.length==1){
+      if (!path || path.length==1){
         if (!range)
           range = {min: channel.id, max: channel.id};
         else {
@@ -79,13 +79,13 @@ export default class Router extends EventEmitter {
     } else {
       // XXX TODO: fix state handling
       // else if (channel = _this.get_channel_from_state(msg));
-      if (channel = _this.get_channel_from_rt(rt));
+      if (channel = _this.get_channel_from_path(path));
       else if (channel = _this.get_channel_from_id(to)); /* eslint-disable */
-      else if ((rt = _this.get_route(msg.to)) &&
-        (channel = _this.get_channel_from_rt(rt))); /* eslint-enable */
+      else if ((path = _this.get_route(msg.to)) &&
+        (channel = _this.get_channel_from_path(path))); /* eslint-enable */
       else {
-        rt = _this.node_map.get_best_route(to);
-        if (!(channel = _this.get_channel_from_rt(rt)))
+        path = _this.node_map.get_best_route(to);
+        if (!(channel = _this.get_channel_from_path(path)))
           return;
       }
     }
@@ -93,9 +93,10 @@ export default class Router extends EventEmitter {
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
       if (msg.to!=msg2.to){
-        if (rt && rt.length>1)
-          (msg2.rt = Array.from(rt)).splice(0, 1);
-        else if (range)
+        if (path && path.length>1){
+          (path = Array.from(path)).splice(0, 1);
+          msg2.rt = {path};
+        } else if (range)
           msg2.range = NodeId.range_to_msg(range);
       }
       _this.track_out(msg2, channel);
@@ -135,7 +136,7 @@ export default class Router extends EventEmitter {
   get_channel_from_id(id){
     return this._channels.get(id.s);
   }
-  get_channel_from_rt(path){
+  get_channel_from_path(path){
     let dst = path && path[0] && NodeId.from(path[0]);
     if (!dst)
       return;
@@ -175,7 +176,7 @@ export default class Router extends EventEmitter {
     let routes=this.routes, d=path[path.length-1];
     if (!routes[d])
       return false;
-    return !!routes[d].find(rt=>path_eq(rt, path));
+    return !!routes[d].find(_path=>path_eq(_path, path));
   }
   add_route(path){
     let routes=this.routes;

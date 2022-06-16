@@ -188,10 +188,10 @@ function test_gen_ids(bits, total_bits){
   return ret;
 }
 
-function rt_to_str(rt_o, dir){
-  if (!rt_o?.path)
+function rt_to_str(rt, dir){
+  if (!rt?.path)
     return '';
-  return path_to_str(rt_o.path, dir);
+  return path_to_str(rt.path, dir);
 }
 
 function normalize(e){
@@ -491,8 +491,7 @@ function assert_event_c(c, event, call){
     assert(!c.fwd, 'XXX TODO fwd support');
     let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
-  }
-  else
+  } else
     assert_missing_event(c);
 }
 
@@ -510,13 +509,12 @@ function assert_event_c2(c, orig, fwd, event, call){
         let rt = _rt.pop();
         let range = _range.pop();
         expected = build_cmd(normalize(f)+'fwd', expected+
-          (rt ? ' '+build_cmd('rt', path_to_str(rt)) : '')+
+          (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
           (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
       });
     }
     assert_event(event, expected);
-  }
-  else
+  } else
     assert_missing_event(c);
 }
 
@@ -539,8 +537,7 @@ const test_on_connection = channel=>etask(function*test_on_connection(){
       channel.wsConnector ? 'wss' : 'wrtc'));
     let event = s.t.name+d.t.name+'<connected';
     yield cmd_run(event);
-  }
-  else
+  } else
     yield cmd_run(d.t.name+s.t.name+'<connected');
 });
 
@@ -731,9 +728,9 @@ class FakeChannel extends EventEmitter {
           let m = lbuffer.get_json(i);
           i--;
           let srt = t_conf.rt&&fwd&&m.rt ?
-            build_cmd('rt', path_to_str(m.rt)) : '';
+            build_cmd('rt', rt_to_str(m.rt)) : '';
           if (!t_conf.rt && m.rt)
-            srt = build_cmd('rt', path_to_str(m.rt));
+            srt = build_cmd('rt', rt_to_str(m.rt));
           let srange = m.range && build_cmd('range',
             range_to_str(NodeId.range_from_msg(m.range)));
           e = build_cmd(f+'fwd', e+
@@ -992,8 +989,7 @@ const fake_send_msg = (c, msg)=>etask(function*(){
       id = ++t_req_id+'';
     }
     msg.req_id = id;
-  }
-  else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
+  } else if (['res', 'res_start', 'res_next', 'res_end'].includes(msg.type)){
     msg.req_id = msg.req_id||get_req_id({s: t.t.name, d: f.t.name,
       cmd: msg.cmd});
     assert(msg.req_id, 'missing req_id');
@@ -1042,8 +1038,7 @@ function cmd_mode(opt){
   if (pop){
     assert(t_mode_prev.length>0, 'invalid pop');
     t_mode = t_mode_prev.pop();
-  }
-  else {
+  } else {
     t_mode_prev.push(t_mode);
     t_mode = mode;
   }
@@ -1317,8 +1312,7 @@ const cmd_connect = opt=>etask(function*(){
       if (r)
         push_cmd(build_cmd(c.s+c.d+'>connect', wss&&'wss', wrtc&&'wrtc'));
       set_orig(c, build_cmd(dir_c(c)+c.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
-    }
-    else {
+    } else {
       if (r)
           push_cmd(c.s+c.d+'<connected');
       set_orig(c, build_cmd(dir_c(c)+c.cmd, wss&&'wss', wrtc&&'wrtc', '!r'));
@@ -1333,8 +1327,7 @@ const cmd_connect = opt=>etask(function*(){
       else if (wrtc)
         yield s.wrtcConnector.connect(d.id.b);
     }
-  }
-  else {
+  } else {
     if (s.t.fake && d.t.fake)
       return;
     if (s.t.fake){
@@ -1344,8 +1337,7 @@ const cmd_connect = opt=>etask(function*(){
       else
         channel.wrtcConnector = d.wrtcConnector;
       yield d._onConnection(channel);
-    }
-    else
+    } else
       assert_event(event, build_cmd(c.s+c.d+'>connect', wss ? 'wss' : 'wrtc'));
   }
 });
@@ -1389,8 +1381,7 @@ const cmd_conn_info = opt=>etask(function cmd_conn_info(){
           build_cmd(rev_loop_str(c.loop)+'>conn_info_r', r);
       }
       set_push_cmd(c, s);
-    }
-    else
+    } else
       set_orig(c, build_cmd(dir_c(c)+c.cmd));
     return;
   }
@@ -1424,10 +1415,9 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
      s += t_mode.req ? (s ? ' ' : '')+build_cmd_o(c.s+c.d+'>*conn_info_r', o)
        : '';
      set_push_cmd(c, s);
-    }
-    else
-      set_orig(c, build_cmd(dir_c(c)+c.cmd, c.arg));
-    return;
+     } else
+       set_orig(c, build_cmd(dir_c(c)+c.cmd, c.arg));
+     return;
   }
   assert_event_c(c, event);
   fake_emit(c, {type: 'res', cmd: 'conn_info', body: {ws, wrtc}});
@@ -1436,12 +1426,12 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
 const cmd_ping = opt=>etask(function cmd_ping(){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   assert(!event, 'unexpected event');
-  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt_o;
+  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt;
   let arg = xtest.test_parse(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case '!e': e = !assert_bool(a.arg); break;
-    case 'rt': rt_o = assert_rt(a.arg, c.dir); break;
+    case 'rt': rt = assert_rt(a.arg, c.dir); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
@@ -1453,7 +1443,7 @@ const cmd_ping = opt=>etask(function cmd_ping(){
       set_push_cmd(c, s);
     } else if (call && e){
       s = build_cmd_o(c.s+c.d+'>!ping', {'!e': e,
-        'rt': rt_o && rt_to_str(rt_o, c.dir)});
+        'rt': rt && rt_to_str(rt, c.dir)});
       s += t_mode.msg ? ' '+build_cmd_o(
         c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
         {type: 'req', cmd: 'ping'}) : '';
@@ -1471,7 +1461,7 @@ const cmd_ping = opt=>etask(function cmd_ping(){
   if (!call)
     return;
   if (!s.t.fake)
-    s.ping(d.id, {rt: rt_o?.path});
+    s.ping(d.id, {rt});
 });
 
 const cmd_ping_r = opt=>etask(function cmd_ping(){
@@ -1605,8 +1595,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
     }
-  }
-  else if (type=='res'){
+  } else if (type=='res'){
     switch (cmd){
     case 'conn_info':
       a = body ? body.split(' ') : [];
@@ -1628,7 +1617,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   let rt; // XXX: rm this logic. just pass c.rt
   if (c.rt)
-    rt = parse_path(path_to_str(c.rt), c.dir);
+    rt = {path: parse_path(path_to_str(c.rt), c.dir)};
   yield fake_send_msg(c, {rt, req_id: id, type, seq, ack, cmd, body});
   yield cmd_run_if_next_fake();
 });
@@ -1636,7 +1625,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
 const cmd_req = opt=>etask(function*req(){
   let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
   assert(t_pre_process||!c.loop);
-  let emit_api=false, ooo=false, dup=false, close=false, rt_o;
+  let emit_api=false, ooo=false, dup=false, close=false, rt;
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
   let type = c.cmd.replace(/[!*]/, ''), e=call;
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
@@ -1653,7 +1642,7 @@ const cmd_req = opt=>etask(function*req(){
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
     case 'ack': ack = assert_ack(a.arg); break;
-    case 'rt': rt_o = assert_rt(a.arg, c.dir); break;
+    case 'rt': rt = assert_rt(a.arg, c.dir); break;
     case 'res':
       assert(call, 'res only valid for !req');
       res = a.arg||'';
@@ -1667,7 +1656,7 @@ const cmd_req = opt=>etask(function*req(){
   cmd = cmd||'';
   if (t_pre_process){
     set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, cmd, seq, ack, body, res,
-      rt: call && rt_o ? rt_to_str(rt_o, c.dir) : undefined,
+      rt: call && rt ? rt_to_str(rt, c.dir) : undefined,
       '!e': !call ? undefined : true, emit_api, ooo, dup, close}));
     if (e){
       let s = '';
@@ -1726,14 +1715,13 @@ const cmd_req = opt=>etask(function*req(){
   if (!s.t.fake){
     if (type=='req'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
-      let req = new Req({node: s, dst: d.id.s, req_id: id, cmd,
-        rt: rt_o?.path});
+      let req = new Req({node: s, dst: d.id.s, req_id: id, cmd, rt});
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send({seq, ack}, body);
     } else if (type=='req_start'){
       assert(!Req.t.reqs[id], 'req already exists '+id);
       let req = new Req({node: s, stream: true, dst: d.id.s, req_id: id,
-        cmd, rt: rt_o?.path});
+        cmd, rt});
       if (emit_api){
         let cb = (o, opt)=>cmd_run(build_cmd_o(c.s+'>*'+o.type, {id: o.req_id,
           cmd: o.cmd,
@@ -1746,16 +1734,14 @@ const cmd_req = opt=>etask(function*req(){
       }
       assert.equal(req.req_id, id, 'req_id mismatch');
       req.send({seq, ack}, body);
-    }
-    else if (type=='req_next')
+    } else if (type=='req_next')
       Req.t.reqs[id].req.send({seq, ack}, body);
     else if (type=='req_end'){
       if (close)
           Req.t.reqs[id].req.send_close({seq, ack}, body);
       else
         Req.t.reqs[id].req.send_end({seq, ack}, body);
-    }
-    else
+    } else
       assert(0, 'invalid type '+type);
   }
   if (!d.t.fake){
@@ -1857,13 +1843,11 @@ const cmd_res = opt=>etask(function*req(){
       if (close){
         ReqHandler.t.nodes[s.id.s].req_id[id].res.send_close({seq, ack},
           body);
-      }
-      else {
+      } else {
         ReqHandler.t.nodes[s.id.s].req_id[id].res.send_end({seq, ack},
           body);
       }
-    }
-    else
+    } else
       ReqHandler.t.nodes[s.id.s].req_id[id].res.send({seq, ack}, body);
   }
 });
@@ -1889,10 +1873,10 @@ const cmd_fail = opt=>etask(function*req(){
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
-  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt_o, range;
+  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
-    case 'rt': rt_o = assert_rt(a.arg, c.dir); break;
+    case 'rt': rt = assert_rt(a.arg, c.dir); break;
     case 'range': range = assert_range(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
@@ -1900,7 +1884,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   f.fwd = Array.from(c.fwd||[]);
   f.fwd.push(dir_c(c));
   f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here!
-  f.rt2.push(rt_o?.path);
+  f.rt2.push(rt);
   f.range2 = Array.from(c.range2||[]); // XXX: rm from here!
   f.range2.push(range);
   if (t_pre_process){
@@ -1910,7 +1894,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
     return set_orig(c, _build_cmd(f.orig+
-      (rt_o ? ' '+build_cmd('rt', rt_to_str(rt_o, c.dir)) : '')+
+      (rt ? ' '+build_cmd('rt', rt_to_str(rt, c.dir)) : '')+
       (range ? ' '+build_cmd('range', range_to_str(range, c.dir)) : ''),
       [dir_c(c)]));
   }
@@ -2134,8 +2118,7 @@ function test_setup_mode(){
     Req.t.res_hook = res_hook;
     Req.t.fail_hook = fail_hook;
     ReqHandler.t.req_hook = req_hook;
-  }
-  else {
+  } else {
     delete ReqHandler.t_send_hook;
     delete Req.t_send_hook;
     delete Req.t.res_hook;
@@ -2247,8 +2230,7 @@ function test_transform(s){
       a.push({pre: p+dir, rt: rt ? ' rt('+rt+')' : '',
         range: range ? ' range('+range+')' : ''});
       p = rt = range = '';
-    }
-    else
+    } else
       p += ch;
   }
   rt = rt ? ' rt('+rt+')' : '';
@@ -2736,8 +2718,7 @@ describe('peer-relay', function(){
             let res_exp = yield test_pre_process(setup+exp);
             assert.equal(test_to_str(res).replace(regex, ''),
             test_to_str(res_exp).replace(regex, ''));
-          }
-          else {
+          } else {
             assert.equal(test_to_str(res).replace(regex, ''),
               string.split_ws(exp).join(' '));
           }

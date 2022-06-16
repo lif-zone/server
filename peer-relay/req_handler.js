@@ -150,8 +150,9 @@ function req_handler_cb(lbuffer){
   let req_handler = util.get(nodes, [id, 'cmd', cmd, 'req_handler']);
   if (!req_handler)
     return;
-  req_handler.rt = Array.from(lbuffer.path());
-  req_handler.rt.reverse();
+  let path = Array.from(lbuffer.path());
+  path.reverse();
+  req_handler.rt = {path};
   let res = util.get(nodes, [id, 'req_id', req_id, 'res']);
   if (!res){
     if (!['req', 'req_start'].includes(type))
