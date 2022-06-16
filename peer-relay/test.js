@@ -3236,18 +3236,13 @@ describe('peer-relay', function(){
     // XXX: check why if we change to ping it fails (req tracking bug)
     t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40)) ab,bc,cd,da>!connect -
       ab>!ping 60s ab.c>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s
-      bc.d>!ping 60s cba>!ping 60s cb>!ping 60s cd>!ping 60s
-      da>!ping 60s dcb>!ping 60s dc>!ping 60s bcd>!ping dcb>!ping
-      60s dcb>!ping`);
+      bc.d>!ping 60s cba>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping
+      60s dcb>!ping 60s dc>!ping 60s bcd>!ping dcb>!ping 60s dcb>!ping`);
     t('4_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40))
-      rt_add(a:dc b:ad c:da d:cb)
-      ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
-      adc>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
-      ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
-      bad>!req(body:ping res:ping_r) 60s cda>!req(body:ping res:ping_r) 60s
-      cb>!req(body:ping res:ping_r) 60s cd>!req(body:ping res:ping_r) 60s
-      da>!req(body:ping res:ping_r) 60s dcb>!req(body:ping res:ping_r) 60s
-      dc>!req(body:ping res:ping_r)`);
+      rt_add(a:dc b:ad c:da d:cb) ab,bc,cd,da>!connect - ab>!ping 60s
+      adc>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s bad>!ping 60s
+      cda>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping 60s dcb>!ping 60s
+      dc>!ping`);
     // XXX: need to rm explicit req_id. need to fix test req tracking.
     // without explicit req_id, the test fails
     if (0) // XXX WIP - fix test
