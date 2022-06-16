@@ -3214,11 +3214,11 @@ describe('peer-relay', function(){
     });
     let t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `setup:2_nodes
-      ab>!req(body:ping res:ping_r)`);
+      ab>!ping`);
     t('2_nodes_wss', `a,b=node:wss
-      ab>!connect ab>!req(body:ping res:ping_r)`);
+      ab>!connect ab>!ping`);
     t('3_nodes', `a,b,c=node:wss ab,ac>!connect
-      ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r)`);
+      ab>!ping ac>!ping`);
     t('3_nodes_route_b', `conf(id(a:10 b:20 c:30 d:21 e:31))
       ab,ac>!connect ad>!req(id:r1 body:ping !e)
       ab>fwd(ad>msg(id:r1 type:req body:ping)) -
@@ -3227,8 +3227,8 @@ describe('peer-relay', function(){
       ab,ac>!connect ae>!req(id:r1 body:ping !e)
       ac:ae>msg(id:r1 type:req body:ping) - 20s a>*fail(id:r1 error:timeout)`);
     t('3_nodes_ring', `conf(id(a:10 b:20 c:30))
-      ab,bc,ca>!connect ab>!req(body:ping res:ping_r)
-      ac>!req(body:ping res:ping_r) -`);
+      ab,bc,ca>!connect ab>!ping
+      ac>!ping -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
     t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40))
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
@@ -3239,8 +3239,8 @@ describe('peer-relay', function(){
       da>!req(body:ping res:ping_r) 60s dcb>!req(body:ping res:ping_r) 60s
       dc>!req(body:ping res:ping_r) 60s
       bcd>!req(body:ping res:ping_r)
-      dcb>!req(body:ping2 res:ping_r)
-      60s dcb>!req(body:ping2 res:ping_r)`);
+      dcb>!req(body:ping res:ping_r)
+      60s dcb>!req(body:ping res:ping_r)`);
     t('4_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40))
       rt_add(a:dc b:ad c:da d:cb)
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
