@@ -395,6 +395,11 @@ function assert_rt(s, dir){
   return path;
 }
 
+function assert_rt_opt(s){
+  assert(['exact', 'optional'].includes(s), 'invald rt_opt '+s);
+  return s;
+}
+
 function range_to_str(range){
   let min, max;
   for (let name in t_conf.node_ids){
@@ -1432,12 +1437,13 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
 const cmd_ping = opt=>etask(function cmd_ping(){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   assert(!event, 'unexpected event');
-  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt;
+  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt, rt_opt;
   let arg = xtest.test_parse(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case '!e': e = !assert_bool(a.arg); break;
     case 'rt': rt = assert_rt(a.arg, c.dir); break;
+    case 'rt_opt': rt_opt = assert_rt_opt(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
@@ -1449,7 +1455,7 @@ const cmd_ping = opt=>etask(function cmd_ping(){
       set_push_cmd(c, s);
     } else if (call && e){
       s = build_cmd_o(c.s+c.d+'>!ping', {'!e': e,
-        'rt': rt && rt_to_str(rt, c.dir)});
+        'rt': rt && rt_to_str(rt, c.dir), rt_opt});
       s += t_mode.msg ? ' '+build_cmd_o(
         c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
         {type: 'req', cmd: 'ping'}) : '';
@@ -1467,7 +1473,7 @@ const cmd_ping = opt=>etask(function cmd_ping(){
   if (!call)
     return;
   if (!s.t.fake)
-    s.ping(d.id, {rt});
+    s.ping(d.id, {rt, rt_opt});
 });
 
 const cmd_ping_r = opt=>etask(function cmd_ping(){
@@ -3019,8 +3025,9 @@ describe('peer-relay', function(){
             ab<ping_r ab<*ping_r`);
           _T('mode(msg req)', 'abc>!ping', `ac>!ping(!e) abc>ping ac>*ping
             abc<ping_r ac<*ping_r`);
-          _T('mode(msg req)', 'abc>!ping(rt:d)', `ac>!ping(!e rt(d))
-            abc>ping ac>*ping abc<ping_r ac<*ping_r`);
+          _T('mode(msg req)', 'abc>!ping(rt:d rt_opt:exact)',
+            `ac>!ping(!e rt(d) rt_opt(exact)) abc>ping ac>*ping abc<ping_r
+            ac<*ping_r`);
         });
       });
     });
@@ -3331,6 +3338,14 @@ describe('peer-relay', function(){
       cXb>!ping Ya,Yb>!connect Yb.X.a~Y>!get_peer Yb.Xc>!ping YbXc>!ping
       YaXc>!ping(rt:aXc) YbXc>!ping !sp YaXc>!ping conf(rtt(100 Yb:10)) !sp
       YaXc>!ping YbXc>!ping(rt:bXc) YaXc>!ping(rt:aXc) !sp YbXc>!ping`);
+    t = (name, test)=>t_roles(name, 'abcX', test);
+    // XXX: WIP
+    t('xxx', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
+      aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
+      c.XaXb.Xa.X~c>!get_peer cXa>!ping
+      cXaXb>!ping(rt_opt:exact)
+      cXaXb>!ping(rt_opt:optional) // XXX: fix to cXb>!ping
+      !sp cXa>!ping cXb>!ping`);
     t = (name, test)=>t_roles(name, 'bcXY', test);
     t('sub_rtt_is_ignored', `mode(msg req) conf(id:a-mXYZn-z rtt:1000)
       Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
@@ -3341,11 +3356,14 @@ describe('peer-relay', function(){
     2. rtt_pb_via doesn't work for fuzzy (s~s and when getting beyoned
        last node (eg. ring_long)
        ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!get_peer
+    3. discuss logic for path folding
+
+    // rtt_pb dst selection
     for (best = at = itr(dest)..next() && i<16){
-       // XXX: need to skip best.path.includes(at.id)
        if (at.rtt_pb<best.rtt_pb)
          best = at;
     }
+    // XXX: need to skip best.path.includes(at.id)
     src = Y; dst = c; at = c,b,X
     players: bcXY
     conn/rtt: Y -10- b -100- X -100- c

@@ -63,7 +63,7 @@ function destroy_cb(){
 export default class Req extends EventEmitter {
   constructor(opt){
     super();
-    let {node, dst, fuzzy, stream, req_id, cmd, timeout, rt} = opt;
+    let {node, dst, fuzzy, stream, req_id, cmd, timeout, rt, rt_opt} = opt;
     assert(node, 'must provide node');
     assert(dst, 'must provide dst');
     assert(!fuzzy || !stream, 'fuzzy dst cannot be used with stream');
@@ -78,6 +78,7 @@ export default class Req extends EventEmitter {
     this.timeout = timeout = timeout||REQ_TIMEOUT;
     this.seq = 0;
     this.rt = rt;
+    this.rt_opt = rt_opt;
     this.ack = [];
     this.sent = {};
     this.ooo = {};
@@ -100,7 +101,7 @@ export default class Req extends EventEmitter {
       opt = {};
     }
     opt = opt||{};
-    let {req_id, ack, cmd, rt, fuzzy} = this;
+    let {req_id, ack, cmd, rt, rt_opt, fuzzy} = this;
     let ts=date.monotonic(), seq = this.seq++;
     if (util.is_mocha() && opt.seq)
       seq = opt.seq;
