@@ -1424,6 +1424,7 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
 
 const cmd_ping = opt=>etask(function cmd_ping(){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
+  assert(!event, 'unexpected event');
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true;
   let arg = xtest.test_parse(c.arg);
   xutil.forEach(arg, a=>{
@@ -1462,7 +1463,7 @@ const cmd_ping = opt=>etask(function cmd_ping(){
 
 const cmd_ping_r = opt=>etask(function cmd_ping(){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
-  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d);
+  assert(!event, 'unexpected event');
   assert(!c.arg, 'invalid arg '+c.orig);
   if (t_pre_process){
     let s = '';
@@ -3212,24 +3213,24 @@ describe('peer-relay', function(){
       t('2_nodes_ping_short', `setup:2_nodes ab>!ping`);
     });
     let t = (name, test)=>t_roles(name, 'abc', test);
-    t('2_nodes', `conf(id_bits:8) setup:2_nodes
+    t('2_nodes', `setup:2_nodes
       ab>!req(body:ping res:ping_r)`);
-    t('2_nodes_wss', `conf(id_bits:8) a,b=node:wss
+    t('2_nodes_wss', `a,b=node:wss
       ab>!connect ab>!req(body:ping res:ping_r)`);
-    t('3_nodes', `conf(id_bits:8) a,b,c=node:wss ab,ac>!connect
+    t('3_nodes', `a,b,c=node:wss ab,ac>!connect
       ab>!req(body:ping res:ping_r) ac>!req(body:ping res:ping_r)`);
-    t('3_nodes_route_b', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
+    t('3_nodes_route_b', `conf(id(a:10 b:20 c:30 d:21 e:31))
       ab,ac>!connect ad>!req(id:r1 body:ping !e)
       ab>fwd(ad>msg(id:r1 type:req body:ping)) -
       20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_route_c', `conf(id_bits:8 id(a:10 b:20 c:30 d:21 e:31))
+    t('3_nodes_route_c', `conf(id(a:10 b:20 c:30 d:21 e:31))
       ab,ac>!connect ae>!req(id:r1 body:ping !e)
       ac:ae>msg(id:r1 type:req body:ping) - 20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30))
+    t('3_nodes_ring', `conf(id(a:10 b:20 c:30))
       ab,bc,ca>!connect ab>!req(body:ping res:ping_r)
       ac>!req(body:ping res:ping_r) -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
-    t('4_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
+    t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40))
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
       ab.c>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
       ba>!req(body:ping res:ping_r) 60s bc>!req(body:ping res:ping_r) 60s
@@ -3240,7 +3241,7 @@ describe('peer-relay', function(){
       bcd>!req(body:ping res:ping_r)
       dcb>!req(body:ping2 res:ping_r)
       60s dcb>!req(body:ping2 res:ping_r)`);
-    t('4_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
+    t('4_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40))
       rt_add(a:dc b:ad c:da d:cb)
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
       adc>!req(body:ping res:ping_r) 60s ad>!req(body:ping res:ping_r) 60s
@@ -3252,19 +3253,19 @@ describe('peer-relay', function(){
     // XXX: need to rm explicit req_id. need to fix test req tracking.
     // without explicit req_id, the test fails
     if (0) // XXX WIP - fix test
-    t('4_nodes_ring_state_timeout', `conf(id_bits:8 id(a:10 b:20 c:30 d:40))
+    t('4_nodes_ring_state_timeout', `conf(id(a:10 b:20 c:30 d:40))
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) -
       rt_add(a:bc b:cd c:da d:ab)
       adc>!req(id:r1 body:ping res:ping_r) 59s -
       // a.bc<!req(id:r2 body:ping res:ping_r) 60s -
       // a.bc<!req(id:r3 body:ping res:ping_r) -`);
     t = (name, test)=>t_roles(name, 'abcde', test);
-    t('5_nodes_ring', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
+    t('5_nodes_ring', `conf(id(a:10 b:20 c:30 d:40 e:50))
       ab,bc,cd,de,ea>!connect ae.d>!req(id:r1 body:ping res:ping_r) 59s -
       aed<!req(id:r2 body:ping res:ping_r) 60s -
       aed<!req(id:r3 body:ping res:ping_r) 60s -
       `);
-    t('5_nodes_ring_rt', `conf(id_bits:8 id(a:10 b:20 c:30 d:40 e:50))
+    t('5_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40 e:50))
       ab,bc,cd,de,ea>!connect rt_add(a:bcd d:ea)
       abcd>!req(id:r1 body:ping res:ping_r) 59s -
       aed<!req(id:r2 body:ping res:ping_r) 60s -
