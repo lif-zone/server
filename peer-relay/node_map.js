@@ -152,8 +152,6 @@ destroy(){
 get_best_route(dst){
   let best, src = this.id;
   for (let i=0, itr=this.node_itr(dst), at; i<16 && (at = itr.next(dst));){
-    if (best && best.path.includes(at.id.s))
-      continue;
     let o = src.rtt_pb_via(dst, at.id, at.graph.rtt);
     if (!o.good)
       continue;
@@ -174,8 +172,6 @@ get_route_by_range(dst, exclude, range){
   let best, src = this.id;
   for (let i=0, itr=this.node_itr(dst, {exclude, range}), at;
     i<16 && (at = itr.next(dst));){
-    if (best && best.path.includes(at.id.s))
-      continue;
     let o = src.rtt_pb_via2(dst, at.id, at.graph.rtt);
     if (!o.good)
       continue;
