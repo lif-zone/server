@@ -3008,6 +3008,7 @@ describe('peer-relay', function(){
           _T('mode(msg req)', 'ab>*ping', `ab>*req(cmd:ping)`);
           _T('mode(msg req)', 'ab>ping', `ab>msg(type:req cmd:ping)`);
           _T('mode(msg req)', 'abc>ping', `abc>msg(type:req cmd:ping)`);
+          _T('mode(msg req)', 'abc>ping', `abc>msg(type:req cmd:ping)`);
           _T('mode(msg req)', 'ab>!ping(!e)', `ab>!ping(!e)`);
           _T('mode(msg req)', 'ab>!ping', `ab>!ping(!e) ab>ping ab>*ping
             ab<ping_r ab<*ping_r`);
@@ -3015,8 +3016,9 @@ describe('peer-relay', function(){
             abc<ping_r ac<*ping_r`);
           _T('mode(msg req)', 'abc>!ping(rt:d)',
             `ac>!ping(!e rt(d)) abc>ping ac>*ping abc<ping_r ac<*ping_r`);
+          if (0) // XXX: WIP
           _T('mode(msg req)', 'abc>!ping(rt:!d)',
-            `ac>!ping(!e rt(!d)) abc>ping(rt:!d) ac>*ping abc<ping_r
+            `ac>!ping(!e rt(!de)) abc>ping(rt:!de) ac>*ping abc<ping_r
              ac<*ping_r`);
         });
       });
@@ -3197,8 +3199,7 @@ describe('peer-relay', function(){
       `);
       t('ring', `mode(msg req) conf(id(a:0.1 b:0.2 X:0.3 c:0.4 d:0.5 e:0.6))
         ab,bX,Xc,cd,da,eX>!connect test_node_graph(X bX:100 cX:100 eX:100)
-        1s test_node_graph(X bX:100 cX:100 eX:100)
-        eX.c.d>!ping
+        1s test_node_graph(X bX:100 cX:100 eX:100) eX.c.d>!ping
         test_node_graph(X bX:100 cX:100 eX:100 dcX:200)
         1s test_node_graph(X bX:100 cX:100 eX:100 dcX:200)
         cX[e]:dc[Xe]:ad[cXe]:ae>msg(type:res body:ping_r)
@@ -3206,8 +3207,8 @@ describe('peer-relay', function(){
         test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
         1s test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
         cX:dc:ad:ca:ac:aX>msg(type:req)
-        999ms test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
-        1ms test_node_graph(X bX:100 cX:100 eX:100 dcX:200 acX:200)`);
+        test_node_graph(X bX:100 cX:100 eX:100 dcX:200 acX:200)
+        !sp test_node_graph(X bX:100 cX:100 eX:100 dcX:200 acX:200)`);
       });
   });
   describe('router', ()=>{
@@ -3220,19 +3221,20 @@ describe('peer-relay', function(){
         ab<ping_r ab<*ping_r`);
       t('2_nodes_short', `setup:2_nodes ab>!ping`);
       t = (name, test)=>t_roles(name, 'abcd', test);
-      if (0)
+      // XXX: WIP
       t('xxx', `conf(id:a-mXYZn-z) ab,bc,cd,da>!connect
-        // exact routing
-        ac>!ping(!e rt:!abc)
+        // ac>!ping(rt:!bc)
+        ac>!ping(!e rt:!bc)
         ab[!c]:ac>msg(type:req cmd:ping)
-        // optional routing
-        ac>!ping(!e rt:?abc)
-        ab[?c]:ac>msg(type:req cmd:ping)
-        bc:ab[c]:ac>msg(type:req cmd:ping)
+        bc:ab[!c]:ac>msg(type:req cmd:ping)
         ac>*ping
         cb[a]:ca>msg(type:res cmd:ping)
         ba:cb[a]:ca>msg(type:res cmd:ping)
         ca>*ping_r
+      `);
+       if (0) // XXX: WIP
+       t('xxx2', `conf(id:a-mXYZn-z) ab,bc,cd,da>!connect
+        abc>!ping(rt:!bc)
       `);
     });
     let t = (name, test)=>t_roles(name, 'abc', test);
@@ -3303,7 +3305,7 @@ describe('peer-relay', function(){
     t('ring_step_by_step:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       aX>!connect // XXX: fixme aX~X>!get_peer
       bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer
-      oX>!connect oX.n.XbXa~o>!get_peer pX>!connect pX.o.XnXbXa~p>!get_peer`);
+      oX>!connect oX.n.Xa~o>!get_peer pX>!connect pX.o.Xa~p>!get_peer`);
     t('ring_step_by_step2:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       aX>!connect // XXX: fixme aX~X>!get_peer
       bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer !sp
@@ -3311,7 +3313,7 @@ describe('peer-relay', function(){
     t('ring_step_by_step3:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       aX>!connect // XXX: fixme aX~X>!get_peer
       bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer
-      oX>!connect oX.n.XbXa~o>!get_peer !sp oX.n.Xa~o>!get_peer !sp
+      oX>!connect oX.n.Xa~o>!get_peer !sp oX.n.Xa~o>!get_peer !sp
       pX>!connect pX.o.Xa~p>!get_peer`);
     t('star:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,aX,oX,pX>!connect pX.o.a~p>!get_peer`);
@@ -3339,7 +3341,7 @@ describe('peer-relay', function(){
     t = (name, test)=>t_roles(name, 'abcXY', test);
     t('best_path_multi', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
       aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
-      c.Xa.Xb.X~c>!get_peer cXa>!ping cXaXb>!ping !sp cXa>!ping
+      c.Xb.Xa.X~c>!get_peer cXa>!ping cXb>!ping !sp cXa>!ping
       cXb>!ping Ya,Yb>!connect Yb.X.a~Y>!get_peer Yb.Xc>!ping YbXc>!ping
       YaXc>!ping(rt:aXc) YbXc>!ping !sp YaXc>!ping conf(rtt(100 Yb:10)) !sp
       YaXc>!ping YbXc>!ping(rt:bXc) YaXc>!ping(rt:aXc) !sp Yb.Xc>!ping`);
@@ -4121,6 +4123,7 @@ VP:
 - incremental shortest-path updates
 - connect/auto-connect when two nodes learn on each other (wrtc)
 - move get_peer to be automatic in Node
+- sign messages
 + rm warning React... in eslint
 - optimize mocha tests - improve sinon time api - by default, don't wait for
   external time to finish (eg. mongo/ls)

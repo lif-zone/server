@@ -107,6 +107,7 @@ function range_to_msg(range){ return range &&
   {min: range.min.s, max: range.max.s}; }
 
 NodeId.from = function(id){
+  // XXX: cache NodeId so we return existing object is it exists
   return id instanceof NodeId ? id : new NodeId(id); };
 NodeId.cmp = function(a, b){ return a.cmp(b); };
 NodeId.bits = BITS; // XXX: check correct value

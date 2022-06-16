@@ -6,6 +6,7 @@ import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import date from '../util/date.js';
 import NodeId from './node_id.js';
+import * as util from './util.js';
 import NodeMap from './node_map.js';
 import xutil from '../util/util.js';
 import {dbg_msg} from './util.js';
@@ -94,8 +95,11 @@ export default class Router extends EventEmitter {
         rtt: channel.rtt||DEF_RTT};
       if (msg.to!=msg2.to){
         if (path && path.length>1){
-          (path = Array.from(path)).splice(0, 1);
+          path = Array.from(path);
+          path.splice(0, 1);
           msg2.rt = {path};
+          if (rt?.opt)
+            msg2.rt.opt = rt.opt;
         } else if (range)
           msg2.range = NodeId.range_to_msg(range);
       }
@@ -188,6 +192,7 @@ export default class Router extends EventEmitter {
     routes[d].push(Array.from(path));
   }
   update_conn(lbuffer){
+    // XXX: mv logic to node_map.js
     let path = [], rtt = 0;
     for (let i=0; i<lbuffer.size(); i++){
       let msg = lbuffer.get_json(i);
@@ -198,11 +203,24 @@ export default class Router extends EventEmitter {
       path.push(f.s);
       this.node_map.update_conn({ids: [f, t], rtt: msg.rtt||DEF_RTT});
       let node = this.node_map.get({id: f});
+      let fold = util.path_fold(path);
+      if (fold!==path)
+        rtt = this.calc_path_rtt(fold); // XXX: need test for this part
       if (node.graph.rtt===undefined || node.graph.rtt > rtt){
         node.graph.rtt = rtt;
-        node.graph.path = Array.from(path);
+        node.graph.path = Array.from(fold);
       }
     }
+  }
+  calc_path_rtt(path){ // XXX: need test
+    let rtt = 0;
+    for (let i=0, prev=NodeId.from(this.id.s); i<path.length; i++){
+      let curr = NodeId.from(path[i]);
+      let conn = this.node_map.get_conn({ids: [prev, curr]});
+      rtt += conn.rtt||DEF_RTT;
+      prev = curr;
+    }
+    return rtt;
   }
   destroy(){ this.node_map.destroy(); }
 }
