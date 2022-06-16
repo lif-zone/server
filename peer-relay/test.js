@@ -567,6 +567,7 @@ function track_seq_res(s, d, id, type, seq, call){
 }
 
 // XXX: unite with nonce and use t_req instead of t_ack/t_msg
+let t_msg_n = 0;
 function track_msg(msg){
   assert(msg.req_id, 'missing req_id %s', stringify(msg));
   let s = node_from_id(msg.from).t.name, d = node_from_id(msg.to).t.name;
@@ -574,7 +575,8 @@ function track_msg(msg){
   assert(is_number(msg.seq), 'req/res must have seq '+stringify(msg));
   req_id = ''+req_id;
   cmd = cmd||'';
-  t_msg[req_id] = t_msg[req_id]||{s, d, cmd, seq: {req: [], res: []}};
+  t_msg[req_id] = t_msg[req_id]||{msg_n: t_msg_n++, req_id, s, d, cmd,
+    seq: {req: [], res: []}};
   if (!['req', 'req_start'].includes(type))
     t_msg[req_id].active = true;
   t_req_id_last = req_id; // XXX HACK: rm it
@@ -588,12 +590,17 @@ function track_msg(msg){
 }
 
 function get_req_id(o){
+  let match;
   for (let req_id in t_msg){
     let o2 = t_msg[req_id];
-    if (o.cmd==o2.cmd && (o.s==o2.s&&o.d==o2.d || o.s==o2.d&&o.d==o2.s))
-      return req_id;
+    if (o.cmd==o2.cmd && (o.s==o2.s&&o.d==o2.d || o.s==o2.d&&o.d==o2.s)){
+      if (!match)
+        match = o2;
+      else if (match.msg_n < o2.msg_n)
+        match = o2;
+    }
   }
-  return '';
+  return match && match.req_id || '';
 }
 
 function get_ack(o){
@@ -3227,17 +3234,11 @@ describe('peer-relay', function(){
       ac>!ping -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
     // XXX: check why if we change to ping it fails (req tracking bug)
-    t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40))
-      ab,bc,cd,da>!connect - ab>!ping 60s
-      ab.c>!ping 60s ad>!ping 60s
-      ba>!req(body:ping res:ping_r) 60s bc>!ping 60s
-      bc.d>!ping 60s cba>!req(body:ping res:ping_r) 60s
-      cb>!req(body:ping res:ping_r) 60s cd>!ping 60s
-      da>!req(body:ping res:ping_r) 60s dcb>!req(body:ping res:ping_r) 60s
-      dc>!req(body:ping res:ping_r) 60s
-      bcd>!req(body:ping res:ping_r)
-      dcb>!req(body:ping res:ping_r)
-      60s dcb>!req(body:ping res:ping_r)`);
+    t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40)) ab,bc,cd,da>!connect -
+      ab>!ping 60s ab.c>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s
+      bc.d>!ping 60s cba>!ping 60s cb>!ping 60s cd>!ping 60s
+      da>!ping 60s dcb>!ping 60s dc>!ping 60s bcd>!ping dcb>!ping
+      60s dcb>!ping`);
     t('4_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40))
       rt_add(a:dc b:ad c:da d:cb)
       ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) 60s
