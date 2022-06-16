@@ -189,9 +189,10 @@ function test_gen_ids(bits, total_bits){
 }
 
 function rt_to_str(rt, dir){
+  let s = rt.opt||'';
   if (!rt?.path)
-    return '';
-  return path_to_str(rt.path, dir);
+    return s+'';
+  return s+path_to_str(rt.path, dir);
 }
 
 function normalize(e){
@@ -394,9 +395,14 @@ function assert_path(s, dir){
 }
 
 function assert_rt(s, dir){
-  let path = parse_path(s, dir);
-  assert(path, 'invalid rt '+s);
-  return {path};
+  let rt = {};
+  if ('?!'.includes(s[0])){
+    rt.opt = s[0];
+    s = s.substr(1);
+  }
+  rt.path = parse_path(s, dir);
+  assert(rt.path, 'invalid rt '+s);
+  return rt;
 }
 
 function range_to_str(range){
@@ -2746,6 +2752,8 @@ describe('peer-relay', function(){
         t('bc>fwd(ab>msg(body:x))', `bc>fwd(ab>msg(body(x)))`);
         t('bc:ab>msg(body:x)', `bc>fwd(ab>msg(body(x)))`);
         t('bc>fwd(ab>msg(body:x) rt:d)', `bc>fwd(ab>msg(body(x)) rt(d))`);
+        t('bc>fwd(ab>msg(body:x) rt:!d)', `bc>fwd(ab>msg(body(x)) rt(!d))`);
+        t('bc>fwd(ab>msg(body:x) rt:?d)', `bc>fwd(ab>msg(body(x)) rt(?d))`);
         t('bc[d]:ab>msg(body:x)', `bc>fwd(ab>msg(body(x)) rt(d))`);
         t('bc>fwd(de>fwd(ab>msg(body:x)))', `bc>fwd(de>fwd(ab>msg(body(x))))`);
         t('bc>fwd(de>fwd(ab>msg(body:x) rt:c) rt:e)',
@@ -3007,7 +3015,6 @@ describe('peer-relay', function(){
             abc<ping_r ac<*ping_r`);
           _T('mode(msg req)', 'abc>!ping(rt:d)',
             `ac>!ping(!e rt(d)) abc>ping ac>*ping abc<ping_r ac<*ping_r`);
-          if (0) // XXX: WIP
           _T('mode(msg req)', 'abc>!ping(rt:!d)',
             `ac>!ping(!e rt(!d)) abc>ping(rt:!d) ac>*ping abc<ping_r
              ac<*ping_r`);
