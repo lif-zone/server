@@ -387,8 +387,6 @@ function assert_host(host){
   return host;
 }
 
-function assert_path(s, dir){ return parse_path(s, dir); }
-
 function assert_rt(s, dir){
   let path = parse_path(s, dir);
   assert(path, 'invalid rt '+s);
@@ -1190,7 +1188,7 @@ function cmd_rt_add(opt){
   xutil.forEach(arg, a=>{
     let node = N(a.cmd);
     assert(node, 'invalid rt_add '+a.cmd);
-    let path = assert_path(a.arg);
+    let path = assert_rt(a.arg);
     assert(path[0]!=node.id.s, 'route cannot contain node '+node.t.name);
     if (is_fake(node.t.name))
       return;
@@ -3021,6 +3019,10 @@ describe('peer-relay', function(){
             abc<ping_r ac<*ping_r`);
           _T('mode(msg req)', 'abc>!ping(rt:d)',
             `ac>!ping(!e rt(d)) abc>ping ac>*ping abc<ping_r ac<*ping_r`);
+          if (0) // XXX: WIP
+          _T('mode(msg req)', 'abc>!ping(rt:!d)',
+            `ac>!ping(!e rt(!d)) abc>ping(rt:!d) ac>*ping abc<ping_r
+             ac<*ping_r`);
         });
       });
     });

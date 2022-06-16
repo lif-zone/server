@@ -98,8 +98,6 @@ export default class Router extends EventEmitter {
         else if (range)
           msg2.range = NodeId.range_to_msg(range);
       }
-      if (msg.rt_opt)
-        msg2.rt_opt = rt_opt;
       _this.track_out(msg2, channel);
       lbuffer.add_json(msg2);
     }
