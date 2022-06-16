@@ -1431,7 +1431,7 @@ const cmd_conn_info_r = opt=>etask(function cmd_conn_info_r(){
 
 const cmd_ping = opt=>etask(function cmd_ping(){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
-  assert(!event, 'unexpected event');
+  assert(!event, 'unexpected event '+event);
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt;
   let arg = xtest.test_parse(c.arg);
   xutil.forEach(arg, a=>{
@@ -3223,13 +3223,14 @@ describe('peer-relay', function(){
       t = (name, test)=>t_roles(name, 'abcd', test);
       // XXX: WIP
       t('xxx', `conf(id:a-mXYZn-z) ab,bc,cd,da>!connect
-        // ac>!ping(rt:!bc)
-        ac>!ping(!e rt:!bc)
-        ab[!c]:ac>msg(type:req cmd:ping)
-        bc:ab[!c]:ac>msg(type:req cmd:ping)
-        ac>*ping
-        cb[a]:ca>msg(type:res cmd:ping)
-        ba:cb[a]:ca>msg(type:res cmd:ping)
+        ab.c>!ping abc>!ping
+        ac>!ping(!e rt:!bc) ab[!c]:ac>msg(type:req cmd:ping)
+        bc:ab[!c]:ac>msg(type:req cmd:ping) ac>*ping
+        cb[a]:ca>msg(type:res cmd:ping) ba:cb[a]:ca>msg(type:res cmd:ping)
+        ca>*ping_r
+        ac>!ping(!e rt:!dc) ad[!c]:ac>msg(type:req cmd:ping)
+        dc:ad[!c]:ac>msg(type:req cmd:ping) ac>*ping
+        cd[a]:ca>msg(type:res cmd:ping) da:cd[a]:ca>msg(type:res cmd:ping)
         ca>*ping_r
       `);
        if (0) // XXX: WIP
