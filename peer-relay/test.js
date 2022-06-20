@@ -2309,7 +2309,7 @@ describe('buf_util', ()=>{
 });
 
 describe('util', function(){
-  it('basic', function(){
+  it('fold', function(){
     const t = (s, exp)=>{
       let a = s.split('');
       let ret = util.path_fold(a);
