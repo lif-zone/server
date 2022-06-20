@@ -587,11 +587,13 @@ E.parse_cmd_dir = function(s){
     let ch = s[i];
     assert_invalid(/[a-z,.<>=~!?]/i.test(ch), s, i);
     if (/[!?]/.test(ch)){
-      // XXX: TODO: assert_invalid(!rt_opt_before , s, i);
-      if (dot_a || dot_b)
+      if (dot_a || dot_b){
+        assert_invalid(!rt_opt_after, s, i);
         rt_opt_after = ch;
-      else
+      } else {
+        assert_invalid(!rt_opt_before, s, i);
         rt_opt_before = ch;
+      }
     } else if (ch=='~'){
       assert_invalid(!sign && /[a-zA-Z]/.test(s[i+1]), s, i);
       assert_invalid(dir=='>' ? s[i+2]=='>' : !i, s, i);

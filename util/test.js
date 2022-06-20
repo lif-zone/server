@@ -3701,6 +3701,9 @@ describe('test_lib', ()=>{
       t('~ab>e', 'invalid ^^^~ab>e');
       t('a~b<e', 'invalid a^^^~b<e');
       t('ab+<e', 'invalid ab^^^+<e');
+      t('!!ab>e', 'invalid !^^^!ab>e');
+      t('!a!b>e', 'invalid !a^^^!b>e');
+      t('ab.!!cd>e', 'invalid ab.!^^^!cd>e');
     });
     it('parse', ()=>{
       const t = (test, exp)=>assert.deepEqual(
