@@ -671,7 +671,7 @@ E.parse_cmd_dir = function(s){
     for (let i=0, first_dot=true; i<loop.length; i++){
       if (loop[i].dot && loop[i].rt_opt && first_dot)
         delete loop[i].rt_opt;
-      else if (loop[i].dot && loop[i+1]?.rt_opt)
+      if (loop[i].dot && loop[i+1]?.rt_opt)
         loop[i].rt_opt = loop[i+1].rt_opt;
       if (loop[i].dot && !first_dot)
         first_dot = false;

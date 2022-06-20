@@ -3681,6 +3681,13 @@ describe('test_lib', ()=>{
         {s: 'c', d: 'b', rt_opt: '!', dir: '<'},
         {s: 'b', d: 'a', rt_opt: '!', dir: '<'},
         ], cmd: 'g'});
+      t('!abc.!def<g', {s: 'f', d: 'a', dir: '<', loop: [
+        {s: 'f', d: 'e', rt_opt: '!', dir: '<'},
+        {s: 'e', d: 'd', rt_opt: '!', dir: '<'},
+        {s: 'd', d: 'c', rt_opt: '!', dir: '<', dot: true},
+        {s: 'c', d: 'b', rt_opt: '!', dir: '<'},
+        {s: 'b', d: 'a', rt_opt: '!', dir: '<'},
+        ], cmd: 'g'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },
