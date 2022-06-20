@@ -580,12 +580,19 @@ E.parse_cmd_dir = function(s){
   if (_d==-1)
     return {cmd: s};
   let loop = [], dir = s[_d], a='', b='', comma, no_comma, sign='';
-  let dot_a, dot_b;
+  let dot_a, dot_b, cmd = s.substr(_d+1);
+  let rt_opt_before, rt_opt_after;
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
-    assert_invalid(/[a-z,.<>=~]/i.test(ch), s, i);
-    if (ch=='~'){
+    assert_invalid(/[a-z,.<>=~!]/i.test(ch), s, i);
+    if (ch=='!'){
+      // XXX: TODO: assert_invalid(!rt_opt_before , s, i);
+      if (dot_a || dot_b)
+        rt_opt_after = ch;
+      else
+        rt_opt_before = ch;
+    } else if (ch=='~'){
       assert_invalid(!sign && /[a-zA-Z]/.test(s[i+1]), s, i);
       assert_invalid(dir=='>' ? s[i+2]=='>' : !i, s, i);
       sign = ch;
@@ -613,7 +620,11 @@ E.parse_cmd_dir = function(s){
       if (dot_a){
         sd.dot = true;
         dot_a = false;
-      }
+        if (rt_opt_before)
+          sd.rt_opt = rt_opt_before;
+        rt_opt_before = false;
+      } else if (rt_opt_before)
+        sd.rt_opt = rt_opt_before;
       assert_invalid(!dot_b, s, i);
       loop.push({...sd});
       loop[dir=='>' ? loop.length-1 : 0].d =
@@ -629,7 +640,14 @@ E.parse_cmd_dir = function(s){
       if (dot_a){
         sd.dot = true;
         dot_a = false;
-      }
+        rt_opt_before = false;
+        if (rt_opt_after){
+          rt_opt_before = rt_opt_after;
+          rt_opt_after = false;
+          sd.rt_opt = rt_opt_before;
+        }
+      } else if (rt_opt_before)
+        sd.rt_opt = rt_opt_before;
       if (dot_b){
         dot_a = true;
         dot_b = false;
@@ -648,7 +666,7 @@ E.parse_cmd_dir = function(s){
   assert_invalid(loop.length, s, _d);
   if (dir=='<')
     loop.reverse();
-  let cmd = s.substr(_d+1), seq = !comma;
+  let seq = !comma;
   for (let i=1; seq && i<loop.length; i++){
     if (loop[i-1].dir!=loop[i].dir)
       seq = false;
