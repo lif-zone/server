@@ -666,15 +666,8 @@ E.parse_cmd_dir = function(s){
   assert_invalid(loop.length, s, _d);
   if (dir=='<')
     loop.reverse();
-  let seq = !comma;
-  for (let i=1; seq && i<loop.length; i++){
-    if (loop[i-1].dir!=loop[i].dir)
-      seq = false;
-    else if (loop[i-1].d!=loop[i].s)
-      seq = false;
-  }
   return assign(loop.length>1 ? {loop} : loop[0], {cmd, meta: {cmd: s}},
-    seq ? {s: loop[0].s, d: loop[loop.length-1].d,
+    !comma ? {s: loop[0].s, d: loop[loop.length-1].d,
     dir: loop[0].dir} : undefined, comma ? {comma} : undefined);
 };
 
