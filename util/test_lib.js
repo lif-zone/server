@@ -585,8 +585,8 @@ E.parse_cmd_dir = function(s){
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
-    assert_invalid(/[a-z,.<>=~!]/i.test(ch), s, i);
-    if (ch=='!'){
+    assert_invalid(/[a-z,.<>=~!?]/i.test(ch), s, i);
+    if (/[!?]/.test(ch)){
       // XXX: TODO: assert_invalid(!rt_opt_before , s, i);
       if (dot_a || dot_b)
         rt_opt_after = ch;
@@ -664,8 +664,17 @@ E.parse_cmd_dir = function(s){
       assert(false);
   }
   assert_invalid(loop.length, s, _d);
-  if (dir=='<')
+  if (dir=='<'){
     loop.reverse();
+    for (let i=0, first_dot=true; i<loop.length; i++){
+      if (loop[i].dot && loop[i].rt_opt && first_dot)
+        delete loop[i].rt_opt;
+      else if (loop[i].dot && loop[i+1]?.rt_opt)
+        loop[i].rt_opt = loop[i+1].rt_opt;
+      if (loop[i].dot && !first_dot)
+        first_dot = false;
+    }
+  }
   return assign(loop.length>1 ? {loop} : loop[0], {cmd, meta: {cmd: s}},
     !comma ? {s: loop[0].s, d: loop[loop.length-1].d,
     dir: loop[0].dir} : undefined, comma ? {comma} : undefined);

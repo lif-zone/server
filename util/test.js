@@ -3592,6 +3592,10 @@ describe('test_lib', ()=>{
         cmd: 'z'});
       t('!abc>d', {s: 'a', d: 'c', dir: '>', loop: [{s: 'a', d: 'b', dir: '>',
         rt_opt: '!'}, {s: 'b', d: 'c', dir: '>', rt_opt: '!'}], cmd: 'd'});
+      t('?abc>d', {s: 'a', d: 'c', dir: '>', loop: [{s: 'a', d: 'b', dir: '>',
+        rt_opt: '?'}, {s: 'b', d: 'c', dir: '>', rt_opt: '?'}], cmd: 'd'});
+      t('!abc<d', {s: 'c', d: 'a', dir: '<', loop: [{s: 'c', d: 'b', dir: '<',
+        rt_opt: '!'}, {s: 'b', d: 'a', dir: '<', rt_opt: '!'}], cmd: 'd'});
       t('!abc.def>g', {s: 'a', d: 'f', dir: '>', loop: [
         {s: 'a', d: 'b', dir: '>', rt_opt: '!'},
         {s: 'b', d: 'c', dir: '>', rt_opt: '!'},
@@ -3633,7 +3637,50 @@ describe('test_lib', ()=>{
         {s: 'g', d: 'h', dir: '>'},
         {s: 'h', d: 'i', dir: '>'},
         ], cmd: 'j'});
-      // XXX: finish all cases, add reveres < tests and add '?' test
+      t('abc.def.!ghi>j', {s: 'a', d: 'i', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>'},
+        {s: 'b', d: 'c', dir: '>'},
+        {s: 'c', d: 'd', dir: '>', dot: true},
+        {s: 'd', d: 'e', dir: '>'},
+        {s: 'e', d: 'f', dir: '>'},
+        {s: 'f', d: 'g', dir: '>', rt_opt: '!', dot: true},
+        {s: 'g', d: 'h', dir: '>', rt_opt: '!'},
+        {s: 'h', d: 'i', dir: '>', rt_opt: '!'},
+        ], cmd: 'j'});
+      t('!abc.!def.ghi>j', {s: 'a', d: 'i', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>', rt_opt: '!'},
+        {s: 'b', d: 'c', dir: '>', rt_opt: '!'},
+        {s: 'c', d: 'd', dir: '>', rt_opt: '!', dot: true},
+        {s: 'd', d: 'e', dir: '>', rt_opt: '!'},
+        {s: 'e', d: 'f', dir: '>', rt_opt: '!'},
+        {s: 'f', d: 'g', dir: '>', dot: true},
+        {s: 'g', d: 'h', dir: '>'},
+        {s: 'h', d: 'i', dir: '>'},
+        ], cmd: 'j'});
+       t('!abc.def.!ghi>j', {s: 'a', d: 'i', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>', rt_opt: '!'},
+        {s: 'b', d: 'c', dir: '>', rt_opt: '!'},
+        {s: 'c', d: 'd', dir: '>', dot: true},
+        {s: 'd', d: 'e', dir: '>'},
+        {s: 'e', d: 'f', dir: '>'},
+        {s: 'f', d: 'g', dir: '>', rt_opt: '!', dot: true},
+        {s: 'g', d: 'h', dir: '>', rt_opt: '!'},
+        {s: 'h', d: 'i', dir: '>', rt_opt: '!'},
+        ], cmd: 'j'});
+      t('abc.!def<g', {s: 'f', d: 'a', dir: '<', loop: [
+        {s: 'f', d: 'e', rt_opt: '!', dir: '<'},
+        {s: 'e', d: 'd', rt_opt: '!', dir: '<'},
+        {s: 'd', d: 'c', dir: '<', dot: true},
+        {s: 'c', d: 'b', dir: '<'},
+        {s: 'b', d: 'a', dir: '<'},
+        ], cmd: 'g'});
+      t('!abc.def<g', {s: 'f', d: 'a', dir: '<', loop: [
+        {s: 'f', d: 'e', dir: '<'},
+        {s: 'e', d: 'd', dir: '<'},
+        {s: 'd', d: 'c', rt_opt: '!', dir: '<', dot: true},
+        {s: 'c', d: 'b', rt_opt: '!', dir: '<'},
+        {s: 'b', d: 'a', rt_opt: '!', dir: '<'},
+        ], cmd: 'g'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },
