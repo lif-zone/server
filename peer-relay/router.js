@@ -80,7 +80,19 @@ export default class Router extends EventEmitter {
     } else {
       // XXX TODO: fix state handling
       // else if (channel = _this.get_channel_from_state(msg));
-      if (channel = _this.get_channel_from_path(path));
+      if (channel = _this.get_channel_from_path(path)){
+        // XXX WIP
+        if (['req', 'req_start'].includes(msg.type) && rt?.opt!='!'){
+          // XXX: use rtt sent with rt
+          let path2 = _this.node_map.get_best_route(to);
+          let channel2 = _this.get_channel_from_path(path2);
+          if (channel2 && path2 && path2.length<path.length &&
+            path2[path2.length-1]==path[path.length-1]){
+            channel = channel2;
+            path = path2;
+          }
+        }
+      }
       else if (channel = _this.get_channel_from_id(to)); /* eslint-disable */
       else if ((path = _this.get_route(msg.to)) &&
         (channel = _this.get_channel_from_path(path))); /* eslint-enable */

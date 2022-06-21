@@ -77,6 +77,8 @@ let t_keys = {
   f: {pub: 'ffb1d7cbee327956bb0205a948324c3623f2a8a65d3f5445c5ccc8c9d228cdca',
     priv: '72e90338a9c2e16da7baf9c87a22e2f286966878cf23214d3dea74435b19c2dbf'+
       'fb1d7cbee327956bb0205a948324c3623f2a8a65d3f5445c5ccc8c9d228cdca'},
+  g: {pub: '00112233664b3a769da624d007e88aab94c99ca95d1e3ec1439e4cceec9c556d',
+    priv: '00'},
   s: {pub: '00d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014',
     priv: '9596a63459b52771446435d15eb5950651893ae169100451fdcddf1c58d98d180'+
       '0d8c0d79322841c2b137811d044402588da7dde617b0a65809e1cf624386014'},
@@ -262,6 +264,8 @@ function loop_str(loop){
   for (let i=0; i<loop.length; i++){
     let o = loop[i];
     s += /[~]/.test(o.d) ? o.d : (o.dot ? '.'+(o.rt_opt||'') : '')+o.d;
+    if (o.rt_path)
+      s += '['+o.rt_path+']';
   }
   return s;
 }
@@ -2021,8 +2025,10 @@ function expand_loop_fwd(c){
     o.cmd = 'fwd';
     let end = i+1;
     for (; end<(fuzzy ? l.length-1 : l.length) && !l[end].dot; end++);
-    for (let j=i+1; j<end && !l[j].dot; j++)
+    let j;
+    for (j=i+1; j<end && !l[j].dot; j++)
       rt += (!rt ? l[j].rt_opt||'' : '')+l[j].d;
+    rt += l[j-1].rt_path||'';
     if (fuzzy){
       if (!rt){
         let next = t_conf.node_ids[l[i].d];
@@ -2231,6 +2237,8 @@ function test_transform(s){
     return s;
   let dir = s[_d], pre = s.substr(0, _d), post = s.substr(_d+1, Infinity);
   let a = [], p='', rt='', range='';
+  if (!/:/.test(pre))
+    return s;
   for (let i=0, open=false; i<pre.length; i++){
     let ch = s[i];
     if (['[', '{'].includes(ch))
@@ -2586,6 +2594,7 @@ describe('api', function(){
    t('da:ba[cd]<msg', `ba<fwd(da<msg rt(cd))`);
    t('da:ba[x]:cb[y]:dc[z]<msg',
      `dc<fwd(cb<fwd(ba<fwd(da<msg rt(x)) rt(y)) rt(z))`);
+   t('ab[cd].e>msg', `ab[cd].e>msg`);
    // XXX: add test for invalid
   });
   it('normalize', ()=>{
@@ -2727,8 +2736,8 @@ describe('peer-relay', function(){
           test_start();
           mode = mode||'mode(req)';
           let setup = (mode ? mode+' ' : '')+'a=node(wss) b=node(wss) '+
-            'c=node(wss) d=node(wss) f=node(wss) e=node(wss) n=node(wss) '+
-            'o=node(wss) p=node(wss) X=node(wss) ';
+            'c=node(wss) d=node(wss) f=node(wss) e=node(wss) g=node(wss) '+
+            'n=node(wss) o=node(wss) p=node(wss) X=node(wss) ';
           let regex = new RegExp('^'+xescape.regex(setup));
           let res = yield test_pre_process(setup+test);
           if (both){
@@ -3074,6 +3083,20 @@ describe('peer-relay', function(){
               af:ef[d!]:de:cd[ab!]<msg(type:req cmd:ping)
               af:ef[d!]:de:cd[ab!]:bc[a!]<msg(type:req cmd:ping)
               af:ef[d!]:de:cd[ab!]:bc[a!]:ab<msg(type:req cmd:ping)`);
+          _T('', 'ab[cd].e>msg(type:req cmd:ping)', `
+            ab[cd]:ae>msg(type:req cmd:ping)
+            be:ab[cd]:ae>msg(type:req cmd:ping)`);
+          _T('', 'abc[def].ef>msg(type:req cmd:ping)', `
+            ab[cdef]:af>msg(type:req cmd:ping)
+            bc[def]:ab[cdef]:af>msg(type:req cmd:ping)
+            ce[f]:bc[def]:ab[cdef]:af>msg(type:req cmd:ping)
+            ef:ce[f]:bc[def]:ab[cdef]:af>msg(type:req cmd:ping)`);
+          if (0) // XXX: fixme
+          _T('', 'fe.cba[fed]<msg(type:req cmd:ping)', `
+            fa:ba[fedc]<msg(type:req cmd:ping)
+            fa:ba[fedc]:cd[fed]<msg(type:req cmd:ping)
+            fa:ba[fedc]:cd[fed]:ec[f]<msg(type:req cmd:ping)
+            fa:ba[fedc]:cd[fed]:ec[f]:fe<msg(type:req cmd:ping)`);
         });
         describe('ping', function(){
           _T('mode(msg req)', 'ab>*ping_r', `ab>*res(cmd:ping)`);
@@ -3100,6 +3123,9 @@ describe('peer-relay', function(){
             fed.!cba>msg(type:req cmd:ping)`);
           _T('mode(msg req)', '!abc.!def<ping', `
             !fed.!cba>msg(type:req cmd:ping)`);
+          _T('mode(msg req)', `bc[defg].g>ping`, `
+            bc[defg]:bg>msg(type:req cmd:ping)
+            cg:bc[defg]:bg>msg(type:req cmd:ping)`);
           _T('mode(msg req)', 'ab>!ping(!e)', `ab>!ping(!e)`);
           _T('mode(msg req)', 'ab>!ping', `ab>!ping(!e) ab>ping ab>*ping
             ab<ping_r ab<*ping_r`);
@@ -3111,6 +3137,11 @@ describe('peer-relay', function(){
             `ac>!ping(!e rt(!bc)) !abc>ping ac>*ping abc<ping_r ac<*ping_r`);
           _T('mode(msg req)', 'abc<!ping(rt:bc!)',
             `ca>!ping(!e rt(!cb)) cba>ping ac<*ping abc>ping_r ac>*ping_r`);
+          _T('mode(msg req)', 'abc[def].ef>!ping', `af>!ping(!e)
+            abc[def].ef>ping af>*ping abcef<ping_r af<*ping_r`);
+          _T('mode(msg req)', 'bc[defg].g>!ping(rt(cdefg))', `
+            bg>!ping(!e rt(cdefg)) bc[defg].g>ping bg>*ping
+            bcg<ping_r bg<*ping_r`);
         });
       });
     });
@@ -3324,13 +3355,26 @@ describe('peer-relay', function(){
         ca>*ping_r`);
        t('4_nodes_exact', `conf(id:a-mXYZn-z) ab,bc,cd,da>!connect
          !abc>!ping(rt:!bc)`);
-      t = (name, test)=>t_roles(name, 'abcdefg', test);
-      t('8_nodes_exact', `conf(id:a-mXYZn-z) ab,bc,cd,de,ef,fg,ga>!connect
-        ag.f>!ping agf>!ping !abcdef>!ping(rt:!bcdef)
-        abcdef>!ping(rt:bcdef) // XXX: BUG
-        // agf>!ping(rt:bcdef) // XXX: FIXME
+      t = (name, test)=>t_roles(name, 'abcdefghi', test);
+      // XXX: WIP - need to add tests that take rtt into account
+      t('xxx', `conf(id:a-mXYZn-z)
+        ab,bc,cd,de,ef,fg,gh,hi,ia>!connect
+        bc.d.e.f.g>!ping
+        bcdefg>!ping
+        baihg>!ping(rt:aihg)
+        baihg>!ping - // XXX BUG: rm -
+        !bcdefg>!ping(rt(!cdefg))
+        baihg>!ping
+        !bcdefg>!ping(rt(!cdefg))
+        baihg>!ping(rt(cdefg))`);
+      t('xxx2', `conf(id:a-mXYZn-z)
+        ab,bc,cd,de,ef,fg,gh,hi,ia>!connect
+        bc.d.e.f.g>!ping bcdefg>!ping
+        cg>!connect
+        !bcdefg>!ping(rt(!cdefg))
+        bc[defg].g>!ping(rt(cdefg))
+        bcg>!ping(rt(cdefg))
         `);
-      // XXX: add tests that make decisions according to rtt
     });
     let t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `setup:2_nodes ab>!ping`);
@@ -3368,9 +3412,6 @@ describe('peer-relay', function(){
     t = (name, test)=>t_roles(name, 'abcde', test);
     t('5_nodes_ring', `conf(id(a:10 b:20 c:30 d:40 e:50))
       ab,bc,cd,de,ea>!connect ae.d>!ping 59s - aed<!ping 60s - aed<!ping 60s`);
-    t('5_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40 e:50))
-      ab,bc,cd,de,ea>!connect rt_add(a:bcd d:ea) abcd>!ping 59s -
-      aed<!ping 60s - aed<!ping 60s -`);
     t = (name, test)=>t_roles(name, 'abXz', test);
     t('best_path_circular1', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:109))
       ab,bX,Xz,za>!connect Xb.a>!ping`);
