@@ -3694,6 +3694,13 @@ describe('test_lib', ()=>{
       t('e.ba[cde]<x', {s: 'a', d: 'e', dir: '<', loop: [
         {s: 'a', d: 'b', dir: '<', rt_path: 'edc'},
         {s: 'b', d: 'e', dir: '<', dot: true}], cmd: 'x'});
+      if (0) // XXX: fixme
+      t('fe.cba[fed]<x', {loop: [
+        {s: 'a', d: 'b', dir: '<'},
+        {s: 'b', d: 'c', dir: '<', rt_path: 'fed'},
+        {s: 'c', d: 'e', dir: '<', dot: true},
+        {s: 'e', d: 'f', dir: '<'}],
+        cmd: 'x', s: 'a', d: 'f', dir: '<'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },

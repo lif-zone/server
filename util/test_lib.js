@@ -442,7 +442,7 @@ E.stub_res = sb=>{
 };
 
 function throw_invalid(s, i){
-  debugger;
+  debugger; // eslint-disable-line no-debugger
   throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
 
 function assert_invalid(exp, s, i){
@@ -586,7 +586,7 @@ E.parse_cmd_dir = function(s){
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
-    assert_invalid(/[a-zA-Z,.<>=~!?\[\]]/i.test(ch), s, i);
+    assert_invalid(/[a-zA-Z,.<>=~!?[\]]/i.test(ch), s, i);
     if (ch=='['){
       assert_invalid(!rt_path && !rt_path_open, s, i);
       rt_path_open = true;
