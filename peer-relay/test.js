@@ -2823,21 +2823,19 @@ describe('peer-relay', function(){
           ba>get_peer_r ab<*get_peer_r`);
         if (0) // XXX: TODO
         T('ab.c>fwd(ac>get_peer_r)', `ab.c>get_peer_r`);
-        _t('mode(msg req)',
-          'ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
-        _t('mode(msg req)', 'abc>conn_info(!r)', `
-          ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c))
+        T('ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
+        T('abc>conn_info(!r)', `ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c))
           bc>fwd(ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c)))
           ac>*conn_info`);
-        _t('mode(msg req)', 'abc>conn_info(r:ws)', `
+        T('abc>conn_info(r:ws)', `
           ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c))
           bc>fwd(ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c))) ac>*conn_info
           cb>fwd(ca>msg(type(res) cmd(conn_info) body(ws)) rt(a))
           ba>fwd(cb>fwd(ca>msg(type(res) cmd(conn_info) body(ws)) rt(a)))
           ca>*conn_info_r(ws)`);
-        _t('mode(msg req)', 'ab>conn_info_r(ws wrtc)', `ab>msg(type(res)
+        T('ab>conn_info_r(ws wrtc)', `ab>msg(type(res)
           cmd(conn_info) body(ws wrtc)) ab>*conn_info_r(ws wrtc)`);
-        _t('mode(msg req)', 'abc>conn_info_r(ws)', `
+        T('abc>conn_info_r(ws)', `
           ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws)) rt(c))
           bc>fwd(ab>fwd(ac>msg(type(res) cmd(conn_info) body(ws)) rt(c)))
           ac>*conn_info_r(ws)`);
@@ -2874,14 +2872,12 @@ describe('peer-relay', function(){
           ab>*req(id(r0) body(ping))`);
         _t('mode(msg)', 'ab>!req(id:r0 body:ping)',
           `ab>!req(id(r0) body(ping) !e) ab>msg(id(r0) type(req) body(ping))`);
-        _t('mode(msg req)', 'ab>!req(id:r0 body:ping)',
-          `ab>!req(id(r0) body(ping) !e) ab>msg(id(r0) type(req) body(ping))
-           ab>*req(id(r0) body(ping))`);
+        T('ab>!req(id:r0 body:ping)', `ab>!req(id(r0) body(ping) !e)
+          ab>msg(id(r0) type(req) body(ping)) ab>*req(id(r0) body(ping))`);
         t('ab>!req(id:r1 body:ping res:ping_r)', `
           ab>!req(id(r1) body(ping) res(ping_r) !e)
           ab>*req(id(r1) body(ping)) ab<*res(id(r1) body(ping_r))`);
-        _t('mode(msg req)',
-          'ab>!req(id:r1 cmd:test seq:1 ack:2 body:ping res:ping_r)', `
+        T('ab>!req(id:r1 cmd:test seq:1 ack:2 body:ping res:ping_r)', `
           ab>!req(id(r1) cmd(test) seq(1) ack(2) body(ping) res(ping_r) !e)
           ab>msg(id(r1) type(req) cmd(test) seq(1) ack(2) body(ping))
           ab>*req(id(r1) cmd(test) seq(1) ack(2) body(ping))
@@ -2889,23 +2885,22 @@ describe('peer-relay', function(){
           ab<*res(id(r1) cmd(test) body(ping_r))`);
         t('abc>!req(id:r0 !e)', `ac>!req(id(r0) !e)`);
         t('abc<!req(id:r0 !e)', `ac<!req(id(r0) !e)`);
-        _t('mode(msg req)', 'abc>!req(id:r0)', `ac>!req(id(r0) !e)
+        T('abc>!req(id:r0)', `ac>!req(id(r0) !e)
           ab>fwd(ac>msg(id(r0) type(req)) rt(c))
           bc>fwd(ab>fwd(ac>msg(id(r0) type(req)) rt(c)))
           ac>*req(id(r0))`);
-        _t('mode(msg req)', 'abc<!req(id:r0)', `ac<!req(id(r0) !e)
+        T('abc<!req(id:r0)', `ac<!req(id(r0) !e)
           cb>fwd(ac<msg(id(r0) type(req)) rt(a))
           ba>fwd(cb>fwd(ac<msg(id(r0) type(req)) rt(a)))
           ac<*req(id(r0))`);
-        _t('mode(msg req)', 'abc>!req(id:r0 cmd:test seq:1 ack:2 body:ping)',
+        T('abc>!req(id:r0 cmd:test seq:1 ack:2 body:ping)',
           `ac>!req(id(r0) cmd(test) seq(1) ack(2) body(ping) !e)
           ab>fwd(ac>msg(id(r0) type(req) cmd(test) seq(1) ack(2) body(ping)) `+
           `rt(c))
           bc>fwd(ab>fwd(ac>msg(id(r0) type(req) cmd(test) seq(1) `+
           `ack(2) body(ping)) rt(c)))
            ac>*req(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
-        _t('mode(msg req)',
-          'abc>!req(id:r1 cmd:test seq:1 ack:2 body:ping res:ping_r)', `
+        T('abc>!req(id:r1 cmd:test seq:1 ack:2 body:ping res:ping_r)', `
           ac>!req(id(r1) cmd(test) seq(1) ack(2) body(ping) res(ping_r) !e)
           ab>fwd(ac>msg(id(r1) type(req) cmd(test) seq(1) ack(2) body(ping)) `+
           `rt(c)) bc>fwd(ab>fwd(ac>msg(id(r1) type(req) cmd(test) seq(1) `+
@@ -2915,7 +2910,7 @@ describe('peer-relay', function(){
           ba>fwd(cb>fwd(ac<msg(id(r1) type(res) cmd(test) body(ping_r)) rt(a)))
           ac<*res(id(r1) cmd(test) body(ping_r))`);
          // XXX WIP: check why change cb> bc< and ba to ab< breaks test
-         _t('mode(msg req)', 'ab.c>!req(body:ping res:ping_r)', `
+         T('ab.c>!req(body:ping res:ping_r)', `
            ac>!req(body(ping) res(ping_r) !e)
            ab>fwd(ac>msg(type(req) body(ping)))
            bc>fwd(ab>fwd(ac>msg(type(req) body(ping))))
@@ -2931,26 +2926,26 @@ describe('peer-relay', function(){
           ab>*res(id(r0) body(ping))`);
         _t('mode(msg)', 'ab>!res(id:r0 body:ping)',
           `ab>!res(id(r0) body(ping) !e) ab>msg(id(r0) type(res) body(ping))`);
-        _t('mode(msg req)', 'ab>!res(id:r0 cmd:test seq:1 ack:2 body:ping)',
+        T('ab>!res(id:r0 cmd:test seq:1 ack:2 body:ping)',
           `ab>!res(id(r0) cmd(test) seq(1) ack(2) body(ping) !e)
           ab>msg(id(r0) type(res) cmd(test) seq(1) ack(2) body(ping))
            ab>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
         t('abc>!res(id:r0 !e)', `ac>!res(id(r0) !e)`);
         t('abc<!res(id:r0 !e)', `ac<!res(id(r0) !e)`);
-        _t('mode(msg req)', 'abc>!res(id:r0)', `ac>!res(id(r0) !e)
+        T('abc>!res(id:r0)', `ac>!res(id(r0) !e)
           ab>fwd(ac>msg(id(r0) type(res)) rt(c))
           bc>fwd(ab>fwd(ac>msg(id(r0) type(res)) rt(c))) ac>*res(id(r0))`);
-        _t('mode(msg req)', 'abc<!res(id:r0)', `ac<!res(id(r0) !e)
+        T('abc<!res(id:r0)', `ac<!res(id(r0) !e)
           cb>fwd(ac<msg(id(r0) type(res)) rt(a))
           ba>fwd(cb>fwd(ac<msg(id(r0) type(res)) rt(a))) ac<*res(id(r0))`);
-        _t('mode(msg req)', 'abc>!res(id:r0 cmd:test seq:1 ack:2 body:ping)',
+        T('abc>!res(id:r0 cmd:test seq:1 ack:2 body:ping)',
           `ac>!res(id(r0) cmd(test) seq(1) ack(2) body(ping) !e)
           ab>fwd(ac>msg(id(r0) type(res) cmd(test) seq(1) ack(2) body(ping)) `+
           `rt(c)) bc>fwd(ab>fwd(ac>msg(id(r0) type(res) cmd(test) seq(1) `+
           `ack(2) body(ping)) rt(c)))
            ac>*res(id(r0) cmd(test) seq(1) ack(2) body(ping))`);
         if (0) // XXX WIP
-        _t('mode(msg req)', 'abcd<*res(id:r1 body:ping_r)', `
+        T('abcd<*res(id:r1 body:ping_r)', `
           cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
           bc<fwd(cd<fwd(ad<msg(id:r1 type:res body:ping_r) path:d rt:ab)
             path:cd rt:a)
