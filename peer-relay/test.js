@@ -984,7 +984,7 @@ function fake_emit(c, msg){
   }
 }
 
-const fake_send_msg = (c, msg)=>etask(function*(){
+function fake_send_msg(c, msg){
   let s = N(c.s), d = N(c.d), f = s, t = d, fuzzy = get_fuzzy(c.d);
   let to = d.id.s, from = s.id.s;
   msg.to = to;
@@ -1027,9 +1027,9 @@ const fake_send_msg = (c, msg)=>etask(function*(){
         lbuffer.add_json(msg2);
       }
     }
-    yield send_msg(s.t.name, d.t.name, lbuffer);
+    send_msg(s.t.name, d.t.name, lbuffer);
   }
-});
+}
 
 const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   let event = xutil.get(opt, 'event');
@@ -1556,7 +1556,7 @@ function cmd_get_peer_r(opt){
   fake_emit(c, {type: 'res', cmd: 'get_peer_r', body: ''});
 }
 
-const cmd_msg = opt=>etask(function*cmd_msg(){
+function cmd_msg(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse(c.arg), body;
@@ -1632,8 +1632,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   let rt; // XXX: rm this logic. just pass c.rt
   if (c.rt)
     rt = {path: parse_path(path_to_str(c.rt), c.dir)};
-  yield fake_send_msg(c, {rt, req_id: id, type, seq, ack, cmd, body});
-});
+  fake_send_msg(c, {rt, req_id: id, type, seq, ack, cmd, body});
+}
 
 function cmd_req(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
