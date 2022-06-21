@@ -3688,6 +3688,12 @@ describe('test_lib', ()=>{
         {s: 'c', d: 'b', rt_opt: '!', dir: '<'},
         {s: 'b', d: 'a', rt_opt: '!', dir: '<'},
         ], cmd: 'g'});
+      t('ab[cde].e>x', {s: 'a', d: 'e', dir: '>', loop: [
+        {s: 'a', d: 'b', dir: '>', rt_path: 'cde'},
+        {s: 'b', d: 'e', dir: '>', dot: true}], cmd: 'x'});
+      t('e.ba[cde]<x', {s: 'a', d: 'e', dir: '<', loop: [
+        {s: 'a', d: 'b', dir: '<', rt_path: 'edc'},
+        {s: 'b', d: 'e', dir: '<', dot: true}], cmd: 'x'});
     });
     it('parse_cmd_dir_invalid', ()=>{
       const t = (s, exp)=>{ assert.throws(()=>{ xtest.parse_cmd_dir(s); },
@@ -3711,6 +3717,10 @@ describe('test_lib', ()=>{
       t('!!ab>e', 'invalid !^^^!ab>e');
       t('!a!b>e', 'invalid !a^^^!b>e');
       t('ab.!!cd>e', 'invalid ab.!^^^!cd>e');
+      t('ab[cde.e>x', 'invalid ab[cde^^^.e>x');
+      t('ab[cde][.e>x', 'invalid ab[cde]^^^[.e>x');
+      t('ab[cde.]e>x', 'invalid ab[cde^^^.]e>x');
+      t('ab[cde.e]>x', 'invalid ab[cde^^^.e]>x');
     });
     it('parse', ()=>{
       const t = (test, exp)=>assert.deepEqual(

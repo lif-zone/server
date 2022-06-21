@@ -442,6 +442,7 @@ E.stub_res = sb=>{
 };
 
 function throw_invalid(s, i){
+  debugger;
   throw new Error('invalid '+s.substr(0, i)+'^^^'+s.substr(i)); }
 
 function assert_invalid(exp, s, i){
@@ -581,12 +582,24 @@ E.parse_cmd_dir = function(s){
     return {cmd: s};
   let loop = [], dir = s[_d], a='', b='', comma, no_comma, sign='';
   let dot_a, dot_b, cmd = s.substr(_d+1);
-  let rt_opt_before, rt_opt_after;
+  let rt_opt_before, rt_opt_after, rt_path, rt_path_open;
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
-    assert_invalid(/[a-z,.<>=~!?]/i.test(ch), s, i);
-    if (/[!?]/.test(ch)){
+    assert_invalid(/[a-zA-Z,.<>=~!?\[\]]/i.test(ch), s, i);
+    if (ch=='['){
+      assert_invalid(!rt_path && !rt_path_open, s, i);
+      rt_path_open = true;
+      rt_path = '';
+    } else if (ch==']'){
+      assert_invalid(rt_path && rt_path_open, s, i);
+      rt_path_open = false;
+      if (dir=='<')
+        rt_path = rt_path.split('').reverse().join('');
+    } else if (rt_path_open){
+      assert_invalid(/[a-zA-Z]/.test(ch), s, i);
+      rt_path += ch;
+    } else if (/[!?]/.test(ch)){
       if (dot_a || dot_b){
         assert_invalid(!rt_opt_after, s, i);
         rt_opt_after = ch;
@@ -618,7 +631,12 @@ E.parse_cmd_dir = function(s){
           a && loop[loop.length-1].s && b && loop[loop.length-1].d, s, i);
       }
       assert_invalid(dir!='=' || !b, s, i);
+      assert_invalid(!rt_path_open, s, i);
       let sd = /[>=]/.test(dir) ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      if (rt_path){
+        sd.rt_path = rt_path;
+        rt_path = undefined;
+      }
       if (dot_a){
         sd.dot = true;
         dot_a = false;
@@ -637,7 +655,12 @@ E.parse_cmd_dir = function(s){
     {
       assert_invalid(!comma, s, i);
       assert_invalid(dir!='=' || !b, s, i);
+      assert_invalid(!rt_path_open, s, i);
       let sd = /[>=]/.test(dir) ? {s: a, d: b, dir} : {s: b, d: a, dir};
+      if (rt_path){
+        sd.rt_path = rt_path;
+        rt_path = undefined;
+      }
       no_comma = true;
       if (dot_a){
         sd.dot = true;
