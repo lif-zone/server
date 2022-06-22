@@ -3298,17 +3298,17 @@ describe('peer-relay', function(){
         bcdefg>!ping
         baihg>!ping(rt:aihg)
         baihg>!ping
-        !bcdefg>!ping(rt(!cdefg))
+        !bcdefg>!ping(rt:!cdefg)
         baihg>!ping
-        !bcdefg>!ping(rt(!cdefg))
-        baihg>!ping(rt(cdefg))`);
+        !bcdefg>!ping(rt:!cdefg)
+        baihg>!ping(rt:cdefg)`);
       t('xxx2', `conf(id:a-mXYZn-z)
         ab,bc,cd,de,ef,fg,gh,hi,ia>!connect
         bc.d.e.f.g>!ping bcdefg>!ping
         cg>!connect
-        !bcdefg>!ping(rt(!cdefg))
-        bc[defg].g>!ping(rt(cdefg))
-        bcg>!ping(rt(cdefg))
+        !bcdefg>!ping(rt:!cdefg)
+        bc[defg].g>!ping(rt:cdefg)
+        bcg>!ping(rt:cdefg)
         `);
     });
     let t = (name, test)=>t_roles(name, 'abc', test);
