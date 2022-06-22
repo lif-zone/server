@@ -159,7 +159,7 @@ get_best_route(dst){
       best = {rtt_pb: o.rtt_pb, path: at.graph.path};
     i++;
   }
-  return best && best.path;
+  return best;
 }
 // XXX WIP: copy rtt_pb logic
 get_route_by_range(dst, exclude, range){
@@ -179,7 +179,7 @@ get_route_by_range(dst, exclude, range){
       best = {rtt_pb: o.rtt_pb, path: at.graph.path};
     i++;
   }
-  return best && best.path;
+  return best;
 }
 }
 

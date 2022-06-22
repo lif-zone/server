@@ -401,21 +401,23 @@ function assert_path(s, dir){
   return path;
 }
 
-function assert_rt(s, dir){
+function assert_rt(src, str, dir){
   let rt = {};
   if (dir=='>'){
-    if ('?!'.includes(s[0])){
-      rt.opt = s[0];
-      s = s.substr(1);
+    if ('?!'.includes(str[0])){
+      rt.opt = str[0];
+      str = str.substr(1);
     }
   } else {
-    if ('?!'.includes(s[s.length-1])){
-      rt.opt = s[s.length-1];
-      s = s.substr(0, s.length-1);
+    if ('?!'.includes(str[str.length-1])){
+      rt.opt = str[str.length-1];
+      str = str.substr(0, str.length-1);
     }
   }
-  rt.path = parse_path(s, dir);
-  assert(rt.path, 'invalid rt '+s);
+  rt.path = parse_path(str, dir);
+  assert(rt.path, 'invalid rt '+str);
+  assert(!src || !src.id.eq(NodeId.from(rt.path[0])),
+   'rt should not contain src '+str);
   return rt;
 }
 
@@ -1445,7 +1447,7 @@ function cmd_ping(opt){
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case '!e': e = !assert_bool(a.arg); break;
-    case 'rt': rt = assert_rt(a.arg, c.dir); break;
+    case 'rt': rt = assert_rt(s, a.arg, c.dir); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
@@ -1655,7 +1657,7 @@ function cmd_req(opt){
     case 'cmd': cmd = a.arg; break;
     case 'seq': seq = assert_int(a.arg); break;
     case 'ack': ack = assert_ack(a.arg); break;
-    case 'rt': rt = assert_rt(a.arg, c.dir); break;
+    case 'rt': rt = assert_rt(s, a.arg, c.dir); break;
     case 'res':
       assert(call, 'res only valid for !req');
       res = a.arg||'';
@@ -1884,7 +1886,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
-    case 'rt': rt = assert_rt(a.arg, c.dir); break;
+    // XXX: replace null with correct src in assert_rt
+    case 'rt': rt = assert_rt(null, a.arg, c.dir); break;
     case 'range': range = assert_range(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
@@ -3071,7 +3074,7 @@ describe('peer-relay', function(){
             `ac>!ping(!e rt(d)) abc>ping ac>*ping abc<ping_r ac<*ping_r`);
           T('!abc>!ping(rt:!bc)', `ac>!ping(!e rt(!bc)) !abc>ping ac>*ping
             abc<ping_r ac<*ping_r`);
-          T('abc<!ping(rt:bc!)', `ca>!ping(!e rt(!cb)) cba>ping ac<*ping
+          T('abc<!ping(rt:cd!)', `ca>!ping(!e rt(!dc)) cba>ping ac<*ping
             abc>ping_r ac>*ping_r`);
           T('abc[def].ef>!ping', `af>!ping(!e) abc[def].ef>ping af>*ping
             abcef<ping_r af<*ping_r`);
@@ -3296,6 +3299,7 @@ describe('peer-relay', function(){
         ab,bc,cd,de,ef,fg,gh,hi,ia>!connect
         bc.d.e.f.g>!ping
         bcdefg>!ping
+        !baihg>!ping(rt:!aihg)
         baihg>!ping(rt:aihg)
         baihg>!ping
         !bcdefg>!ping(rt:!cdefg)
@@ -3310,6 +3314,20 @@ describe('peer-relay', function(){
         bc[defg].g>!ping(rt:cdefg)
         bcg>!ping(rt:cdefg)
         `);
+      t = (name, test)=>t_roles(name, 'abcdefghijkl', test);
+      t('xxx3', `conf(id:a-mXYZn-z rtt:100)
+        // XXX derry? !ring(a-l)
+        ab,bc,cd,de,ef,fg,gh,hi,ij,jk,kl,la>!connect
+        bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
+        // create shortcut fa
+        fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
+        // reduce rtt to minimum possible to keep using shortcut fa
+        conf(rtt(fg:50 gh:50 ij:50 jk:50)) !kjihgf>!ping(rt:!jihgf)
+        bcdefalk>!ping
+        // reduce rtt so using shortcut fa takes longer
+        conf(rtt(fg:49 gh:49 ij:49 jk:49)) !kjihgf>!ping(rt:!jihgf)
+        bcdef[alk].ghijk>!ping bcdefghijk>!ping
+      `);
     });
     let t = (name, test)=>t_roles(name, 'abc', test);
     t('2_nodes', `setup:2_nodes ab>!ping`);
@@ -3406,16 +3424,16 @@ describe('peer-relay', function(){
     // XXX: check if test really test anything
     t('best_path_circular', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
       aX,Xb,bY,Ya>!connect aX.b.Y~a>!get_peer bXa.X~b>!get_peer
-      XbY.b~X>!get_peer YbX.b.Xa~Y>!get_peer aXb>!ping
-      aYb>!ping(rt:Yb) !sp aXb>!ping
-      conf(rtt(100 Yb:1)) aYb>!ping(rt:Yb) !sp aYb>!ping`);
+      XbY.b~X>!get_peer YbX.b.Xa~Y>!get_peer aXb>!ping aYb>!ping(rt:Yb)
+      !sp aXb>!ping conf(rtt(100 Yb:1)) aYb>!ping(rt:Yb) !sp aYb>!ping`);
     t = (name, test)=>t_roles(name, 'abcXY', test);
     t('best_path_multi', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
       aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
       c.Xb.Xa.X~c>!get_peer cXa>!ping cXb>!ping !sp cXa>!ping
       cXb>!ping Ya,Yb>!connect Yb.X.a~Y>!get_peer Yb.Xc>!ping YbXc>!ping
       YaXc>!ping(rt:aXc) YbXc>!ping !sp YaXc>!ping conf(rtt(100 Yb:10)) !sp
-      YaXc>!ping YbXc>!ping(rt:bXc) YaXc>!ping(rt:aXc) !sp Yb.Xc>!ping`);
+      YaXc>!ping YbXc>!ping(rt:bXc) Yb.Xc>!ping(rt:aXc) !YaXc>!ping(rt:!aXc)
+      Yb.Xc>!ping`);
     t = (name, test)=>t_roles(name, 'abcX', test);
     if (0) // XXX: WIP
     t('xxx', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
@@ -4187,23 +4205,24 @@ VP:
 - protect against invalid msg
 - get 8 closets nodes to me (in tests, default is 2)
   get_peer to neighbours (with exclude to itself)
-- exact/optional routing modes for both fuzzy/regular routing
+* exact/optional routing modes for both fuzzy/regular routing
   - send rtt_pb with route info
   - if router can calculate all rtt (either it knows it or it get it) and have
     better route, use it (eg, connected directly)
-- incremental shortest-path updates
-- connect/auto-connect when two nodes learn on each other (wrtc)
 - move get_peer to be automatic in Node
-- sign messages
 + rm warning React... in eslint
 - optimize mocha tests - improve sinon time api - by default, don't wait for
   external time to finish (eg. mongo/ls)
-- lbuffer - how to get msg0 efficiently
-- memory leaks (when we remove stuff from cache eg, routes)
+- ack every pkt
 - rtt calculation - calculate it during the connection and pass it along fwd
-- fix parser
-  - conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
-  - a,b,c=node === a,b,c=node:wss (make wss the default)
-  - aX>!ping
-  t('abc.d>msg', `$i=ab>fwd(ad>msg rt:c) bc>fwd($i++) cd>fwd($i++)`);
+- conn disconnected: update tables
+- handle failures
+  - conn dead (timeouts): zero incoming pkts, mark dead, retry?
+- manual-connect/auto-connect when two nodes learn on each other (wrtc)
+- future:
+  - sign messages
+  - memory leaks (when we remove stuff from cache eg, routes)
+  - incremental shortest-path updates
+  - t('abc.d>msg', `$i=ab>fwd(ad>msg rt:c) bc>fwd($i++) cd>fwd($i++)`);
+  - lbuffer - how to get msg0 efficiently
 */

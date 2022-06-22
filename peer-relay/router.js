@@ -52,7 +52,7 @@ export default class Router extends EventEmitter {
   _send = lbuffer=>etask({_: this}, function*(){
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
     let _this = this._, channel, rt = msg0.rt, path = rt?.path;
-    let from = NodeId.from(msg.from), to = NodeId.from(msg.to);
+    let from = NodeId.from(msg.from), to = NodeId.from(msg.to), best;
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
     if (!_this._channels.size) // XXX: verify and test it
@@ -63,7 +63,8 @@ export default class Router extends EventEmitter {
         if (!(channel = _this.get_channel_from_path(path)))
           return xerr('channel not found in route');
       } else {
-        path = _this.node_map.get_route_by_range(to, from, range);
+        best = _this.node_map.get_route_by_range(to, from, range);
+        path = best?.path;
         channel = _this.get_channel_from_path(path);
         if (!channel)
           return _this.emit('message', lbuffer);
@@ -83,11 +84,16 @@ export default class Router extends EventEmitter {
       if (channel = _this.get_channel_from_path(path)){
         // XXX WIP
         if (['req', 'req_start'].includes(msg.type) && rt?.opt!='!'){
-          // XXX: use rtt sent with rt
-          let path2 = _this.node_map.get_best_route(to);
+          // XXX: copy logic to fuzzy
+          // XXX: need to use rtt sent by msg
+          let rtt_pb_o = _this.id.rtt_pb_via(to,
+            NodeId.from(path[path.length-1]), _this.calc_path_rtt(path));
+          best = _this.node_map.get_best_route(to);
+          let path2 = best?.path;
           let channel2 = _this.get_channel_from_path(path2);
-          if (channel2 && path2 && path2.length<path.length &&
-            path2[path2.length-1]==path[path.length-1]){
+          xerr.notice('XXX best %s path %s', best?.rtt_pb, rtt_pb_o?.rtt_pb);
+          if (channel2 && path2 &&
+            (!rtt_pb_o?.good || best.rtt_pb < rtt_pb_o.rtt_pb)){
             channel = channel2;
             path = path2;
           }
@@ -97,7 +103,8 @@ export default class Router extends EventEmitter {
       else if ((path = _this.get_route(msg.to)) &&
         (channel = _this.get_channel_from_path(path))); /* eslint-enable */
       else {
-        path = _this.node_map.get_best_route(to);
+        best = _this.node_map.get_best_route(to);
+        path = best?.path;
         if (!(channel = _this.get_channel_from_path(path)))
           return;
       }
@@ -229,7 +236,7 @@ export default class Router extends EventEmitter {
     for (let i=0, prev=NodeId.from(this.id.s); i<path.length; i++){
       let curr = NodeId.from(path[i]);
       let conn = this.node_map.get_conn({ids: [prev, curr]});
-      rtt += conn.rtt||DEF_RTT;
+      rtt += conn?.rtt||DEF_RTT;
       prev = curr;
     }
     return rtt;
