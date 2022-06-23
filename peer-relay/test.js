@@ -381,7 +381,7 @@ function assert_rtt(val){
     else {
       let a = s.match(/^([a-zA-Z][a-zA-Z]):([0-9]+)$/);
       assert(a.length==3, 'invalid rtt '+s+' '+val);
-      let conn = string.sort_char(a[1]);
+      let conn = rtt_hash(a[1][0], a[1][1]);
       t_conf.rtt.conn[conn] = +a[2];
     }
   });
@@ -611,12 +611,53 @@ function track_seq_res(s, d, id, type, seq, call){
   return seq===undefined ? t_req[id].res.seq : seq;
 }
 
+function rtt_hash(a, b){ return string.sort_char(a+b); }
+
+function track_rtt(lbuffer){
+  track_rtt_fwd(lbuffer);
+  track_rtt_path(lbuffer);
+}
+
+function track_rtt_fwd(lbuffer){
+  let msg0 = lbuffer.get_json(0);
+  let d0 = node_from_id(msg0.to);
+  d0.t.rtt = d0.t.rtt||{};
+  for (let i=0; i<lbuffer.size(); i++){
+    let msg = lbuffer.get_json(i);
+    if (msg.type!='fwd')
+      break;
+    let s = node_from_id(msg.from);
+    let d = node_from_id(msg.to);
+    let hash = rtt_hash(s.t.name, d.t.name);
+    d0.t.rtt[hash] = Math.min(d0.t.rtt[hash]||1000, msg.rtt||1000);
+  }
+}
+
+function track_rtt_path(lbuffer){
+  let msg0 = lbuffer.get_json(0), rt = msg0.rt, path = rt?.path;
+  if (msg0.type!='fwd')
+    return;
+  let rtt_a = rt?.rtt;
+  let s0 = node_from_id(msg0.from), d0 = node_from_id(msg0.to);
+  if (!rt?.path)
+    return;
+  assert.equal(path.length, rtt_a.length, 'invalid rtt for path');
+  for (let i=0, prev=d0; i<path.length; i++){
+    let curr = node_from_id(path[i]), rtt = rtt_a[i];
+    let hash = rtt_hash(prev.t.name, curr.t.name);
+    d0.t.rtt[hash] = Math.min(d0.t.rtt[hash]||1000, rtt||1000);
+    prev = curr;
+  }
+}
+
 // XXX: unite with nonce and use t_req instead of t_ack/t_msg
 let t_msg_n = 0;
-function track_msg(msg){
+function track_msg(lbuffer){
+  let msg = lbuffer.msg();
   assert(msg.req_id, 'missing req_id %s', stringify(msg));
   let s = node_from_id(msg.from).t.name, d = node_from_id(msg.to).t.name;
   let {type, req_id, cmd, seq} = msg;
+  track_rtt(lbuffer);
   assert(is_number(msg.seq), 'req/res must have seq '+stringify(msg));
   req_id = ''+req_id;
   cmd = cmd||'';
@@ -720,7 +761,7 @@ class FakeChannel extends EventEmitter {
     this.t = {};
     if (!t_conf) // XXX HACK: rm it, needed for channels test
       return;
-    let conn = string.sort_char(node_from_id(this.id.s).t.name+
+    let conn = rtt_hash(node_from_id(this.id.s).t.name,
       node_from_id(this.local_id.s).t.name);
     this.rtt = t_conf.rtt.conn[conn]||t_conf.rtt.def;
   }
@@ -783,7 +824,7 @@ class FakeChannel extends EventEmitter {
         });
       }
       t_nonce[nonce_hash(msg)] = lbuffer.nonce();
-      track_msg(msg);
+      track_msg(lbuffer);
       yield cmd_run(e);
     });
   };
@@ -821,7 +862,6 @@ function req_hook(lbuffer){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.nonce, 'missing msg nonce '+stringify(msg));
-  track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
 
@@ -850,7 +890,6 @@ function req_send_hook(msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.nonce, 'missing msg nonce '+stringify(msg));
-  track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
 
@@ -888,7 +927,6 @@ function res_hook(msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.nonce, 'missing msg nonce %s', stringify(msg));
-  track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
 
@@ -916,7 +954,6 @@ function res_send_hook(router, msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.nonce, 'missing msg nonce '+stringify(msg));
-  track_msg(msg);
   cmd_run(_build_cmd(e, '', ''));
 }
 
@@ -980,7 +1017,7 @@ const send_msg = (s, d, lbuffer)=>etask(function*send_msg(){
   let channel = node_get_channel(s, d);
   if (!channel)
     return xerr('no channel '+s+d+'>');
-  yield N(d).router._on_channel_msg(lbuffer.to_str(), channel);
+  yield N(d).router._on_msg(lbuffer.to_str(), channel);
 });
 
 function fake_emit(c, msg){
@@ -997,7 +1034,7 @@ function fake_emit(c, msg){
     msg.seq = 0;
   assert(!c.fwd, 'fwd not allowed in fake_emit');
   assert(msg.req_id, 'missing req_id');
-  track_msg(msg);
+  track_msg(new LBuffer(msg)); // XXX: rm track_msg from fake_emit
   if (!d.t.fake)
   {
     let lbuffer = new LBuffer(msg); // XXX WIP
@@ -1037,22 +1074,21 @@ function fake_send_msg(c, msg){
   }
   msg.nonce = t_nonce[nonce_hash(msg)] = t_nonce[nonce_hash(msg)]||
     ''+Math.floor(1e15 * Math.random());
-  track_msg(msg);
-  if (!d.t.fake){
-    msg.sign = node_from_id(from).wallet.sign(msg);
-    let lbuffer = new LBuffer(msg); // XXX: WIP
-    if (c.fwd){
-      for (let i=c.fwd.length-1; i>=0; i--){
-        let rtt = t_conf.rtt.conn[
-          string.sort_char(fwd_s(c.fwd, i)+fwd_d(c.fwd, i))]||t_conf.rtt.def;
-        let msg2 = {from: fwd_s_id(c.fwd, i), to: fwd_d_id(c.fwd, i),
-          type: 'fwd', rtt, rt: c.rt2[i],
-          range: NodeId.range_to_msg(c.range2[i])};
-        lbuffer.add_json(msg2);
-      }
+  let lbuffer = new LBuffer(msg);
+  msg.sign = node_from_id(from).wallet.sign(msg);
+  if (c.fwd){
+    for (let i=c.fwd.length-1; i>=0; i--){
+      let rtt = t_conf.rtt.conn[
+        rtt_hash(fwd_s(c.fwd, i), fwd_d(c.fwd, i))]||t_conf.rtt.def;
+      let msg2 = {from: fwd_s_id(c.fwd, i), to: fwd_d_id(c.fwd, i),
+        type: 'fwd', rtt, rt: c.rt2[i],
+        range: NodeId.range_to_msg(c.range2[i])};
+      lbuffer.add_json(msg2);
     }
-    send_msg(s.t.name, d.t.name, lbuffer);
   }
+  track_msg(lbuffer);
+  if (!d.t.fake)
+    send_msg(s.t.name, d.t.name, lbuffer);
 }
 
 const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
@@ -1273,6 +1309,8 @@ function cmd_comment(opt){
 
 function cmd_dbg(opt){
   let {event} = opt;
+  if (t_pre_process)
+    return;
   debugger; // eslint-disable-line no-debugger
   if (t_i<t_cmds.length)
     return cmd_run(event);
@@ -1921,6 +1959,22 @@ function cmd_fail(opt){
   assert_event_c(c, event);
 }
 
+function fill_rtt(c, rt){
+  if (!rt?.path)
+    return;
+  assert(!rt.rtt);
+  let s0 = N(c.s), d0 = N(c.d), path = rt.path;
+  rt.rtt = [];
+  for (let i=0, prev=d0; i<path.length; i++){
+    let curr = node_from_id(path[i]);
+    let rtt = 1000;
+    if (s0.t.rtt)
+      rtt = s0.t.rtt[rtt_hash(prev.t.name, curr.t.name)]||1000;
+    rt.rtt.push(rtt);
+    prev = curr;
+  }
+}
+
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
   let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range;
@@ -1932,16 +1986,17 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  f.fwd = Array.from(c.fwd||[]);
-  f.fwd.push(dir_c(c));
-  f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here!
-  f.rt2.push(rt);
-  f.range2 = Array.from(c.range2||[]); // XXX: rm from here!
-  f.range2.push(range);
   if (t_pre_process){
     if (c.loop)
       return expand_loop_fwd(c);
   }
+  f.fwd = Array.from(c.fwd||[]);
+  f.fwd.push(dir_c(c));
+  f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here!
+  fill_rtt(c, rt);
+  f.rt2.push(rt);
+  f.range2 = Array.from(c.range2||[]); // XXX: rm from here!
+  f.range2.push(range);
   yield cmd_run_single({c: f, event});
   if (t_pre_process){
     return set_orig(c, _build_cmd(f.orig+
@@ -3377,6 +3432,18 @@ describe('peer-relay', function(){
         // reduce rtt so using shortcut fa takes longer
         conf(rtt(fg:49 gh:49 ij:49 jk:49)) !kjihgf>!ping(rt:!jihgf)
         bcdef[alk].ghijk>!ping bcdefghijk>!ping
+      `);
+      t('xxx4', `conf(id:a-mXYZn-z rtt(100 ba:999)) !ring(a-l)
+        bc.d.e.f.g.h.i.j.k>!ping
+        bcdefghijk>!ping
+        // create shortcut fa
+        fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
+        // reduce rtt so using shortcut fa takes longer
+        conf(rtt(gh:1 ij:1 jk:1)) !balkjihg>!ping(rt:!alkjihg)
+        bcdefalk>!ping
+        !sp // XXX: why is it needed?
+        // verify path rtt is sent so f will not use fa as shortcut
+        bcdefghijk>!ping
       `);
     });
     let t = (name, test)=>t_roles(name, 'abc', test);

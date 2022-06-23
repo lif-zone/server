@@ -51,7 +51,8 @@ export default class Router extends EventEmitter {
   }
   _send = lbuffer=>etask({_: this}, function*(){
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
-    let _this = this._, channel, rt = msg0.rt, path = rt?.path;
+    let _this = this._, channel;
+    let rt = msg0.rt, path = rt?.path;
     let from = NodeId.from(msg.from), to = NodeId.from(msg.to), best;
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
@@ -91,7 +92,6 @@ export default class Router extends EventEmitter {
           best = _this.node_map.get_best_route(to);
           let path2 = best?.path;
           let channel2 = _this.get_channel_from_path(path2);
-          xerr.notice('XXX best %s path %s', best?.rtt_pb, rtt_pb_o?.rtt_pb);
           if (channel2 && path2 &&
             (!rtt_pb_o?.good || best.rtt_pb < rtt_pb_o.rtt_pb)){
             channel = channel2;
@@ -116,7 +116,7 @@ export default class Router extends EventEmitter {
         if (path && path.length>1){
           path = Array.from(path);
           path.splice(0, 1);
-          msg2.rt = {path};
+          msg2.rt = {path, rtt: _this.build_rtt_array(path)};
           if (rt?.opt)
             msg2.rt.opt = rt.opt;
         } else if (range)
@@ -127,8 +127,8 @@ export default class Router extends EventEmitter {
     }
     yield channel.send(lbuffer.to_str());
   });
-  _on_channel_msg = (data, channel)=>etask({_: this},
-    function*_on_channel_msg(){
+  _on_msg = (data, channel)=>etask({_: this},
+    function*_on_msg(){
     let lbuffer = LBuffer.from(data); // XXX: WIP
     let msg = lbuffer.msg();
     let _this = this._, nonce = lbuffer.nonce();
@@ -146,7 +146,7 @@ export default class Router extends EventEmitter {
     let dst = channel.id;
     this.node_map.update_conn({ids: [this.id, dst], self: channel,
       rtt: channel.rtt||DEF_RTT});
-    channel.on('message', this._on_channel_msg);
+    channel.on('message', this._on_msg);
     // XXX: check if this can happen during test and add yield
     while (this._queue.length)
       this._send(this._queue.shift());
@@ -154,7 +154,7 @@ export default class Router extends EventEmitter {
   _onChannelRemoved = function(channel){
     let dst = channel.id, node = this.node_map.get(dst);
     node.del_conn(dst);
-    channel.removeListener('message', this._on_channel_msg);
+    channel.removeListener('message', this._on_msg);
   }
   get_channel_from_id(id){
     return this._channels.get(id.s);
@@ -210,7 +210,7 @@ export default class Router extends EventEmitter {
       return;
     routes[d].push(Array.from(path));
   }
-  update_conn(lbuffer){
+  update_conn_from_fwd(lbuffer){
     // XXX: mv logic to node_map.js
     let path = [], rtt = 0;
     for (let i=0; i<lbuffer.size(); i++){
@@ -231,6 +231,26 @@ export default class Router extends EventEmitter {
       }
     }
   }
+  update_conn_from_path(lbuffer){
+    let msg0 = lbuffer.get_json(0);
+    let rt = msg0.rt, path = rt?.path, rtt_a = rt?.rtt;
+    if (!Array.isArray(path) || !Array.isArray(rtt_a))
+      return;
+    if (path.length!=rtt_a.length)
+      return xerr('invalid path rtt');
+    let ret = {};
+    for (let i=0, prev=NodeId.from(this.id.s); i<path.length; i++){
+      let curr = NodeId.from(path[i]), ids = [prev, curr];
+      if (rtt_a[i])
+        this.node_map.update_conn({ids, rtt: rtt_a[i]});
+      prev = curr;
+    }
+    return ret;
+  }
+  update_conn(lbuffer){
+    this.update_conn_from_fwd(lbuffer);
+    this.update_conn_from_path(lbuffer);
+  }
   calc_path_rtt(path){ // XXX: need test
     let rtt = 0;
     for (let i=0, prev=NodeId.from(this.id.s); i<path.length; i++){
@@ -240,6 +260,16 @@ export default class Router extends EventEmitter {
       prev = curr;
     }
     return rtt;
+  }
+  build_rtt_array(path){ // XXX: need test
+    let a = [];
+    for (let i=0, prev=NodeId.from(this.id.s); i<path.length; i++){
+      let curr = NodeId.from(path[i]);
+      let conn = this.node_map.get_conn({ids: [prev, curr]});
+      a.push(conn?.rtt||DEF_RTT);
+      prev = curr;
+    }
+    return a;
   }
   destroy(){ this.node_map.destroy(); }
 }

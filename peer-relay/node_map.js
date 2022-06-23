@@ -56,6 +56,7 @@ update_conn(opt){
   if (conn.rtt==rtt && conn.self==self)
     return;
   conn.update_conn({rtt, self});
+  rtt = conn.rtt;
   if (self){
     let n = this.id.eq(n0.id) ? n1 : n0;
     n.graph.rtt = rtt;
