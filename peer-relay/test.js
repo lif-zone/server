@@ -169,21 +169,26 @@ function int_from_hash(hash, bits, total_bits){
 
 // abcdefghijklmXYZnopqrstuvwxyz
 // b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
-function test_gen_ids(bits, total_bits){
+function test_gen_ids_def(bits, total_bits){
+  let ret = {};
+  test_gen_ids_lower(ret, 'a', 'z', bits, total_bits);
+  test_gen_ids_upper(ret, 'X', 'Z', bits, total_bits);
+  return ret;
+}
+
+function test_gen_ids_lower(ret, a, b, bits, total_bits){
   assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
   assert(bits<=total_bits, 'bits bigger than total_bits');
   let max = bigInt(2).pow(bits);
   let d = max.divide(26); // a-z is 26 characters
-  let ret = {};
   for (let i=0, v=bigInt(d); i<26; i++, v=v.plus(d)){
     let ch = String.fromCharCode('a'.charCodeAt(0)+i);
     ret[ch] = NodeId.from(hash_from_int(v.toString(10), bits, total_bits));
   }
-  _test_gen_ids(ret, 'X', 'Z', bits, total_bits);
   return ret;
 }
 
-function _test_gen_ids(ret, a, b, bits, total_bits){
+function test_gen_ids_upper(ret, a, b, bits, total_bits){
   assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
   assert(bits<=total_bits, 'bits bigger than total_bits');
   let max = bigInt(2).pow(bits);
@@ -194,6 +199,7 @@ function _test_gen_ids(ret, a, b, bits, total_bits){
     ret[String.fromCharCode(code)] = NodeId.from(
       hash_from_int(val.plus(i).toString(10), bits, total_bits));
   }
+  return ret;
 }
 
 function rt_to_str(rt, dir){
@@ -340,7 +346,17 @@ function assert_int(val){
 
 function assert_node_ids(val){
   if (val=='a-mXYZn-z')
-    return test_gen_ids(t_conf.id_bits, NodeId.bits);
+    return test_gen_ids_def(t_conf.id_bits, NodeId.bits);
+  if (val=='a-z')
+    return test_gen_ids_lower({}, 'a', 'z', t_conf.id_bits, NodeId.bits);
+  if (val=='A-Z')
+    return test_gen_ids_upper({}, 'A', 'Z', t_conf.id_bits, NodeId.bits);
+  if (val=='all'){
+    let ret = {};
+    test_gen_ids_lower({}, 'a', 'z', t_conf.id_bits, NodeId.bits);
+    test_gen_ids_upper(ret, 'A', 'Z', t_conf.id_bits, NodeId.bits);
+    return ret;
+  }
   let ids = val.split(' '), ret = {};
   ids.forEach(s=>{
     let a = s.match(/^([a-zA-Z]+):([0-9.]+)$/);
@@ -2296,7 +2312,7 @@ describe('buf_util', ()=>{
   it('gen_ids', function(){
     // abcdefghijklmXYZnopqrstuvwxyz
     // b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
-    let ids = test_gen_ids(8, 16);
+    let ids = test_gen_ids_def(8, 16);
     assert.equal(ids.a.s, '0900');
     assert.equal(ids.b.s, '1200');
     assert.equal(ids.m.s, '7500');
