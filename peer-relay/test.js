@@ -3367,9 +3367,7 @@ describe('peer-relay', function(){
         bcg>!ping(rt:cdefg)
         `);
       t = (name, test)=>t_roles(name, 'abcdefghijkl', test);
-      t('xxx3', `conf(id:a-mXYZn-z rtt:100)
-        // XXX derry? !ring(a-l)
-        ab,bc,cd,de,ef,fg,gh,hi,ij,jk,kl,la>!connect
+      t('xxx3', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
         bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
         // create shortcut fa
         fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
@@ -3392,16 +3390,16 @@ describe('peer-relay', function(){
     t('3_nodes_route_c', `conf(id(a:10 b:20 c:30 d:21 e:31))
       ab,ac>!connect ae>!req(id:r1 body:ping !e)
       ac:ae>msg(id:r1 type:req body:ping) - 20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_ring', `conf(id(a:10 b:20 c:30)) ab,bc,ca>!connect ab>!ping
+    t('3_nodes_ring', `conf(id(a:10 b:20 c:30)) !ring(a-c) ab>!ping
       ac>!ping -`);
     t = (name, test)=>t_roles(name, 'abcd', test);
     // XXX: check why if we change to ping it fails (req tracking bug)
-    t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40)) ab,bc,cd,da>!connect -
+    t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40)) !ring(a-d) -
       ab>!ping 60s ab.c>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s
       bc.d>!ping 60s cba>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping
       60s dcb>!ping 60s dc>!ping 60s bcd>!ping dcb>!ping 60s dcb>!ping`);
     t('4_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40))
-      rt_add(a:dc b:ad c:da d:cb) ab,bc,cd,da>!connect - ab>!ping 60s
+      rt_add(a:dc b:ad c:da d:cb) !ring(a-d) - ab>!ping 60s
       adc>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s bad>!ping 60s
       cda>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping 60s dcb>!ping 60s
       dc>!ping`);
@@ -3462,9 +3460,9 @@ describe('peer-relay', function(){
       ab,bX,Xn,no,oa,zX>!connect zX.b.a.o~z>!get_peer`);
     t = (name, test)=>t_roles(name, 'abcd', test);
     t('ring_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:136))
-      ab,bc,ca>!connect da>!connect da.c~d>!get_peer`);
+      !ring(a-c) da>!connect da.c~d>!get_peer`);
     t('ring_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:137))
-      ab,bc,ca>!connect da>!connect da.b.c~d>!get_peer`);
+      !ring(a-c) da>!connect da.b.c~d>!get_peer`);
     t = (name, test)=>t_roles(name, 'abcdXY', test);
     t('multi_path_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:146))
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
