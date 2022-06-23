@@ -1122,15 +1122,15 @@ function cmd_ring(opt){
   assert(!event, 'got unexpected '+event);
   let arr = c.arg.match(/^([a-zA-Z])-([a-zA-Z])$/);
   assert.equal(arr.length, 3, 'invalid arg '+c.arg);
-  let a = arr[1], b = arr[2], s = '';
-  assert(/[a-z]/.test(a) && /[a-z]/.test(b) ||
-    /[A-Z]/.test(a) && /[A-Z]/.test(b), 'invalid arg '+c.arg);
+  let a = arr[1], b = arr[2], s = '', is_upper = /[A-Z]/.test(a);
+  assert(!is_upper && /[a-z]/.test(b) ||
+    is_upper && /[A-Z]/.test(b), 'invalid arg '+c.arg);
   assert(a!=b, 'invalid arg '+c.arg);
   if (!t_pre_process)
     return;
   for (let ch=a, next; ch!=b; ch=next){
-    next = String.fromCharCode(ch<'z' ? ch.charCodeAt(0)+1 :
-      'a'.charCodeAt(0));
+    next = String.fromCharCode(ch<(is_upper ? 'Z' : 'z') ? ch.charCodeAt(0)+1 :
+      (is_upper ? 'A' : 'a').charCodeAt(0));
     s += (s ? ' ': '')+ch+next+'>!connect';
   }
   s += (s ? ' ': '')+b+a+'>!connect';
@@ -3014,12 +3014,11 @@ describe('peer-relay', function(){
         T('ab,bc>!connect', `ab>!connect bc>!connect`);
         describe('ring', function(){
           T('!ring(a-c)', `ab>!connect bc>!connect ca>!connect`);
-          if (true) return; // XXX: WIP
           T('!ring(l-o)', `lm>!connect mn>!connect no>!connect ol>!connect`);
-          T('!ring(y-b)', `yz>!connect za>!connect ab>!connect by!connect`);
+          T('!ring(y-b)', `yz>!connect za>!connect ab>!connect by>!connect`);
           T('!ring(A-C)', `AB>!connect BC>!connect CA>!connect`);
           T('!ring(L-O)', `LM>!connect MN>!connect NO>!connect OL>!connect`);
-          T('!ring(Y-B)', `YZ>!connect ZA>!connect AB>!connect BY!connect`);
+          T('!ring(Y-B)', `YZ>!connect ZA>!connect AB>!connect BY>!connect`);
         });
         describe('fwd', function(){
           T('abc>msg(type:req cmd:ping)', `ab[c]:ac>msg(type:req cmd:ping)
