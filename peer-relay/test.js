@@ -178,16 +178,22 @@ function test_gen_ids(bits, total_bits){
   for (let i=0, v=bigInt(d); i<26; i++, v=v.plus(d)){
     let ch = String.fromCharCode('a'.charCodeAt(0)+i);
     ret[ch] = NodeId.from(hash_from_int(v.toString(10), bits, total_bits));
-    if (i==12){
-      let X = v.plus(d.divide(2));
-      ret.X = NodeId.from(hash_from_int(X.toString(10), bits, total_bits));
-      ret.Y = NodeId.from(hash_from_int(X.plus(1).toString(10), bits,
-        total_bits));
-      ret.Z = NodeId.from(hash_from_int(X.plus(2).toString(10), bits,
-        total_bits));
-    }
   }
+  _test_gen_ids(ret, 'X', 'Z', bits, total_bits);
   return ret;
+}
+
+function _test_gen_ids(ret, a, b, bits, total_bits){
+  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
+  assert(bits<=total_bits, 'bits bigger than total_bits');
+  let max = bigInt(2).pow(bits);
+  let d = max.divide(26); // a-z is 26 characters
+  let v = bigInt(d).multiply(13);
+  for (let code=a.charCodeAt(0), i=code-'a'.charCodeAt(0),
+    val=v.plus(d.divide(2)); code<=b.charCodeAt(0); code++, i++){
+    ret[String.fromCharCode(code)] = NodeId.from(
+      hash_from_int(val.plus(i).toString(10), bits, total_bits));
+  }
 }
 
 function rt_to_str(rt, dir){
@@ -1093,8 +1099,26 @@ function cmd_conf(opt){
       s += (s ? ' ' : '')+name+'=node:wss';
     push_cmd(s);
   }
-  if (t_pre_process)
+}
+
+function cmd_ring(opt){
+  let {c, event} = opt;
+  assert(!event, 'got unexpected '+event);
+  let arr = c.arg.match(/^([a-zA-Z])-([a-zA-Z])$/);
+  assert.equal(arr.length, 3, 'invalid arg '+c.arg);
+  let a = arr[1], b = arr[2], s = '';
+  assert(/[a-z]/.test(a) && /[a-z]/.test(b) ||
+    /[A-Z]/.test(a) && /[A-Z]/.test(b), 'invalid arg '+c.arg);
+  assert(a!=b, 'invalid arg '+c.arg);
+  if (!t_pre_process)
     return;
+  for (let ch=a, next; ch!=b; ch=next){
+    next = String.fromCharCode(ch<'z' ? ch.charCodeAt(0)+1 :
+      'a'.charCodeAt(0));
+    s += (s ? ' ': '')+ch+next+'>!connect';
+  }
+  s += (s ? ' ': '')+b+a+'>!connect';
+  set_push_cmd(c, s);
 }
 
 function cmd_sp(opt){
@@ -1950,6 +1974,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'setup': yield cmd_setup(opt); break;
   case 'mode': yield cmd_mode(opt); break;
   case 'conf': yield cmd_conf(opt); break;
+  case '!ring': yield cmd_ring(opt); break;
   case 'rt_add': yield cmd_rt_add(opt); break;
   case 'node': yield cmd_node(opt); break;
   case '!connect': yield cmd_connect(opt); break;
@@ -2275,9 +2300,9 @@ describe('buf_util', ()=>{
     assert.equal(ids.a.s, '0900');
     assert.equal(ids.b.s, '1200');
     assert.equal(ids.m.s, '7500');
-    assert.equal(ids.X.s, '7900');
-    assert.equal(ids.Y.s, '7a00');
-    assert.equal(ids.Z.s, '7b00');
+    assert.equal(ids.X.s, '7000');
+    assert.equal(ids.Y.s, '7100');
+    assert.equal(ids.Z.s, '7200');
     assert.equal(ids.n.s, '7e00');
     assert.equal(ids.y.s, 'e100');
     assert.equal(ids.z.s, 'ea00');
@@ -2968,6 +2993,15 @@ describe('peer-relay', function(){
           ab>*res_start(id(r1) cmd(test))`);
         t('x,y=node:wss', `x=node(wss) y=node(wss)`);
         T('ab,bc>!connect', `ab>!connect bc>!connect`);
+        describe('ring', function(){
+          T('!ring(a-c)', `ab>!connect bc>!connect ca>!connect`);
+          if (true) return; // XXX: WIP
+          T('!ring(l-o)', `lm>!connect mn>!connect no>!connect ol>!connect`);
+          T('!ring(y-b)', `yz>!connect za>!connect ab>!connect by!connect`);
+          T('!ring(A-C)', `AB>!connect BC>!connect CA>!connect`);
+          T('!ring(L-O)', `LM>!connect MN>!connect NO>!connect OL>!connect`);
+          T('!ring(Y-B)', `YZ>!connect ZA>!connect AB>!connect BY!connect`);
+        });
         describe('fwd', function(){
           T('abc>msg(type:req cmd:ping)', `ab[c]:ac>msg(type:req cmd:ping)
             bc:ab[c]:ac>msg(type:req cmd:ping)`);
@@ -3366,9 +3400,9 @@ describe('peer-relay', function(){
     t('5_nodes_ring', `conf(id(a:10 b:20 c:30 d:40 e:50))
       ab,bc,cd,de,ea>!connect ae.d>!ping 59s - aed<!ping 60s - aed<!ping 60s`);
     t = (name, test)=>t_roles(name, 'abXz', test);
-    t('best_path_circular1', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:109))
+    t('best_path_circular1', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:110))
       ab,bX,Xz,za>!connect Xb.a>!ping`);
-    t('best_path_circular2', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:110))
+    t('best_path_circular2', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:111))
       ab,bX,Xz,za>!connect Xz.a>!ping`);
   });
   describe('get_peer', ()=>{
