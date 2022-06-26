@@ -3388,18 +3388,15 @@ describe('peer-relay', function(){
         ab<ping_r ab<*ping_r`);
       t('2_nodes_short', `setup:2_nodes ab>!ping`);
       t = (name, test)=>t_roles(name, 'abcd', test);
-      t('4_nodes_raw', `conf(id:a-mXYZn-z) ab,bc,cd,da>!connect
-        ab.c>!ping abc>!ping
+      t('4_nodes_raw', `conf(id:a-mXYZn-z) !ring(a-d) ab.c>!ping abc>!ping
         ac>!ping(!e rt:!bc) ab[!c]:ac>msg(type:req cmd:ping)
         bc:ab[!c]:ac>msg(type:req cmd:ping) ac>*ping
         cb[a]:ca>msg(type:res cmd:ping) ba:cb[a]:ca>msg(type:res cmd:ping)
-        ca>*ping_r
-        ac>!ping(!e rt:!dc) ad[!c]:ac>msg(type:req cmd:ping)
+        ca>*ping_r ac>!ping(!e rt:!dc) ad[!c]:ac>msg(type:req cmd:ping)
         dc:ad[!c]:ac>msg(type:req cmd:ping) ac>*ping
         cd[a]:ca>msg(type:res cmd:ping) da:cd[a]:ca>msg(type:res cmd:ping)
         ca>*ping_r`);
-       t('4_nodes_exact', `conf(id:a-mXYZn-z) ab,bc,cd,da>!connect
-         !abc>!ping(rt:!bc)`);
+       t('4_nodes_exact', `conf(id:a-mXYZn-z) !ring(a-d) !abc>!ping(rt:!bc)`);
       t = (name, test)=>t_roles(name, 'abcdefghi', test);
       // XXX: WIP - need to add tests that take rtt into account
       t('xxx', `conf(id:a-mXYZn-z) !ring(a-i)
