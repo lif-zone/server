@@ -3402,8 +3402,7 @@ describe('peer-relay', function(){
          !abc>!ping(rt:!bc)`);
       t = (name, test)=>t_roles(name, 'abcdefghi', test);
       // XXX: WIP - need to add tests that take rtt into account
-      t('xxx', `conf(id:a-mXYZn-z)
-        ab,bc,cd,de,ef,fg,gh,hi,ia>!connect
+      t('xxx', `conf(id:a-mXYZn-z) !ring(a-i)
         bc.d.e.f.g>!ping
         bcdefg>!ping
         !baihg>!ping(rt:!aihg)
@@ -3413,8 +3412,7 @@ describe('peer-relay', function(){
         baihg>!ping
         !bcdefg>!ping(rt:!cdefg)
         baihg>!ping(rt:cdefg)`);
-      t('xxx2', `conf(id:a-mXYZn-z)
-        ab,bc,cd,de,ef,fg,gh,hi,ia>!connect
+      t('xxx2', `conf(id:a-mXYZn-z) !ring(a-i)
         bc.d.e.f.g>!ping bcdefg>!ping
         cg>!connect
         !bcdefg>!ping(rt:!cdefg)
