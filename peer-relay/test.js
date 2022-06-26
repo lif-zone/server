@@ -2247,13 +2247,10 @@ const test_pre_process = test=>etask(function*test_preprocess(){
 });
 
 const test_run = (role, test)=>etask(function*test_run(){
-  xsinon.clock_set({now: 1});
-  xerr.notice('pre_process run');
-  let cmds = yield test_pre_process(test);
-  cmds = xtest.test_parse(test_to_str(cmds));
   xerr.notice('real run');
+  xsinon.clock_set({now: 1});
   test_setup_mode();
-  yield _test_run(role, cmds);
+  yield _test_run(role, test);
   xsinon.uninit();
 });
 
@@ -3261,13 +3258,18 @@ describe('peer-relay', function(){
   //   - need to verify idendity of each other when direct connection created
   // - ack on each message
   // - add beep sound to ping script
-  const t_roles = (name, roles, test)=>{
+  const t_roles = (name, roles, test)=>etask(function*t_roles(){
     assert(test);
     assert(roles);
-    xit(name, 'fake', test);
+    if (!xutil.is_inspect())
+      xerr.set_buffered(true, 1000);
+    xerr.notice('pre_process run');
+    let cmds = yield test_pre_process(test);
+    cmds = xtest.test_parse(test_to_str(cmds));
+    xit(name, 'fake', cmds);
     for (let i=0; i<roles.length; i++)
-      xit(name, roles[i], test);
-  };
+      yield xit(name, roles[i], cmds);
+  });
   describe('node_conn', ()=>{
     let t = (name, test)=>t_roles(name, 'X', test);
     t('direct', `mode(msg req) conf(id:a-mXYZn-z rtt(50 aX:10))
