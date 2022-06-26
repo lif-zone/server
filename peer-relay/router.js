@@ -94,6 +94,7 @@ export default class Router extends EventEmitter {
         }
       }
     } else {
+      debugger;
       // XXX TODO: fix state handling
       // else if (channel = _this.get_channel_from_state(msg));
       if (channel = _this.get_channel_from_path(path)){
@@ -122,19 +123,17 @@ export default class Router extends EventEmitter {
           return;
       }
     }
-    if (msg0.type=='fwd' || !channel.id.eq(to)){
+    if (msg0.type=='fwd' || path?.length>1 || !channel.id.eq(to)){
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
-      if (msg.to!=msg2.to){
-        if (path && path.length>1){
-          path = Array.from(path);
-          path.splice(0, 1);
-          msg2.rt = {path, rtt: _this.build_rtt_array(path)};
-          if (rt?.opt)
-            msg2.rt.opt = rt.opt;
-        } else if (range)
-          msg2.range = NodeId.range_to_msg(range);
-      }
+      if (path && path.length>1){
+        path = Array.from(path);
+        path.splice(0, 1);
+        msg2.rt = {path, rtt: _this.build_rtt_array(path)};
+        if (rt?.opt)
+          msg2.rt.opt = rt.opt;
+      } else if (range)
+        msg2.range = NodeId.range_to_msg(range);
       _this.track_out(msg2, channel);
       lbuffer.add_json(msg2);
     }
@@ -143,13 +142,14 @@ export default class Router extends EventEmitter {
   _on_msg = (data, channel)=>etask({_: this},
     function*_on_msg(){
     let lbuffer = LBuffer.from(data), msg = lbuffer.msg();
+    let msg0 = lbuffer.get_json(0), rt = msg0.rt, path = rt?.path;
     let _this = this._, nonce = lbuffer.nonce();
     _this.update_conn(lbuffer);
     if (!nonce)
       return log('invalid message nonce %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track_in(msg, channel);
-    if (msg.to==_this.id.s)
+    if (!path && msg.to==_this.id.s)
       _this.emit('message', lbuffer);
     else
       yield _this._send(lbuffer);

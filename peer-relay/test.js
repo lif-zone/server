@@ -3601,41 +3601,6 @@ describe('peer-relay', function(){
       Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
       Yb.Xc>!ping YbXc>!ping !sp YbXc>!ping conf(rtt(1000 Yb:1))
       YbXc>!ping !sp Yb.Xc>!ping`);
-    /* XXX: review with derry
-    1. need to ignore any at.id that is already in best.path
-    2. rtt_pb_via doesn't work for fuzzy (s~s and when getting beyoned
-       last node (eg. ring_long)
-       ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!get_peer
-    3. exact/optional routing parsing
-    4. discuss logic for path folding
-
-    // rtt_pb dst selection
-    for (best = at = itr(dest)..next() && i<16){
-       if (at.rtt_pb<best.rtt_pb)
-         best = at;
-    }
-    // XXX: need to skip best.path.includes(at.id)
-    src = Y; dst = c; at = c,b,X
-    players: bcXY
-    conn/rtt: Y -10- b -100- X -100- c
-    Yb: rtt:10 done_bits:1 rtt_via: 10
-    YbX: rtt:110 done_bits:2 rtt_via: 55
-    YbXc: rtt:220 done_bits 3 rtt_via: 73.3
-    */
-    if (0) // XXX: review with derry
-    t('xxx', `mode(msg req) conf(id:a-mXYZn-z rtt(100))
-      Yb,Xb>!connect
-      Xb.Y~X>!get_peer
-      cX>!connect
-      cX.b~c>!get_peer
-      Yb.Xc>!ping
-      YbXc>!ping
-      !sp YbXc>!ping
-      conf(rtt(100 Yb:10))
-      YbXc>!ping
-      // XXX BUG: GOOD is YbXc>!req
-      !sp Yb.Xc>!ping
-    `);
    t = (name, test)=>t_roles(name, 'abcdefghijklm', test);
    // XXX: WIP
    t('xxx', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
@@ -3648,11 +3613,57 @@ describe('peer-relay', function(){
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
     `);
+   t('xxx2', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
+      bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
+      // create shortcut fa
+      fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
+      mf>!connect
+      // XXX: verify that it make sense
+      m~m>!get_peer // mf.al.afe.d.c.b.a~m>!get_peer
+      mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      al{l-f}:fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      la[fe]:al{l-f}:fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      af[e]:la[fe]:al{l-f}:fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      fe{l-e}:af[e]:la[fe]:al{l-f}:fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      ed{l-d}:fe{l-e}:af[e]:la[fe]:al{l-f}:fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      dc{l-c}:ed{l-d}:fe{l-e}:af[e]:la[fe]:al{l-f}:fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      cb{l-b}:dc{l-c}:ed{l-d}:fe{l-e}:af[e]:la[fe]:al{l-f}:fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      ba{l-a}:cb{l-b}:dc{l-c}:ed{l-d}:fe{l-e}:af[e]:la[fe]:al{l-f}:fa[l]:mf{f-f}:m~m>msg(type:req cmd:get_peer)
+      ma>*get_peer abcdefalafm>msg(type:res cmd:get_peer) ma<*get_peer_r
+    `);
+   t('xxx3', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
+      bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
+      ab.c.d.e.f.g.h.i.j.k.l~a>!get_peer
+      ba.bc~b>!get_peer
+      cb.a.bcde.d~c>!get_peer
+      dc.b.a.l.kjihgfe~d>!get_peer
+      ed.c.b.a.l.kjihgf~e>!get_peer
+      // l learned a better path for e, so let's check again d~d
+      dc.b.a.l.abcde~d>!get_peer
+      fe.d.c.b.a.l.kjihg~f>!get_peer
+      gf.e.d.c.b.a.lkjih~g>!get_peer
+      hg.f.e.d.c.b.a.l.kji~h>!get_peer
+      ih.g.f.e.d.c.b.a.l.kj~i>!get_peer
+      j.i.h.g.f.e.d.c.b.alk~j>!get_peer
+      k.j.i.h.g.f.e.d.c.bal~k>!get_peer
+      lk.j.i.h.g.f.e.d.c.b.a~l>!get_peer
+      fa>!connect mf>!connect
+      mf.e.dcbal.abcd.c.b.a~m>!get_peer mf.e.dcbal.abcd.c.b.a~m>!get_peer
+      !falk>!ping(rt:!alk)
+      mf.al.abcde.d.c.b.a~m>!get_peer
+      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer !sp
+      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
+      // XXX BUG: we don't use kc shortcut
+      kc>!connect kc>!ping !sp
+      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
+      // abcdefghijk)l(m
+      // abcdefghijk)l(m
+      // abcdefghij)kl(m  OR abc)defghijkl(m
+    `);
    // XXX: test behavior when distance is very close
   });
   describe('req_new', function(){
-    // beforeEach(()=>xtest.xerr_level());
-    // afterEach(()=>xtest.xerr_level(xerr.L.ERR));
     const t = (name, test)=>t_roles(name, 'abc', test);
     // XXX: need auto
     describe('manual', ()=>{
