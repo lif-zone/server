@@ -173,7 +173,7 @@ get_route_by_range(dst, exclude, range){
   let best, src = this.id;
   for (let i=0, itr=this.node_itr(dst, {exclude, range}), at;
     i<16 && (at = itr.next(dst));){
-    let o = src.rtt_pb_via2(dst, at.id, at.graph.rtt);
+    let o = src.rtt_pb_via_fuzzy(dst, at.id, at.graph.rtt);
     if (!o.good)
       continue;
     if (!best || o.rtt_pb < best.rtt_pb)

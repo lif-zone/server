@@ -2192,6 +2192,7 @@ function test_start(role){
   t_nonce = {};
   t_req = {};
   t_conf = {rtt: {def: DEF_RTT, conn: {}}};
+  NodeMap.t.t_conf = Router.t.t_conf = t_conf;
   set_id_bits(10);
   set_node_ids();
 }
@@ -2631,6 +2632,69 @@ describe('node_id', function(){
       {done: 0.000, rtt_pb: 1000000000});
     t({s: '00000000000000000001', d: '0', v: '00000000000000000002', rtt: 100},
       {good: false});
+  });
+  it('rtt_pb_via_fuzzy', function(){
+    const t = (o, exp)=>{
+      let s = NodeId.from(o.s), d = NodeId.from(o.d), v = NodeId.from(o.v);
+      let ret = NodeId.rtt_pb_via_fuzzy(s, d, v, o.rtt);
+      if (exp.good===false)
+        return assert.deepEqual(ret, exp);
+      assert(ret.good);
+      assert.equal(ret.bits_done.toFixed(3), exp.done);
+      assert.equal(ret.rtt_pb.toFixed(3), exp.rtt_pb);
+    };
+    t({s: '0', d: '.5', v: '.001', rtt: 100}, {done: 0.003,
+      rtt_pb: 34622.690, dist_bits_sd: 52, dist_bits_vd: 51.997});
+    t({s: '0', d: '.5', v: '.125', rtt: 100}, {done: 0.415,
+      rtt_pb: 240.942, dist_bits_sd: 52, dist_bits_vd: 51.585});
+    t({s: '0', d: '.5', v: '.25', rtt: 100}, {done: 1,
+      rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
+    t({s: '0', d: '.5', v: '.375', rtt: 100}, {done: 2,
+      rtt_pb: 50, dist_bits_sd: 52, dist_bits_vd: 50});
+    t({s: '0', d: '.5', v: '.4375', rtt: 100}, {done: 3,
+      rtt_pb: 33.333, dist_bits_sd: 52, dist_bits_vd: 49});
+    t({s: '0', d: '.5', v: '.46875', rtt: 100}, {done: 4,
+      rtt_pb: 25, dist_bits_sd: 52, dist_bits_vd: 48});
+    t({s: '0', d: '.5', v: '.499', rtt: 100}, {done: 8.966,
+      rtt_pb: 11.154, dist_bits_sd: 52, dist_bits_vd: 43.034});
+    t({s: '0', d: '.5', v: '.5', rtt: 100}, {done: 52,
+      rtt_pb: 1.923, dist_bits_sd: 52, dist_bits_vd: 0});
+    t({s: '0', d: '.5', v: '.75', rtt: 100}, {done: 1,
+      rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
+    t({s: '.25', d: '.5', v: '.375', rtt: 100}, {done: 1,
+      rtt_pb: 100, dist_bits_sd: 51, dist_bits_vd: 50});
+    t({s: '.25', d: '.75', v: '.5', rtt: 100}, {done: 1,
+      rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
+    t({s: '.25', d: '.75', v: '0', rtt: 100}, {done: 1,
+      rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
+    t({s: '.0025', d: '.0075', v: '.005', rtt: 100}, {done: 1,
+      rtt_pb: 100, dist_bits_sd: 45.356, dist_bits_vd: 44.356});
+    t({s: '0', d: '0', v: '.01', rtt: 100}, {done: 5.644, rtt_pb: 17.718});
+    t({s: '0', d: '0', v: '.25', rtt: 100}, {done: 1, rtt_pb: 100});
+    t({s: '0', d: '0', v: '.99', rtt: 100}, {done: 5.644, rtt_pb: 17.718});
+    t({s: '0', d: '.5', v: '0', rtt: 100}, {good: false});
+    t({s: '0', d: '.5', v: '1', rtt: 100}, {done: 0, rtt_pb: 1000000000});
+    t({s: '.25', d: '.5', v: '.24', rtt: 100}, {done: 0.943, rtt_pb: 105.998});
+    t({s: '.25', d: '.5', v: '.76', rtt: 100}, {done: 0.943, rtt_pb: 105.998});
+    t({s: '0', d: '8000000000000000000', v: '4000000000000000000', rtt: 100},
+      {done: 1, rtt_pb: 100, dist_bits_sd: 52, dist_bits_vd: 51});
+    t({s: '0', d: '8000000000000000000', v: '6000000000000000000', rtt: 100},
+      {done: 2, rtt_pb: 50, dist_bits_sd: 52, dist_bits_vd: 50});
+    // when dist_bit is almost 0
+    t({s: '0', d: '.5', v: '00000000000000000001', rtt: 100}, {done: 0.000,
+      rtt_pb: 1000000000});
+    t({s: '0', d: '0000000000000000002', v: '00000000000000000001', rtt: 100},
+      {done: 52, rtt_pb: 1.923});
+    t({s: '0', d: '00000000000000000001', v: '0000000000000000002', rtt: 100},
+      {done: 52, rtt_pb: 1.923});
+    t({s: '0000000000000000001', d: '0.5', v: '0', rtt: 100}, {
+      done: 0, rtt_pb: 1000000000});
+    t({s: '7ffffffffffffffffffd', d: '7fffffffffffffffffff',
+      v: '7ffffffffffffffffffe', rtt: 100}, {done: 52, rtt_pb: 1.923});
+    t({s: '00000000000000000002', d: '0', v: '00000000000000000001', rtt: 100},
+      {done: 52, rtt_pb: 1.923});
+    t({s: '00000000000000000001', d: '0', v: '00000000000000000002', rtt: 100},
+      {done: 52, rtt_pb: 1.923});
   });
 });
 
@@ -3507,15 +3571,15 @@ describe('peer-relay', function(){
     t('ring:abXnoz~z', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,zX>!connect zX.b.a.o~z>!get_peer`);
     t = (name, test)=>t_roles(name, 'abcd', test);
-    t('ring_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:136))
+    t('ring_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:270))
       !ring(a-c) da>!connect da.c~d>!get_peer`);
-    t('ring_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:137))
+    t('ring_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:271))
       !ring(a-c) da>!connect da.b.c~d>!get_peer`);
     t = (name, test)=>t_roles(name, 'abcdXY', test);
-    t('multi_path_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:146))
+    t('multi_path_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:140))
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
       dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.a.XYb.Yd~c>!get_peer`);
-    t('multi_path_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:147))
+    t('multi_path_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:141))
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
       dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.Yb.Yd~c>!get_peer`);
     t = (name, test)=>t_roles(name, 'aXbY', test);
@@ -3572,8 +3636,8 @@ describe('peer-relay', function(){
       // XXX BUG: GOOD is YbXc>!req
       !sp Yb.Xc>!ping
     `);
-    // XXX: test behavior when distance is very close
    t = (name, test)=>t_roles(name, 'abcdefghijklm', test);
+   // XXX: WIP
    t('xxx', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
       bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
       // create shortcut fa
@@ -3584,6 +3648,7 @@ describe('peer-relay', function(){
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
     `);
+   // XXX: test behavior when distance is very close
   });
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());
