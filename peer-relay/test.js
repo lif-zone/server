@@ -3532,14 +3532,6 @@ describe('peer-relay', function(){
       YaXc>!ping(rt:aXc) YbXc>!ping !sp YaXc>!ping conf(rtt(100 Yb:10)) !sp
       YaXc>!ping YbXc>!ping(rt:bXc) Yb.Xc>!ping(rt:aXc) !YaXc>!ping(rt:!aXc)
       Yb.Xc>!ping`);
-    t = (name, test)=>t_roles(name, 'abcX', test);
-    if (0) // XXX: WIP
-    t('xxx', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
-      aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
-      c.XaXb.Xa.X~c>!get_peer cXa>!ping
-      cXaXb>!ping(rt:!)
-      cXaXb>!ping(rt:?) // XXX: fix to cXb>!ping
-      !sp cXa>!ping cXb>!ping`);
     t = (name, test)=>t_roles(name, 'bcXY', test);
     t('sub_rtt_is_not_ignored', `mode(msg req) conf(id:a-mXYZn-z rtt:1000)
       Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
