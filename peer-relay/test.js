@@ -3444,9 +3444,9 @@ describe('peer-relay', function(){
         bcdefg>!ping !baihg>!ping(rt:!aihg) baihg>!ping(rt:aihg)
         baihg>!ping !bcdefg>!ping(rt:!cdefg) baihg>!ping
         !bcdefg>!ping(rt:!cdefg) baihg>!ping(rt:cdefg)`);
-      t('shortcut', `conf(id:a-mXYZn-z) !ring(a-i) bc.d.e.f.g>!ping bcdefg>!ping
-        cg>!connect !bcdefg>!ping(rt:!cdefg) bc[defg].g>!ping(rt:cdefg)
-        bcg>!ping(rt:cdefg)`);
+      t('shortcut', `conf(id:a-mXYZn-z) !ring(a-i) bc.d.e.f.g>!ping
+        bcdefg>!ping cg>!connect !bcdefg>!ping(rt:!cdefg)
+        bc[defg].g>!ping(rt:cdefg) bcg>!ping(rt:cdefg)`);
       t = (name, test)=>t_roles(name, 'abcdefghijkl', test);
       t('shortcut2', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
         bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
@@ -3580,21 +3580,18 @@ describe('peer-relay', function(){
       // XXX BUG: GOOD is YbXc>!req
       !sp Yb.Xc>!ping
     `);
-    // XXX: verify that rt is not ignored
-    // XXX: test for selecting best rtt
     // XXX: test behavior when distance is very close
-    // XXX derry: REVIEW
-    // TODO: path-folding: obvious path optimization XbXa -> Xa
-    // - allow to enable/disable in tests
-    // activate shortest path on graph incremental
-    // closed nodes may know better how to get destination (fuzzy/regular)
-    // - allow two routing mode. exact or optional
-    // - optionial - if direct connected, do it direct. if router knows
-    //   how to compare original path (he finds your path and can compare to
-    //   his best path and verify rtt_pb on that partial)
-    // - and also send rtt_pb
-    // - how to connect on the 8 closets nodes to me
-    //   get_peer to neighbours (with exclude to itself)
+   t = (name, test)=>t_roles(name, 'abcdefghijklm', test);
+   t('xxx', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
+      bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
+      // create shortcut fa
+      fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
+      mf>!connect
+      // XXX: verify that it make sense
+      mf.al.afe.d.c.b.a~m>!get_peer
+      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
+      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
+    `);
   });
   describe('req_new', function(){
     // beforeEach(()=>xtest.xerr_level());

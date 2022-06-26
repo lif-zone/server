@@ -63,6 +63,20 @@ export default class Router extends EventEmitter {
       if (path){
         if (!(channel = _this.get_channel_from_path(path)))
           return xerr('channel not found in route');
+        if (0) // XXX: decide if to enable
+        if (['req', 'req_start'].includes(msg.type) && rt?.opt!='!'){
+          let rtt_pb_o = _this.id.rtt_pb_via(to,
+            NodeId.from(path[path.length-1]), _this.calc_path_rtt(path));
+          best = _this.node_map.get_best_route(
+            NodeId.from(path[path.length-1]));
+          let path2 = best?.path;
+          let channel2 = _this.get_channel_from_path(path2);
+          if (channel2 && path2 &&
+            (!rtt_pb_o?.good || best.rtt_pb < rtt_pb_o.rtt_pb)){
+            channel = channel2;
+            path = path2;
+          }
+        }
       } else {
         best = _this.node_map.get_route_by_range(to, from, range);
         path = best?.path;
@@ -86,7 +100,6 @@ export default class Router extends EventEmitter {
         // XXX WIP
         if (['req', 'req_start'].includes(msg.type) && rt?.opt!='!'){
           // XXX: copy logic to fuzzy
-          // XXX: need to use rtt sent by msg
           let rtt_pb_o = _this.id.rtt_pb_via(to,
             NodeId.from(path[path.length-1]), _this.calc_path_rtt(path));
           best = _this.node_map.get_best_route(to);
@@ -129,8 +142,7 @@ export default class Router extends EventEmitter {
   });
   _on_msg = (data, channel)=>etask({_: this},
     function*_on_msg(){
-    let lbuffer = LBuffer.from(data); // XXX: WIP
-    let msg = lbuffer.msg();
+    let lbuffer = LBuffer.from(data), msg = lbuffer.msg();
     let _this = this._, nonce = lbuffer.nonce();
     _this.update_conn(lbuffer);
     if (!nonce)
@@ -224,7 +236,7 @@ export default class Router extends EventEmitter {
       let node = this.node_map.get({id: f});
       let fold = util.path_fold(path);
       if (fold!==path)
-        rtt = this.calc_path_rtt(fold); // XXX: need test for this part
+        rtt = this.calc_path_rtt(fold);
       if (node.graph.rtt===undefined || node.graph.rtt > rtt){
         node.graph.rtt = rtt;
         node.graph.path = Array.from(fold);
