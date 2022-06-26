@@ -3440,26 +3440,15 @@ describe('peer-relay', function(){
     });
     describe('rtt', ()=>{
       let t = (name, test)=>t_roles(name, 'abcdefghi', test);
-      // XXX: WIP - need to add tests that take rtt into account
-      t('xxx', `conf(id:a-mXYZn-z) !ring(a-i)
-        bc.d.e.f.g>!ping
-        bcdefg>!ping
-        !baihg>!ping(rt:!aihg)
-        baihg>!ping(rt:aihg)
-        baihg>!ping
-        !bcdefg>!ping(rt:!cdefg)
-        baihg>!ping
-        !bcdefg>!ping(rt:!cdefg)
-        baihg>!ping(rt:cdefg)`);
-      t('xxx2', `conf(id:a-mXYZn-z) !ring(a-i)
-        bc.d.e.f.g>!ping bcdefg>!ping
-        cg>!connect
-        !bcdefg>!ping(rt:!cdefg)
-        bc[defg].g>!ping(rt:cdefg)
-        bcg>!ping(rt:cdefg)
-        `);
+      t('basic', `conf(id:a-mXYZn-z) !ring(a-i) bc.d.e.f.g>!ping
+        bcdefg>!ping !baihg>!ping(rt:!aihg) baihg>!ping(rt:aihg)
+        baihg>!ping !bcdefg>!ping(rt:!cdefg) baihg>!ping
+        !bcdefg>!ping(rt:!cdefg) baihg>!ping(rt:cdefg)`);
+      t('shortcut', `conf(id:a-mXYZn-z) !ring(a-i) bc.d.e.f.g>!ping bcdefg>!ping
+        cg>!connect !bcdefg>!ping(rt:!cdefg) bc[defg].g>!ping(rt:cdefg)
+        bcg>!ping(rt:cdefg)`);
       t = (name, test)=>t_roles(name, 'abcdefghijkl', test);
-      t('xxx3', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
+      t('shortcut2', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
         bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
         // create shortcut fa
         fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
@@ -3468,20 +3457,16 @@ describe('peer-relay', function(){
         bcdefalk>!ping
         // reduce rtt so using shortcut fa takes longer
         conf(rtt(fg:49 gh:49 ij:49 jk:49)) !kjihgf>!ping(rt:!jihgf)
-        bcdef[alk].ghijk>!ping bcdefghijk>!ping
-      `);
-      t('xxx4', `conf(id:a-mXYZn-z rtt(100 ba:999)) !ring(a-l)
-        bc.d.e.f.g.h.i.j.k>!ping
-        bcdefghijk>!ping
+        bcdef[alk].ghijk>!ping bcdefghijk>!ping`);
+      t('shortcut3', `conf(id:a-mXYZn-z rtt(100 ba:500)) !ring(a-l)
+        bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
         // create shortcut fa
         fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
         // reduce rtt so using shortcut fa takes longer
-        conf(rtt(gh:1 ij:1 jk:1)) !balkjihg>!ping(rt:!alkjihg)
-        bcdefalk>!ping
-        !sp // XXX: why is it needed?
-        // verify path rtt is sent so f will not use fa as shortcut
-        bcdefghijk>!ping
-      `);
+        conf(rtt(gh:1 ij:1 jk:1)) !balkjihg>!ping(rt:!alkjihg) bcdefalk>!ping
+        // verify path rtt of path is sent so f will not use fa as shortcut
+        !sp // XXX: f needs to rebuild path to know there is better path now
+        bcdefghijk>!ping`);
     });
   });
   describe('get_peer', ()=>{
