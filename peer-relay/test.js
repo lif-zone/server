@@ -635,12 +635,9 @@ function track_rtt_fwd(lbuffer){
 
 function track_rtt_path(lbuffer){
   let msg0 = lbuffer.get_json(0), rt = msg0.rt, path = rt?.path;
-  if (msg0.type!='fwd')
+  if (msg0.type!='fwd' || !rt?.path)
     return;
-  let rtt_a = rt?.rtt;
-  let s0 = node_from_id(msg0.from), d0 = node_from_id(msg0.to);
-  if (!rt?.path)
-    return;
+  let rtt_a = rt?.rtt, d0 = node_from_id(msg0.to);
   assert.equal(path.length, rtt_a.length, 'invalid rtt for path');
   for (let i=0, prev=d0; i<path.length; i++){
     let curr = node_from_id(path[i]), rtt = rtt_a[i];
@@ -3387,6 +3384,7 @@ describe('peer-relay', function(){
       t('2_nodes_long', `setup:2_nodes ab>!ping(!e) ab>ping ab>*ping
         ab<ping_r ab<*ping_r`);
       t('2_nodes_short', `setup:2_nodes ab>!ping`);
+      t('2_nodes_wss', `a,b=node:wss ab>!connect ab>!ping`);
       t = (name, test)=>t_roles(name, 'abcd', test);
       t('4_nodes_raw', `conf(id:a-mXYZn-z) !ring(a-d) ab.c>!ping abc>!ping
         ac>!ping(!e rt:!bc) ab[!c]:ac>msg(type:req cmd:ping)
@@ -3397,7 +3395,51 @@ describe('peer-relay', function(){
         cd[a]:ca>msg(type:res cmd:ping) da:cd[a]:ca>msg(type:res cmd:ping)
         ca>*ping_r`);
        t('4_nodes_exact', `conf(id:a-mXYZn-z) !ring(a-d) !abc>!ping(rt:!bc)`);
-      t = (name, test)=>t_roles(name, 'abcdefghi', test);
+    });
+    describe('by_id', ()=>{
+      let t = (name, test)=>t_roles(name, 'abc', test);
+      t('3_nodes', `a,b,c=node:wss ab,ac>!connect ab>!ping ac>!ping`);
+      t('3_nodes_route_b', `conf(id(a:10 b:20 c:30 d:21 e:31))
+        ab,ac>!connect ad>!req(id:r1 body:ping !e)
+        ab>fwd(ad>msg(id:r1 type:req body:ping)) -
+        20s a>*fail(id:r1 error:timeout)`);
+      t('3_nodes_route_c', `conf(id(a:10 b:20 c:30 d:21 e:31))
+        ab,ac>!connect ae>!req(id:r1 body:ping !e)
+        ac:ae>msg(id:r1 type:req body:ping) - 20s
+        a>*fail(id:r1 error:timeout)`);
+      t('3_nodes_ring', `conf(id(a:10 b:20 c:30)) !ring(a-c) ab>!ping
+        ac>!ping -`);
+      t = (name, test)=>t_roles(name, 'abcd', test);
+      // XXX: check why if we change to ping it fails (req tracking bug)
+      t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40)) !ring(a-d) -
+        ab>!ping 60s ab.c>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s
+        bc.d>!ping 60s cba>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping
+        60s dcb>!ping 60s dc>!ping 60s bcd>!ping dcb>!ping 60s dcb>!ping`);
+      t('4_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40))
+        rt_add(a:dc b:ad c:da d:cb) !ring(a-d) - ab>!ping 60s
+        adc>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s bad>!ping 60s
+        cda>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping 60s dcb>!ping 60s
+        dc>!ping`);
+      // XXX: need to rm explicit req_id. need to fix test req tracking.
+      // without explicit req_id, the test fails
+      if (0) // XXX WIP - fix test
+      t('4_nodes_ring_state_timeout', `conf(id(a:10 b:20 c:30 d:40))
+        ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) -
+        rt_add(a:bc b:cd c:da d:ab)
+        adc>!req(id:r1 body:ping res:ping_r) 59s -
+        // a.bc<!req(id:r2 body:ping res:ping_r) 60s -
+        // a.bc<!req(id:r3 body:ping res:ping_r) -`);
+      t = (name, test)=>t_roles(name, 'abcde', test);
+      t('5_nodes_ring', `conf(id(a:10 b:20 c:30 d:40 e:50)) !ring(a-e)
+        ae.d>!ping 59s - aed<!ping 60s - aed<!ping 60s`);
+      t = (name, test)=>t_roles(name, 'abXz', test);
+      t('best_path_circular1', `mode(msg req)
+        conf(id:a-mXYZn-z rtt(100 Xb:110)) ab,bX,Xz,za>!connect Xb.a>!ping`);
+      t('best_path_circular2', `mode(msg req)
+         conf(id:a-mXYZn-z rtt(100 Xb:111)) ab,bX,Xz,za>!connect Xz.a>!ping`);
+    });
+    describe('rtt', ()=>{
+      let t = (name, test)=>t_roles(name, 'abcdefghi', test);
       // XXX: WIP - need to add tests that take rtt into account
       t('xxx', `conf(id:a-mXYZn-z) !ring(a-i)
         bc.d.e.f.g>!ping
@@ -3441,47 +3483,6 @@ describe('peer-relay', function(){
         bcdefghijk>!ping
       `);
     });
-    let t = (name, test)=>t_roles(name, 'abc', test);
-    t('2_nodes', `setup:2_nodes ab>!ping`);
-    t('2_nodes_wss', `a,b=node:wss ab>!connect ab>!ping`);
-    t('3_nodes', `a,b,c=node:wss ab,ac>!connect ab>!ping ac>!ping`);
-    t('3_nodes_route_b', `conf(id(a:10 b:20 c:30 d:21 e:31))
-      ab,ac>!connect ad>!req(id:r1 body:ping !e)
-      ab>fwd(ad>msg(id:r1 type:req body:ping)) -
-      20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_route_c', `conf(id(a:10 b:20 c:30 d:21 e:31))
-      ab,ac>!connect ae>!req(id:r1 body:ping !e)
-      ac:ae>msg(id:r1 type:req body:ping) - 20s a>*fail(id:r1 error:timeout)`);
-    t('3_nodes_ring', `conf(id(a:10 b:20 c:30)) !ring(a-c) ab>!ping
-      ac>!ping -`);
-    t = (name, test)=>t_roles(name, 'abcd', test);
-    // XXX: check why if we change to ping it fails (req tracking bug)
-    t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40)) !ring(a-d) -
-      ab>!ping 60s ab.c>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s
-      bc.d>!ping 60s cba>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping
-      60s dcb>!ping 60s dc>!ping 60s bcd>!ping dcb>!ping 60s dcb>!ping`);
-    t('4_nodes_ring_rt', `conf(id(a:10 b:20 c:30 d:40))
-      rt_add(a:dc b:ad c:da d:cb) !ring(a-d) - ab>!ping 60s
-      adc>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s bad>!ping 60s
-      cda>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping 60s dcb>!ping 60s
-      dc>!ping`);
-    // XXX: need to rm explicit req_id. need to fix test req tracking.
-    // without explicit req_id, the test fails
-    if (0) // XXX WIP - fix test
-    t('4_nodes_ring_state_timeout', `conf(id(a:10 b:20 c:30 d:40))
-      ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) -
-      rt_add(a:bc b:cd c:da d:ab)
-      adc>!req(id:r1 body:ping res:ping_r) 59s -
-      // a.bc<!req(id:r2 body:ping res:ping_r) 60s -
-      // a.bc<!req(id:r3 body:ping res:ping_r) -`);
-    t = (name, test)=>t_roles(name, 'abcde', test);
-    t('5_nodes_ring', `conf(id(a:10 b:20 c:30 d:40 e:50))
-      ab,bc,cd,de,ea>!connect ae.d>!ping 59s - aed<!ping 60s - aed<!ping 60s`);
-    t = (name, test)=>t_roles(name, 'abXz', test);
-    t('best_path_circular1', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:110))
-      ab,bX,Xz,za>!connect Xb.a>!ping`);
-    t('best_path_circular2', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xb:111))
-      ab,bX,Xz,za>!connect Xz.a>!ping`);
   });
   describe('get_peer', ()=>{
     let t = (name, test)=>t_roles(name, 'abXYnopz', test);
