@@ -53,7 +53,8 @@ process.on('uncaughtException', err=>xerr.xexit(err));
 process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
-let t_nodes = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role, t_port=4000;
+let t_nodes = {}, t_ids = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role;
+let t_port=4000;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_reprocess, t_conf, t_req_id_last;
 NodeMap.t.t_nodes = Router.t.t_nodes = t_nodes;
@@ -326,13 +327,7 @@ function node_from_url(url){
 function support_wss(node){ return !!wss_from_node(node); }
 function support_wrtc(node){ return node.wrtcConnector.supported; }
 
-function node_from_id(id){
-  for (let name in t_nodes){
-    let node = N(name);
-    if (node.id.s == b2s(id))
-      return node;
-  }
-}
+function node_from_id(id){ return t_ids[b2s(id)]; }
 
 function assert_bool(val){
   assert(!val);
@@ -574,7 +569,7 @@ function assert_missing_event(c){
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
-  let s = node_from_id(channel.local_id.b), d = node_from_id(channel.id.b);
+  let s = node_from_id(channel.local_id.s), d = node_from_id(channel.id.s);
   if (channel.t.initiaor){
     assert(!s.t.fake, 'src must be real');
     yield cmd_run(build_cmd(s.t.name+d.t.name+'>connect',
@@ -1375,6 +1370,7 @@ function cmd_node(opt){
   node.t = {id: node.id.s, name, fake, wss};
   xerr.notice('id %s:%s', name, node.id.s);
   t_nodes[name] = node;
+  t_ids[node.id.s] = node;
 }
 
 // ab>!connect(wss) ab>http_get(upgrade(ws)) ab<http_resp(101)
@@ -2272,6 +2268,7 @@ const test_end = ()=>etask(function*(){
   }
   yield cmd_ensure_no_events();
   for (let n in t_nodes){
+    delete t_ids[t_nodes[n].id.s];
     yield t_nodes[n].destroy();
     delete t_nodes[n];
   }

@@ -94,7 +94,6 @@ export default class Router extends EventEmitter {
         }
       }
     } else {
-      debugger;
       // XXX TODO: fix state handling
       // else if (channel = _this.get_channel_from_state(msg));
       if (channel = _this.get_channel_from_path(path)){
