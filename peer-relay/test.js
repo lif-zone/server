@@ -28,11 +28,7 @@ const s2b = buf_util.buf_from_str;
 const stringify = JSON.stringify, is_number = xutil.is_number;
 const DEF_RTT = 100;
 
-function get_fuzzy(name){
-  if (name && name[0]=='~')
-    return name[0];
-  return '';
-}
+function get_fuzzy(name){ return name && name[0]=='~' ? name[0] :  ''; }
 
 function N(name, opt){
   opt = opt||{};
