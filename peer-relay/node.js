@@ -11,13 +11,11 @@ import Wallet from './wallet.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
 import {dbg_id} from './util.js';
-import buf_util from './buf_util.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
 import xlog from '../util/xlog.js';
 const log = xlog('node');
-const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
 
 export default class Node extends EventEmitter {
   constructor(opt){
@@ -71,7 +69,7 @@ export default class Node extends EventEmitter {
     _this.emit('connection', channel);
     if (util.test_on_connection)
       yield util.test_on_connection(channel);
-    _this.emit('peer', b2s(channel.id));
+    _this.emit('peer', NodeId.from(channel.id));
     return channel;
   });
   connect_wrtc(id){ return this.wrtcConnector.connect(id); }
@@ -109,7 +107,6 @@ export default class Node extends EventEmitter {
   _on_conn_info_r = msg=>etask({_: this}, function*(){
     let {from} = msg;
     let _this = this._;
-    from = s2b(from);
     log.debug('conn_info_r');
     if (_this.peers.get(from))
       return;
