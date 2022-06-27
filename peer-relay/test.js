@@ -28,8 +28,7 @@ const s2b = buf_util.buf_from_str;
 const stringify = JSON.stringify, is_number = xutil.is_number;
 const DEF_RTT = 100;
 
-function get_fuzzy(name){ return name && name[0]=='~' ? name[0] :  ''; }
-
+function get_fuzzy(name){ return name && name[0]=='~' ? name[0] : ''; }
 function N(name, opt){
   opt = opt||{};
   if (opt.fuzzy)
@@ -1141,15 +1140,13 @@ function cmd_conf(opt){
   }
 }
 
-function cmd_ring(opt){
-  let {c, event} = opt;
-  assert(!event, 'got unexpected '+event);
-  let arr = c.arg.match(/^([a-zA-Z])-([a-zA-Z])$/);
-  assert.equal(arr.length, 3, 'invalid arg '+c.arg);
+function setup_ring(arg){
+  let arr = arg.match(/^([a-zA-Z])-([a-zA-Z])$/);
+  assert.equal(arr?.length, 3, 'invalid arg '+arg);
   let a = arr[1], b = arr[2], s = '', is_upper = /[A-Z]/.test(a);
   assert(!is_upper && /[a-z]/.test(b) ||
-    is_upper && /[A-Z]/.test(b), 'invalid arg '+c.arg);
-  assert(a!=b, 'invalid arg '+c.arg);
+    is_upper && /[A-Z]/.test(b), 'invalid arg '+arg);
+  assert(a!=b, 'invalid arg '+arg);
   if (!t_pre_process)
     return;
   for (let ch=a, next; ch!=b; ch=next){
@@ -1158,6 +1155,20 @@ function cmd_ring(opt){
     s += (s ? ' ': '')+ch+next+'>!connect';
   }
   s += (s ? ' ': '')+b+a+'>!connect';
+  return s;
+}
+
+function cmd_ring(opt){
+  let {c, event} = opt, arg = xtest.test_parse(c.arg), s='';
+  assert(!event, 'got unexpected '+event);
+  if (!t_pre_process)
+    return;
+  xutil.forEach(arg, a=>{
+    if (/^([a-zA-Z])-([a-zA-Z])$/.test(a.cmd))
+      s += setup_ring(a.cmd);
+    else if (/^([a-zA-Z])([a-zA-Z])$/.test(a.cmd))
+      s += ' '+a.cmd+'>!connect';
+  });
   set_push_cmd(c, s);
 }
 
@@ -3154,6 +3165,8 @@ describe('peer-relay', function(){
           T('!ring(A-C)', `AB>!connect BC>!connect CA>!connect`);
           T('!ring(L-O)', `LM>!connect MN>!connect NO>!connect OL>!connect`);
           T('!ring(Y-B)', `YZ>!connect ZA>!connect AB>!connect BY>!connect`);
+          T('!ring(a-c de)', `ab>!connect bc>!connect ca>!connect
+            de>!connect`);
         });
         describe('fwd', function(){
           T('abc>msg(type:req cmd:ping)', `ab[c]:ac>msg(type:req cmd:ping)
@@ -3651,17 +3664,13 @@ describe('peer-relay', function(){
      da>!connect !sp
      ed.c.b.a~e>!get_peer // XXX GOOD: ed.a~e>!get_peer
    `);
-   // XXX support: !ring(a-f ad) --> !ring(a-f) ad>!connect
    t = (name, test)=>t_roles(name, 'abcdef', test);
-   t('xxx5', `conf(id:a-mXYZn-z) !ring(a-f)
-     da>!connect !sp ed.c.b.a.f~e>!get_peer
-   `);
+   t('xxx5', `conf(id:a-mXYZn-z) !ring(a-f da) !sp ed.c.b.a.f~e>!get_peer`);
    // at e: e.rtt_pb_via(e, c) ==> bad because e.dist(e)==0 <= c.dist(e)
    // at d: d.rtt_pb_via(e, c) ==> bad because d.dist(e) < c.dist(e)
    t = (name, test)=>t_roles(name, 'abcdef', test);
-   t('xxx6', `conf(id:a-mXYZn-z rtt(100 ef:500 da:63)) !ring(a-f)
-     da>!connect !sp ed.a.f~e>!get_peer
-   `);
+   t('xxx6', `conf(id:a-mXYZn-z rtt(100 ef:500 da:63)) !ring(a-f da)
+     ed.a.f~e>!get_peer`);
    t('xxx7', `conf(id:a-mXYZn-z rtt(100 ef:900 ad:299)) !ring(a-f)
      ed.c.b.a>!ping
      da>!connect ed[cba].a>!ping
@@ -3681,16 +3690,16 @@ describe('peer-relay', function(){
      ab,bc,ce,ef,fa>!connect dc>!connect dc.e~d>!get_peer dce>!ping`);
    // XXX: d will never try to use c (even if rtt terrible), because c is far
    // from e compared to d
-   // d.rtt_pb_via(f, c) ==>` BAD because d.dist(f) < c.dist(f)
    t('xxx_derry1', `conf(id:a-mXYZn-z rtt(1 de:999)) !ring(a-f)
      de.f>!ping // XXX: dc.b.a.f>!ping`);
+   // at d: d.rtt_pb_via(f, c) ==>` BAD because d.dist(f) < c.dist(f)
    // XXX: review logic I implemented for cases where rtt_pb_via is invalid
-   // at e: e.rtt_pb_via(e, c) ==> BAD because e.dist(e)==0 <= c.dist(e)
+   t('xxx_derry2', `conf(id:a-mXYZn-z) !ring(a-f)
+     ed.c.b.a.f~e>!get_peer`);
+   // at e: e.rtt_pb_via(e, e) ==> BAD because e.dist(e)==0 <= c.dist(e)
    // at d: d.rtt_pb_via(e, c) ==> BAD because d.dist(e) < c.dist(e)
    // normal: bits_done = dst.dist_bits(src) - dst.dist_bits(via);
    // fuzzy (when invalid): bits_done = 52 - dst.dist_bits(via);
-   t('xxx_derry2', `conf(id:a-mXYZn-z) !ring(a-f)
-     ed.c.b.a.f~e>!get_peer`);
    // XXX: test behavior when distance is very close
   });
   describe('req_new', function(){
