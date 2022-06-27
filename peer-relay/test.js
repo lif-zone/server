@@ -24,7 +24,7 @@ import Wallet from './wallet.js';
 import {EventEmitter} from 'events';
 import bigInt from 'big-integer';
 const assign = Object.assign;
-const s2b = buf_util.buf_from_str, b2s = buf_util.buf_to_str;
+const s2b = buf_util.buf_from_str;
 const stringify = JSON.stringify, is_number = xutil.is_number;
 const DEF_RTT = 100;
 
@@ -327,7 +327,7 @@ function node_from_url(url){
 function support_wss(node){ return !!wss_from_node(node); }
 function support_wrtc(node){ return node.wrtcConnector.supported; }
 
-function node_from_id(id){ return t_ids[b2s(id)]; }
+function node_from_id(id){ return t_ids[NodeId.from(id).s]; }
 
 function assert_bool(val){
   assert(!val);
@@ -2430,7 +2430,7 @@ describe('node_id', function(){
   it('buffer', function(){
     const t = (s, exp)=>{
       let id = NodeId.from(s);
-      assert.equal(b2s(id.b), exp);
+      assert.equal(id.s, exp);
     };
     t('00000000000000000000', '00000000000000000000');
     // XXX: fixme: it should be 00000000000000000000
