@@ -41,9 +41,10 @@ export default class Router extends EventEmitter {
       this._onChannelAdded(c);
   }
   send_msg(dst, msg){
+    dst = NodeId.from(dst);
     let nonce=''+Math.floor(1e15*Math.random());
     msg.from = this.id.s;
-    msg.to = dst;
+    msg.to = dst.s;
     msg.nonce = nonce; // XXX: need test that will fail is this is missing
     msg.sign = this.wallet.sign(msg);
     let lbuffer = new LBuffer(msg); // XXX: WIP

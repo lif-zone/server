@@ -3,7 +3,6 @@
 import assert from 'assert';
 import {EventEmitter} from 'events';
 import util from '../util/util.js';
-import buf_util from './buf_util.js';
 import NodeId from './node_id.js';
 import xerr from '../util/xerr.js';
 import xescape from '../util/escape.js';
@@ -11,7 +10,7 @@ import date from '../util/date.js';
 import etask from '../util/etask.js';
 import xlog from '../util/xlog.js';
 const log = xlog('req_handler');
-const b2s = buf_util.buf_to_str, assign = Object.assign;
+const assign = Object.assign;
 const RES_TIMEOUT = 20*date.ms.SEC;
 
 const nodes = {};
@@ -28,7 +27,7 @@ class Res extends EventEmitter {
     this.router = this.req_handler.router;
     this.node = this.req_handler.node;
     this.cmd = this.req_handler.cmd;
-    this.dst = b2s(opt.from);
+    this.dst = NodeId.from(opt.from);
     this.stream = opt.stream;
     this.req_id = opt.req_id;
     this.seq = 0;
