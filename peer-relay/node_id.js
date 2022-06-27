@@ -17,8 +17,12 @@ constructor(id){
     this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / DIV;
   } else if (typeof id=='number'){
     assert(id>=0 && id<=1, 'invalid id '+id);
-    let s = parseInt(id*MAX).toString(16).slice(0, 13)+'0'.repeat(CHARS-13);
-    this.s = '0'.repeat(CHARS-s.length)+s;
+    if (id==1) // XXX: to avoid 1 rounded to 0.9999999999
+      this.s = 'f'.repeat(CHARS);
+    else {
+      let s = parseInt(id*MAX).toString(16).slice(0, 13)+'0'.repeat(CHARS-13);
+      this.s = '0'.repeat(CHARS-s.length)+s;
+    }
     this.d = Number(BigInt('0x'+this.s.slice(0, 14))) / DIV;
   } else if (Buffer.isBuffer(id)){
     this._b = id;

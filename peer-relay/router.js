@@ -112,7 +112,9 @@ export default class Router extends EventEmitter {
           }
         }
       }
-      else if (channel = _this.get_channel_from_id(to)); /* eslint-disable */
+      // XXX: decide if we need short-path
+      // else if (channel = _this.get_channel_from_id(to));
+      /* eslint-disable */
       else if ((path = _this.get_route(msg.to)) &&
         (channel = _this.get_channel_from_path(path))); /* eslint-enable */
       else {
