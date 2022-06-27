@@ -10,12 +10,9 @@ import ReqHandler from './req_handler.js';
 import Wallet from './wallet.js';
 import WsConnector from './ws.js';
 import WrtcConnector from './wrtc.js';
-import {dbg_id} from './util.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
-import xlog from '../util/xlog.js';
-const log = xlog('node');
 
 export default class Node extends EventEmitter {
   constructor(opt){
@@ -84,7 +81,6 @@ export default class Node extends EventEmitter {
       return;
     this.pending[id] = true;
     // XXX: allow empty body
-    log.debug('conn_info');
     let req = new Req({node: this, dst: id, cmd: 'conn_info'});
     req.on('res', msg=>this._on_conn_info_r(msg));
     req.send({});
@@ -98,7 +94,6 @@ export default class Node extends EventEmitter {
   }
   send = function(dst, body){
     assert(typeof dst=='string', 'invalid dst');
-    log.debug('send %s', dbg_id(dst));
     if (this.destroyed)
       return;
     let req = new Req({node: this, dst});
@@ -107,7 +102,6 @@ export default class Node extends EventEmitter {
   _on_conn_info_r = msg=>etask({_: this}, function*(){
     let {from} = msg;
     let _this = this._;
-    log.debug('conn_info_r');
     if (_this.peers.get(from))
       return;
     if (msg.body == null)
