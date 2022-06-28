@@ -666,7 +666,10 @@ function get_req_id(o){
   let match;
   for (let req_id in t_msg){
     let o2 = t_msg[req_id];
-    if (o.cmd==o2.cmd && (o.s==o2.s&&o.d==o2.d || o.s==o2.d&&o.d==o2.s)){
+    if (o.cmd==o2.cmd && (o.s==o2.s&&o.d==o2.d || o.s==o2.d&&o.d==o2.s ||
+      // XXX HACK: hack for get_peer becaue when fuzzy dst, the response is
+      // from another id
+      o.cmd=='get_peer' && o2.s==o.s)){
       if (!match)
         match = o2;
       else if (match.msg_n < o2.msg_n)
@@ -3285,7 +3288,7 @@ describe('peer-relay', function(){
     });
   });
   const xit = (name, role, test)=>it(name+'_'+role, ()=>test_run(role, test))
-  .timeout(4000); // XXX HACK: check why tests are slow
+  .timeout(60000); // XXX HACK: check why tests are slow
   // XXX TODO:
   // - check etask error handling of unchaught errors
   // - add test for failures (missing events, event mismatch etc)
@@ -3701,6 +3704,12 @@ describe('peer-relay', function(){
    // normal: bits_done = dst.dist_bits(src) - dst.dist_bits(via);
    // fuzzy (when invalid): bits_done = 52 - dst.dist_bits(via);
    // XXX: test behavior when distance is very close
+    describe('neighbour', ()=>{
+     t = (name, test)=>t_roles(name, 'lmXno', test);
+     t('xxx', `conf(id:a-mXYZn-z rtt:100) !ring(l-o Xm Xn) Xm.n~X>!get_peer
+       Xm.l.o~n>!get_peer Xm.l~o>!get_peer Xn.o.l~m>!get_peer
+       Xn.o.lm~l>!get_peer`);
+    });
   });
   describe('req_new', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);

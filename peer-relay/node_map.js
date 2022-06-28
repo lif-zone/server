@@ -256,7 +256,7 @@ next(){
     return null;
   if (this.n===this.p){
     this.n = null;
-    if (exclude && exclude.eq(this.p.id))
+    if (is_exclude(exclude, this.p.id))
       return null;
     if (range && !this.p.id.in_range(range))
       return null;
@@ -272,12 +272,21 @@ next(){
     at = this.p;
     this.p = this.p.prev();
   }
-  if (exclude && exclude.eq(at.id))
+  if (is_exclude(exclude, at.id))
     return this.next();
   if (range && !at.id.in_range(range))
     return this.next();
   return at;
 }
+}
+
+// XXX: need test and move to node_id
+function is_exclude(exclude, id){
+  if (!exclude)
+    return false;
+  if (Array.isArray(exclude))
+    return !!exclude.find(id2=>id2.eq(id));
+  return exclude.eq(id);
 }
 
 NodeMap.t = {};
