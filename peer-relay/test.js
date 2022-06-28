@@ -3287,8 +3287,7 @@ describe('peer-relay', function(){
       });
     });
   });
-  const xit = (name, role, test)=>it(name+'_'+role, ()=>test_run(role, test))
-  .timeout(60000); // XXX HACK: check why tests are slow
+  const xit = (name, role, test)=>it(name+'_'+role, ()=>test_run(role, test));
   // XXX TODO:
   // - check etask error handling of unchaught errors
   // - add test for failures (missing events, event mismatch etc)
@@ -4412,7 +4411,7 @@ VP:
   - organize all tests (2_nodes, 3_nodes are already in router)
   - mode mode(req,msg) the default and also nodes abcdefghijklmXYZnopqrstuvwxyz
   - implement all complex commands with simple req/msg api
-   - verify Req/ReqHander use src/dst as NodeId and not string/bufffer
+    - verify Req/ReqHander use src/dst as NodeId and not string/bufffer
 - protect against invalid msg
 - get 8 closets nodes to me (in tests, default is 2)
   get_peer to neighbours (with exclude to itself)
@@ -4430,7 +4429,13 @@ VP:
 - handle failures
   - conn dead (timeouts): zero incoming pkts, mark dead, retry?
 - manual-connect/auto-connect when two nodes learn on each other (wrtc)
+- connect to network - after disconnect
+  - auto try connect immadietly
+  - try again after 1s
+  - idle loop (every 1min) try to connect
+  - on network change
 - future:
+  - save persistent data (peers, rtt)
   - sign messages
   - memory leaks (when we remove stuff from cache eg, routes)
   - incremental shortest-path updates
