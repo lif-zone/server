@@ -31,7 +31,7 @@ export default class Node extends EventEmitter {
     this.conn_handler = new ReqHandler({node: this, cmd: 'conn_info'})
     .on('req', (msg, res)=>res.send({ws: this.wsConnector.url,
       wrtc: this.wrtcConnector.supported}));
-    this.get_peer_handler = new ReqHandler({node: this, cmd: 'get_peer'})
+    this.ring_join_handler = new ReqHandler({node: this, cmd: 'ring_join'})
     .on('req', (msg, res)=>res.send({id: id.s}));
     if (opt.port)
       xerr.notice('peer-relay: listen on %s id %s', opt.port, id.s);
@@ -131,9 +131,9 @@ export default class Node extends EventEmitter {
     req.send('');
     return req;
   }
-  get_peer(dst, opt){
+  ring_join(dst, opt){
     opt = opt||{};
-    let req = new Req({node: this, dst, fuzzy: opt.fuzzy, cmd: 'get_peer'});
+    let req = new Req({node: this, dst, fuzzy: opt.fuzzy, cmd: 'ring_join'});
     req.send('');
     return req;
   }

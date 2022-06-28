@@ -646,9 +646,9 @@ function get_req_id(o){
   for (let req_id in t_msg){
     let o2 = t_msg[req_id];
     if (o.cmd==o2.cmd && (o.s==o2.s&&o.d==o2.d || o.s==o2.d&&o.d==o2.s ||
-      // XXX HACK: hack for get_peer becaue when fuzzy dst, the response is
+      // XXX HACK: hack for ring_join becaue when fuzzy dst, the response is
       // from another id
-      o.cmd=='get_peer' && o2.s==o.s)){
+      o.cmd=='ring_join' && o2.s==o.s)){
       if (!match)
         match = o2;
       else if (match.msg_n < o2.msg_n)
@@ -754,7 +754,7 @@ class FakeChannel extends EventEmitter {
       case 'req':
         switch (cmd){
         case 'conn_info': body= ''; break;
-        case 'get_peer': body= ''; break;
+        case 'ring_join': body= ''; break;
         case 'ping': body= ''; break;
         case '': break;
         default: assert(0, 'invalid cmd '+cmd);
@@ -763,7 +763,7 @@ class FakeChannel extends EventEmitter {
       case 'res':
         switch (cmd){
         case 'conn_info': body = conn_opts(body); break;
-        case 'get_peer': body= ''; break;
+        case 'ring_join': body= ''; break;
         case 'ping': body= ''; break;
         case '': break;
         default: assert(0, 'invalid cmd ', cmd);
@@ -818,9 +818,9 @@ function req_hook(lbuffer){
   case 'conn_info':
     e = build_cmd(from.t.name+to.t.name+'>*conn_info', '');
     break;
-  case 'get_peer':
-    assert(fuzzy, 'get_peer must be fuzzy');
-    e = build_cmd(from.t.name+to0.t.name+'>*get_peer', '');
+  case 'ring_join':
+    assert(fuzzy, 'ring_join must be fuzzy');
+    e = build_cmd(from.t.name+to0.t.name+'>*ring_join', '');
     break;
   case '':
   case 'test':
@@ -884,8 +884,8 @@ function res_hook(msg){
   case 'conn_info':
     e = build_cmd(from.t.name+to.t.name+'>*conn_info_r', conn_opts(body));
     break;
-  case 'get_peer':
-    e = build_cmd(from.t.name+to.t.name+'>*get_peer_r', body);
+  case 'ring_join':
+    e = build_cmd(from.t.name+to.t.name+'>*ring_join_r', body);
     break;
   case 'test':
   case 'ping':
@@ -1566,43 +1566,43 @@ function cmd_ping_r(opt){
   }
 }
 
-function cmd_get_peer(opt){
+function cmd_ring_join(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
   let fuzzy = get_fuzzy(c.d);
   assert(!c.arg, 'invalid arg '+c.orig);
-  assert(!call || !event, 'unexpected event for get_peer '+event);
+  assert(!call || !event, 'unexpected event for ring_join '+event);
   if (t_pre_process){
     if (call && c.loop){
-      let s = build_cmd_o(c.s+c.d+'>!get_peer');
+      let s = build_cmd_o(c.s+c.d+'>!ring_join');
       s += t_mode.msg ? ' '+build_cmd(loop_str(c.loop)+'>fwd',
-        build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'get_peer'})) : '';
+        build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'ring_join'})) : '';
       let loop = Array.from(c.loop).splice(0, c.loop.length-1);
       let sd = c.s+c.loop[loop.length-1].d+'>';
-      s += t_mode.req ? ' '+build_cmd_o(sd+'*get_peer') : '';
-      s += t_mode.msg ? ' '+build_cmd(rev_loop_str(loop)+'>get_peer_r') : '';
-      s += t_mode.req ? ' '+build_cmd_o(rev_trim(sd)+'*get_peer_r') : '';
+      s += t_mode.req ? ' '+build_cmd_o(sd+'*ring_join') : '';
+      s += t_mode.msg ? ' '+build_cmd(rev_loop_str(loop)+'>ring_join_r') : '';
+      s += t_mode.req ? ' '+build_cmd_o(rev_trim(sd)+'*ring_join_r') : '';
       set_push_cmd(c, s);
     } else if (basic && c.loop){
       let s = build_cmd(loop_str(c.loop)+'>fwd',
-        build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'get_peer'}));
+        build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'ring_join'}));
       set_push_cmd(c, s);
     }
     return;
   }
   if (call){
-    let id = get_req_id({s: s.t.name, d: d.t.name, cmd: 'get_peer'});
+    let id = get_req_id({s: s.t.name, d: d.t.name, cmd: 'ring_join'});
     if (id && t_msg[id] && t_msg[id].active)
       delete t_msg[id];
     if (!s.t.fake)
-      s.get_peer(d.id, {fuzzy});
+      s.ring_join(d.id, {fuzzy});
     return;
   }
   assert_event_c(c, event);
-  fake_emit(c, {type: 'req', cmd: 'get_peer', body: {}});
+  fake_emit(c, {type: 'req', cmd: 'ring_join', body: {}});
 }
 
-function cmd_get_peer_r(opt){
+function cmd_ring_join_r(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   let arg = xtest.test_parse(c.arg);
   xutil.forEach(arg, a=>{
@@ -1615,15 +1615,15 @@ function cmd_get_peer_r(opt){
       let s;
       if (c.loop){
         s = build_cmd(loop_str(c.loop)+'>fwd',
-          build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'get_peer'}));
+          build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'ring_join'}));
       } else
-        s = build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'get_peer'});
+        s = build_cmd_o(dir_c(c)+'msg', {type: 'res', cmd: 'ring_join'});
       set_push_cmd(c, s);
     }
     return;
   }
   assert_event_c(c, event);
-  fake_emit(c, {type: 'res', cmd: 'get_peer_r', body: ''});
+  fake_emit(c, {type: 'res', cmd: 'ring_join_r', body: ''});
 }
 
 function cmd_msg(opt){
@@ -1674,7 +1674,7 @@ function cmd_msg(opt){
   if (type=='req'){
     switch (cmd){
     case 'conn_info': break;
-    case 'get_peer': break;
+    case 'ring_join': break;
     case 'ping': break;
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
@@ -1693,7 +1693,7 @@ function cmd_msg(opt){
           assert(0, 'invalid connector '+connector);
       });
       break;
-    case 'get_peer': body= ''; break;
+    case 'ring_join': body= ''; break;
     case 'ping': body= ''; break;
     case '': break;
     default: assert(0, 'invalid cmd '+cmd);
@@ -2045,11 +2045,11 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*conn_info': yield cmd_conn_info(opt); break;
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '*conn_info_r': yield cmd_conn_info_r(opt); break;
-  case 'get_peer': yield cmd_get_peer(opt); break;
-  case '!get_peer': yield cmd_get_peer(opt); break;
-  case '*get_peer': yield cmd_get_peer(opt); break;
-  case 'get_peer_r': yield cmd_get_peer_r(opt); break;
-  case '*get_peer_r': yield cmd_get_peer_r(opt); break;
+  case 'ring_join': yield cmd_ring_join(opt); break;
+  case '!ring_join': yield cmd_ring_join(opt); break;
+  case '*ring_join': yield cmd_ring_join(opt); break;
+  case 'ring_join_r': yield cmd_ring_join_r(opt); break;
+  case '*ring_join_r': yield cmd_ring_join_r(opt); break;
   case '*ping': yield cmd_ping(opt); break;
   case 'ping': yield cmd_ping(opt); break;
   case '!ping': yield cmd_ping(opt); break;
@@ -3286,9 +3286,9 @@ describe('peer-relay', function(){
           T('bc[defg].g>!ping(rt(cdefg))', `bg>!ping(!e rt(cdefg))
             bc[defg].g>ping bg>*ping bcg<ping_r bg<*ping_r`);
         });
-        describe('get_peer', function(){
-          T('bX.a~b>get_peer', `bX{X-X}:b~b>msg(type:req cmd:get_peer)
-             Xa{a-X}:bX{X-X}:b~b>msg(type:req cmd:get_peer)`);
+        describe('ring_join', function(){
+          T('bX.a~b>ring_join', `bX{X-X}:b~b>msg(type:req cmd:ring_join)
+             Xa{a-X}:bX{X-X}:b~b>msg(type:req cmd:ring_join)`);
           T('p.Xno~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
             no{o-o}:Xn[o]:pX[no]:p~p>msg`);
           T('p.Xno.abcd~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
@@ -3296,38 +3296,38 @@ describe('peer-relay', function(){
             ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
             bc[d]:ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
             cd{o-d}:bc[d]:ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg`);
-          t('a~b>!get_peer', `a~b>!get_peer`);
-          t('~ab<!get_peer', `~ab<!get_peer`);
-          T('pX.n.o.a~p>!get_peer', `p~p>!get_peer
-            pX{X-X}:p~p>msg(type:req cmd:get_peer)
-            Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-            no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-            oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-            pa>*get_peer ao[nXp]:ap>msg(type:res cmd:get_peer)
-            on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
-            nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
-            Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
-            pa<*get_peer_r`);
-          T('ab.c~d>!get_peer', `a~d>!get_peer
-            ab.c~d>fwd(a~d>msg(type:req cmd:get_peer))
-            ac>*get_peer cba>fwd(ca>msg(type:res cmd:get_peer))
-            ac<*get_peer_r`);
-          T('ab.c~d>msg(type:req cmd:get_peer)',
-            `ab.c~d>fwd(a~d>msg(type:req cmd:get_peer))`);
-          T('~dc.ba<msg(type:req cmd:get_peer)',
-            `~dc.ba<fwd(~da<msg(type:req cmd:get_peer))`);
-          T('ab>get_peer_r', `ab>msg(type:res cmd:get_peer)`);
-          T('ab.c~d>get_peer', `ab.c~d>msg(type:req cmd:get_peer)`);
-          T('ab.c~d>get_peer', `ab{b-b}:a~d>msg(type:req cmd:get_peer)
-            bc{c-b}:ab{b-b}:a~d>msg(type:req cmd:get_peer)`);
-          T('ab.c>get_peer_r', `ab.c>msg(type:res cmd:get_peer)`);
-          T('ab~d>get_peer', `ab{b-b}:a~d>msg(type:req cmd:get_peer)`);
-          T('ab.c>get_peer_r', `ab.c>msg(type:res cmd:get_peer)`);
-          T('ab~c>!get_peer', `a~c>!get_peer
-            ab{b-b}:a~c>msg(type:req cmd:get_peer) ab>*get_peer
-            ba>get_peer_r ab<*get_peer_r`);
+          t('a~b>!ring_join', `a~b>!ring_join`);
+          t('~ab<!ring_join', `~ab<!ring_join`);
+          T('pX.n.o.a~p>!ring_join', `p~p>!ring_join
+            pX{X-X}:p~p>msg(type:req cmd:ring_join)
+            Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:ring_join)
+            no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:ring_join)
+            oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:ring_join)
+            pa>*ring_join ao[nXp]:ap>msg(type:res cmd:ring_join)
+            on[Xp]:ao[nXp]:ap>msg(type:res cmd:ring_join)
+            nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:ring_join)
+            Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:ring_join)
+            pa<*ring_join_r`);
+          T('ab.c~d>!ring_join', `a~d>!ring_join
+            ab.c~d>fwd(a~d>msg(type:req cmd:ring_join))
+            ac>*ring_join cba>fwd(ca>msg(type:res cmd:ring_join))
+            ac<*ring_join_r`);
+          T('ab.c~d>msg(type:req cmd:ring_join)',
+            `ab.c~d>fwd(a~d>msg(type:req cmd:ring_join))`);
+          T('~dc.ba<msg(type:req cmd:ring_join)',
+            `~dc.ba<fwd(~da<msg(type:req cmd:ring_join))`);
+          T('ab>ring_join_r', `ab>msg(type:res cmd:ring_join)`);
+          T('ab.c~d>ring_join', `ab.c~d>msg(type:req cmd:ring_join)`);
+          T('ab.c~d>ring_join', `ab{b-b}:a~d>msg(type:req cmd:ring_join)
+            bc{c-b}:ab{b-b}:a~d>msg(type:req cmd:ring_join)`);
+          T('ab.c>ring_join_r', `ab.c>msg(type:res cmd:ring_join)`);
+          T('ab~d>ring_join', `ab{b-b}:a~d>msg(type:req cmd:ring_join)`);
+          T('ab.c>ring_join_r', `ab.c>msg(type:res cmd:ring_join)`);
+          T('ab~c>!ring_join', `a~c>!ring_join
+            ab{b-b}:a~c>msg(type:req cmd:ring_join) ab>*ring_join
+            ba>ring_join_r ab<*ring_join_r`);
           if (0) // XXX: TODO
-        T('ab.c>fwd(ac>get_peer_r)', `ab.c>get_peer_r`);
+        T('ab.c>fwd(ac>ring_join_r)', `ab.c>ring_join_r`);
         });
       });
     });
@@ -3615,178 +3615,180 @@ describe('peer-relay', function(){
         bcdefghijk>!ping`);
     });
   });
-  describe('get_peer', ()=>{
+  describe('ring_join', ()=>{
     let t = (name, test)=>t_roles(name, 'abcdef', test);
-    t('basic', `conf(id:a-mXYZn-z) !ring(a-f) ed.c.b.a.f~e>!get_peer`);
+    t('basic', `conf(id:a-mXYZn-z) !ring(a-f) ed.c.b.a.f~e>!ring_join`);
     t = (name, test)=>t_roles(name, 'abXYnopz', test);
     t('ring_long:abXno~p', `mode(msg req) conf(id:a-mXYZn-z)
-      ab,bX,Xn,no,oa,pX>!connect p~p>!get_peer
-      pX{X-X}:p~p>msg(type:req cmd:get_peer)
-      Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-      no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-      oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-      pa>*get_peer ao[nXp]:ap>msg(type:res cmd:get_peer)
-      on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
-      nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
-      Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer) ap>*get_peer_r`);
+      ab,bX,Xn,no,oa,pX>!connect p~p>!ring_join
+      pX{X-X}:p~p>msg(type:req cmd:ring_join)
+      Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:ring_join)
+      no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:ring_join)
+      oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:ring_join)
+      pa>*ring_join ao[nXp]:ap>msg(type:res cmd:ring_join)
+      on[Xp]:ao[nXp]:ap>msg(type:res cmd:ring_join)
+      nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:ring_join)
+      Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:ring_join) ap>*ring_join_r`);
     t('ring_short:abXnop~p,pX>!connect', `mode(msg req) conf(id:a-mXYZn-z)
-      ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!get_peer`);
+      ab,bX,Xn,no,oa,pX>!connect pX.n.o.a~p>!ring_join`);
     t('ring_short:rtt_ok', `mode(msg req) conf(id:a-mXYZn-z rtt(100 oa:223))
-      ab,bX,Xn,no,oa,ob,pX>!connect pX.n.o.a~p>!get_peer`);
+      ab,bX,Xn,no,oa,ob,pX>!connect pX.n.o.a~p>!ring_join`);
     t('ring_short:rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 oa:224))
-      ab,bX,Xn,no,oa,ob,pX>!connect pX.n.o.b.a~p>!get_peer`);
+      ab,bX,Xn,no,oa,ob,pX>!connect pX.n.o.b.a~p>!ring_join`);
     t('ring_short:abXnop~p,po>!connect', `mode(msg req) conf(id:a-mXYZn-z)
-      ab,bX,Xn,no,oa,po>!connect po.n.X.b.a~p>!get_peer`);
+      ab,bX,Xn,no,oa,po>!connect po.n.X.b.a~p>!ring_join`);
     t('ring_step_by_step:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
-      aX>!connect // XXX: fixme aX~X>!get_peer
-      bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer
-      oX>!connect oX.n.Xa~o>!get_peer pX>!connect pX.o.Xa~p>!get_peer`);
+      aX>!connect // XXX: fixme aX~X>!ring_join
+      bX>!connect bX.a~b>!ring_join nX>!connect nX.b.Xa~n>!ring_join
+      oX>!connect oX.n.Xa~o>!ring_join pX>!connect pX.o.Xa~p>!ring_join`);
     t('ring_step_by_step2:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
-      aX>!connect // XXX: fixme aX~X>!get_peer
-      bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer !sp
-      oX>!connect oX.n.Xa~o>!get_peer !sp pX>!connect pX.o.Xa~p>!get_peer`);
+      aX>!connect // XXX: fixme aX~X>!ring_join
+      bX>!connect bX.a~b>!ring_join nX>!connect nX.b.Xa~n>!ring_join !sp
+      oX>!connect oX.n.Xa~o>!ring_join !sp pX>!connect pX.o.Xa~p>!ring_join`);
     t('ring_step_by_step3:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
-      aX>!connect // XXX: fixme aX~X>!get_peer
-      bX>!connect bX.a~b>!get_peer nX>!connect nX.b.Xa~n>!get_peer
-      oX>!connect oX.n.Xa~o>!get_peer !sp oX.n.Xa~o>!get_peer !sp
-      pX>!connect pX.o.Xa~p>!get_peer`);
+      aX>!connect // XXX: fixme aX~X>!ring_join
+      bX>!connect bX.a~b>!ring_join nX>!connect nX.b.Xa~n>!ring_join
+      oX>!connect oX.n.Xa~o>!ring_join !sp oX.n.Xa~o>!ring_join !sp
+      pX>!connect pX.o.Xa~p>!ring_join`);
     t('star:abXnop~p', `mode(msg req) conf(id:a-mXYZn-z)
-      ab,bX,Xn,no,oa,aX,oX,pX>!connect pX.o.a~p>!get_peer`);
+      ab,bX,Xn,no,oa,aX,oX,pX>!connect pX.o.a~p>!ring_join`);
     t('ring:abXnoz~z', `mode(msg req) conf(id:a-mXYZn-z)
-      ab,bX,Xn,no,oa,zX>!connect zX.b.a.o~z>!get_peer`);
+      ab,bX,Xn,no,oa,zX>!connect zX.b.a.o~z>!ring_join`);
     t = (name, test)=>t_roles(name, 'abcd', test);
     t('ring_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:270))
-      !ring(a-c) da>!connect da.c~d>!get_peer`);
+      !ring(a-c) da>!connect da.c~d>!ring_join`);
     t('ring_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:271))
-      !ring(a-c) da>!connect da.b.c~d>!get_peer`);
+      !ring(a-c) da>!connect da.b.c~d>!ring_join`);
     t = (name, test)=>t_roles(name, 'abcdef', test);
     t('shortcut_fast', `conf(id:a-mXYZn-z rtt(999 da:1)) !ring(a-f da)
-      ed.a.f~e>!get_peer`);
+      ed.a.f~e>!ring_join`);
     t('shortcut_slow', `conf(id:a-mXYZn-z rtt(1 da:999)) !ring(a-f da)
-      ed.c.b.a.f~e>!get_peer`);
+      ed.c.b.a.f~e>!ring_join`);
     t = (name, test)=>t_roles(name, 'abcdXY', test);
     t('multi_path_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:140))
-      XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
-      dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.a.XYb.Yd~c>!get_peer`);
+      XY,aX>!connect aX.Y~a>!ring_join bY>!connect bY.Xa.X~b>!ring_join
+      dY>!connect dY.b.YX~d>!ring_join cX>!connect cX.a.XYb.Yd~c>!ring_join`);
     t('multi_path_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:141))
-      XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
-      dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.Yb.Yd~c>!get_peer`);
+      XY,aX>!connect aX.Y~a>!ring_join bY>!connect bY.Xa.X~b>!ring_join
+      dY>!connect dY.b.YX~d>!ring_join cX>!connect cX.Yb.Yd~c>!ring_join`);
     t = (name, test)=>t_roles(name, 'aXbY', test);
     t('best_path_circular', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
-      aX,Xb,bY,Ya>!connect aX.b.Y~a>!get_peer bXa.X~b>!get_peer
-      XbY.b~X>!get_peer YbX.b.Xa~Y>!get_peer aXb>!ping aYb>!ping(rt:Yb)
+      aX,Xb,bY,Ya>!connect aX.b.Y~a>!ring_join bXa.X~b>!ring_join
+      XbY.b~X>!ring_join YbX.b.Xa~Y>!ring_join aXb>!ping aYb>!ping(rt:Yb)
       !sp aXb>!ping conf(rtt(100 Yb:1)) aYb>!ping(rt:Yb) !sp aYb>!ping`);
     t = (name, test)=>t_roles(name, 'abcXY', test);
     t('best_path_multi', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
-      aX,bX,cX>!connect aX.b~a>!get_peer bXa.X.c~b>!get_peer
-      c.Xb.Xa.X~c>!get_peer cXa>!ping cXb>!ping !sp cXa>!ping
-      cXb>!ping Ya,Yb>!connect Yb.X.a~Y>!get_peer Yb.Xc>!ping YbXc>!ping
+      aX,bX,cX>!connect aX.b~a>!ring_join bXa.X.c~b>!ring_join
+      c.Xb.Xa.X~c>!ring_join cXa>!ping cXb>!ping !sp cXa>!ping
+      cXb>!ping Ya,Yb>!connect Yb.X.a~Y>!ring_join Yb.Xc>!ping YbXc>!ping
       YaXc>!ping(rt:aXc) YbXc>!ping !sp YaXc>!ping conf(rtt(100 Yb:10)) !sp
       YaXc>!ping YbXc>!ping(rt:bXc) Yb.Xc>!ping(rt:aXc) !YaXc>!ping(rt:!aXc)
       Yb.Xc>!ping`);
     t = (name, test)=>t_roles(name, 'bcXY', test);
     t('sub_rtt_is_not_ignored', `mode(msg req) conf(id:a-mXYZn-z rtt:1000)
-      Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
+      Yb,Xb>!connect Xb.Y~X>!ring_join cX>!connect cX.b~c>!ring_join
       Yb.Xc>!ping YbXc>!ping !sp YbXc>!ping conf(rtt(1000 Yb:1))
       YbXc>!ping !sp Yb.Xc>!ping`);
     t = (name, test)=>t_roles(name, 'abcdefghijklm', test);
     t('complex1', `conf(id:a-mXYZn-z) !ring(a-l)
       bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
       fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
-      mf>!connect mf.al.afe.d.c.b.a~m>!get_peer
-      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
-      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer`);
+      mf>!connect mf.al.afe.d.c.b.a~m>!ring_join
+      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!ring_join
+      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!ring_join`);
     t('complex2', `conf(id:a-mXYZn-z) !ring(a-l)
       bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
-      ab.c.d.e.f.g.h.i.j.k.l~a>!get_peer ba.bc~b>!get_peer
-      cb.a.bcde.d~c>!get_peer dc.b.a.l.kjihgfe~d>!get_peer
-      ed.c.b.a.l.kjihgf~e>!get_peer
+      ab.c.d.e.f.g.h.i.j.k.l~a>!ring_join ba.bc~b>!ring_join
+      cb.a.bcde.d~c>!ring_join dc.b.a.l.kjihgfe~d>!ring_join
+      ed.c.b.a.l.kjihgf~e>!ring_join
       // l learned a better path for e, so let's check again d~d
-      dc.b.a.l.abcde~d>!get_peer fe.d.c.b.a.l.kjihg~f>!get_peer
-      gf.e.d.c.b.a.lkjih~g>!get_peer hg.f.e.d.c.b.a.l.kji~h>!get_peer
-      ih.g.f.e.d.c.b.a.l.kj~i>!get_peer j.i.h.g.f.e.d.c.b.alk~j>!get_peer
-      k.j.i.h.g.f.e.d.c.bal~k>!get_peer lk.j.i.h.g.f.e.d.c.b.a~l>!get_peer
-      fa>!connect mf>!connect mf.e.dcbal.abcd.c.b.a~m>!get_peer
-      mf.e.dcbal.abcd.c.b.a~m>!get_peer !falk>!ping(rt:!alk)
-      mf.al.abcde.d.c.b.a~m>!get_peer mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
-      !sp mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
+      dc.b.a.l.abcde~d>!ring_join fe.d.c.b.a.l.kjihg~f>!ring_join
+      gf.e.d.c.b.a.lkjih~g>!ring_join hg.f.e.d.c.b.a.l.kji~h>!ring_join
+      ih.g.f.e.d.c.b.a.l.kj~i>!ring_join j.i.h.g.f.e.d.c.b.alk~j>!ring_join
+      k.j.i.h.g.f.e.d.c.bal~k>!ring_join lk.j.i.h.g.f.e.d.c.b.a~l>!ring_join
+      fa>!connect mf>!connect mf.e.dcbal.abcd.c.b.a~m>!ring_join
+      mf.e.dcbal.abcd.c.b.a~m>!ring_join !falk>!ping(rt:!alk)
+      mf.al.abcde.d.c.b.a~m>!ring_join mfal.k.j.i.h.g.f.e.d.c.b.a~m>!ring_join
+      !sp mfal.k.j.i.h.g.f.e.d.c.b.a~m>!ring_join
       kc>!connect kc>!ping !sp conf(rtt(100 kc:19)) !kcb>!ping(rt:!cb)
-      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer conf(rtt(100 kc:18))
-      !kcb>!ping(rt:!cb) mfal.k.c.b.a~m>!get_peer
+      mfal.k.j.i.h.g.f.e.d.c.b.a~m>!ring_join conf(rtt(100 kc:18))
+      !kcb>!ping(rt:!cb) mfal.k.c.b.a~m>!ring_join
     `);
      // XXX: test behavior when distance is very close
     describe('neighbour', ()=>{
       t = (name, test)=>t_roles(name, 'abcde', test);
-      t('ring_no_shortcut', `conf(a-e:mid(0-1)) !ring(a-e) cb.a.e.d~c>!get_peer
-        cbae.a.b~d>!get_peer cd.ea~e>!get_peer cba.e.d~b>!get_peer
-        cb.ae~a>!get_peer`);
+      t('ring_no_shortcut', `conf(a-e:mid(0-1))
+        !ring(a-e) cb.a.e.d~c>!ring_join cbae.a.b~d>!ring_join
+        cd.ea~e>!ring_join cba.e.d~b>!ring_join cb.ae~a>!ring_join`);
       t('ring_with_shortcut', `conf(a-e:mid(0-1)) !ring(a-e bd)
-        cb.d~c>!get_peer cb.a.e~d>!get_peer cd.b.a~e>!get_peer
-        cba.e.d~b>!get_peer cb.ae~a>!get_peer`);
+        cb.d~c>!ring_join cb.a.e~d>!ring_join cd.b.a~e>!ring_join
+        cba.e.d~b>!ring_join cb.ae~a>!ring_join`);
       t('ring_with_shortcut2', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9))
-        !ring(a-e bd) cd.b~c>!get_peer cb.a.e~d>!get_peer cba.b.d~e>!get_peer
-        cd.ba~b>!get_peer cb.d.e~a>!get_peer`);
+        !ring(a-e bd) cd.b~c>!ring_join cb.a.e~d>!ring_join
+        cba.b.d~e>!ring_join cd.ba~b>!ring_join cb.d.e~a>!ring_join`);
       t('ring_with_shortcut3', `conf(a-e:exact(.44-.56)) !ring(a-e bd)
-        cb.d~c>!get_peer cd.e.a~b>!get_peer c.d.e~a>!get_peer
-      `);
+        cb.d~c>!ring_join cd.e.a~b>!ring_join c.d.e~a>!ring_join`);
       t('ring_with_shortcut4', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e)
-        cd.e.a.b~c>!get_peer cd.ea~b>!get_peer cde.ab~a>!get_peer`);
+        cd.e.a.b~c>!ring_join cd.ea~b>!ring_join cde.ab~a>!ring_join`);
       t('ring_with_shortcut5', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57))
-        !ring(a-e) cb.a.e.d~c>!get_peer cd.e.a~b>!get_peer
-        cd.e.ab~a>!get_peer`);
+        !ring(a-e) cb.a.e.d~c>!ring_join cd.e.a~b>!ring_join
+        cd.e.ab~a>!ring_join`);
       t('minimal_peer_registration',
         `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14) rtt(999 ce:1 ea:1))
         // we don't get to d because b is not aware of d
-        !ring(a-e ce) ce.a.b~c>!get_peer
+        !ring(a-e ce) ce.a.b~c>!ring_join
         // d properly register itself to network (ie. neighbours)
-        dc.e~d>!get_peer de.a.b~c>!get_peer dc.ea~e>!get_peer
+        dc.e~d>!ring_join de.a.b~c>!ring_join dc.ea~e>!ring_join
         // now we get to d because b learned about d
-        ce.a.b.aed~c>!get_peer
+        ce.a.b.aed~c>!ring_join
       `);
       t = (name, test)=>t_roles(name, 'abBcdefghiXYZ', test);
       // nodes: abcdeXYZfghi B:.15 X:.49 Y:.5 Z:.51
       // a:0 b:.11 c:.22 d:.33 e.44 f:.55 g:.66 h:.77 i:.88
       // conn: adg -> X; beh -> Y cfi->Z
       t('complex', `conf(a-i:head(0-1) X-Z:exact(.49-.51) id(B:.15)) !ring(X-Z)
-        XY.Z~X>!get_peer ZY.X~Z>!get_peer ZY.X~Z>!get_peer
+        XY.Z~X>!ring_join ZY.X~Z>!ring_join ZY.X~Z>!ring_join
         // aXYZ
-        aX>!connect aX.Z~a>!get_peer aX.Y~Z>!get_peer aXY.Z~X>!get_peer
+        aX>!connect aX.Z~a>!ring_join aX.Y~Z>!ring_join aXY.Z~X>!ring_join
         // abXYZ
-        bY>!connect bY.Xa.X~b>!get_peer bYX.Z~a>!get_peer bY.Z.Xa~X>!get_peer
+        bY>!connect bY.Xa.X~b>!ring_join bYX.Z~a>!ring_join
+        bY.Z.Xa~X>!ring_join
         // abcXYZ
-        cZ>!connect cZ.Yb.Y.X~c>!get_peer cZ.Xa.X~b>!get_peer
-        cZ.Y.b~X>!get_peer
+        cZ>!connect cZ.Yb.Y.X~c>!ring_join cZ.Xa.X~b>!ring_join
+        cZ.Y.b~X>!ring_join
         // abcdXYZ
-        dX>!connect dX.Y.Z.c~d>!get_peer dX.Y.b~c>!get_peer dXY.Z.c~X>!get_peer
+        dX>!connect dX.Y.Z.c~d>!ring_join dX.Y.b~c>!ring_join
+        dXY.Z.c~X>!ring_join
         // abcdeXYZ
-        eY>!connect eY.Z.c.ZX.d~e>!get_peer eY.Z.c.ZX~d>!get_peer
-        eY.Z.c.ZXd~X>!get_peer
+        eY>!connect eY.Z.c.ZX.d~e>!ring_join eY.Z.c.ZX~d>!ring_join
+        eY.Z.c.ZXd~X>!ring_join
         // abcdeXYZf
-        fZ>!connect fZ.Y.X.d.XZc.ZXa~f>!get_peer
-        fZY.X.d.XZc.ZYb.YXa~Z>!get_peer
+        fZ>!connect fZ.Y.X.d.XZc.ZXa~f>!ring_join
+        fZY.X.d.XZc.ZYb.YXa~Z>!ring_join
         // abcdeXYZfg
-        gX>!connect gX.a.XZ.f~g>!get_peer gX.d.XZ.c.ZXa~f>!get_peer
-        gXZc.ZYb.YXd.XZYe.YZ.f~a>!get_peer
+        gX>!connect gX.a.XZ.f~g>!ring_join gX.d.XZ.c.ZXa~f>!ring_join
+        gXZc.ZYb.YXd.XZYe.YZ.f~a>!ring_join
         // abcdeXYZfgh
-        hY>!connect hY.X.g.Xa~h>!get_peer hY.X.a.XZ.f~g>!get_peer
-        hYXg.XZYb~a>!get_peer
+        hY>!connect hY.X.g.Xa~h>!ring_join hY.X.a.XZ.f~g>!ring_join
+        hYXg.XZYb~a>!ring_join
         // abcdeXYZfghi
-        iZ>!connect iZ.Xa.Xg.XYh~i>!get_peer iZ.Y.X.g.Xa~h>!get_peer
-        iZXYh.Yb~a>!get_peer
+        iZ>!connect iZ.Xa.Xg.XYh~i>!ring_join iZ.Y.X.g.Xa~h>!ring_join
+        iZXYh.Yb~a>!ring_join
         // get more neighbours of i
-        iZ.Y.X.a.XYh.YXZf~g>!get_peer iZXa.XZc~b>!get_peer iZ.Y.X.g~f>!get_peer
-        iZXYb.Y.Xd~c>!get_peer
+        iZ.Y.X.a.XYh.YXZf~g>!ring_join iZXa.XZc~b>!ring_join
+        iZ.Y.X.g~f>!ring_join
+        iZXYb.Y.Xd~c>!ring_join
         // B joins abBcdeXYZfghi
-        BX>!connect BX.Yb.YZc~B>!get_peer BXYZc.Zi.ZXa~b>!get_peer
-        BX.d.XYb~c>!get_peer`);
+        BX>!connect BX.Yb.YZc~B>!ring_join BXYZc.Zi.ZXa~b>!ring_join
+        BX.d.XYb~c>!ring_join`);
       if (true) return; // XXX WIP
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
-        cb{b-b}.a{b-a}.e{b-e}.d{b-d}~c>!get_peer
-        // c~d>get_peer(exclude:c-d)
-        cb[d-c}.a[d-b}.e[d-e}~d>get_peer(exclude:c-d)
-        // c~d>get_peer(range:+d-c)
-        cb{+d-c}.a{+d-b}.e{+d-e}~d>get_peer(exclude:c-d)
+        cb{b-b}.a{b-a}.e{b-e}.d{b-d}~c>!ring_join
+        // c~d>ring_join(exclude:c-d)
+        cb[d-c}.a[d-b}.e[d-e}~d>ring_join(exclude:c-d)
+        // c~d>ring_join(range:+d-c)
+        cb{+d-c}.a{+d-b}.e{+d-e}~d>ring_join(exclude:c-d)
       `);
     });
   });
@@ -4324,20 +4326,12 @@ describe('peer-relay', function(){
     if (true) return; // XXX: WIP
     const t = (name, test)=>t_roles(name, 'abcde', test);
     t('derry_xxx', `conf(a-e:0-1) !ring(a-e)
-       c~c>!node.get_peer
-       cb.a.e.d~c>get_peer
-       cbae.a.b~d>get_peer
-       cd.ea~e>get_peer
-       cba.e.d~b>get_peer
-       cb.ae~a>get_peer`);
-     t('derry_xxx2', `conf(a-e:0-1) !ring(a-e)
-       f=node
-       fc>!node.connect
-       fc>connect
-       f~f>node.get_peer ...
-       fe>!req_start:keep_alive
-       f...>!req_start:keep_alive
-       `);
+       c>!node.ring_join
+       cb.a.e.d~c>ring_join
+       cbae.a.b~d>ring_join
+       cd.ea~e>ring_join
+       cba.e.d~b>ring_join
+       cb.ae~a>ring_join`);
   });
 });
 
@@ -4427,9 +4421,9 @@ freq=8/100
        if (at.rtt_pb<best.rtt_pb)
          best = at;
     }
-    a-a>!get_peer
-    a+a>!get_peer
-    a~a>!get_peer (after reaching closets possible, then do one extra)
+    a-a>!ring_join
+    a+a>!ring_join
+    a~a>!ring_join (after reaching closets possible, then do one extra)
     // next prev in avl circle, that after 1 continues in 0
     // iterator class: you initiate it (like initiating for loop), and
     // it gives you next
@@ -4496,7 +4490,9 @@ VP:
   + send rtt_pb with route info
   + if router can calculate all rtt (either it knows it or it get it) and have
     better route, use it (eg, connected directly)
-+ get_peer to neighbours (with exclude to itself)
++ ring_join to neighbours (with exclude to itself)
++ rename get_peer -> ring_join
+- c>!node.ring_join
 - ack every pkt
 - conn disconnected: update tables
 - handle failures
@@ -4519,7 +4515,7 @@ VP:
   - implement all complex commands with simple req/msg api
     - verify Req/ReqHander use src/dst as NodeId and not string/bufffer
 - protect against invalid msg
-- move get_peer to be automatic in Node
+- move ring_join to be automatic in Node
   - get 8 closets nodes to me (in tests, default is 2)
   - keep virtual connection open with the neighbours to handle disconnect
 + rm warning React... in eslint
