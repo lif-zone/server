@@ -54,7 +54,7 @@ export default class Router extends EventEmitter {
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
     let _this = this._, channel;
     let rt = msg0.rt, path = rt?.path;
-    let to = NodeId.from(msg.to), best;
+    let to = NodeId.from(msg.to), from = NodeId.from(msg.from), best;
     if (lbuffer.path().length >= _this.maxHops)
       return xerr('drop msg max hop reached');
     if (!_this._channels.size) // XXX: verify and test it
@@ -79,7 +79,8 @@ export default class Router extends EventEmitter {
           }
         }
       } else {
-        best = _this.node_map.get_route_by_range(to, to, range);
+        best = _this.node_map.get_route_by_range(to, from.eq(to) ? to :
+          [from, to], range);
         path = best?.path;
         channel = _this.get_channel_from_path(path);
         if (!channel)
@@ -125,7 +126,7 @@ export default class Router extends EventEmitter {
           return;
       }
     }
-    if (msg0.type=='fwd' || path?.length>1 || !channel.id.eq(to)){
+    if (msg0.type=='fwd' || range || path?.length>1 || !channel.id.eq(to)){
       let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
       if (path && path.length>1){

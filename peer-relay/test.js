@@ -3706,6 +3706,72 @@ describe('peer-relay', function(){
     `);
      // XXX: test behavior when distance is very close
     describe('neighbour', ()=>{
+      t = (name, test)=>t_roles(name, 'abcde', test);
+      // XXX: WIP
+      t('xxx', `conf(id(a:.1 b:.3 c:.5 d:.7 e:.9)) !ring(a-e)
+        cb.a.e.d~c>!get_peer
+        cbae.a.b~d>!get_peer
+        cd.ea~e>!get_peer
+      `);
+      t('xxx2', `conf(id(a:.1 b:.3 c:.5 d:.7 e:.9)) !ring(a-e bd)
+        cb.d~c>!get_peer
+        cb.a.e~d>!get_peer
+        cd.b.a~e>!get_peer
+      `);
+      t('xxx3', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e bd)
+        cd.b~c>!get_peer
+        cb.a.e~d>!get_peer
+        cba.b.d~e>!get_peer
+      `);
+      t('xxx4a', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e bd)
+        cd.b~c>!get_peer  // cd{d-d}.b{b-d}>!get_peer
+        cd.e.a~b>!get_peer
+        cde.d.b~a>!get_peer
+      `);
+      t('xxx4b', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57)) !ring(a-e bd)
+        cb.d~c>!get_peer
+        cd.e.a~b>!get_peer
+        c.d.e~a>!get_peer // XXX: bug, we don't get to b
+      `);
+      t('xxx4c', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e)
+        cd.e.a.b~c>!get_peer
+        cd.ea~b>!get_peer
+        cde.ab~a>!get_peer
+      `);
+      t('xxx4d', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57)) !ring(a-e)
+        cb.a.e.d~c>!get_peer
+        cd.e.a~b>!get_peer
+        cd.e.ab~a>!get_peer
+      `);
+      // abcde
+      // c~b>!get_peer - exclude: c,b
+      t('xxx_derry1', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57)) !ring(a-e)
+        cb.a.e.d~c>!get_peer // cb{b-b}.a{b-a}.e{b-e}.d{b-d}~c
+        cd.e.a~b>!get_peer   // cd{d-d}.e{e-d}}.a{a-d}~b
+        cd.e.ab~a>!get_peer  // cd{d-d}.e{e-d}.ab{e-b}~a
+      `);
+      t('xxx_derry2', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57)) !ring(a-e bd)
+        cb.d~c>!get_peer // cb{b-b}.d{b-d}~c
+        cd.e.a~b>!get_peer // cd{d-d}.e{e-d}.a{a-e}~b
+        // XXX: bug, we don't get to b
+        cd.e~a>!get_peer // cd{d-d}.e{e-d}
+      `);
+      /*
+      at d: -a-b-c-d(-e-a-b-c-)d-e-a
+      at e: -a-b-c-d-e(-a-b-c-)d-e-a
+      STOP: a is excluced; d is out of range
+      */
+      // abcde
+      // c~b>!get_peer - exclude: b
+      if (0)
+      t('xxx_derry3', `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14) rtt(1 de:999))
+        !ring(a-e)
+        // XXX BUG: we don't get to a
+        cd.c~b>!get_peer // cd{d-d}.c{d-c}~b
+      `);
+//      at d: -a-b-c-d(-e-a-b-c-)d-e-a
+//      at c: -a-b-c-d(-e-a-b)c-d-e-a
+//      STOP: b is excluded; d is out of range
       if (true) return; // XXX WIP
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
