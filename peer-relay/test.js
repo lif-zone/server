@@ -1000,7 +1000,7 @@ function array_name_to_id(a){
 
 function node_get_channel(_s, _d){
   let s = N(_s), d = N(_d);
-  return d.peers.get(s.id.b);
+  return d && d.peers && d.peers.get(s.id.b);
 }
 
 const send_msg = (s, d, lbuffer)=>etask(function*send_msg(){
@@ -1400,6 +1400,7 @@ const cmd_connect = opt=>etask(function*(){
     }
   });
   assert(d, 'unknown node '+c.d);
+  assert(!node_get_channel(c.s, c.d), 'connection already exists '+c.s+c.d);
   if (!wss && !wrtc && xutil.xor(support_wss(d), support_wrtc(d))){
     wss = wss_from_node(d);
     wrtc = support_wrtc(d);
@@ -3537,8 +3538,11 @@ describe('peer-relay', function(){
          conf(id:a-mXYZn-z rtt(100 Xb:111)) ab,bX,Xz,za>!connect Xz.a>!ping`);
     });
     describe('rtt', ()=>{
-      let t = (name, test)=>t_roles(name, 'abcdefghi', test);
-      t('basic', `conf(id:a-mXYZn-z) !ring(a-i) bc.d.e.f.g>!ping
+      let t = (name, test)=>t_roles(name, 'abcdef', test);
+      t('never_try_bigger_id', `conf(id:a-mXYZn-z rtt(1 de:999)) !ring(a-f)
+        de.f>!ping`);
+      t = (name, test)=>t_roles(name, 'abcdefghi', test);
+      t('all_the_same', `conf(id:a-mXYZn-z) !ring(a-i) bc.d.e.f.g>!ping
         bcdefg>!ping !baihg>!ping(rt:!aihg) baihg>!ping(rt:aihg)
         baihg>!ping !bcdefg>!ping(rt:!cdefg) baihg>!ping
         !bcdefg>!ping(rt:!cdefg) baihg>!ping(rt:cdefg)`);
@@ -3568,7 +3572,9 @@ describe('peer-relay', function(){
     });
   });
   describe('get_peer', ()=>{
-    let t = (name, test)=>t_roles(name, 'abXYnopz', test);
+    let t = (name, test)=>t_roles(name, 'abcdef', test);
+    t('basic', `conf(id:a-mXYZn-z) !ring(a-f) ed.c.b.a.f~e>!get_peer`);
+    t = (name, test)=>t_roles(name, 'abXYnopz', test);
     t('ring_long:abXno~p', `mode(msg req) conf(id:a-mXYZn-z)
       ab,bX,Xn,no,oa,pX>!connect p~p>!get_peer
       pX{X-X}:p~p>msg(type:req cmd:get_peer)
@@ -3609,6 +3615,11 @@ describe('peer-relay', function(){
       !ring(a-c) da>!connect da.c~d>!get_peer`);
     t('ring_rtt_slow', `mode(msg req) conf(id:a-mXYZn-z rtt(100 ac:271))
       !ring(a-c) da>!connect da.b.c~d>!get_peer`);
+    t = (name, test)=>t_roles(name, 'abcdef', test);
+    t('shortcut_fast', `conf(id:a-mXYZn-z rtt(999 da:1)) !ring(a-f da)
+      ed.a.f~e>!get_peer`);
+    t('shortcut_slow', `conf(id:a-mXYZn-z rtt(1 da:999)) !ring(a-f da)
+      ed.c.b.a.f~e>!get_peer`);
     t = (name, test)=>t_roles(name, 'abcdXY', test);
     t('multi_path_rtt_same', `mode(msg req) conf(id:a-mXYZn-z rtt(100 Xa:140))
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
@@ -3617,7 +3628,6 @@ describe('peer-relay', function(){
       XY,aX>!connect aX.Y~a>!get_peer bY>!connect bY.Xa.X~b>!get_peer
       dY>!connect dY.b.YX~d>!get_peer cX>!connect cX.Yb.Yd~c>!get_peer`);
     t = (name, test)=>t_roles(name, 'aXbY', test);
-    // XXX: check if test really test anything
     t('best_path_circular', `mode(msg req) conf(id:a-mXYZn-z rtt:100)
       aX,Xb,bY,Ya>!connect aX.b.Y~a>!get_peer bXa.X~b>!get_peer
       XbY.b~X>!get_peer YbX.b.Xa~Y>!get_peer aXb>!ping aYb>!ping(rt:Yb)
@@ -3635,14 +3645,14 @@ describe('peer-relay', function(){
       Yb,Xb>!connect Xb.Y~X>!get_peer cX>!connect cX.b~c>!get_peer
       Yb.Xc>!ping YbXc>!ping !sp YbXc>!ping conf(rtt(1000 Yb:1))
       YbXc>!ping !sp Yb.Xc>!ping`);
-   t = (name, test)=>t_roles(name, 'abcdefghijklm', test);
-   t('complex1', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
+    t = (name, test)=>t_roles(name, 'abcdefghijklm', test);
+    t('complex1', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
       bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
       fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
       mf>!connect mf.al.afe.d.c.b.a~m>!get_peer
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer`);
-   t('complex2', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
+    t('complex2', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
       bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
       ab.c.d.e.f.g.h.i.j.k.l~a>!get_peer ba.bc~b>!get_peer
       cb.a.bcde.d~c>!get_peer dc.b.a.l.kjihgfe~d>!get_peer
@@ -3660,55 +3670,13 @@ describe('peer-relay', function(){
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer conf(rtt(100 kc:18))
       !kcb>!ping(rt:!cb) mfal.k.c.b.a~m>!get_peer
     `);
-   t = (name, test)=>t_roles(name, 'abcde', test);
-   t('xxx4', `conf(id:a-mXYZn-z rtt:100) !ring(a-e)
-     ed.c.b.a~e>!get_peer
-     da>!connect !sp
-     ed.c.b.a~e>!get_peer // XXX GOOD: ed.a~e>!get_peer
-   `);
-   t = (name, test)=>t_roles(name, 'abcdef', test);
-   t('xxx5', `conf(id:a-mXYZn-z) !ring(a-f da) !sp ed.c.b.a.f~e>!get_peer`);
-   // at e: e.rtt_pb_via(e, c) ==> bad because e.dist(e)==0 <= c.dist(e)
-   // at d: d.rtt_pb_via(e, c) ==> bad because d.dist(e) < c.dist(e)
-   t = (name, test)=>t_roles(name, 'abcdef', test);
-   t('xxx6', `conf(id:a-mXYZn-z rtt(100 ef:500 da:63)) !ring(a-f da)
-     ed.a.f~e>!get_peer`);
-   t('xxx7', `conf(id:a-mXYZn-z rtt(100 ef:900 ad:299)) !ring(a-f)
-     ed.c.b.a>!ping
-     da>!connect ed[cba].a>!ping
-   `);
-   t('xxx8', `conf(id:a-mXYZn-z rtt(100 ef:900 ad:300)) !ring(a-f)
-     ed.c.b.a>!ping
-     da>!connect edcba>!ping
-   `);
-   t('xxx9', `conf(id:a-mXYZn-z rtt(30 da:90 ef:1000)) !ring(a-f)
-     !edcbaf>!ping(rt:!dcbaf) da>!connect !sp edcbaf>!ping`);
-   t('xxx10', `conf(id:a-mXYZn-z rtt(30 da:89 ef:1000)) !ring(a-f)
-     !edcbaf>!ping(rt:!dcbaf) da>!connect !sp ed[cbaf].af>!ping`);
-   t('xxx11', `conf(id:a-mXYZn-z rtt(1 de:999)) !ring(a-f)
-     de.f>!ping // XXX: dc.b.a.f>!ping`);
-   // d.rtt_pb_via(f, c) ==> BAD because d.dist(f) < c.dist(f)
-   t('xxx12', `conf(id:a-mXYZn-z rtt(100 de:999))
-     ab,bc,ce,ef,fa>!connect dc>!connect dc.e~d>!get_peer dce>!ping`);
-   // XXX: d will never try to use c (even if rtt terrible), because c is far
-   // from e compared to d
-   t('xxx_derry1', `conf(id:a-mXYZn-z rtt(1 de:999)) !ring(a-f)
-     de.f>!ping // XXX: dc.b.a.f>!ping`);
-   // at d: d.rtt_pb_via(f, c) ==>` BAD because d.dist(f) < c.dist(f)
-   // XXX: review logic I implemented for cases where rtt_pb_via is invalid
-   t('xxx_derry2', `conf(id:a-mXYZn-z) !ring(a-f)
-     ed.c.b.a.f~e>!get_peer`);
-   // at e: e.rtt_pb_via(e, e) ==> BAD because e.dist(e)==0 <= c.dist(e)
-   // at d: d.rtt_pb_via(e, c) ==> BAD because d.dist(e) < c.dist(e)
-   // normal: bits_done = dst.dist_bits(src) - dst.dist_bits(via);
-   // fuzzy (when invalid): bits_done = 52 - dst.dist_bits(via);
-   // XXX: test behavior when distance is very close
+     // XXX: test behavior when distance is very close
     describe('neighbour', ()=>{
-     t = (name, test)=>t_roles(name, 'lmXno', test);
-     t('xxx', `conf(id:a-mXYZn-z rtt:100) !ring(l-o Xm Xn) Xm.n~X>!get_peer
-       Xm.l.o~n>!get_peer Xm.l~o>!get_peer Xn.o.l~m>!get_peer
-       Xn.o.lm~l>!get_peer`);
-    });
+      t = (name, test)=>t_roles(name, 'lmXno', test);
+      t('xxx', `conf(id:a-mXYZn-z rtt:100) !ring(l-o Xm Xn) Xm.n~X>!get_peer
+        Xm.l.o~n>!get_peer Xm.l~o>!get_peer Xn.o.l~m>!get_peer
+        Xn.o.lm~l>!get_peer`);
+      });
   });
   describe('req_new', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);

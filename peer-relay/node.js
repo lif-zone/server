@@ -58,7 +58,7 @@ export default class Node extends EventEmitter {
     channel.on('error', err=>xerr('Error', err));
     delete _this.pending[channel.id];
     if (_this.peers.get(channel.id)){
-      if (channel.id.compare(_this.id.b) >= 0)
+      if (channel.id.cmp(_this.id.b) >= 0)
         channel.destroy();
       return;
     }
