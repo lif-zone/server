@@ -1,4 +1,4 @@
-// author: derry. coder: arik.
+
 'use strict'; /*jslint node:true*/ /*global describe,it,beforeEach,afterEach*/
 // XXX: need jslint mocha: true
 import assert from 'assert';
@@ -2512,7 +2512,7 @@ describe('node_id', function(){
     t('ffffffffffffffffffff', 'ffffffffffffffffffff', 0);
   });
   it('in_range', ()=>{
-    const t = (range, id, exp)=>{
+    let t = (range, id, exp)=>{
       range = NodeId.range_from_msg(range);
       id = NodeId.from(id);
       assert.equal(id.in_range(range), exp);
@@ -2535,6 +2535,42 @@ describe('node_id', function(){
     t({min: 0.25, max: 0.30}, 0.50, false);
     t({min: 0.30, max: 0.40}, 0.50, false);
     t({min: 0.40, max: 0.10}, 0.50, true);
+    t({min: 0.10, max: 0.20, inc_max: true}, 0.9, false);
+    t({min: 0.10, max: 0.20, inc_max: true}, 0.10, false);
+    t({min: 0.10, max: 0.20, inc_max: true}, 0.11, true);
+    t({min: 0.10, max: 0.20, inc_max: true}, 0.19, true);
+    t({min: 0.10, max: 0.20, inc_max: true}, 0.20, true);
+    t({min: 0.10, max: 0.20, inc_max: true}, 0.21, false);
+    t({min: 0.20, max: 0.10, inc_max: true}, 0.19, false);
+    t({min: 0.20, max: 0.10, inc_max: true}, 0.20, false);
+    t({min: 0.20, max: 0.10, inc_max: true}, 0.21, true);
+    t({min: 0.20, max: 0.10, inc_max: true}, 0.9, true);
+    t({min: 0.20, max: 0.10, inc_max: true}, 0.10, true);
+    t({min: 0.20, max: 0.10, inc_max: true}, 0.11, false);
+    t({min: 0.10, max: 0.10, inc_max: true}, 0.9, true);
+    t({min: 0.10, max: 0.10, inc_max: true}, 0.10, true);
+    t({min: 0.10, max: 0.10, inc_max: true}, 0.11, true);
+    t({min: 0.25, max: 0.30, inc_max: true}, 0.50, false);
+    t({min: 0.30, max: 0.40, inc_max: true}, 0.50, false);
+    t({min: 0.40, max: 0.10, inc_max: true}, 0.50, true);
+    t({min: 0.10, max: 0.20, inc_min: true}, 0.9, false);
+    t({min: 0.10, max: 0.20, inc_min: true}, 0.10, true);
+    t({min: 0.10, max: 0.20, inc_min: true}, 0.11, true);
+    t({min: 0.10, max: 0.20, inc_min: true}, 0.19, true);
+    t({min: 0.10, max: 0.20, inc_min: true}, 0.20, false);
+    t({min: 0.10, max: 0.20, inc_min: true}, 0.21, false);
+    t({min: 0.20, max: 0.10, inc_min: true}, 0.19, false);
+    t({min: 0.20, max: 0.10, inc_min: true}, 0.20, true);
+    t({min: 0.20, max: 0.10, inc_min: true}, 0.21, true);
+    t({min: 0.20, max: 0.10, inc_min: true}, 0.9, true);
+    t({min: 0.20, max: 0.10, inc_min: true}, 0.10, false);
+    t({min: 0.20, max: 0.10, inc_min: true}, 0.11, false);
+    t({min: 0.10, max: 0.10, inc_min: true}, 0.9, true);
+    t({min: 0.10, max: 0.10, inc_min: true}, 0.10, true);
+    t({min: 0.10, max: 0.10, inc_min: true}, 0.11, true);
+    t({min: 0.25, max: 0.30, inc_min: true}, 0.50, false);
+    t({min: 0.30, max: 0.40, inc_min: true}, 0.50, false);
+    t({min: 0.40, max: 0.10, inc_min: true}, 0.50, true);
   });
   it('dist', function(){
     const t = (a, b, exp)=>{

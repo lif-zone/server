@@ -54,9 +54,10 @@ cmp(id){
   return this.s < id.s ? -1 : 1;
 }
 in_range(range){
-  return range.min.cmp(range.max)>=0 ?
-    this.cmp(range.min)>0 || this.cmp(range.max)<0 :
-    this.cmp(range.min)>0 && this.cmp(range.max)<0;
+  let min = this.cmp(range.min), max = this.cmp(range.max);
+  let {inc_min, inc_max} = range;
+  let min_cmp = inc_min ? min>=0 : min>0, max_cmp = inc_max ? max<=0 : max<0;
+  return range.min.cmp(range.max)>=0 ? min_cmp || max_cmp : min_cmp && max_cmp;
 }
 dist(id){ return dist(this, id); }
 dist_bits(id){ return dist_bits(this, id); }
@@ -112,10 +113,26 @@ function rtt_pb_via_fuzzy(src, dst, via, via_rtt){
   return ret;
 }
 
-function range_from_msg(range){ return range &&
-  {min: NodeId.from(range.min), max: NodeId.from(range.max)}; }
-function range_to_msg(range){ return range &&
-  {min: range.min.s, max: range.max.s}; }
+function range_from_msg(range){
+  if (!range)
+    return;
+  let ret = {min: NodeId.from(range.min), max: NodeId.from(range.max)};
+  if (range.inc_min)
+    ret.inc_min = true;
+  if (range.inc_max)
+    ret.inc_max = true;
+  return ret;
+}
+function range_to_msg(range){
+  if (!range)
+    return;
+  let ret = {min: range.min.s, max: range.max.s};
+  if (range.inc_min)
+    ret.inc_min = true;
+  if (range.inc_max)
+    ret.inc_max = true;
+  return ret;
+}
 
 NodeId.from = function(id){
   // XXX: cache NodeId so we return existing object is it exists
