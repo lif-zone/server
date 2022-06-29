@@ -3673,10 +3673,14 @@ describe('peer-relay', function(){
      // XXX: test behavior when distance is very close
     describe('neighbour', ()=>{
       t = (name, test)=>t_roles(name, 'lmXno', test);
-      t('xxx', `conf(id:a-mXYZn-z rtt:100) !ring(l-o Xm Xn) Xm.n~X>!get_peer
-        Xm.l.o~n>!get_peer Xm.l~o>!get_peer Xn.o.l~m>!get_peer
-        Xn.o.lm~l>!get_peer`);
-      });
+      t('xxx', `conf(id:a-mXYZn-z) !ring(l-o Xm Xn) Xm.n~X>!get_peer
+        Xn.o.nX~m>!get_peer Xm.l.o.nX~n>!get_peer Xn.o.lm~l>!get_peer
+        Xm.l.on~o>!get_peer`);
+      t('xxx2', `conf(id:a-mXYZn-z) !ring(l-o Xm Xn) Xn.o.nX~m>!get_peer`);
+      t('xxx3', `conf(id:a-mXYZn-z) !ring(l-o Xm Xn) Xn.o.nX.m~l>!get_peer`);
+      t('xxx4', `conf(id:a-mXYZn-z) !ring(l-o Xm Xn) Xm.n~X>!get_peer
+        Xn.o.nX~m>!get_peer`);
+    });
   });
   describe('req_new', function(){
     const t = (name, test)=>t_roles(name, 'abc', test);

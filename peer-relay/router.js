@@ -79,7 +79,7 @@ export default class Router extends EventEmitter {
           }
         }
       } else {
-        best = _this.node_map.get_route_by_range(to, to.eq(from) ? to :
+        best = _this.node_map.get_route_by_range(to, true || to.eq(from) ? to :
           [from, to], range);
         path = best?.path;
         channel = _this.get_channel_from_path(path);
