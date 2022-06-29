@@ -3011,46 +3011,6 @@ describe('peer-relay', function(){
           ab[cd]:oa[bcd]:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
           bc[d]:ab[cd]:oa[bcd]:no{o-X}:Xn[o]:pX{X-X}:p~p>msg
           cd{o-d}:bc[d]:ab[cd]:oa[bcd]:no{o-X}:Xn[o]:pX{X-X}:p~p>msg`);
-        T('bX.a~b>get_peer', `bX{X-X}:b~b>msg(type:req cmd:get_peer)
-           Xa{a-X}:bX{X-X}:b~b>msg(type:req cmd:get_peer)`);
-        T('p.Xno~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
-          no{o-o}:Xn[o]:pX[no]:p~p>msg`);
-        T('p.Xno.abcd~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
-          no{o-o}:Xn[o]:pX[no]:p~p>msg oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
-          ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
-          bc[d]:ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
-          cd{o-d}:bc[d]:ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg`);
-        t('a~b>!get_peer', `a~b>!get_peer`);
-        t('~ab<!get_peer', `~ab<!get_peer`);
-        T('pX.n.o.a~p>!get_peer', `p~p>!get_peer
-          pX{X-X}:p~p>msg(type:req cmd:get_peer)
-          Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-          no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-          oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
-          pa>*get_peer ao[nXp]:ap>msg(type:res cmd:get_peer)
-          on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
-          nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
-          Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
-          pa<*get_peer_r`);
-        T('ab.c~d>!get_peer', `a~d>!get_peer
-          ab.c~d>fwd(a~d>msg(type:req cmd:get_peer))
-          ac>*get_peer cba>fwd(ca>msg(type:res cmd:get_peer)) ac<*get_peer_r`);
-        T('ab.c~d>msg(type:req cmd:get_peer)',
-          `ab.c~d>fwd(a~d>msg(type:req cmd:get_peer))`);
-        T('~dc.ba<msg(type:req cmd:get_peer)',
-          `~dc.ba<fwd(~da<msg(type:req cmd:get_peer))`);
-        T('ab>get_peer_r', `ab>msg(type:res cmd:get_peer)`);
-        T('ab.c~d>get_peer', `ab.c~d>msg(type:req cmd:get_peer)`);
-        T('ab.c~d>get_peer', `ab{b-b}:a~d>msg(type:req cmd:get_peer)
-          bc{c-b}:ab{b-b}:a~d>msg(type:req cmd:get_peer)`);
-        T('ab.c>get_peer_r', `ab.c>msg(type:res cmd:get_peer)`);
-        T('ab~d>get_peer', `ab{b-b}:a~d>msg(type:req cmd:get_peer)`);
-        T('ab.c>get_peer_r', `ab.c>msg(type:res cmd:get_peer)`);
-        T('ab~c>!get_peer', `a~c>!get_peer
-          ab{b-b}:a~c>msg(type:req cmd:get_peer) ab>*get_peer
-          ba>get_peer_r ab<*get_peer_r`);
-        if (0) // XXX: TODO
-        T('ab.c>fwd(ac>get_peer_r)', `ab.c>get_peer_r`);
         T('ab>conn_info', `ab>msg(type(req) cmd(conn_info)) ab>*conn_info`);
         T('abc>conn_info(!r)', `ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c))
           bc>fwd(ab>fwd(ac>msg(type(req) cmd(conn_info)) rt(c)))
@@ -3317,6 +3277,49 @@ describe('peer-relay', function(){
             abcef<ping_r af<*ping_r`);
           T('bc[defg].g>!ping(rt(cdefg))', `bg>!ping(!e rt(cdefg))
             bc[defg].g>ping bg>*ping bcg<ping_r bg<*ping_r`);
+        });
+        describe('get_peer', function(){
+          T('bX.a~b>get_peer', `bX{X-X}:b~b>msg(type:req cmd:get_peer)
+             Xa{a-X}:bX{X-X}:b~b>msg(type:req cmd:get_peer)`);
+          T('p.Xno~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
+            no{o-o}:Xn[o]:pX[no]:p~p>msg`);
+          T('p.Xno.abcd~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
+            no{o-o}:Xn[o]:pX[no]:p~p>msg oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
+            ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
+            bc[d]:ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg
+            cd{o-d}:bc[d]:ab[cd]:oa[bcd]:no{o-o}:Xn[o]:pX[no]:p~p>msg`);
+          t('a~b>!get_peer', `a~b>!get_peer`);
+          t('~ab<!get_peer', `~ab<!get_peer`);
+          T('pX.n.o.a~p>!get_peer', `p~p>!get_peer
+            pX{X-X}:p~p>msg(type:req cmd:get_peer)
+            Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
+            no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
+            oa{o-a}:no{o-X}:Xn{n-X}:pX{X-X}:p~p>msg(type:req cmd:get_peer)
+            pa>*get_peer ao[nXp]:ap>msg(type:res cmd:get_peer)
+            on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
+            nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
+            Xp:nX[p]:on[Xp]:ao[nXp]:ap>msg(type:res cmd:get_peer)
+            pa<*get_peer_r`);
+          T('ab.c~d>!get_peer', `a~d>!get_peer
+            ab.c~d>fwd(a~d>msg(type:req cmd:get_peer))
+            ac>*get_peer cba>fwd(ca>msg(type:res cmd:get_peer))
+            ac<*get_peer_r`);
+          T('ab.c~d>msg(type:req cmd:get_peer)',
+            `ab.c~d>fwd(a~d>msg(type:req cmd:get_peer))`);
+          T('~dc.ba<msg(type:req cmd:get_peer)',
+            `~dc.ba<fwd(~da<msg(type:req cmd:get_peer))`);
+          T('ab>get_peer_r', `ab>msg(type:res cmd:get_peer)`);
+          T('ab.c~d>get_peer', `ab.c~d>msg(type:req cmd:get_peer)`);
+          T('ab.c~d>get_peer', `ab{b-b}:a~d>msg(type:req cmd:get_peer)
+            bc{c-b}:ab{b-b}:a~d>msg(type:req cmd:get_peer)`);
+          T('ab.c>get_peer_r', `ab.c>msg(type:res cmd:get_peer)`);
+          T('ab~d>get_peer', `ab{b-b}:a~d>msg(type:req cmd:get_peer)`);
+          T('ab.c>get_peer_r', `ab.c>msg(type:res cmd:get_peer)`);
+          T('ab~c>!get_peer', `a~c>!get_peer
+            ab{b-b}:a~c>msg(type:req cmd:get_peer) ab>*get_peer
+            ba>get_peer_r ab<*get_peer_r`);
+          if (0) // XXX: TODO
+        T('ab.c>fwd(ac>get_peer_r)', `ab.c>get_peer_r`);
         });
       });
     });
@@ -3771,12 +3774,30 @@ describe('peer-relay', function(){
 //      at d: -a-b-c-d(-e-a-b-c-)d-e-a
 //      at c: -a-b-c-d(-e-a-b)c-d-e-a
 //      STOP: b is excluded; d is out of range
+      t('zzz', `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14) rtt(999 ce:1 ea:1))
+        !ring(a-e ce)
+        // XXX BUG: we don't get to d
+        ce.a.b~c>!get_peer
+      `);
+//      at e: (-a-b-c-d-)e-a
+//      at a: -a(-b-c-d-)e-a
+//      at b: -a-b(-c-d-)e-a
+//      STOP: bc> invalid because c is excluded ba> is not in range
+//      at c: why we go ce> at start?
+//      c.rtt_pb_via_fuzzy(c, b, 999)=177 (bits_done: 5.64)
+//      c.rtt_pb_via_fuzzy(c, d, 999)=177 (bits_done: 5.64)
+//      c.rtt_pb_via_fuzzy(c, e, 1)=0.2 (bits_done: 4.64)
+//      at e: why we go ea>?
+//      e.rtt_pb_via_fuzzy(c, d, 999)=999 (bits_done: 1)
+//      e.rtt_pb_via_fuzzy(c, a, 1)=0.2 (bits_done: 4.64)
       if (true) return; // XXX WIP
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
         cb{b-b}.a{b-a}.e{b-e}.d{b-d}~c>!get_peer
         // c~d>get_peer(exclude:c-d)
         cb[d-c}.a[d-b}.e[d-e}~d>get_peer(exclude:c-d)
+        // c~d>get_peer(range:+d-c)
+        cb{+d-c}.a{+d-b}.e{+d-e}~d>get_peer(exclude:c-d)
       `);
     });
   });
