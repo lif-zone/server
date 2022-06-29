@@ -2181,9 +2181,7 @@ const cmd_run = event=>etask(function*cmd_run(){
 });
 
 function set_id_bits(bits){ t_conf.id_bits = bits; }
-function set_node_ids(ids){
-  t_conf.node_ids = ids||{};
-}
+function set_node_ids(ids){ t_conf.node_ids = ids||{}; }
 
 function test_start(role){
   t_role = role;
@@ -2201,7 +2199,7 @@ function test_start(role){
   t_conf = {rtt: {def: DEF_RTT, conn: {}}};
   NodeMap.t.t_conf = Router.t.t_conf = t_conf;
   set_id_bits(10);
-  set_node_ids();
+  set_node_ids(assert_node_ids('a-mXYZn-z'));
 }
 
 function test_setup_mode(){
@@ -3646,13 +3644,13 @@ describe('peer-relay', function(){
       Yb.Xc>!ping YbXc>!ping !sp YbXc>!ping conf(rtt(1000 Yb:1))
       YbXc>!ping !sp Yb.Xc>!ping`);
     t = (name, test)=>t_roles(name, 'abcdefghijklm', test);
-    t('complex1', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
+    t('complex1', `conf(id:a-mXYZn-z) !ring(a-l)
       bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
       fa>!connect !falk>!ping(rt:!alk) bcdef[ghijk].alk>!ping bcdefalk>!ping
       mf>!connect mf.al.afe.d.c.b.a~m>!get_peer
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer
       mfal.k.j.i.h.g.f.e.d.c.b.a~m>!get_peer`);
-    t('complex2', `conf(id:a-mXYZn-z rtt:100) !ring(a-l)
+    t('complex2', `conf(id:a-mXYZn-z) !ring(a-l)
       bc.d.e.f.g.h.i.j.k>!ping bcdefghijk>!ping
       ab.c.d.e.f.g.h.i.j.k.l~a>!get_peer ba.bc~b>!get_peer
       cb.a.bcde.d~c>!get_peer dc.b.a.l.kjihgfe~d>!get_peer
@@ -3672,14 +3670,13 @@ describe('peer-relay', function(){
     `);
      // XXX: test behavior when distance is very close
     describe('neighbour', ()=>{
-      t = (name, test)=>t_roles(name, 'lmXno', test);
-      t('xxx', `conf(id:a-mXYZn-z) !ring(l-o Xm Xn) Xm.n~X>!get_peer
-        Xn.o.nX~m>!get_peer Xm.l.o.nX~n>!get_peer Xn.o.lm~l>!get_peer
-        Xm.l.on~o>!get_peer`);
-      t('xxx2', `conf(id:a-mXYZn-z) !ring(l-o Xm Xn) Xn.o.nX~m>!get_peer`);
-      t('xxx3', `conf(id:a-mXYZn-z) !ring(l-o Xm Xn) Xn.o.nX.m~l>!get_peer`);
-      t('xxx4', `conf(id:a-mXYZn-z) !ring(l-o Xm Xn) Xm.n~X>!get_peer
-        Xn.o.nX~m>!get_peer`);
+      if (true) return; // XXX WIP
+      t = (name, test)=>t_roles(name, 'abcde', test);
+      t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
+        cb{b-b}.a{b-a}.e{b-e}.d{b-d}~c>!get_peer
+        // c~d>get_peer(exclude:c-d)
+        cb[d-c}.a[d-b}.e[d-e}~d>get_peer(exclude:c-d)
+      `);
     });
   });
   describe('req_new', function(){
