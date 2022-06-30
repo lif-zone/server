@@ -297,28 +297,29 @@ function assert_int(val){
 }
 
 function assert_node_ids(val){
-  if (val=='a-mXYZn-z')
-    return test_gen_ids_def(t_conf.id_bits, NodeId.bits);
-  if (val=='a-z')
-    return test_gen_ids_lower({}, 'a', 'z', t_conf.id_bits, NodeId.bits);
-  if (val=='A-Z')
-    return test_gen_ids_upper({}, 'A', 'Z', t_conf.id_bits, NodeId.bits);
-  if (val=='all'){
-    let ret = {};
-    test_gen_ids_lower(ret, 'a', 'z', t_conf.id_bits, NodeId.bits);
-    test_gen_ids_upper(ret, 'A', 'Z', t_conf.id_bits, NodeId.bits);
-    return ret;
-  }
-  let ids = val.split(' '), ret = {};
-  ids.forEach(s=>{
-    let a = s.match(/^([a-zA-Z]+):([0-9.]+)$/);
-    assert(a && a.length==3, 'invaid node_ids '+val+' part '+s);
-    assert(!ret[a[1]], 'invalid node_ids '+val);
-    if (/[.]/.test(a[2]))
-      ret[a[1]] = NodeId.from(parseFloat(a[2]));
-    else {
-      ret[a[1]] = NodeId.from(hash_from_int(+a[2],
-        t_conf.id_bits, NodeId.bits));
+  let ret = {};
+  let arg = xtest.test_parse(val);
+  xutil.forEach(arg, a=>{
+    switch (a.cmd){
+    case 'all':
+      assign(ret,
+        test_gen_ids_lower(ret, 'a', 'z', t_conf.id_bits, NodeId.bits),
+        test_gen_ids_upper(ret, 'A', 'Z', t_conf.id_bits, NodeId.bits));
+      break;
+    case 'a-mXYZn-z':
+      assign(ret, test_gen_ids_def(t_conf.id_bits, NodeId.bits));
+      break;
+    default:
+      if (/^[a-zA-Z]$/.test(a.cmd)){
+        if (/[.]/.test(a.arg))
+          ret[a.cmd] = NodeId.from(parseFloat(a.arg));
+        else {
+          ret[a.cmd] = NodeId.from(hash_from_int(+a.arg,
+            t_conf.id_bits, NodeId.bits));
+        }
+      }
+      else
+        assert(0, 'unknown arg '+a.cmd);
     }
   });
   return ret;
@@ -2897,7 +2898,7 @@ describe('peer-relay', function(){
             assert.equal(test_to_str(res).replace(regex, ''),
             test_to_str(res_exp).replace(regex, ''));
           } else {
-            assert('XXX');
+            assert('XXX'); // XXX: rm
             assert.equal(test_to_str(res).replace(regex, ''),
               string.split_ws(exp).join(' '));
           }
@@ -2907,10 +2908,9 @@ describe('peer-relay', function(){
           test, exp, true);
         describe('conf', ()=>{
           _t('', 'conf(id(Z:10 Y:20))',
-            'conf(id(Z:10 Y:20)) Z=node:wss Y=node:wss');
-          if (true) return; // XXX: WIP
+            `conf(id(Z:10 Y:20)) Z=node:wss Y=node:wss`);
           _t('', 'conf(id(Z:10 Y:20) !node)', 'conf(id(Z:10 Y:20) !node)');
-          _t('', 'conf(id:a-e)' `conf(id(a-e:head(0-1)))`);
+          if (true) return; // XXX: WIP
           _t('', 'conf(id(a-e:head(0-1)))',
             `conf(id:a:0 b:.2 c:.4 d:.6 e:.8)`);
           _t('', 'conf(id(a-e:mid(0-1)))',
@@ -2919,6 +2919,7 @@ describe('peer-relay', function(){
             `conf(id:a:0.2 b:.4 c:.6 d:.8 e:1)`);
           _t('', 'conf(id(a-e:exact(0-.4)))',
             `conf(id:a:0 b:.1 c:.2 d:.3 e:.4)`);
+          _t('', 'conf(id:a-e)', `conf(id(a-e:head(0-1)))`);
           // XXX: TODO
           // conf(id(a-e:mid(0-1))) == conf(id(a:.1 b:.3 c:.5 d:.7 e:.9))
           // conf(id(a-e:exact(.44-.56))) ==
