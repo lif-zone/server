@@ -125,37 +125,47 @@ function int_from_hash(hash, bits, total_bits){
   return bigInt(hash, 16).shiftRight(total_bits-bits).toString(10);
 }
 
-// abcdefghijklmXYZnopqrstuvwxyz
-// b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
-function test_gen_ids_def(bits, total_bits){
-  let ret = {};
-  test_gen_ids_lower(ret, 'a', 'z', bits, total_bits);
-  test_gen_ids_upper(ret, 'X', 'Z', bits, total_bits);
-  return ret;
+function ch_diff(s, e){
+  // XXX: TODO
+  //  assert(string.is_lower(s)&&string.is_lower(e) ||
+  //    string.is_upper(s)&&string.is_upper(e)), 'invalid range '+s+'-'+e);
+  let _s = s.charCodeAt(0), _e = e.charCodeAt(0);
+  return _s<_e ? _e-_s : _e-'a'.charCodeAt(0) + 'z'.charCodeAt(0)-_s+1;
 }
 
-function test_gen_ids_lower(ret, a, b, bits, total_bits){
-  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
-  assert(bits<=total_bits, 'bits bigger than total_bits');
-  let max = bigInt(2).pow(bits);
-  let d = max.divide(26); // a-z is 26 characters
-  for (let i=0, v=bigInt(d); i<26; i++, v=v.plus(d)){
-    let ch = String.fromCharCode('a'.charCodeAt(0)+i);
-    ret[ch] = NodeId.from(hash_from_int(v.toString(10), bits, total_bits));
+function gen_ids(s, e, val){
+  val = val||'head(0-1)';
+  let _type = xtest.test_parse(val);
+  assert(_type.length==1, 'inavlid ids '+val);
+  let mode = _type[0].cmd, range = _type[0].arg;
+  if (!range){
+    range = mode;
+    mode = 'head';
   }
-  return ret;
-}
-
-function test_gen_ids_upper(ret, a, b, bits, total_bits){
-  assert(!(total_bits % 4), 'invalid total_bits '+total_bits); // hex is 4bits
-  assert(bits<=total_bits, 'bits bigger than total_bits');
-  let max = bigInt(2).pow(bits);
-  let d = max.divide(26); // a-z is 26 characters
-  let v = bigInt(d).multiply(13);
-  for (let code=a.charCodeAt(0), i=code-'a'.charCodeAt(0),
-    val=v.plus(d.divide(2)); code<=b.charCodeAt(0); code++, i++){
-    ret[String.fromCharCode(code)] = NodeId.from(
-      hash_from_int(val.plus(i).toString(10), bits, total_bits));
+  let m = range.match(/^([0-9.]+)-([0-9.]+)$/);
+  assert(m?.length==3, 'inavlid ids '+val);
+  let v0 = NodeId.from(+m[1]), v1 = NodeId.from(+m[2]);
+  let n, d, v, ret = {};
+  let is_upper = /[A-Z]/.test(s);
+  switch (mode){
+  case 'head':
+  case 'tail':
+  case 'mid':
+    n = ch_diff(s, e)+1;
+    d = (v1.d>v0.d ? v1.d-v0.d : 1-v0.d+v1.d)/n;
+    v = v0.d+(mode=='mid' ? 0.5*d : mode=='tail' ? d : 0);
+    break;
+  case 'exact':
+    n = ch_diff(s, e)+1;
+    d = (v1.d>v0.d ? v1.d-v0.d : 1-v0.d+v1.d)/(n-1);
+    v = v0.d;
+    break;
+  default: assert.fail('invalid mode '+mode+ ' ids '+val);
+  }
+  for (let i=0, ch = s; i<n; i++){
+    ret[ch] = NodeId.from(v+d*i > 1 ? v+d*i-1 : v+d*i);
+    ch = String.fromCharCode(ch<(is_upper ? 'Z' : 'z') ? ch.charCodeAt(0)+1 :
+      (is_upper ? 'A' : 'a').charCodeAt(0));
   }
   return ret;
 }
@@ -300,21 +310,28 @@ function assert_node_ids(val){
   let ret = {};
   let arg = xtest.test_parse(val);
   xutil.forEach(arg, a=>{
-    switch (a.cmd){
-    case 'all':
-      assign(ret,
-        test_gen_ids_lower(ret, 'a', 'z', t_conf.id_bits, NodeId.bits),
-        test_gen_ids_upper(ret, 'A', 'Z', t_conf.id_bits, NodeId.bits));
-      break;
-    case 'a-mXYZn-z':
-      assign(ret, test_gen_ids_def(t_conf.id_bits, NodeId.bits));
-      break;
+    let cmd = a.cmd, arg2 = a.arg;
+    switch (cmd){
+    case 'all': return assign(ret,
+      assert_node_ids('a-z(exact(0.038085-0.990234375))'),
+      assert_node_ids('A-Z(exact(0.49-0.506))'));
+    case 'a-mXYZn-z': return assign(ret,
+      assert_node_ids('a-z(exact(0.038085-0.990234375))'),
+      assert_node_ids('X-Z(exact(0.5-0.506))'));
     default:
-      if (/^[a-zA-Z]$/.test(a.cmd)){
-        if (/[.]/.test(a.arg))
-          ret[a.cmd] = NodeId.from(parseFloat(a.arg));
+      if (/:/.test(cmd)){ // XXX HACK: bug in parser
+        let aa = xtest.test_parse(cmd);
+        assert(aa.length==1, 'invalid conf '+cmd);
+        cmd = aa[0].cmd;
+        arg2 = build_cmd(aa[0].arg, arg2);
+      }
+      if (/^[a-zA-Z]-[a-zA-Z]$/.test(cmd))
+        assign(ret, gen_ids(cmd[0], cmd[2], arg2));
+      else if (/^[a-zA-Z]$/.test(cmd)){
+        if (/[.]/.test(arg2))
+          ret[cmd] = NodeId.from(parseFloat(arg2));
         else {
-          ret[a.cmd] = NodeId.from(hash_from_int(+a.arg,
+          ret[a.cmd] = NodeId.from(hash_from_int(+arg2,
             t_conf.id_bits, NodeId.bits));
         }
       }
@@ -1084,14 +1101,25 @@ function cmd_conf(opt){
   // XXX conf(id:a-mXYZn-z node:wrtc) - create wrtc nodes
   // XXX a,b,c=node === a,b,c=node:wss
   xutil.forEach(arg, a=>{
-    switch (a.cmd){
-    case 'id_bits': set_id_bits(assert_int(a.arg)); break;
-    case 'id': ids = assert_node_ids(a.arg); break;
-    case 'rt': t_conf.rt = assert_bool(a.arg); break;
-    case 'rtt': assert_rtt(a.arg); break;
-    case '!node': no_node = assert_bool(a.arg); break;
-    case 'xerr': xtest.xerr_level(a.arg); break;
-    default: assert(0, 'invalid conf '+a.cmd);
+    let cmd = a.cmd, arg2 = a.arg;
+    switch (cmd){
+    case 'id_bits': set_id_bits(assert_int(arg2)); break;
+    case 'id': ids = assign(ids||{}, assert_node_ids(arg2)); break;
+    case 'rt': t_conf.rt = assert_bool(arg2); break;
+    case 'rtt': assert_rtt(arg2); break;
+    case '!node': no_node = assert_bool(arg2); break;
+    case 'xerr': xtest.xerr_level(arg2); break;
+    default:
+      if (/:/.test(cmd)){ // XXX HACK: bug in parser
+        let aa = xtest.test_parse(cmd);
+        assert(aa.length==1, 'invalid conf '+cmd);
+        cmd = aa[0].cmd;
+        arg2 = build_cmd(aa[0].arg, arg2);
+      }
+      if (/^[a-zA-Z]-[a-zA-Z]$/.test(cmd))
+        ids = assign(ids||{}, gen_ids(cmd[0], cmd[2], arg2));
+      else
+        assert(0, 'invalid conf '+cmd);
     }
   });
   if (ids)
@@ -2328,18 +2356,22 @@ describe('buf_util', ()=>{
       'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
   });
   it('gen_ids', function(){
-    // abcdefghijklmXYZnopqrstuvwxyz
-    // b-a = 2^128/26 X=m+(n-m)/2 Y=X+1 Z=X+2
-    let ids = test_gen_ids_def(8, 16);
-    assert.equal(ids.a.s, '0900');
-    assert.equal(ids.b.s, '1200');
-    assert.equal(ids.m.s, '7500');
-    assert.equal(ids.X.s, '7000');
-    assert.equal(ids.Y.s, '7100');
-    assert.equal(ids.Z.s, '7200');
-    assert.equal(ids.n.s, '7e00');
-    assert.equal(ids.y.s, 'e100');
-    assert.equal(ids.z.s, 'ea00');
+    let t=(s, e, mode, exp)=>{
+      let ids = gen_ids(s, e, mode), ret = {};
+      for (let ch2 in ids)
+        ret[ch2] = +ids[ch2].d.toFixed(5);
+      assert.deepEqual(ret, exp);
+    };
+    t('a', 'd', 'head(.1-.5)', {a: 0.1, b: 0.2, c: 0.3, d: 0.4});
+    t('a', 'd', '.1-.5', {a: 0.1, b: 0.2, c: 0.3, d: 0.4});
+    t('a', 'd', 'tail(.1-.5)', {a: 0.2, b: 0.3, c: 0.4, d: 0.5});
+    t('a', 'd', 'mid(.1-.5)', {a: 0.15, b: 0.25, c: 0.35, d: 0.45});
+    t('a', 'd', 'exact(.1-.4)', {a: 0.1, b: 0.2, c: 0.3, d: 0.4});
+    t('a', 'd', 'head(.9-.3)', {a: 0.9, b: 1, c: 0.1, d: 0.2});
+    t('b', 'e', 'head(.1-.5)', {b: 0.1, c: 0.2, d: 0.3, e: 0.4});
+    t('y', 'b', 'head(.1-.5)', {y: 0.1, z: 0.2, a: 0.3, b: 0.4});
+    t('A', 'D', 'head(.1-.5)', {A: 0.1, B: 0.2, C: 0.3, D: 0.4});
+    t('Y', 'B', 'head(.1-.5)', {Y: 0.1, Z: 0.2, A: 0.3, B: 0.4});
   });
 });
 
@@ -2910,20 +2942,18 @@ describe('peer-relay', function(){
           _t('', 'conf(id(Z:10 Y:20))',
             `conf(id(Z:10 Y:20)) Z=node:wss Y=node:wss`);
           _t('', 'conf(id(Z:10 Y:20) !node)', 'conf(id(Z:10 Y:20) !node)');
-          if (true) return; // XXX: WIP
-          _t('', 'conf(id(a-e:head(0-1)))',
-            `conf(id:a:0 b:.2 c:.4 d:.6 e:.8)`);
-          _t('', 'conf(id(a-e:mid(0-1)))',
-            `conf(id:a:.1 b:.3 c:.5 d:.7 e:.9)`);
-          _t('', 'conf(id(a-e:tail(0-1)))',
-            `conf(id:a:0.2 b:.4 c:.6 d:.8 e:1)`);
-          _t('', 'conf(id(a-e:exact(0-.4)))',
-            `conf(id:a:0 b:.1 c:.2 d:.3 e:.4)`);
-          _t('', 'conf(id:a-e)', `conf(id(a-e:head(0-1)))`);
-          // XXX: TODO
-          // conf(id(a-e:mid(0-1))) == conf(id(a:.1 b:.3 c:.5 d:.7 e:.9))
-          // conf(id(a-e:exact(.44-.56))) ==
-          // conf(id(a:.44 b:.47 c:.5 d:.53 e:.56))
+          _t('', 'conf(id(a-e:head(0-1)) !node)',
+            `conf(id(a-e:head(0-1)) !node)`);
+          _t('', 'conf(a-e(head(0-1)) !node)', `conf(a-e(head(0-1)) !node)`);
+          _t('', 'conf(A-E(head(0-1)) !node)', `conf(A-E(head(0-1)) !node)`);
+          _t('', 'conf(id(a-e:mid(0-1)) !node)',
+            `conf(id(a-e:mid(0-1)) !node)`);
+          _t('', 'conf(id(a-e:tail(0-1)) !node)',
+            `conf(id(a-e:tail(0-1)) !node)`);
+          _t('', 'conf(id(a-e:exact(0-1)) !node)',
+            `conf(id(a-e:exact(0-1)) !node)`);
+          _t('', 'conf(id:a-e !node)', `conf(id:a-e !node)`);
+          _t('', 'conf(id:A-E !node)', `conf(id:A-E !node)`);
         });
         t('1ms', `ms(1)`);
         t('12ms', `ms(12)`);
@@ -3738,11 +3768,7 @@ describe('peer-relay', function(){
         // XXX: bug, we don't get to b
         cd.e~a>!get_peer // cd{d-d}.e{e-d}
       `);
-      // conf(id(a-e:exact(0.1-0.14))) !ring(a-e)
-      t('zzz3', `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14))
-        !ring(a-e ce)
-        cb.a.e.d~c>!get_peer
-      `);
+      t('zzz3', `conf(a-e:.1-.15) !ring(a-e ce) cb.a.e.d~c>!get_peer`);
       t('minimal_peer_registration',
         `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14) rtt(999 ce:1 ea:1))
         // we don't get to d because b is not aware of d
