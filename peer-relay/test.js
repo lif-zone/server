@@ -2943,9 +2943,15 @@ describe('peer-relay', function(){
         const t = (test, exp)=>_t('mode(req) conf(id:all)', test, exp, true);
         const T = (test, exp)=>_t('mode(msg req) conf(id:all)',
           test, exp, true);
-        _t('', 'conf(id(Z:10 Y:20))',
-          'conf(id(Z:10 Y:20)) Z=node:wss Y=node:wss');
-        _t('', 'conf(id(Z:10 Y:20) !node)', 'conf(id(Z:10 Y:20) !node)');
+        describe('conf', ()=>{
+          _t('', 'conf(id(Z:10 Y:20))',
+            'conf(id(Z:10 Y:20)) Z=node:wss Y=node:wss');
+          _t('', 'conf(id(Z:10 Y:20) !node)', 'conf(id(Z:10 Y:20) !node)');
+          // XXX: TODO
+          // conf(id(a-e:mid(0-1))) == conf(id(a:.1 b:.3 c:.5 d:.7 e:.9))
+          // conf(id(a-e:exact(.44-.56))) ==
+          // conf(id(a:.44 b:.47 c:.5 d:.53 e:.56))
+        });
         t('1ms', `ms(1)`);
         t('12ms', `ms(12)`);
         t('1s', `ms(1000)`);
@@ -3710,6 +3716,7 @@ describe('peer-relay', function(){
     describe('neighbour', ()=>{
       t = (name, test)=>t_roles(name, 'abcde', test);
       // XXX: WIP
+      // XXX conf(id(a-e:mid(0-1))) !ring(a-e)
       t('xxx', `conf(id(a:.1 b:.3 c:.5 d:.7 e:.9)) !ring(a-e)
         cb.a.e.d~c>!get_peer
         cbae.a.b~d>!get_peer
@@ -3730,7 +3737,7 @@ describe('peer-relay', function(){
         cd.e.a~b>!get_peer
         cde.d.b~a>!get_peer
       `);
-      t('xxx4b', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57)) !ring(a-e bd)
+      t('xxx4b', `conf(id(a:.44 b:.47 c:.5 d:.53 e:.56)) !ring(a-e bd)
         cb.d~c>!get_peer
         cd.e.a~b>!get_peer
         c.d.e~a>!get_peer // XXX: bug, we don't get to b
@@ -3758,6 +3765,7 @@ describe('peer-relay', function(){
         // XXX: bug, we don't get to b
         cd.e~a>!get_peer // cd{d-d}.e{e-d}
       `);
+      // conf(id(a-e:exact(0.1-0.14))) !ring(a-e)
       t('zzz3', `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14))
         !ring(a-e ce)
         cb.a.e.d~c>!get_peer
