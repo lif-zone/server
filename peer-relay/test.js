@@ -3758,38 +3758,19 @@ describe('peer-relay', function(){
         // XXX: bug, we don't get to b
         cd.e~a>!get_peer // cd{d-d}.e{e-d}
       `);
-      /*
-      at d: -a-b-c-d(-e-a-b-c-)d-e-a
-      at e: -a-b-c-d-e(-a-b-c-)d-e-a
-      STOP: a is excluced; d is out of range
-      */
-      // abcde
-      // c~b>!get_peer - exclude: b
-      if (0)
-      t('xxx_derry3', `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14) rtt(1 de:999))
-        !ring(a-e)
-        // XXX BUG: we don't get to a
-        cd.c~b>!get_peer // cd{d-d}.c{d-c}~b
-      `);
-//      at d: -a-b-c-d(-e-a-b-c-)d-e-a
-//      at c: -a-b-c-d(-e-a-b)c-d-e-a
-//      STOP: b is excluded; d is out of range
-      t('zzz', `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14) rtt(999 ce:1 ea:1))
+      t('zzz3', `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14))
         !ring(a-e ce)
-        // XXX BUG: we don't get to d
-        ce.a.b~c>!get_peer
+        cb.a.e.d~c>!get_peer
       `);
-//      at e: (-a-b-c-d-)e-a
-//      at a: -a(-b-c-d-)e-a
-//      at b: -a-b(-c-d-)e-a
-//      STOP: bc> invalid because c is excluded ba> is not in range
-//      at c: why we go ce> at start?
-//      c.rtt_pb_via_fuzzy(c, b, 999)=177 (bits_done: 5.64)
-//      c.rtt_pb_via_fuzzy(c, d, 999)=177 (bits_done: 5.64)
-//      c.rtt_pb_via_fuzzy(c, e, 1)=0.2 (bits_done: 4.64)
-//      at e: why we go ea>?
-//      e.rtt_pb_via_fuzzy(c, d, 999)=999 (bits_done: 1)
-//      e.rtt_pb_via_fuzzy(c, a, 1)=0.2 (bits_done: 4.64)
+      t('minimal_peer_registration',
+        `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14) rtt(999 ce:1 ea:1))
+        // we don't get to d because b is not aware of d
+        !ring(a-e ce) ce.a.b~c>!get_peer
+        // d properly register itself to network (ie. neighbours)
+        dc.e~d>!get_peer de.a.b~c>!get_peer dc.ea~e>!get_peer
+        // now we get to d because b learned about d
+        ce.a.b.aed~c>!get_peer
+      `);
       if (true) return; // XXX WIP
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
@@ -4505,7 +4486,8 @@ VP:
     - verify Req/ReqHander use src/dst as NodeId and not string/bufffer
 - protect against invalid msg
 - get 8 closets nodes to me (in tests, default is 2)
-  get_peer to neighbours (with exclude to itself)
+  - get_peer to neighbours (with exclude to itself)
+  - keep virtual connection open with the neighbours to handle disconnect
 * exact/optional routing modes for both fuzzy/regular routing
   - send rtt_pb with route info
   - if router can calculate all rtt (either it knows it or it get it) and have
