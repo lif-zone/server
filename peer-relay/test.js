@@ -2908,7 +2908,17 @@ describe('peer-relay', function(){
         describe('conf', ()=>{
           _t('', 'conf(id(Z:10 Y:20))',
             'conf(id(Z:10 Y:20)) Z=node:wss Y=node:wss');
+          if (true) return; // XXX: WIP
           _t('', 'conf(id(Z:10 Y:20) !node)', 'conf(id(Z:10 Y:20) !node)');
+          _t('', 'conf(id:a-e)' `conf(id(a-e:head(0-1)))`);
+          _t('', 'conf(id(a-e:head(0-1)))',
+            `conf(id:a:0 b:.2 c:.4 d:.6 e:.8)`);
+          _t('', 'conf(id(a-e:mid(0-1)))',
+            `conf(id:a:.1 b:.3 c:.5 d:.7 e:.9)`);
+          _t('', 'conf(id(a-e:tail(0-1)))',
+            `conf(id:a:0.2 b:.4 c:.6 d:.8 e:1)`);
+          _t('', 'conf(id(a-e:exact(0-.4)))',
+            `conf(id:a:0 b:.1 c:.2 d:.3 e:.4)`);
           // XXX: TODO
           // conf(id(a-e:mid(0-1))) == conf(id(a:.1 b:.3 c:.5 d:.7 e:.9))
           // conf(id(a-e:exact(.44-.56))) ==
