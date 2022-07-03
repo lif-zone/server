@@ -3772,7 +3772,10 @@ describe('peer-relay', function(){
         hYXg.XZYb~a>!get_peer
         // abcdeXYZfghi
         iZ>!connect iZ.Xa.Xg.XYh~i>!get_peer iZ.Y.X.g.Xa~h>!get_peer
-        iZXYh.Yb~a>!get_peer`);
+        iZXYh.Yb~a>!get_peer
+        // get more neighbours of i
+        iZ.Y.X.a.XYh.YXZf~g>!get_peer iZXa.XZc~b>!get_peer iZ.Y.X.g~f>!get_peer
+        iZXYb.Y.Xd~c>!get_peer`);
       if (true) return; // XXX WIP
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
