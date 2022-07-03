@@ -3743,6 +3743,36 @@ describe('peer-relay', function(){
         // now we get to d because b learned about d
         ce.a.b.aed~c>!get_peer
       `);
+      t = (name, test)=>t_roles(name, 'abcdefghiXYZ', test);
+      // nodes: abcdeXYZfghi
+      // a:0 b:.11 c:.22 d:.33 e.44 f:.55 g:.66 h:.77 i:.88 X:.49 Y:.5 Z:.51
+      // conn: adg -> X; beh -> Y cfi->Z
+      t('complex', `conf(a-i:head(0-1) X-Z:exact(.49-.51)) !ring(X-Z)
+        XY.Z~X>!get_peer ZY.X~Z>!get_peer ZY.X~Z>!get_peer
+        // aXYZ
+        aX>!connect aX.Z~a>!get_peer aX.Y~Z>!get_peer aXY.Z~X>!get_peer
+        // abXYZ
+        bY>!connect bY.Xa.X~b>!get_peer bYX.Z~a>!get_peer bY.Z.Xa~X>!get_peer
+        // abcXYZ
+        cZ>!connect cZ.Yb.Y.X~c>!get_peer cZ.Xa.X~b>!get_peer
+        cZ.Y.b~X>!get_peer
+        // abcdXYZ
+        dX>!connect dX.Y.Z.c~d>!get_peer dX.Y.b~c>!get_peer dXY.Z.c~X>!get_peer
+        // abcdeXYZ
+        eY>!connect eY.Z.c.ZX.d~e>!get_peer eY.Z.c.ZX~d>!get_peer
+        eY.Z.c.ZXd~X>!get_peer
+        // abcdeXYZf
+        fZ>!connect fZ.Y.X.d.XZc.ZXa~f>!get_peer
+        fZY.X.d.XZc.ZYb.YXa~Z>!get_peer
+        // abcdeXYZfg
+        gX>!connect gX.a.XZ.f~g>!get_peer gX.d.XZ.c.ZXa~f>!get_peer
+        gXZc.ZYb.YXd.XZYe.YZ.f~a>!get_peer
+        // abcdeXYZfgh
+        hY>!connect hY.X.g.Xa~h>!get_peer hY.X.a.XZ.f~g>!get_peer
+        hYXg.XZYb~a>!get_peer
+        // abcdeXYZfghi
+        iZ>!connect iZ.Xa.Xg.XYh~i>!get_peer iZ.Y.X.g.Xa~h>!get_peer
+        iZXYh.Yb~a>!get_peer`);
       if (true) return; // XXX WIP
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
