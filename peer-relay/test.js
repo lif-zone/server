@@ -3717,20 +3717,15 @@ describe('peer-relay', function(){
      // XXX: test behavior when distance is very close
     describe('neighbour', ()=>{
       t = (name, test)=>t_roles(name, 'abcde', test);
-      t('ring_no_shorcut', `conf(a-e:mid(0-1)) !ring(a-e) cb.a.e.d~c>!get_peer
-        cbae.a.b~d>!get_peer cd.ea~e>!get_peer`);
+      t('ring_no_shortcut', `conf(a-e:mid(0-1)) !ring(a-e) cb.a.e.d~c>!get_peer
+        cbae.a.b~d>!get_peer cd.ea~e>!get_peer cba.e.d~b>!get_peer
+        cb.ae~a>!get_peer`);
       t('ring_with_shortcut', `conf(a-e:mid(0-1)) !ring(a-e bd)
-        cb.d~c>!get_peer cb.a.e~d>!get_peer cd.b.a~e>!get_peer`);
-      t('xxx3', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e bd)
-        cd.b~c>!get_peer
-        cb.a.e~d>!get_peer
-        cba.b.d~e>!get_peer
-      `);
-      t('xxx4a', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e bd)
-        cd.b~c>!get_peer  // cd{d-d}.b{b-d}>!get_peer
-        cd.e.a~b>!get_peer
-        cde.d.b~a>!get_peer
-      `);
+        cb.d~c>!get_peer cb.a.e~d>!get_peer cd.b.a~e>!get_peer
+        cba.e.d~b>!get_peer cb.ae~a>!get_peer`);
+      t('ring_with_shortcut2', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9))
+        !ring(a-e bd) cd.b~c>!get_peer cb.a.e~d>!get_peer cba.b.d~e>!get_peer
+        cd.ba~b>!get_peer cb.d.e~a>!get_peer`);
       t('xxx4b', `conf(id(a:.44 b:.47 c:.5 d:.53 e:.56)) !ring(a-e bd)
         cb.d~c>!get_peer
         cd.e.a~b>!get_peer
