@@ -3726,35 +3726,14 @@ describe('peer-relay', function(){
       t('ring_with_shortcut2', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9))
         !ring(a-e bd) cd.b~c>!get_peer cb.a.e~d>!get_peer cba.b.d~e>!get_peer
         cd.ba~b>!get_peer cb.d.e~a>!get_peer`);
-      t('xxx4b', `conf(id(a:.44 b:.47 c:.5 d:.53 e:.56)) !ring(a-e bd)
-        cb.d~c>!get_peer
-        cd.e.a~b>!get_peer
-        c.d.e~a>!get_peer // XXX: bug, we don't get to b
+      t('ring_with_shortcut3', `conf(a-e:exact(.44-.56)) !ring(a-e bd)
+        cb.d~c>!get_peer cd.e.a~b>!get_peer c.d.e~a>!get_peer
       `);
-      t('xxx4c', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e)
-        cd.e.a.b~c>!get_peer
-        cd.ea~b>!get_peer
-        cde.ab~a>!get_peer
-      `);
-      t('xxx4d', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57)) !ring(a-e)
-        cb.a.e.d~c>!get_peer
-        cd.e.a~b>!get_peer
-        cd.e.ab~a>!get_peer
-      `);
-      // abcde
-      // c~b>!get_peer - exclude: c,b
-      t('xxx_derry1', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57)) !ring(a-e)
-        cb.a.e.d~c>!get_peer // cb{b-b}.a{b-a}.e{b-e}.d{b-d}~c
-        cd.e.a~b>!get_peer   // cd{d-d}.e{e-d}}.a{a-d}~b
-        cd.e.ab~a>!get_peer  // cd{d-d}.e{e-d}.ab{e-b}~a
-      `);
-      t('xxx_derry2', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57)) !ring(a-e bd)
-        cb.d~c>!get_peer // cb{b-b}.d{b-d}~c
-        cd.e.a~b>!get_peer // cd{d-d}.e{e-d}.a{a-e}~b
-        // XXX: bug, we don't get to b
-        cd.e~a>!get_peer // cd{d-d}.e{e-d}
-      `);
-      t('zzz3', `conf(a-e:.1-.15) !ring(a-e ce) cb.a.e.d~c>!get_peer`);
+      t('ring_with_shortcut4', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e)
+        cd.e.a.b~c>!get_peer cd.ea~b>!get_peer cde.ab~a>!get_peer`);
+      t('ring_with_shortcut5', `conf(id(a:.45 b:.49 c:.5 d:.53 e:.57))
+        !ring(a-e) cb.a.e.d~c>!get_peer cd.e.a~b>!get_peer
+        cd.e.ab~a>!get_peer`);
       t('minimal_peer_registration',
         `conf(id(a:.1 b:.11 c:.12 d:.13 e:.14) rtt(999 ce:1 ea:1))
         // we don't get to d because b is not aware of d
