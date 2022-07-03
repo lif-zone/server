@@ -162,7 +162,7 @@ function gen_ids(s, e, val){
   default: assert.fail('invalid mode '+mode+ ' ids '+val);
   }
   for (let i=0, ch = s; i<n; i++){
-    ret[ch] = NodeId.from(v+d*i > 1 ? v+d*i-1 : v+d*i);
+    ret[ch] = NodeId.from(+(v+d*i > 1 ? v+d*i-1 : v+d*i).toFixed(10));
     ch = String.fromCharCode(ch<(is_upper ? 'Z' : 'z') ? ch.charCodeAt(0)+1 :
       (is_upper ? 'A' : 'a').charCodeAt(0));
   }
@@ -3717,18 +3717,10 @@ describe('peer-relay', function(){
      // XXX: test behavior when distance is very close
     describe('neighbour', ()=>{
       t = (name, test)=>t_roles(name, 'abcde', test);
-      // XXX: WIP
-      // XXX conf(id(a-e:mid(0-1))) !ring(a-e)
-      t('xxx', `conf(id(a:.1 b:.3 c:.5 d:.7 e:.9)) !ring(a-e)
-        cb.a.e.d~c>!get_peer
-        cbae.a.b~d>!get_peer
-        cd.ea~e>!get_peer
-      `);
-      t('xxx2', `conf(id(a:.1 b:.3 c:.5 d:.7 e:.9)) !ring(a-e bd)
-        cb.d~c>!get_peer
-        cb.a.e~d>!get_peer
-        cd.b.a~e>!get_peer
-      `);
+      t('ring_no_shorcut', `conf(a-e:mid(0-1)) !ring(a-e) cb.a.e.d~c>!get_peer
+        cbae.a.b~d>!get_peer cd.ea~e>!get_peer`);
+      t('ring_with_shortcut', `conf(a-e:mid(0-1)) !ring(a-e bd)
+        cb.d~c>!get_peer cb.a.e~d>!get_peer cd.b.a~e>!get_peer`);
       t('xxx3', `conf(id(a:.1 b:.4 c:.5 d:.501 e:.9)) !ring(a-e bd)
         cd.b~c>!get_peer
         cb.a.e~d>!get_peer
