@@ -3778,8 +3778,7 @@ describe('peer-relay', function(){
         iZXYb.Y.Xd~c>!get_peer
         // B joins abBcdeXYZfghi
         BX>!connect BX.Yb.YZc~B>!get_peer BXYZc.Zi.ZXa~b>!get_peer
-        BX.d.XYb~c>!get_peer
-        `);
+        BX.d.XYb~c>!get_peer`);
       if (true) return; // XXX WIP
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
