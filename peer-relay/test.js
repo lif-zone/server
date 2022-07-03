@@ -3743,11 +3743,11 @@ describe('peer-relay', function(){
         // now we get to d because b learned about d
         ce.a.b.aed~c>!get_peer
       `);
-      t = (name, test)=>t_roles(name, 'abcdefghiXYZ', test);
-      // nodes: abcdeXYZfghi
-      // a:0 b:.11 c:.22 d:.33 e.44 f:.55 g:.66 h:.77 i:.88 X:.49 Y:.5 Z:.51
+      t = (name, test)=>t_roles(name, 'abBcdefghiXYZ', test);
+      // nodes: abcdeXYZfghi B:.15 X:.49 Y:.5 Z:.51
+      // a:0 b:.11 c:.22 d:.33 e.44 f:.55 g:.66 h:.77 i:.88
       // conn: adg -> X; beh -> Y cfi->Z
-      t('complex', `conf(a-i:head(0-1) X-Z:exact(.49-.51)) !ring(X-Z)
+      t('complex', `conf(a-i:head(0-1) X-Z:exact(.49-.51) id(B:.15)) !ring(X-Z)
         XY.Z~X>!get_peer ZY.X~Z>!get_peer ZY.X~Z>!get_peer
         // aXYZ
         aX>!connect aX.Z~a>!get_peer aX.Y~Z>!get_peer aXY.Z~X>!get_peer
@@ -3775,7 +3775,11 @@ describe('peer-relay', function(){
         iZXYh.Yb~a>!get_peer
         // get more neighbours of i
         iZ.Y.X.a.XYh.YXZf~g>!get_peer iZXa.XZc~b>!get_peer iZ.Y.X.g~f>!get_peer
-        iZXYb.Y.Xd~c>!get_peer`);
+        iZXYb.Y.Xd~c>!get_peer
+        // B joins abBcdeXYZfghi
+        BX>!connect BX.Yb.YZc~B>!get_peer BXYZc.Zi.ZXa~b>!get_peer
+        BX.d.XYb~c>!get_peer
+        `);
       if (true) return; // XXX WIP
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('xxx', `conf(id(a-e) eq_ring(mid)) rtt(1 cd:999)) !ring(a-e)
