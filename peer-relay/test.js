@@ -126,9 +126,8 @@ function int_from_hash(hash, bits, total_bits){
 }
 
 function ch_diff(s, e){
-  // XXX: TODO
-  //  assert(string.is_lower(s)&&string.is_lower(e) ||
-  //    string.is_upper(s)&&string.is_upper(e)), 'invalid range '+s+'-'+e);
+  assert(string.is_lower(s)&&string.is_lower(e) ||
+    string.is_upper(s)&&string.is_upper(e), 'invalid range '+s+'-'+e);
   let _s = s.charCodeAt(0), _e = e.charCodeAt(0);
   return _s<_e ? _e-_s : _e-'a'.charCodeAt(0) + 'z'.charCodeAt(0)-_s+1;
 }
