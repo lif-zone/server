@@ -4320,6 +4320,25 @@ describe('peer-relay', function(){
   // XXX: add disconnect tests
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
+  describe('node', function(){
+    if (true) return; // XXX: WIP
+    const t = (name, test)=>t_roles(name, 'abcde', test);
+    t('derry_xxx', `conf(a-e:0-1) !ring(a-e)
+       c~c>!node.get_peer
+       cb.a.e.d~c>get_peer
+       cbae.a.b~d>get_peer
+       cd.ea~e>get_peer
+       cba.e.d~b>get_peer
+       cb.ae~a>get_peer`);
+     t('derry_xxx2', `conf(a-e:0-1) !ring(a-e)
+       f=node
+       fc>!node.connect
+       fc>connect
+       f~f>node.get_peer ...
+       fe>!req_start:keep_alive
+       f...>!req_start:keep_alive
+       `);
+  });
 });
 
 /* XXX: derry: 17-May-2022
@@ -4470,13 +4489,20 @@ freq=8/100
 */
 /*
 VP:
-* implement fuzzy routing with node_itr/range
-* path selection:
-  * calc_rtt_ob_via
-    - review XXX with derry in test
-    - check XXX on dist (!d && a.eq(b))
-  - fix state handling for routing
-    - fix 4_nodes_ring_state_timeout
++ implement fuzzy routing with node_itr/range
++ path selection:
+  + calc_rtt_ob_via
++ exact/optional routing modes for both fuzzy/regular routing
+  + send rtt_pb with route info
+  + if router can calculate all rtt (either it knows it or it get it) and have
+    better route, use it (eg, connected directly)
++ get_peer to neighbours (with exclude to itself)
+- ack every pkt
+- conn disconnected: update tables
+- handle failures
+  - conn dead (timeouts): zero incoming pkts, mark dead, retry?
+- fix state handling for routing
+  - fix 4_nodes_ring_state_timeout
 - remove obsolete
   - fix node roles used to be automatic (check which nodes are used during
     pre-process)
@@ -4493,23 +4519,12 @@ VP:
   - implement all complex commands with simple req/msg api
     - verify Req/ReqHander use src/dst as NodeId and not string/bufffer
 - protect against invalid msg
-- get 8 closets nodes to me (in tests, default is 2)
-  - get_peer to neighbours (with exclude to itself)
-  - keep virtual connection open with the neighbours to handle disconnect
-* exact/optional routing modes for both fuzzy/regular routing
-  - send rtt_pb with route info
-  - if router can calculate all rtt (either it knows it or it get it) and have
-    better route, use it (eg, connected directly)
 - move get_peer to be automatic in Node
+  - get 8 closets nodes to me (in tests, default is 2)
+  - keep virtual connection open with the neighbours to handle disconnect
 + rm warning React... in eslint
-- optimize mocha tests - improve sinon time api - by default, don't wait for
-  external time to finish (eg. mongo/ls)
-- ack every pkt
-- rtt calculation - calculate it during the connection and pass it along fwd
-- conn disconnected: update tables
-- handle failures
-  - conn dead (timeouts): zero incoming pkts, mark dead, retry?
 - manual-connect/auto-connect when two nodes learn on each other (wrtc)
+- rtt calculation - calculate it during the connection and pass it along fwd
 - connect to network - after disconnect
   - auto try connect immadietly
   - try again after 1s
@@ -4522,4 +4537,6 @@ VP:
   - incremental shortest-path updates
   - t('abc.d>msg', `$i=ab>fwd(ad>msg rt:c) bc>fwd($i++) cd>fwd($i++)`);
   - lbuffer - how to get msg0 efficiently
+  - optimize mocha tests - improve sinon time api - by default, don't wait for
+    external time to finish (eg. mongo/ls)
 */
