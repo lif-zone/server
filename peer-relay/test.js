@@ -1566,6 +1566,18 @@ function cmd_ping_r(opt){
   }
 }
 
+function cmd_node_ring_join(opt){
+  let {c, event} = opt;
+  let s = N(c.s);
+  assert(!c.d, 'dst not allowed '+c.orig);
+  assert(!c.arg, 'arg not allowed '+c.orig);
+  assert.equal(event, undefined, 'unexpected event');
+  if (t_pre_process)
+    return;
+  if (!s.t.fake)
+    s.ring_join();
+}
+
 function cmd_ring_join(opt){
   let {c, event} = opt;
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
@@ -1601,7 +1613,7 @@ function cmd_ring_join(opt){
     if (id && t_msg[id] && t_msg[id].active)
       delete t_msg[id];
     if (!s.t.fake)
-      s.ring_join(d.id, {fuzzy});
+      s.ring_join_single(d.id, {fuzzy});
     return;
   }
   assert_event_c(c, event);
@@ -2051,6 +2063,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*conn_info': yield cmd_conn_info(opt); break;
   case 'conn_info_r': yield cmd_conn_info_r(opt); break;
   case '*conn_info_r': yield cmd_conn_info_r(opt); break;
+  case '!node.ring_join': yield cmd_node_ring_join(opt); break;
   case 'ring_join': yield cmd_ring_join(opt); break;
   case '!ring_join': yield cmd_ring_join(opt); break;
   case '*ring_join': yield cmd_ring_join(opt); break;
@@ -4334,15 +4347,16 @@ describe('peer-relay', function(){
   // BUG: if ac>connected and connection is broken, send will not try to send
   // messages through other peers if connections is broken
   describe('node', function(){
-    if (true) return; // XXX: WIP
     const t = (name, test)=>t_roles(name, 'abcde', test);
-    t('derry_xxx', `conf(a-e:0-1) !ring(a-e)
+    t('xxx', `conf(a-e:0-1) !ring(a-e)
        c>!node.ring_join
        cb.a.e.d~c>ring_join
-       cbae.a.b~d>ring_join
-       cd.ea~e>ring_join
        cba.e.d~b>ring_join
-       cb.ae~a>ring_join`);
+       cbae.a.b~d>ring_join
+       // cd.ea~e>ring_join
+       // cb.ae~a>ring_join
+    `);
+    // XXX handle errors, retry,...
   });
 });
 

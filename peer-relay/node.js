@@ -131,11 +131,26 @@ export default class Node extends EventEmitter {
     req.send('');
     return req;
   }
-  ring_join(dst, opt){
+  ring_join_single(dst, opt){
     opt = opt||{};
     let req = new Req({node: this, dst, fuzzy: opt.fuzzy, cmd: 'ring_join'});
     req.send('');
     return req;
+  }
+  ring_join(opt){
+    let _this = this, router = this.router, id = this.id;
+    return this.ring_join_single(id, {fuzzy: '~'})
+    .on('res', ()=>{
+      let prev = router.node_map.find_prev(id);
+      if (prev){
+        _this.ring_join_single(prev.id, {fuzzy: '~'}).on('res', ()=>{
+          // XXX: verify prev didn't change
+          let next = router.node_map.find_next(id);
+          if (next)
+            _this.ring_join_single(next.id, {fuzzy: '~'});
+        });
+      }
+    });
   }
 }
 Node.WsConnector = WsConnector;
