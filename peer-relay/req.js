@@ -93,6 +93,7 @@ export default class Req extends EventEmitter {
   }
   send_end(opt, body){ return this.send(assign({}, opt, {end: true}), body); }
   send_close(opt, body){
+    body = body||''; // XXX: rm
     return this.send(assign({}, opt, {close: true}), body); }
   send(opt, body){
     if (arguments.length<2){
@@ -182,5 +183,15 @@ export default class Req extends EventEmitter {
     }
   }
 }
+
+Req.etask = function(opt){
+  return etask(function req_etask(){
+    let req = this.req = new Req(opt);
+    req.on('res', (o, opt)=>this.continue({o, opt}));
+    req.on('error', err=>this.throw(err));
+    req.send('');
+    return this.wait();
+  });
+};
 
 Req.t = {reqs, res_handler};

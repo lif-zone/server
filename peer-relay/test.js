@@ -48,7 +48,7 @@ process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
 let t_nodes = {}, t_ids = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role;
-let t_port=4000;
+let t_port=4000, t_pending;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_reprocess, t_conf, t_req_id_last;
 NodeMap.t.t_nodes = Router.t.t_nodes = t_nodes;
@@ -500,46 +500,51 @@ function assert_event(event, exp){
 function assert_event_c(c, event, call){
   if (call)
     return assert(!event, 'unexpected event '+event+' for call '+c.orig);
+  assert(!c.fwd, 'XXX TODO fwd support');
+  let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
   if (event){
-    assert(!c.fwd, 'XXX TODO fwd support');
-    let expected = c.fwd ? build_cmd(c.fwd+'fwd', normalize(c.orig)) : c.orig;
     assert_event(event, expected);
   } else
-    assert_missing_event(c);
+    assert_missing_event(c, expected);
 }
 
 function assert_event_c2(c, orig, fwd, event, call){
   if (call)
     return assert(!event, 'unexpected event '+event+' for call '+orig);
-  if (event){
-    let expected = orig;
-    if (fwd){
-      assert(Array.isArray(fwd), 'invalid fwd '+stringify(fwd));
-      expected = normalize(orig);
-      let _rt = Array.from(c.rt2||[]);
-      let _range = Array.from(c.range2||[]);
-      Array.from(fwd).reverse().forEach(f=>{
-        let rt = _rt.pop();
-        let range = _range.pop();
-        expected = build_cmd(normalize(f)+'fwd', expected+
-          (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
-          (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
-      });
-    }
+  let expected = orig;
+  if (fwd){
+    assert(Array.isArray(fwd), 'invalid fwd '+stringify(fwd));
+    expected = normalize(orig);
+    let _rt = Array.from(c.rt2||[]);
+    let _range = Array.from(c.range2||[]);
+    Array.from(fwd).reverse().forEach(f=>{
+      let rt = _rt.pop();
+      let range = _range.pop();
+      expected = build_cmd(normalize(f)+'fwd', expected+
+        (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
+        (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
+    });
+  }
+  if (event)
     assert_event(event, expected);
-  } else
-    assert_missing_event(c);
+  else
+    assert_missing_event(c, expected);
 }
 
-function assert_missing_event(c){
+function assert_missing_event(c, expected){
   let s = N(c.s), d = N(c.d);
   if (c.fwd)
     s = N(fwd_s(c.fwd, 0));
   assert(s, 'fwd node not found '+stringify(c.fwd)+' '+c.orig);
-  if (c.cmd[0]=='*' && (t_mode.msg || !t_mode.req))
-    assert(!s.t.fake || !d || d.t.fake, 'missing event for '+c.orig);
-  else
-    assert(s.t.fake, 'missing event '+(c.fwd||[]).join(':')+' '+c.orig);
+  if (c.cmd[0]=='*' && (t_mode.msg || !t_mode.req)){
+    assert(!s.t.fake || !d || d.t.fake, 'missing event '+expected+
+      '\nfor '+c.orig);
+  } else {
+    if (s.t.fake)
+      return;
+    assert.fail('missing event '+expected+
+      '\nfor '+(c.fwd||[]).join(':')+' '+c.orig);
+  }
 }
 
 const test_on_connection = channel=>etask(function*test_on_connection(){
@@ -794,6 +799,12 @@ class FakeChannel extends EventEmitter {
       }
       t_nonce[nonce_hash(msg)] = lbuffer.nonce();
       track_msg(lbuffer);
+      if (t_pending){
+        xerr.notice('FakeChannel send resume pending t_i %s', t_i);
+        t_i--;
+        t_pending.continue();
+        t_pending = null;
+      }
       yield cmd_run(e);
     });
   };
@@ -1670,6 +1681,16 @@ function cmd_msg(opt){
     }
     return;
   }
+  let _s = s;
+  if (c.fwd)
+    _s = N(fwd_s(c.fwd, 0));
+  if (!_s.t.fake && !event){
+    assert(!t_pending, 'already pending');
+    xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
+      t_i, c.orig, c.fwd);
+    t_pending = etask.wait();
+    return;
+  }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
     id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
   } else if (['res', 'res_start', 'res_next', 'res_end'].includes(type)){
@@ -2165,6 +2186,7 @@ function expand_loop_repeat(c){
 
 let t_depth = 0;
 const cmd_run = event=>etask(function*cmd_run(){
+  assert(!t_pending, 'cmd_run while pending with event '+event);
   assert(t_cmds && t_i<t_cmds.length, event ? 'unexpected event '+event :
     'invalid t_i '+t_i+' event');
   let c = t_cmds[t_i];
@@ -2228,8 +2250,14 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   assert(!t_cmds && !t_i && !t_role, 'test already running');
   test_start(role);
   t_cmds = cmds;
-  for (t_i=0; t_i<t_cmds.length;)
+  for (t_i=0; t_i<t_cmds.length;){
+    if (t_pending){
+      xerr.notice('test_run wait for t_pending t_i %s', t_i);
+      yield t_pending;
+      xerr.notice('test_run done wait for t_pending t_i %s', t_i);
+    }
     yield cmd_run();
+  }
   yield test_end();
 });
 
@@ -2287,6 +2315,7 @@ const test_end = ()=>etask(function*(){
     delete t_nodes[n];
   }
   t_cmds = t_role = t_i = undefined;
+  assert(!t_pending, 'test ended while t_pending');
   assert(!Object.keys(Req.t.reqs).length, 'req exists on test end '+
     stringify(Object.keys(Req.t.reqs)));
   assert(!Object.keys(ReqHandler.t.nodes).length,

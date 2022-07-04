@@ -83,7 +83,7 @@ export default class Node extends EventEmitter {
     // XXX: allow empty body
     let req = new Req({node: this, dst: id, cmd: 'conn_info'});
     req.on('res', msg=>this._on_conn_info_r(msg));
-    req.send({});
+    req.send();
   };
   disconnect(id){
     if (this.destroyed)
@@ -133,23 +133,21 @@ export default class Node extends EventEmitter {
   }
   ring_join_single(dst, opt){
     opt = opt||{};
-    let req = new Req({node: this, dst, fuzzy: opt.fuzzy, cmd: 'ring_join'});
-    req.send('');
-    return req;
-  }
+    if (opt.fuzzy===undefined)
+      opt.fuzzy = '~';
+    return Req.etask({node: this, dst, fuzzy: opt.fuzzy, cmd: 'ring_join'}); }
   ring_join(opt){
-    let _this = this, router = this.router, id = this.id;
-    return this.ring_join_single(id, {fuzzy: '~'})
-    .on('res', ()=>{
+    let router = this.router, id = this.id;
+    // XXX: handle error
+    return etask({_: this}, function*req_join(){
+      yield this._.ring_join_single(id);
       let prev = router.node_map.find_prev(id);
-      if (prev){
-        _this.ring_join_single(prev.id, {fuzzy: '~'}).on('res', ()=>{
-          // XXX: verify prev didn't change
-          let next = router.node_map.find_next(id);
-          if (next)
-            _this.ring_join_single(next.id, {fuzzy: '~'});
-        });
-      }
+      if (prev)
+        yield this._.ring_join_single(prev.id);
+      // XXX: verify prev didn't change
+      let next = router.node_map.find_next(id);
+      if (next)
+        yield this._.ring_join_single(next.id);
     });
   }
 }
