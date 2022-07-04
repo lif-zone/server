@@ -74,8 +74,6 @@ find_next(id){
     return;
   for (let curr=avl._root; curr;){
     let cmp = id.cmp(curr.key);
-    if (!cmp)
-      return curr.data;
     if (cmp<0){
       best = curr;
       curr = curr.left;
@@ -90,8 +88,6 @@ find_prev(id){
     return;
   for (let curr=avl._root; curr;){
     let cmp = id.cmp(curr.key);
-    if (!cmp)
-      return curr.data;
     if (cmp>0){
       best = curr;
       curr = curr.right;

@@ -1586,7 +1586,7 @@ function cmd_node_ring_join(opt){
   if (t_pre_process)
     return;
   if (!s.t.fake)
-    s.ring_join();
+    s.ring_join({n: 2});
 }
 
 function cmd_ring_join(opt){
@@ -3432,15 +3432,15 @@ describe('peer-relay', function(){
       conf(id(a:0.1 b:0.2 X:0.25 c:0.3 d:0.4)) Xa,Xb,Xc,Xd>!connect
       test_node_find(X:0 next:a prev:d)
       test_node_find(X:0.09 next:a prev:d)
-      test_node_find(X:0.1 next:a prev:a)
+      test_node_find(X:0.1 next:b prev:d)
       test_node_find(X:0.19 next:b prev:a)
-      test_node_find(X:0.2 next:b prev:b)
+      test_node_find(X:0.2 next:c prev:a)
       test_node_find(X:0.21 next:c prev:b)
       test_node_find(X:0.25 next:c prev:b)
       test_node_find(X:0.29 next:c prev:b)
-      test_node_find(X:0.3 next:c prev:c)
+      test_node_find(X:0.3 next:d prev:b)
       test_node_find(X:0.39 next:d prev:c)
-      test_node_find(X:0.4 next:d prev:d)
+      test_node_find(X:0.4 next:a prev:c)
       test_node_find(X:0.49 next:a prev:d)
       test_node_find(X:0.24 next:c prev:b bidi:b)
       test_node_find(X:0.25 next:c prev:b bidi:b)
@@ -4377,15 +4377,14 @@ describe('peer-relay', function(){
   // messages through other peers if connections is broken
   describe('node', function(){
     const t = (name, test)=>t_roles(name, 'abcde', test);
-    t('xxx', `conf(a-e:0-1) !ring(a-e)
+    // XXX test for errors, retry,...
+    t('ring_join', `conf(a-e:0-1) !ring(a-e)
        c>!node.ring_join
        cb.a.e.d~c>ring_join
        cba.e.d~b>ring_join
        cbae.a.b~d>ring_join
-       // cd.ea~e>ring_join
-       // cb.ae~a>ring_join
-    `);
-    // XXX handle errors, retry,...
+       cb.ae~a>ring_join
+       cd.ea~e>ring_join`);
   });
 });
 

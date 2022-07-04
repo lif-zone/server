@@ -13,6 +13,7 @@ import WrtcConnector from './wrtc.js';
 import util from '../util/util.js';
 import xerr from '../util/xerr.js';
 import etask from '../util/etask.js';
+const RING_NEIGHBOURS = 8;
 
 export default class Node extends EventEmitter {
   constructor(opt){
@@ -135,19 +136,22 @@ export default class Node extends EventEmitter {
     opt = opt||{};
     if (opt.fuzzy===undefined)
       opt.fuzzy = '~';
-    return Req.etask({node: this, dst, fuzzy: opt.fuzzy, cmd: 'ring_join'}); }
+    return Req.etask({node: this, dst, fuzzy: opt.fuzzy, cmd: 'ring_join'});
+  }
   ring_join(opt){
+    opt = opt||{};
+    let n = opt.n||RING_NEIGHBOURS;
     let router = this.router, id = this.id;
     // XXX: handle error
     return etask({_: this}, function*req_join(){
       yield this._.ring_join_single(id);
-      let prev = router.node_map.find_prev(id);
-      if (prev)
-        yield this._.ring_join_single(prev.id);
-      // XXX: verify prev didn't change
-      let next = router.node_map.find_next(id);
-      if (next)
-        yield this._.ring_join_single(next.id);
+      let prev = id, next = id;
+      for (let i=0; i<n; i++){
+        if (prev = router.node_map.find_prev(prev)?.id)
+          yield this._.ring_join_single(prev);
+        if (next = router.node_map.find_next(next)?.id)
+          yield this._.ring_join_single(next);
+      }
     });
   }
 }
