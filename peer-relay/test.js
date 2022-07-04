@@ -1567,25 +1567,31 @@ function cmd_ping_r(opt){
 }
 
 function cmd_ring_join(opt){
-  let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
+  let {c, event} = opt;
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
-  let fuzzy = get_fuzzy(c.d);
-  assert(!c.arg, 'invalid arg '+c.orig);
+  let fuzzy = get_fuzzy(c.d), r = true, e = true;
+  let arg = xtest.test_parse(c.arg);
+  xutil.forEach(arg, a=>{
+    switch (a.cmd){
+    case '!r': r = false; break;
+    case '!e': e = false; break;
+    default: assert(0, 'unknown arg '+a.cmd);
+    }
+  });
   assert(!call || !event, 'unexpected event for ring_join '+event);
   if (t_pre_process){
-    if (call && c.loop){
-      let s = build_cmd_o(c.s+c.d+'>!ring_join');
-      s += t_mode.msg ? ' '+build_cmd(loop_str(c.loop)+'>fwd',
+    if (c.loop){
+      let s = call ? build_cmd_o(c.s+c.d+'>!ring_join') : '';
+      const sp = ()=>s ? ' ' : '';
+      s += t_mode.msg ? sp()+build_cmd(loop_str(c.loop)+'>fwd',
         build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'ring_join'})) : '';
       let loop = Array.from(c.loop).splice(0, c.loop.length-1);
       let sd = c.s+c.loop[loop.length-1].d+'>';
-      s += t_mode.req ? ' '+build_cmd_o(sd+'*ring_join') : '';
-      s += t_mode.msg ? ' '+build_cmd(rev_loop_str(loop)+'>ring_join_r') : '';
-      s += t_mode.req ? ' '+build_cmd_o(rev_trim(sd)+'*ring_join_r') : '';
-      set_push_cmd(c, s);
-    } else if (basic && c.loop){
-      let s = build_cmd(loop_str(c.loop)+'>fwd',
-        build_cmd_o(dir_c(c)+'msg', {type: 'req', cmd: 'ring_join'}));
+      s += t_mode.req && e ? sp()+build_cmd_o(sd+'*ring_join') : '';
+      s += t_mode.msg && r ?
+        sp()+build_cmd(rev_loop_str(loop)+'>ring_join_r') : '';
+      s += t_mode.req && r && e ?
+        sp()+build_cmd_o(rev_trim(sd)+'*ring_join_r') : '';
       set_push_cmd(c, s);
     }
     return;
@@ -3287,7 +3293,7 @@ describe('peer-relay', function(){
             bc[defg].g>ping bg>*ping bcg<ping_r bg<*ping_r`);
         });
         describe('ring_join', function(){
-          T('bX.a~b>ring_join', `bX{X-X}:b~b>msg(type:req cmd:ring_join)
+          T('bX.a~b>ring_join(!e !r)', `bX{X-X}:b~b>msg(type:req cmd:ring_join)
              Xa{a-X}:bX{X-X}:b~b>msg(type:req cmd:ring_join)`);
           T('p.Xno~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
             no{o-o}:Xn[o]:pX[no]:p~p>msg`);
@@ -3317,15 +3323,20 @@ describe('peer-relay', function(){
           T('~dc.ba<msg(type:req cmd:ring_join)',
             `~dc.ba<fwd(~da<msg(type:req cmd:ring_join))`);
           T('ab>ring_join_r', `ab>msg(type:res cmd:ring_join)`);
-          T('ab.c~d>ring_join', `ab.c~d>msg(type:req cmd:ring_join)`);
-          T('ab.c~d>ring_join', `ab{b-b}:a~d>msg(type:req cmd:ring_join)
+          T('ab.c~d>ring_join(!e !r)', `ab.c~d>msg(type:req cmd:ring_join)`);
+          T('ab.c~d>ring_join(!e !r)', `ab{b-b}:a~d>msg(type:req cmd:ring_join)
             bc{c-b}:ab{b-b}:a~d>msg(type:req cmd:ring_join)`);
           T('ab.c>ring_join_r', `ab.c>msg(type:res cmd:ring_join)`);
-          T('ab~d>ring_join', `ab{b-b}:a~d>msg(type:req cmd:ring_join)`);
+          T('ab~d>ring_join(!e !r)',
+            `ab{b-b}:a~d>msg(type:req cmd:ring_join)`);
           T('ab.c>ring_join_r', `ab.c>msg(type:res cmd:ring_join)`);
           T('ab~c>!ring_join', `a~c>!ring_join
             ab{b-b}:a~c>msg(type:req cmd:ring_join) ab>*ring_join
             ba>ring_join_r ab<*ring_join_r`);
+          T('ab~c>!ring_join(!e)', `a~c>!ring_join
+            ab{b-b}:a~c>msg(type:req cmd:ring_join) ba>ring_join_r`);
+          T('ab~c>!ring_join(!r)', `a~c>!ring_join
+            ab{b-b}:a~c>msg(type:req cmd:ring_join) ab>*ring_join`);
           if (0) // XXX: TODO
         T('ab.c>fwd(ac>ring_join_r)', `ab.c>ring_join_r`);
         });
