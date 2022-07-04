@@ -4535,6 +4535,18 @@ freq=8/100
 
 */
 /*
+4-Jul-2022: ack on packets
+each router:
+- open/close connection when packet pass through it
+- immadietly send ack to each packet
+- time is Date.now() of the sender node (for each pkt)
+  - calc time_diff to other node. using his time zone
+- update rtt on each ack
+- when phsical connection is disconnected - after 10sec need to free relevant
+  disconnected virtual connections.
+  - and notify the reason it was closed
+*/
+/*
 VP:
 + implement fuzzy routing with node_itr/range
 + path selection:
@@ -4589,3 +4601,4 @@ VP:
   - optimize mocha tests - improve sinon time api - by default, don't wait for
     external time to finish (eg. mongo/ls)
 */
+
