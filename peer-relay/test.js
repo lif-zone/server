@@ -4404,6 +4404,8 @@ describe('peer-relay', function(){
       cb[a]:ca>msg(type:res cmd:ping) // cb<msg(type:ack)
       ba:cb[a]:ca>msg(type:res cmd:ping) // ba<msg(type:ack)
     `);
+    // XXX shortcuts:
+    // t('ab>ack(nonce:123 ts:456)', 'ab>msg(type:ack nonce:123 ts:456)')
     // XXX: add test for this case (where a will not route and no error)
     t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect
       ac>!req(cmd:ping !e)`);
