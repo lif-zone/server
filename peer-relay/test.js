@@ -1689,6 +1689,7 @@ function cmd_msg(opt){
     xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
       t_i, c.orig, c.fwd);
     t_pending = etask.wait();
+    t_pending.expected = (c.fwd||[]).join('').replace(/>/g, ':')+c.orig;
     return;
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
@@ -2315,7 +2316,7 @@ const test_end = ()=>etask(function*(){
     delete t_nodes[n];
   }
   t_cmds = t_role = t_i = undefined;
-  assert(!t_pending, 'test ended while t_pending');
+  assert(!t_pending, 'test ended while t_pending '+t_pending?.expected);
   assert(!Object.keys(Req.t.reqs).length, 'req exists on test end '+
     stringify(Object.keys(Req.t.reqs)));
   assert(!Object.keys(ReqHandler.t.nodes).length,
@@ -4378,13 +4379,35 @@ describe('peer-relay', function(){
   describe('node', function(){
     const t = (name, test)=>t_roles(name, 'abcde', test);
     // XXX test for errors, retry,...
-    t('ring_join', `conf(a-e:0-1) !ring(a-e)
+    t('ring_join', `conf(a-e) !ring(a-e)
        c>!node.ring_join
        cb.a.e.d~c>ring_join
        cba.e.d~b>ring_join
        cbae.a.b~d>ring_join
        cb.ae~a>ring_join
        cd.ea~e>ring_join`);
+  });
+  describe('xxx_ack', function(){
+    let t = (name, test)=>t_roles(name, 'ab', test);
+    // XXX: msg uniqe id (nonce?)
+    // XXX: add test for ts (auto_inc 10ms for every msg?)
+    t('ab', `mode:msg conf(a-b) ab>!connect
+      ab>!req(cmd:ping !e)
+      ab>msg(type:req cmd:ping) // ab<msg(type:ack)
+      ba>msg(type:res cmd:ping) // ba<msg(type:ack)
+    `);
+    t = (name, test)=>t_roles(name, 'abc', test);
+    t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect cb.a~c>!ring_join
+      ac>!req(cmd:ping !e)
+      ab[c]:ac>msg(type:req cmd:ping) // ab<msg(type:ack)
+      bc:ab[c]:ac>msg(type:req cmd:ping) // bc<msg(type:ack)
+      cb[a]:ca>msg(type:res cmd:ping) // cb<msg(type:ack)
+      ba:cb[a]:ca>msg(type:res cmd:ping) // ba<msg(type:ack)
+    `);
+    // XXX: add test for this case (where a will not route and no error)
+    t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect
+      ac>!req(cmd:ping !e)`);
+
   });
 });
 
