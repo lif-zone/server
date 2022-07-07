@@ -41,9 +41,9 @@ export default class Router extends EventEmitter {
       this._onChannelAdded(c);
   }
   send_msg(dst, msg){
+    let msgid = LBuffer.msgid();
     assert(!msg.msgid);
     dst = NodeId.from(dst);
-    let msgid=''+Math.floor(1e15*Math.random());
     msg.from = this.id.s;
     msg.to = dst.s;
     msg.msgid = msgid; // XXX: need test that will fail is this is missing
@@ -161,7 +161,7 @@ export default class Router extends EventEmitter {
       yield _this._send(lbuffer);
   });
   ack(channel, ack_msgid){
-    let msgid=''+Math.floor(1e15*Math.random());
+    let msgid = LBuffer.msgid();
     let msg = {to: channel.id.s, from: this.id.s, msgid, type: 'ack'};
     msg.sign = this.wallet.sign(msg);
     let lbuffer2 = new LBuffer(msg);

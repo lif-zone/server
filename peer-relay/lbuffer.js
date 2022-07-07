@@ -82,3 +82,7 @@ LBuffer.from = function(s){
     throw new Error('invalid buffer');
   return lbuffer;
 };
+
+LBuffer.msgid = function(){
+  return Math.floor(Number.MAX_SAFE_INTEGER*Math.random()); };
+

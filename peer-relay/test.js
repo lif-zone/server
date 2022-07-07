@@ -1057,7 +1057,7 @@ function fake_send_msg(c, msg){
   }
   if (msg.type!='ack'){ // XXX TODO
     msg.msgid = t_msgid[msgid_hash(msg)] = t_msgid[msgid_hash(msg)]||
-      ''+Math.floor(1e15 * Math.random());
+      ''+LBuffer.msgid();
   }
   let lbuffer = new LBuffer(msg);
   msg.sign = node_from_id(from).wallet.sign(msg);
