@@ -47,7 +47,7 @@ process.on('uncaughtException', err=>xerr.xexit(err));
 process.on('unhandledRejection', err=>xerr.xexit(err));
 xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 
-let t_nodes = {}, t_ids = {}, t_msg, t_nonce, t_req, t_cmds, t_i, t_role;
+let t_nodes = {}, t_ids = {}, t_msg, t_msgid, t_req, t_cmds, t_i, t_role;
 let t_port=4000, t_pending;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_reprocess, t_conf, t_req_id_last;
@@ -86,7 +86,7 @@ function fwd_d_id(fwd, i){
   return N(fwd_d(fwd, i)).id.s;
 }
 
-function nonce_hash(msg){
+function msgid_hash(msg){
   assert(msg.req_id, 'missing req_id '+stringify(msg));
   return id_to_name(msg.from)+'_'+id_to_name(msg.to)+'_'+(msg.req_id||'none')+
     '_'+(msg.type||'none')+'_'+(msg.cmd||'none');
@@ -621,7 +621,7 @@ function track_rtt_path(lbuffer){
   }
 }
 
-// XXX: unite with nonce and use t_req instead of t_ack/t_msg
+// XXX: unite with msgid and use t_req instead of t_ack/t_msg
 let t_msg_n = 0;
 function track_msg(lbuffer){
   let msg = lbuffer.msg();
@@ -753,7 +753,7 @@ class FakeChannel extends EventEmitter {
     cmd = cmd||'';
     fuzzy = fuzzy||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
-    assert(msg.nonce, 'missing msg nonce '+data);
+    assert(msg.msgid, 'missing msg msgid '+data);
     xerr.notice('*** send%s msg %s %s', fwd ? ' fwd '+fwd : '',
       from.t.name+to.t.name+'>'+cmd, stringify(msg));
     return etask(function*send(){
@@ -800,7 +800,7 @@ class FakeChannel extends EventEmitter {
         });
       }
       if (msg.type!='ack') // XXX: review
-        t_nonce[nonce_hash(msg)] = msg.nonce;
+        t_msgid[msgid_hash(msg)] = msg.msgid;
       track_msg(lbuffer);
       if (t_pending){
         xerr.notice('FakeChannel send resume pending t_i %s', t_i);
@@ -844,7 +844,7 @@ function req_hook(lbuffer){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce '+stringify(msg));
+  assert(msg.msgid, 'missing msg msgid '+stringify(msg));
   cmd_run(_build_cmd(e, '', ''));
 }
 
@@ -872,7 +872,7 @@ function req_send_hook(msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce '+stringify(msg));
+  assert(msg.msgid, 'missing msg msgid '+stringify(msg));
   cmd_run(_build_cmd(e, '', ''));
 }
 
@@ -909,7 +909,7 @@ function res_hook(msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce %s', stringify(msg));
+  assert(msg.msgid, 'missing msg msgid %s', stringify(msg));
   cmd_run(_build_cmd(e, '', ''));
 }
 
@@ -936,7 +936,7 @@ function res_send_hook(router, msg){
     break;
   default: assert(0, 'invalid cmd '+cmd);
   }
-  assert(msg.nonce, 'missing msg nonce '+stringify(msg));
+  assert(msg.msgid, 'missing msg msgid '+stringify(msg));
   cmd_run(_build_cmd(e, '', ''));
 }
 
@@ -1011,8 +1011,8 @@ function fake_emit(c, msg){
   let s = N(c.s), d = N(c.d), to = d.id.s, from = s.id.s;
   msg.to = to;
   msg.from = from;
-  let nonce = t_nonce[nonce_hash(msg)];
-  assign(msg, {to, from, nonce});
+  let msgid = t_msgid[msgid_hash(msg)];
+  assign(msg, {to, from, msgid});
   if (!msg.seq && ['req', 'res'].includes(msg.type))
     msg.seq = 0;
   assert(!c.fwd, 'fwd not allowed in fake_emit');
@@ -1056,7 +1056,7 @@ function fake_send_msg(c, msg){
     assert(msg.req_id, 'missing req_id');
   }
   if (msg.type!='ack'){ // XXX TODO
-    msg.nonce = t_nonce[nonce_hash(msg)] = t_nonce[nonce_hash(msg)]||
+    msg.msgid = t_msgid[msgid_hash(msg)] = t_msgid[msgid_hash(msg)]||
       ''+Math.floor(1e15 * Math.random());
   }
   let lbuffer = new LBuffer(msg);
@@ -2249,7 +2249,7 @@ function test_start(role){
   t_msg = {};
   t_cmds = undefined;
   t_cmds_processed = [];
-  t_nonce = {};
+  t_msgid = {};
   t_req = {};
   t_conf = {rtt: {def: DEF_RTT, conn: {}}};
   NodeMap.t.t_conf = Router.t.t_conf = t_conf;

@@ -41,11 +41,12 @@ export default class Router extends EventEmitter {
       this._onChannelAdded(c);
   }
   send_msg(dst, msg){
+    assert(!msg.msgid);
     dst = NodeId.from(dst);
-    let nonce=''+Math.floor(1e15*Math.random());
+    let msgid=''+Math.floor(1e15*Math.random());
     msg.from = this.id.s;
     msg.to = dst.s;
-    msg.nonce = nonce; // XXX: need test that will fail is this is missing
+    msg.msgid = msgid; // XXX: need test that will fail is this is missing
     msg.sign = this.wallet.sign(msg);
     let lbuffer = new LBuffer(msg); // XXX: WIP
     this._send(lbuffer);
@@ -146,10 +147,10 @@ export default class Router extends EventEmitter {
     function*_on_msg(){
     let lbuffer = LBuffer.from(data), msg = lbuffer.msg();
     let msg0 = lbuffer.get_json(0), rt = msg0.rt, path = rt?.path;
-    let _this = this._, nonce = msg.nonce;
+    let _this = this._, msgid = msg.msgid;
     _this.update_conn(lbuffer);
-    if (!nonce && msg.type!='ack') // XXX: TODO ack
-      return log('invalid message nonce %s', dbg_msg(msg));
+    if (!msgid && msg.type!='ack') // XXX: TODO ack
+      return log('invalid message msgid %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track_in(msg, channel);
     if (msg.type!='ack')
@@ -159,9 +160,9 @@ export default class Router extends EventEmitter {
     else
       yield _this._send(lbuffer);
   });
-  ack(channel, msgid){
-    let nonce=''+Math.floor(1e15*Math.random());
-    let msg = {to: channel.id.s, from: this.id.s, nonce, type: 'ack'};
+  ack(channel, ack_msgid){
+    let msgid=''+Math.floor(1e15*Math.random());
+    let msg = {to: channel.id.s, from: this.id.s, msgid, type: 'ack'};
     msg.sign = this.wallet.sign(msg);
     let lbuffer2 = new LBuffer(msg);
     return channel.send(lbuffer2.to_str());
