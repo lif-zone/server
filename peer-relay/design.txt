@@ -64,6 +64,9 @@ each router:
 - when phsical connection is disconnected - after 10sec need to free relevant
   disconnected virtual connections.
   - and notify the reason it was closed
+- if no way to route forward, reply it back. if router chose to use another
+  path, notify it in ack
+- if ack takes too long (over twice rtt), notify it backwards
 
 /* XXX: derry: 17-May-2022
 // node ID 2^128 2^160
