@@ -3248,6 +3248,7 @@ describe('peer-relay', function(){
             de>!connect`);
         });
         describe('msg', function(){
+          // XXX: rename !msgack > '!ack' or '!'
           TT('ab>msg(!msgack)', `ab>msg(!msgack)`);
           TT('ab<msg(!msgack)', `ab<msg(!msgack)`);
           TT('ab>msg', `ab>msg(!msgack) ab<msg(type(ack) !msgack)`);
@@ -3654,6 +3655,8 @@ describe('peer-relay', function(){
         a>*fail(id:r1 error:timeout)`);
       t('3_nodes_ring', `conf(id(a:10 b:20 c:30)) !ring(a-c) ab>!ping
         ac>!ping -`);
+      t('3_nodes_no_exit', `conf(a-c) ab>!connect bc>!connect ac>!req(!e)
+        20s a>*fail(error:timeout)`);
       t = (name, test)=>t_roles(name, 'abcd', test);
       // XXX: check why if we change to ping it fails (req tracking bug)
       t('4_nodes_ring', `conf(id(a:10 b:20 c:30 d:40)) !ring(a-d) -
@@ -4457,12 +4460,6 @@ describe('peer-relay', function(){
       ba>fwd(cb>fwd(ca>msg(type:res cmd:ping) rt:a) !msgack)
       ba<msg(type:ack !msgack)
     `);
-    if (true) return; // XXX: TODO
-    // t('ab>ack(nonce:123 ts:456)', 'ab>msg(type:ack nonce:123 ts:456)')
-    // XXX: add test for this case (where a will not route and no error)
-    t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect
-      ac>!req(cmd:ping !e)`);
-
   });
 });
 
