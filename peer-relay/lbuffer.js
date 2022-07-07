@@ -46,7 +46,6 @@ export default class LBuffer {
       p.unshift(o.from);
     return p;
   }
-  nonce(){ return this.msg().nonce; }
   msg(){ return this.get_json(this.size()-1); }
   range(){
     for (let i=0; i<this.size(); i++){

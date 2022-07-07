@@ -146,7 +146,7 @@ export default class Router extends EventEmitter {
     function*_on_msg(){
     let lbuffer = LBuffer.from(data), msg = lbuffer.msg();
     let msg0 = lbuffer.get_json(0), rt = msg0.rt, path = rt?.path;
-    let _this = this._, nonce = lbuffer.nonce();
+    let _this = this._, nonce = msg.nonce;
     _this.update_conn(lbuffer);
     if (!nonce && msg.type!='ack') // XXX: TODO ack
       return log('invalid message nonce %s', dbg_msg(msg));

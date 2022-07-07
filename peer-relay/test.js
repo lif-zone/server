@@ -753,7 +753,7 @@ class FakeChannel extends EventEmitter {
     cmd = cmd||'';
     fuzzy = fuzzy||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
-    assert(lbuffer.nonce(), 'missing msg nonce '+data);
+    assert(msg.nonce, 'missing msg nonce '+data);
     xerr.notice('*** send%s msg %s %s', fwd ? ' fwd '+fwd : '',
       from.t.name+to.t.name+'>'+cmd, stringify(msg));
     return etask(function*send(){
@@ -800,7 +800,7 @@ class FakeChannel extends EventEmitter {
         });
       }
       if (msg.type!='ack') // XXX: review
-        t_nonce[nonce_hash(msg)] = lbuffer.nonce();
+        t_nonce[nonce_hash(msg)] = msg.nonce;
       track_msg(lbuffer);
       if (t_pending){
         xerr.notice('FakeChannel send resume pending t_i %s', t_i);
@@ -3262,6 +3262,9 @@ describe('peer-relay', function(){
           TT('ab>fwd(ac>msg !msgack)', `ab>fwd(ac>msg !msgack)`);
           TT('ab>fwd(ac>msg)', `ab>fwd(ac>msg !msgack)
             ab<msg(type(ack) !msgack)`);
+          // XXX derry: idea for !msgack in this case?
+          // ab[c]:ac>msg(type:req cmd:ping)
+          // ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack)
           T('abc>msg(type:req cmd:ping)', `ab[c]:ac>msg(type:req cmd:ping)
             bc:ab[c]:ac>msg(type:req cmd:ping)`);
           T('!abc>msg(type:req cmd:ping)',
@@ -4453,6 +4456,7 @@ describe('peer-relay', function(){
     t = (name, test)=>t_roles(name, 'abc', test);
     t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect cb.a~c>!ring_join
       ac>!req(cmd:ping !e)
+      // XXX: derry ab[c]:ac>msg(type:req cmd:ping)
       ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack) ab<msg(type:ack !msgack)
       bc>fwd(ab>fwd(ac>msg(type:req cmd:ping) rt:c) !msgack)
       bc<msg(type:ack !msgack)
