@@ -148,15 +148,24 @@ export default class Router extends EventEmitter {
     let msg0 = lbuffer.get_json(0), rt = msg0.rt, path = rt?.path;
     let _this = this._, nonce = lbuffer.nonce();
     _this.update_conn(lbuffer);
-    if (!nonce)
+    if (!nonce && msg.type!='ack') // XXX: TODO ack
       return log('invalid message nonce %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track_in(msg, channel);
+    if (msg.type!='ack')
+      _this.ack(channel);
     if (!path && msg.to==_this.id.s)
       _this.emit('message', lbuffer);
     else
       yield _this._send(lbuffer);
   });
+  ack(channel, msgid){
+    let nonce=''+Math.floor(1e15*Math.random());
+    let msg = {to: channel.id.s, from: this.id.s, nonce, type: 'ack'};
+    msg.sign = this.wallet.sign(msg);
+    let lbuffer2 = new LBuffer(msg);
+    return channel.send(lbuffer2.to_str());
+  }
   _onChannelAdded(channel){
     let dst = channel.id;
     this.node_map.update_conn({ids: [this.id, dst], self: channel,
