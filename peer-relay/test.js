@@ -4446,21 +4446,17 @@ describe('peer-relay', function(){
     // XXX: msg uniqe id (nonce?)
     // XXX: add net_stats for real/virtual connection to check stats at given
     // state
-    // XXX: fix direction of arrows ab>
     // XXX shortcuts: nonce -> msgid
-    t('ab', `mode:msg conf(a-b) ab>!connect
-      ab>!req(cmd:ping !e)
+    t('ab', `mode:msg conf(a-b) ab>!connect ab>!req(cmd:ping !e)
       ab>msg(type:req cmd:ping !msgack) ab<msg(type:ack)
-      ba>msg(type:res cmd:ping !msgack) ba<msg(type:ack)
-    `);
+      ab<msg(type:res cmd:ping !msgack) ab>msg(type:ack)`);
     t = (name, test)=>t_roles(name, 'abc', test);
     t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect cb.a~c>!ring_join
       ac>!req(cmd:ping !e)
-      // XXX: derry ab[c]:ac>msg(type:req cmd:ping)
       ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack) ab<msg(type:ack)
       bc>fwd(ab>fwd(ac>msg(type:req cmd:ping) rt:c) !msgack) bc<msg(type:ack)
-      cb>fwd(ca>msg(type:res cmd:ping) rt:a !msgack) cb<msg(type:ack)
-      ba>fwd(cb>fwd(ca>msg(type:res cmd:ping) rt:a) !msgack) ba<msg(type:ack)
+      bc<fwd(ac<msg(type:res cmd:ping) rt:a !msgack) bc>msg(type:ack)
+      ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
     `);
   });
 });
