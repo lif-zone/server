@@ -682,10 +682,12 @@ class FakeNode extends EventEmitter {
     super();
     this.wallet = new Wallet({keys: opt.keys});
     this.id = NodeId.from(opt.keys.pub);
+    this.msg_id_n = 0;
     this.wsConnector = new FakeWsConnector(this.id.b, opt.port, opt.host);
     this.wrtcConnector = new FakeWrtcConnector(this.id.b, null, opt.wrtc);
   }
   destroy(){}
+  msgid(){ return ++this.msg_id_n; }
 }
 
 class FakeWsConnector extends EventEmitter {
@@ -1057,7 +1059,7 @@ function fake_send_msg(c, msg){
   }
   if (msg.type!='ack'){ // XXX TODO
     msg.msgid = t_msgid[msgid_hash(msg)] = t_msgid[msgid_hash(msg)]||
-      ''+LBuffer.msgid();
+      ''+s.msgid();
   }
   let lbuffer = new LBuffer(msg);
   msg.sign = node_from_id(from).wallet.sign(msg);

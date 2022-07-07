@@ -83,6 +83,3 @@ LBuffer.from = function(s){
   return lbuffer;
 };
 
-LBuffer.msgid = function(){
-  return Math.floor(Number.MAX_SAFE_INTEGER*Math.random()); };
-

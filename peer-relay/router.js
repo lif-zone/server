@@ -23,6 +23,7 @@ export default class Router extends EventEmitter {
     let {channels, id, wallet, state_timeout} = opt;
     this.wallet = wallet;
     this.id = id;
+    this.msg_id_n = 0;
     this.concurrency = 1;
     this.state_timeout = state_timeout||60*date.ms.SEC;
     this.maxHops = 20;
@@ -40,8 +41,9 @@ export default class Router extends EventEmitter {
     for (let c of this._channels.toArray())
       this._onChannelAdded(c);
   }
+  msgid = function(){ return ++this.msg_id_n; }
   send_msg(dst, msg){
-    let msgid = LBuffer.msgid();
+    let msgid = this.msgid();
     assert(!msg.msgid);
     dst = NodeId.from(dst);
     msg.from = this.id.s;
@@ -161,7 +163,7 @@ export default class Router extends EventEmitter {
       yield _this._send(lbuffer);
   });
   ack(channel, ack_msgid){
-    let msgid = LBuffer.msgid();
+    let msgid = this.msgid();
     let msg = {to: channel.id.s, from: this.id.s, msgid, type: 'ack'};
     msg.sign = this.wallet.sign(msg);
     let lbuffer2 = new LBuffer(msg);
