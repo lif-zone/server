@@ -1591,7 +1591,7 @@ function cmd_ack(opt){
   if (!t_pre_process)
     return;
   if (t_mode.msg)
-    set_orig(c, build_cmd_o(dir_c(c)+'msg', {type: 'ack', '!msgack': true}));
+    set_orig(c, build_cmd_o(dir_c(c)+'msg', {type: 'ack'}));
 }
 
 function cmd_node_ring_join(opt){
@@ -1689,14 +1689,17 @@ function cmd_msg(opt){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  assert(type!='ack' || !msgack, 'invalid ack for ack msg '+c.orig);
+  if (type=='ack'){
+    assert(msgack, 'cannot use !msgack for type:ack (already implied)');
+    msgack = false;
+  }
   cmd = cmd||'';
   if (t_pre_process){
     if (c.loop)
       c = expand_loop_fwd(c);
     else {
       set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, type, cmd, seq, ack,
-        body, '!msgack': c.fwd ? undefined : true}));
+        body, '!msgack': c.fwd||type=='ack' ? undefined : true}));
       if (msgack)
         push_cmd(rev_c(c)+'ack');
     }
@@ -3251,17 +3254,16 @@ describe('peer-relay', function(){
           // XXX: rename !msgack > '!ack' or '!'
           TT('ab>msg(!msgack)', `ab>msg(!msgack)`);
           TT('ab<msg(!msgack)', `ab<msg(!msgack)`);
-          TT('ab>msg', `ab>msg(!msgack) ab<msg(type(ack) !msgack)`);
-          TT('ab<msg', `ab<msg(!msgack) ab>msg(type(ack) !msgack)`);
-          TT('ab>ack', `ab>msg(type(ack) !msgack)`);
-          TT('ab<ack', `ab<msg(type(ack) !msgack)`);
+          TT('ab>msg', `ab>msg(!msgack) ab<msg(type(ack))`);
+          TT('ab<msg', `ab<msg(!msgack) ab>msg(type(ack))`);
+          TT('ab>ack', `ab>msg(type(ack))`);
+          TT('ab<ack', `ab<msg(type(ack))`);
           T('ab>msg', `ab>msg(!msgack) ab<ack`);
           T('ab<msg', `ab<msg(!msgack) ab>ack`);
         });
         describe('fwd', function(){
           TT('ab>fwd(ac>msg !msgack)', `ab>fwd(ac>msg !msgack)`);
-          TT('ab>fwd(ac>msg)', `ab>fwd(ac>msg !msgack)
-            ab<msg(type(ack) !msgack)`);
+          TT('ab>fwd(ac>msg)', `ab>fwd(ac>msg !msgack) ab<msg(type(ack))`);
           // XXX derry: idea for !msgack in this case?
           // ab[c]:ac>msg(type:req cmd:ping)
           // ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack)
@@ -3377,14 +3379,12 @@ describe('peer-relay', function(){
           T('bc[defg].g>!ping(rt(cdefg))', `bg>!ping(!e rt(cdefg))
             bc[defg].g>ping bg>*ping bcg<ping_r bg<*ping_r`);
           TT('abc>!ping', `ac>!ping(!e)
-            ab>fwd(ac>msg(type(req) cmd(ping)) rt(c) !msgack)
-            ab<msg(type(ack) !msgack)
+            ab>fwd(ac>msg(type(req) cmd(ping)) rt(c) !msgack) ab<msg(type(ack))
             bc>fwd(ab>fwd(ac>msg(type(req) cmd(ping)) rt(c)) !msgack)
-            bc<msg(type(ack) !msgack) ac>*req(cmd(ping))
-            cb>fwd(ca>msg(type(res) cmd(ping)) rt(a) !msgack)
-            cb<msg(type(ack) !msgack)
+            bc<msg(type(ack)) ac>*req(cmd(ping))
+            cb>fwd(ca>msg(type(res) cmd(ping)) rt(a) !msgack) cb<msg(type(ack))
             ba>fwd(cb>fwd(ca>msg(type(res) cmd(ping)) rt(a)) !msgack)
-            ba<msg(type(ack) !msgack) ac<*res(cmd(ping))`);
+            ba<msg(type(ack)) ac<*res(cmd(ping))`);
         });
         describe('ring_join', function(){
           T('bX.a~b>ring_join(!e !r)', `bX{X-X}:b~b>msg(type:req cmd:ring_join)
@@ -4450,19 +4450,17 @@ describe('peer-relay', function(){
     // XXX shortcuts: nonce -> msgid
     t('ab', `mode:msg conf(a-b) ab>!connect
       ab>!req(cmd:ping !e)
-      ab>msg(type:req cmd:ping !msgack) ab<msg(type:ack !msgack)
-      ba>msg(type:res cmd:ping !msgack) ba<msg(type:ack !msgack)
+      ab>msg(type:req cmd:ping !msgack) ab<msg(type:ack)
+      ba>msg(type:res cmd:ping !msgack) ba<msg(type:ack)
     `);
     t = (name, test)=>t_roles(name, 'abc', test);
     t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect cb.a~c>!ring_join
       ac>!req(cmd:ping !e)
       // XXX: derry ab[c]:ac>msg(type:req cmd:ping)
-      ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack) ab<msg(type:ack !msgack)
-      bc>fwd(ab>fwd(ac>msg(type:req cmd:ping) rt:c) !msgack)
-      bc<msg(type:ack !msgack)
-      cb>fwd(ca>msg(type:res cmd:ping) rt:a !msgack) cb<msg(type:ack !msgack)
-      ba>fwd(cb>fwd(ca>msg(type:res cmd:ping) rt:a) !msgack)
-      ba<msg(type:ack !msgack)
+      ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack) ab<msg(type:ack)
+      bc>fwd(ab>fwd(ac>msg(type:req cmd:ping) rt:c) !msgack) bc<msg(type:ack)
+      cb>fwd(ca>msg(type:res cmd:ping) rt:a !msgack) cb<msg(type:ack)
+      ba>fwd(cb>fwd(ca>msg(type:res cmd:ping) rt:a) !msgack) ba<msg(type:ack)
     `);
   });
 });
