@@ -54,6 +54,18 @@ VP:
 
 SUMARIES
 ========
+11-Jul-2022: ack/state parser
+ac>!req_start
+ab[c]:ac>req_start(id:>1.1) a#ab[c]:ac>opening(id:>1.1) b# c#
+ab<ack(id:>1.1) a#abc>opening(id:>1.1+) b#abc:ac>opening(id:>1.1)
+bc:ab[c]:ac>req_start c#abc>opening(id:>1.1v)
+abc:bc<ack(id:>1.1V)
+ab<ack(id:>
+bc[a]:ac<res_start
+bc>ack
+ab:bc[a]:ac<res_start
+ab>ack
+
 4-Jul-2022: ack on packets
 each router:
 - open/close connection when packet pass through it
