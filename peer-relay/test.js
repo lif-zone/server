@@ -4460,6 +4460,41 @@ describe('peer-relay', function(){
       bc<fwd(ac<msg(type:res cmd:ping) rt:a !msgack) bc>msg(type:ack)
       ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
     `);
+    if (true) return; // XXX WIP
+    // XXX: update rtt on each ack (and how to handle time diff 0)?
+    t('xxx', `conf(rtt:50)
+      !abc>!req // teach rtt
+      ac>!req_start
+      ab[c]:ac>req_start(id:>1.1) a#ab[c]:ac>opening(id:>1.1) b# c#
+      ab<ack(id:>1.1) a#abc>opening(id:>1.1+) b#abc:ac>opening(id:>1.1)
+      bc:ab[c]:ac>req_start c#abc>opening(id:>1.1v)
+      abc:bc<ack(id:>1.1V)
+      ab<ack(id:>
+      bc[a]:ac<res_start
+      bc>ack
+      ab:bc[a]:ac<res_start
+      ab>ack
+
+      200ms
+      ab<noack(bc(t:200)) // what's the threshold for noack
+      // XXX: 1. what is the state now? 2. when/how notify a that bc didn't ack
+      10ms
+      bc<ack
+      ab<ack(bc(rtt:210))
+      ac<!res_start
+      bc[a]:ac<res_start bc>ack
+      // XXX: what is the state now?
+      ab:bc:ac<res_start ab>ack
+      ac>!req_next
+      ab:ac>req_next ab<ack
+      bc:ab:ac>req_next 200ms
+      // XXX: what is the state now?
+      20s a*>fail
+      // XXX: what is the state now?
+    `);
+    // test_vc(ac(open ab:50 bc:no_ack:200))
   });
+      // XXX: by default it is with ack. how to makr it isn't
+      // ab:ac>req_start ab<ack
 });
 

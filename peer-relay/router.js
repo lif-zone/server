@@ -156,7 +156,7 @@ export default class Router extends EventEmitter {
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track_in(msg, channel);
     if (msg.type!='ack')
-      _this.ack(channel);
+      _this.ack(channel, msg0.msgid);
     if (!path && msg.to==_this.id.s)
       _this.emit('message', lbuffer);
     else
