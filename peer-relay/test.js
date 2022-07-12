@@ -3541,14 +3541,14 @@ describe('peer-relay', function(){
     t('from_fwd', `mode(msg req)
       conf(id:a-mXYZn-z rtt(ab:10 bc:20 db:30 zY:40)) test_node_conn(X)
       aX>!connect test_node_conn(X(a:100) a(X:100))
-      aX:ba:cb:cY>msg(type:req) test_node_conn(X(a:100) a(b:10 X:100)
-        b(a:10 c:20) c(b:20))
-      aX:ba:db:dY>msg(type:req) test_node_conn(X(a:100) a(b:10 X:100)
-        b(a:10 c:20 d:30) c(b:20) d(b:30))
+      aX:ba:cb:cY>req test_node_conn(X(a:100) a(b:10 X:100) b(a:10 c:20)
+        c(b:20))
+      aX:ba:db:dY>req test_node_conn(X(a:100) a(b:10 X:100) b(a:10 c:20 d:30)
+        c(b:20) d(b:30))
       zX>!connect test_node_conn(X(a:100 z:100) a(b:10 X:100) b(a:10 c:20 d:30)
         c(b:20) d(b:30) z(X:100))
-      // XXX TODO: zX:Yz:Yc,Xa:zX:Yz:Yc>msg(type:req)
-      zX:Yz:Yc>msg(type:req) Xa[bc]:zX:Yz:Yc>msg(type:req)
+      // XXX TODO: zX:Yz:Yc,Xa:zX:Yz:Yc>req
+      zX:Yz:Yc>req Xa[bc]:zX:Yz:Yc>req
       test_node_conn(X(a:100 z:100) a(b:10 X:100) b(a:10 c:20 d:30) c(b:20)
         d(b:30) Y(z:40) z(X:100 Y:40)) `);
   });
@@ -3671,16 +3671,15 @@ describe('peer-relay', function(){
     describe('graph', ()=>{
       t('basic', `mode(msg req) conf(id:a-mXYZn-z rtt(100 zX:500)) aX>!connect
         999ms test_node_graph(X aX:100) 1ms test_node_graph(X aX:100)
-        aX:ba:bX>msg(type:req) test_node_graph(X aX:100 baX:200)
+        aX:ba:bX>req test_node_graph(X aX:100 baX:200)
         1s test_node_graph(X aX:100 baX:200)
-        aX:ba:cb:cX>msg(type:req) test_node_graph(X aX:100 baX:200 cbaX:300)
+        aX:ba:cb:cX>req test_node_graph(X aX:100 baX:200 cbaX:300)
         1s test_node_graph(X aX:100 baX:200 cbaX:300)
-        aX:ca:cX>msg(type:req) test_node_graph(X aX:100 baX:200 caX:200)
+        aX:ca:cX>req test_node_graph(X aX:100 baX:200 caX:200)
         1s test_node_graph(X aX:100 baX:200 caX:200)
         zX>!connect test_node_graph(X aX:100 baX:200 caX:200 zX:500)
         1s test_node_graph(X aX:100 baX:200 caX:200 zX:500)
-        aX:za:zX>msg(type:req)
-        test_node_graph(X aX:100 baX:200 caX:200 zaX:200)
+        aX:za:zX>req test_node_graph(X aX:100 baX:200 caX:200 zaX:200)
         1s test_node_graph(X aX:100 baX:200 caX:200 zaX:200)
       `);
       t('ring', `mode(msg req) conf(id(a:0.1 b:0.2 X:0.3 c:0.4 d:0.5 e:0.6))
@@ -3692,7 +3691,7 @@ describe('peer-relay', function(){
         Xe:cX[e]:dc[Xe]:ad[cXe]:ae>msg(type:res body:ping_r)
         test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
         1s test_node_graph(X bX:100 cX:100 eX:100 dcX:200 adcX:300)
-        cX:dc:ad:ca:ac:aX>msg(type:req)
+        cX:dc:ad:ca:ac:aX>req
         test_node_graph(X bX:100 cX:100 eX:100 dcX:200 acX:200)
         !sp test_node_graph(X bX:100 cX:100 eX:100 dcX:200 acX:200)`);
       });
@@ -3729,7 +3728,7 @@ describe('peer-relay', function(){
         20s a>*fail(id:r1 error:timeout)`);
       t('3_nodes_route_c', `conf(id(a:10 b:20 c:30 d:21 e:31))
         ab,ac>!connect ae>!req(id:r1 body:ping !e)
-        ac:ae>msg(id:r1 type:req body:ping) - 20s
+        ac:ae>req(body:ping) - 20s
         a>*fail(id:r1 error:timeout)`);
       t('3_nodes_ring', `conf(id(a:10 b:20 c:30)) !ring(a-c) ab>!ping
         ac>!ping -`);
