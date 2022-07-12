@@ -1289,6 +1289,13 @@ function cmd_test_node_graph(opt){
 }
 
 function cmd_test(opt){
+  // XXX: wrap logic. similar in cmd_dbg, cmd_comment
+  let {c, event} = opt;
+  if (t_pre_process)
+    return;
+  if (t_i<t_cmds.length)
+    return cmd_run(event);
+  assert(!event, 'unexpected event '+event);
 }
 
 function cmd_rt_add(opt){
@@ -4560,9 +4567,9 @@ describe('peer-relay', function(){
     t('xxx2', `conf(a-c rtt:50) ab>!connect bc>!connect cb.a~c>!ring_join
       ab.c~a>!ring_join ba.bc~b>!ring_join abc>!req(body:ping res:ping_r)
       // XXX: r1 > 1
-      ac>!req_start(id:r1 !e)
-      ab[c]:ac>req_start(id:1.0)
-      bc:ab[c]:ac>req_start(id:1.0)
+      ac>!req_start(id:r1 !e) a# b# c#
+      ab[c]:ac>req_start(id:1.0) a#ab[c]:ac>opening(id:>1.1) b# c#
+      bc:ab[c]:ac>req_start(id:1.0) c#abc>opening(id:>1.1v)
       ac>*req_start
       20s a>*fail(id:r1 seq:0 error:timeout)
     `);
