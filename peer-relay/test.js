@@ -1681,7 +1681,10 @@ function cmd_msg(opt){
   let id, type, cmd, seq, ack, a, msgack=!c.fwd;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
-    case 'id': id = a.arg; break;
+    case 'id':
+      id = id_from_req_id(a.arg);
+      seq = seq_from_req_id(a.arg);
+      break;
     case 'type': type = a.arg; break;
     case 'cmd': cmd = a.arg||''; break;
     case 'ack': ack = assert_ack(a.arg); break;
@@ -1769,17 +1772,30 @@ function cmd_msg(opt){
   fake_send_msg(c, {rt, req_id: id, type, seq, ack, cmd, body});
 }
 
+function id_from_req_id(s){
+  let a = s.match(/(^[^.]+).([0-9]+)$/);
+  return a?.length==3 ? 'r'+a[1] : s;
+}
+
+function seq_from_req_id(s){
+  let a = s.match(/(^[^.]+).([0-9]+)$/);
+  return a?.length==3 ? a[2] : undefined;
+}
+
 function cmd_req(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
   assert(t_pre_process||!c.loop);
   let emit_api=false, ooo=false, dup=false, close=false, rt;
   let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
-  let type = c.cmd.replace(/[!*]/, ''), e=call;
+  let type = c.cmd.replace(/[!*]/, ''), e=call, basic = !/[*!]/.test(c.cmd[0]);
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid type '+c.cmd);
   xutil.forEach(arg, a=>{ // XXX: proper assert of values
     switch (a.cmd){
-    case 'id': id = a.arg; break;
+    case 'id':
+      id = id_from_req_id(a.arg);
+      seq = seq_from_req_id(a.arg);
+      break;
     case 'body': body = a.arg; break;
     case '!e': e = !assert_bool(a.arg); break;
     case 'emit_api': emit_api = assert_bool(a.arg); break;
@@ -1802,6 +1818,15 @@ function cmd_req(opt){
     'emit_api only avail for !req_start');
   cmd = cmd||'';
   if (t_pre_process){
+    if (basic){
+      s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
+        {id, type, cmd, seq, ack, body});
+      if (c.fwd)
+        set_orig(c, s);
+      else
+        set_push_cmd(c, s);
+      return;
+    }
     set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, cmd, seq, ack, body, res,
       rt: call && rt ? rt_to_str(rt, c.dir) : undefined,
       '!e': !call ? undefined : true, emit_api, ooo, dup, close}));
@@ -1927,13 +1952,16 @@ function cmd_res(opt){
   assert(t_pre_process||!c.loop);
   let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
   let type = c.cmd.replace(/[!*]/, ''), cmd='', seq, ack, e=call;
-  let ooo=false, dup=false, close=false;
+  let ooo=false, dup=false, close=false, basic = !/[*!]/.test(c.cmd[0]);
   assert(s, 'invalid event '+c.orig);
   assert(['res', 'res_start', 'res_next', 'res_end'].includes(type),
     'invalid type '+c.cmd);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
-    case 'id': id = a.arg; break;
+    case 'id':
+      id = id_from_req_id(a.arg);
+      seq = seq_from_req_id(a.arg);
+      break;
     case '!e': e = !assert_bool(a.arg); break;
     case 'ooo': ooo = assert_bool(a.arg); break;
     case 'dup': dup = assert_bool(a.arg); break;
@@ -1947,6 +1975,15 @@ function cmd_res(opt){
   });
   assert(call || !e, 'e only avail for call mode');
   if (t_pre_process){
+    if (basic){
+      s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
+        {id, type, cmd, seq, ack, body});
+      if (c.fwd)
+        set_orig(c, s);
+      else
+        set_push_cmd(c, s);
+      return;
+    }
     set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, cmd, seq, ack,
       body, '!e': !call ? undefined : true, ooo, dup, close}));
     if (e){
@@ -2127,20 +2164,28 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'ack': yield cmd_ack(opt); break;
   case 'msg': yield cmd_msg(opt); break;
   case 'fwd': yield cmd_fwd(opt); break;
+  case 'req': yield cmd_req(opt); break;
   case '!req': yield cmd_req(opt); break;
   case '*req': yield cmd_req(opt); break;
+  case 'req_start': yield cmd_req(opt); break;
   case '!req_start': yield cmd_req(opt); break;
   case '*req_start': yield cmd_req(opt); break;
+  case 'req_next': yield cmd_req(opt); break;
   case '!req_next': yield cmd_req(opt); break;
   case '*req_next': yield cmd_req(opt); break;
+  case 'req_end': yield cmd_req(opt); break;
   case '!req_end': yield cmd_req(opt); break;
   case '*req_end': yield cmd_req(opt); break;
+  case 'res': yield cmd_res(opt); break;
   case '!res': yield cmd_res(opt); break;
   case '*res': yield cmd_res(opt); break;
+  case 'res_start': yield cmd_res(opt); break;
   case '!res_start': yield cmd_res(opt); break;
   case '*res_start': yield cmd_res(opt); break;
+  case 'res_next': yield cmd_res(opt); break;
   case '!res_next': yield cmd_res(opt); break;
   case '*res_next': yield cmd_res(opt); break;
+  case 'res_end': yield cmd_res(opt); break;
   case '!res_end': yield cmd_res(opt); break;
   case '*res_end': yield cmd_res(opt); break;
   case '*fail': yield cmd_fail(opt); break;
@@ -3345,6 +3390,34 @@ describe('peer-relay', function(){
             fa:ba[fedc]:cd[fed]:ec[f]<msg(type:req cmd:ping)
             fa:ba[fedc]:cd[fed]:ec[f]:fe<msg(type:req cmd:ping)`);
         });
+        describe('req', function(){
+          T('ab>req(id:r1)', `ab>msg(type:req id:r1)`);
+          T('ab>req_start(id:r1)', `ab>msg(type:req_start id:r1)`);
+          T('abc>req_start(id:r1)', `abc>msg(type:req_start id:r1)`);
+          T('bc:ab>req_start(id:r1)', `bc:ab>msg(type:req_start id:r1)`);
+          T('ab>req_start(id:1.2 cmd:test body:123)',
+            `ab>msg(type:req_start id:r1 seq:2 cmd:test body:123)`);
+          T('ab>req_next', `ab>msg(type:req_next)`);
+          T('abc>req_next', `abc>msg(type:req_next)`);
+          T('bc:ab>req_next', `bc:ab>msg(type:req_next)`);
+          T('ab>req_end', `ab>msg(type:req_end)`);
+          T('abc>req_end', `abc>msg(type:req_end)`);
+          T('bc:ab>req_end', `bc:ab>msg(type:req_end)`);
+        });
+        describe('res', function(){
+          T('ab>res(id:r1)', `ab>msg(type:res id:r1)`);
+          T('ab>res_start(id:r1)', `ab>msg(type:res_start id:r1)`);
+          T('abc>res_start(id:r1)', `abc>msg(type:res_start id:r1)`);
+          T('bc:ab>res_start(id:r1)', `bc:ab>msg(type:res_start id:r1)`);
+          T('ab>res_start(id:1.2 cmd:test body:123)',
+            `ab>msg(type:res_start id:r1 seq:2 cmd:test body:123)`);
+          T('ab>res_next', `ab>msg(type:res_next)`);
+          T('abc>res_next', `abc>msg(type:res_next)`);
+          T('bc:ab>res_next', `bc:ab>msg(type:res_next)`);
+          T('ab>res_end', `ab>msg(type:res_end)`);
+          T('abc>res_end', `abc>msg(type:res_end)`);
+          T('bc:ab>res_end', `bc:ab>msg(type:res_end)`);
+        });
         describe('ping', function(){
           T('ab>*ping_r', `ab>*res(cmd:ping)`);
           T('ab>ping_r', `ab>msg(type:res cmd:ping)`);
@@ -4459,6 +4532,15 @@ describe('peer-relay', function(){
       bc>fwd(ab>fwd(ac>msg(type:req cmd:ping) rt:c) !msgack) bc<msg(type:ack)
       bc<fwd(ac<msg(type:res cmd:ping) rt:a !msgack) bc>msg(type:ack)
       ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
+    `);
+    t('xxx2', `conf(a-c rtt:50) ab>!connect bc>!connect cb.a~c>!ring_join
+      ab.c~a>!ring_join ba.bc~b>!ring_join abc>!req(body:ping res:ping_r)
+      // XXX: r1 > 1
+      ac>!req_start(id:r1 !e)
+      ab[c]:ac>req_start(id:1.0)
+      bc:ab[c]:ac>req_start(id:1.0)
+      ac>*req_start
+      20s a>*fail(id:r1 seq:0 error:timeout)
     `);
     if (true) return; // XXX WIP
     // XXX: update rtt on each ack (and how to handle time diff 0)?
