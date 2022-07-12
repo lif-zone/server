@@ -30,6 +30,7 @@ export default class Router extends EventEmitter {
     this.routes = {};
     this._queue = [];
     this._channels = channels;
+    this.state = {};
     this.node = new NodeMap.Node({id, self: this});
     this.node_map.set(id, this.node);
     this._channels.on('added', channel=>this._onChannelAdded(channel));
@@ -136,6 +137,7 @@ export default class Router extends EventEmitter {
         msg2.range = NodeId.range_to_msg(range);
       lbuffer.add_json(msg2);
     }
+    _this.track(lbuffer);
     yield channel.send(lbuffer.to_str());
   });
   _on_msg = (data, channel)=>etask({_: this},
@@ -147,6 +149,7 @@ export default class Router extends EventEmitter {
     if (!msgid && msg.type!='ack') // XXX: TODO ack
       return log('invalid message msgid %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
+    _this.track(lbuffer);
     if (msg.type!='ack')
       _this.ack(channel, msg0.msgid);
     if (!path && msg.to==_this.id.s)
@@ -263,6 +266,13 @@ export default class Router extends EventEmitter {
       prev = curr;
     }
     return a;
+  }
+  track(lbuffer){
+    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
+    let req_id = ''+msg.req_id, seq = +msg.seq;
+    let ts = Date.now();
+    let src = NodeId.from(msg.from), dst = NodeId.from(msg.to);
+    let state = this.state[req_id]||{req_id, ts, src, dst, status: 'opening'};
   }
   destroy(){ this.node_map.destroy(); }
 }
