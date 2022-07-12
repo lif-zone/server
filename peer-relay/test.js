@@ -1288,6 +1288,9 @@ function cmd_test_node_graph(opt){
   assert.deepEqual(ret, exp);
 }
 
+function cmd_test(opt){
+}
+
 function cmd_rt_add(opt){
   let {c, event} = opt, arg = xtest.test_parse(c.arg);
   let routes = {};
@@ -2194,6 +2197,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case 'test_node_conn': yield cmd_test_node_conn(opt); break;
   case 'test_node_find': yield cmd_test_node_find(opt); break;
   case 'test_node_graph': yield cmd_test_node_graph(opt); break;
+  case 'test': yield cmd_test(opt); break;
   default: assert(false, 'unknown cmd '+c.cmd+ ' '+c.orig);
   }
 });
@@ -2408,9 +2412,23 @@ afterEach(function(){
   xerr.set_buffered(false);
 });
 
+function test_transform_hash(s){
+  let i = s.search('#');
+  if (i==-1)
+    return s;
+  let arg = s.substr(0, i);
+  arg += (arg ? ' ' : '')+s.substr(i+1);
+  return 'test('+arg+')';
+}
+
 function test_transform(s){
+  if (s.search('#')!=-1)
+    return test_transform_hash(s);
   let _d = s.search(/[<>]/);
   if (_d==-1)
+    return s;
+  let dd = s.search(/[(]/);
+  if (dd!=-1 && dd < _d)
     return s;
   let dir = s[_d], pre = s.substr(0, _d), post = s.substr(_d+1, Infinity);
   let a = [], p='', rt='', range='';
@@ -2901,6 +2919,9 @@ describe('api', function(){
    t('da:ba[x]:cb[y]:dc[z]<msg',
      `dc<fwd(cb<fwd(ba<fwd(da<msg rt(x)) rt(y)) rt(z))`);
    t('ab[cd].e>msg', `ab[cd].e>msg`);
+   t('a#bc>msg', `test(a bc>msg)`);
+   t('a#ab[c]:ac>opening(id:>1.1)', `test(a ab[c]:ac>opening(id:>1.1))`);
+   t('test(a ab[c]:ac>opening(id:>1.1))', `test(a ab[c]:ac>opening(id:>1.1))`);
    // XXX: add test for invalid
   });
   it('normalize', ()=>{
@@ -3507,7 +3528,11 @@ describe('peer-relay', function(){
           T('ab~c>!ring_join(!r)', `a~c>!ring_join
             ab{b-b}:a~c>msg(type:req cmd:ring_join) ab>*ring_join`);
           if (0) // XXX: TODO
-        T('ab.c>fwd(ac>ring_join_r)', `ab.c>ring_join_r`);
+          T('ab.c>fwd(ac>ring_join_r)', `ab.c>ring_join_r`);
+        });
+        describe('test', ()=>{
+          T('a#ab[c]:ac>opening(id:>1.1)',
+            `test(a ab[c]:ac>opening(id:>1.1))`);
         });
       });
     });
