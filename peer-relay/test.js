@@ -1125,6 +1125,7 @@ function cmd_conf(opt){
     case 'rt': t_conf.rt = assert_bool(arg2); break;
     case 'rtt': assert_rtt(arg2); break;
     case '!node': no_node = assert_bool(arg2); break;
+    case '!autoack': t_conf.no_autoack = assert_bool(arg2); break;
     case 'xerr': xtest.xerr_level(arg2); break;
     default:
       if (/:/.test(cmd)){ // XXX HACK: bug in parser
@@ -1144,8 +1145,7 @@ function cmd_conf(opt){
   if (!t_pre_process)
     return;
   // XXX: rm
-  if (ids && !no_node){
-    let s = '';
+  if (ids && !no_node){ let s = '';
     for (let name in ids)
       s += (s ? ' ' : '')+name+'=node:wss';
     push_cmd(s);
@@ -1290,7 +1290,7 @@ function cmd_test_node_graph(opt){
 
 function cmd_test(opt){
   // XXX: wrap logic. similar in cmd_dbg, cmd_comment
-  let {c, event} = opt;
+  let {event} = opt;
   if (t_pre_process)
     return;
   if (t_i<t_cmds.length)
@@ -1715,7 +1715,7 @@ function cmd_msg(opt){
     else {
       set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, type, cmd, seq, ack,
         body, '!msgack': c.fwd||type=='ack' ? undefined : true}));
-      if (msgack)
+      if (!t_conf.no_autoack && msgack)
         push_cmd(rev_c(c)+'ack');
     }
     return;
@@ -2107,7 +2107,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
     (rt ? ' '+build_cmd('rt', rt_to_str(rt, c.dir)) : '')+
     (range ? ' '+build_cmd('range', range_to_str(range, c.dir)) : '')+
     (c.fwd ? '' : ' !msgack'), [dir_c(c)]));
-  if (msgack)
+  if (!t_conf.no_autoack && msgack)
     push_cmd(rev_c(c)+'ack');
 });
 
@@ -3777,15 +3777,6 @@ describe('peer-relay', function(){
         adc>!ping 60s ad>!ping 60s ba>!ping 60s bc>!ping 60s bad>!ping 60s
         cda>!ping 60s cb>!ping 60s cd>!ping 60s da>!ping 60s dcb>!ping 60s
         dc>!ping`);
-      // XXX: need to rm explicit req_id. need to fix test req tracking.
-      // without explicit req_id, the test fails
-      if (0) // XXX WIP - fix test
-      t('4_nodes_ring_state_timeout', `conf(id(a:10 b:20 c:30 d:40))
-        ab,bc,cd,da>!connect - ab>!req(body:ping res:ping_r) -
-        rt_add(a:bc b:cd c:da d:ab)
-        adc>!req(id:r1 body:ping res:ping_r) 59s -
-        // a.bc<!req(id:r2 body:ping res:ping_r) 60s -
-        // a.bc<!req(id:r3 body:ping res:ping_r) -`);
       t = (name, test)=>t_roles(name, 'abcde', test);
       t('5_nodes_ring', `conf(id(a:10 b:20 c:30 d:40 e:50)) !ring(a-e)
         ae.d>!ping 59s - aed<!ping 60s - aed<!ping 60s`);
@@ -4564,12 +4555,17 @@ describe('peer-relay', function(){
       bc<fwd(ac<msg(type:res cmd:ping) rt:a !msgack) bc>msg(type:ack)
       ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
     `);
-    t('xxx2', `conf(a-c rtt:50) ab>!connect bc>!connect cb.a~c>!ring_join
+    t('xxx2', `conf(a-c rtt:50)
+      ab>!connect bc>!connect cb.a~c>!ring_join
       ab.c~a>!ring_join ba.bc~b>!ring_join abc>!req(body:ping res:ping_r)
+      conf(!autoack)
       // XXX: r1 > 1
       ac>!req_start(id:r1 !e) a# b# c#
       ab[c]:ac>req_start(id:1.0) a#ab[c]:ac>opening(id:>1.1) b# c#
+      ab<ack
       bc:ab[c]:ac>req_start(id:1.0) c#abc>opening(id:>1.1v)
+      bc<ack
+      // XXX abc:bc<ack(id:>1.1V)
       ac>*req_start
       20s a>*fail(id:r1 seq:0 error:timeout)
     `);

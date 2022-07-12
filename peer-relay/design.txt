@@ -13,8 +13,6 @@ VP:
 - conn disconnected: update tables
 - handle failures
   - conn dead (timeouts): zero incoming pkts, mark dead, retry?
-- fix state handling for routing
-  - fix 4_nodes_ring_state_timeout
 - remove obsolete
   - fix node roles used to be automatic (check which nodes are used during
     pre-process)

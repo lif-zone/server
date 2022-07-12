@@ -4,11 +4,9 @@ import {EventEmitter} from 'events';
 import assert from 'assert';
 import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
-import date from '../util/date.js';
 import NodeId from './node_id.js';
 import * as util from './util.js';
 import NodeMap from './node_map.js';
-import xutil from '../util/util.js';
 import {dbg_msg} from './util.js';
 import xlog from '../util/xlog.js';
 import LBuffer from './lbuffer.js';
@@ -20,16 +18,14 @@ const DEF_RTT = 1000;
 export default class Router extends EventEmitter {
   constructor(opt){
     super();
-    let {channels, id, wallet, state_timeout} = opt;
+    let {channels, id, wallet} = opt;
     this.wallet = wallet;
     this.id = id;
     this.msg_id_n = 0;
     this.concurrency = 1;
-    this.state_timeout = state_timeout||60*date.ms.SEC;
     this.maxHops = 20;
     // XXX: rm _ from properites + methods
     // XXX: memory leak - no cleanup for all
-    this.state = {};
     this.node_map = new NodeMap();
     this.routes = {};
     this._queue = [];
@@ -99,8 +95,6 @@ export default class Router extends EventEmitter {
         }
       }
     } else {
-      // XXX TODO: fix state handling
-      // else if (channel = _this.get_channel_from_state(msg));
       if (channel = _this.get_channel_from_path(path)){
         // XXX WIP
         if (['req', 'req_start'].includes(msg.type) && rt?.opt!='!'){
@@ -140,7 +134,6 @@ export default class Router extends EventEmitter {
           msg2.rt.opt = rt.opt;
       } else if (range)
         msg2.range = NodeId.range_to_msg(range);
-      _this.track_out(msg2, channel);
       lbuffer.add_json(msg2);
     }
     yield channel.send(lbuffer.to_str());
@@ -154,7 +147,6 @@ export default class Router extends EventEmitter {
     if (!msgid && msg.type!='ack') // XXX: TODO ack
       return log('invalid message msgid %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
-    _this.track_in(msg, channel);
     if (msg.type!='ack')
       _this.ack(channel, msg0.msgid);
     if (!path && msg.to==_this.id.s)
@@ -191,32 +183,6 @@ export default class Router extends EventEmitter {
     if (!dst)
       return;
     return this.get_channel_from_id(dst);
-  }
-  get_channel_from_state(msg){
-    let {from, to} = msg, state = this.state[state_hash(from, to)];
-    if (!state)
-      return;
-    if (xutil.get(state, [to, 'ch_out']))
-      return this.get_channel_from_id(NodeId.from(state[to].ch_out));
-    if (xutil.get(state, [from, 'ch_in']))
-      return this.get_channel_from_id(NodeId.from(state[from].ch_in));
-  }
-  track_in = (msg, channel)=>this.track(msg, channel.id.s, '');
-  track_out = (msg, channel)=>this.track(msg, '', channel.id.s);
-  track(msg, ch_in, ch_out){
-    let {from, to} = msg, ts = date.monotonic(), state, o;
-    let hash = state_hash(from, to);
-    if (!(state = this.state[hash]))
-      state = this.state[hash] = {ts};
-    if (!(o = state[to]))
-      o = state[to] = {hash, from, to, ch_in, ch_out, ts};
-    state.ts = o.ts = ts;
-    if (state.et_timeout)
-      state.et_timeout.return();
-    state.et_timeout = etask({_: this}, function*track_timeout(){
-      yield etask.sleep(this._.state_timeout);
-      delete this._.state[hash];
-    });
   }
   get_route(d){
     let routes=this.routes;
@@ -300,9 +266,6 @@ export default class Router extends EventEmitter {
   }
   destroy(){ this.node_map.destroy(); }
 }
-
-function state_hash(from, to){
-  return from.localeCompare(to)<0 ? from+'_'+to : to+'_'+from; }
 
 // XXX: mv to other place
 function path_eq(p1, p2){
