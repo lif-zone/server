@@ -151,23 +151,12 @@ export default class Router extends EventEmitter {
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track(lbuffer);
     if (msg.type!='ack')
-      _this.ack(channel, msg);
+      _this.ack(channel, lbuffer);
     if (!path && msg.to==_this.id.s)
       _this.emit('message', lbuffer);
     else
       yield _this._send(lbuffer);
   });
-  ack(channel, msg){
-    let dir = type_to_dir(msg.type);
-    if (!dir)
-      return;
-    let msgid = this.msgid();
-    let msg2 = {msgid, to: channel.id.s, from: this.id.s, type: 'ack',
-      req_id: msg.req_id, seq: msg.seq, dir};
-    msg2.sign = this.wallet.sign(msg2);
-    let lbuffer2 = new LBuffer(msg2);
-    return channel.send(lbuffer2.to_str());
-  }
   _onChannelAdded(channel){
     let dst = channel.id;
     this.node_map.update_conn({ids: [this.id, dst], self: channel,
@@ -271,6 +260,27 @@ export default class Router extends EventEmitter {
     }
     return a;
   }
+  ack(channel, lbuffer){
+    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
+    let rt = msg0.rt, path = rt?.path, dir = type_to_dir(msg.type);
+    if (!dir)
+      return;
+    let msgid = this.msgid();
+    // XXX: rm no_autoack
+    if (!path && msg.to==this.id.s && Router.t.t_conf?.no_autoack){
+      let msg2 = {msgid, to: msg.from, from: this.id.s, type: 'ack',
+        req_id: msg.req_id, seq: msg.seq, dir};
+      msg2.sign = this.wallet.sign(msg2);
+      let lbuffer2 = new LBuffer(msg2);
+      return this._send(lbuffer2);
+    } else {
+      let msg2 = {msgid, to: channel.id.s, from: this.id.s, type: 'ack',
+        req_id: msg.req_id, seq: msg.seq, dir};
+      msg2.sign = this.wallet.sign(msg2);
+      let lbuffer2 = new LBuffer(msg2);
+      return channel.send(lbuffer2.to_str());
+    }
+  }
   track(lbuffer){
     let ts = Date.now();
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), type = msg.type;
@@ -286,7 +296,12 @@ export default class Router extends EventEmitter {
     state.last_ts = ts;
     let seq_o = state[dir][seq] = state[dir][seq] || {ts, last_ts: ts};
     seq_o.last_ts = ts;
-    seq_o.state = this.id.eq(NodeId.from(msg0.from)) ? 'out' : 'in';
+    let seq_state = this.id.eq(NodeId.from(msg0.from)) ? 'out' : 'in';
+    if (false && seq_o.state && seq_o.state!='in') // XXX: TODO
+      xerr('invalid seq state %s->%s', seq_o.state, seq_state);
+    if (seq_o.state=='ack')
+      xerr('invalid seq state %s->%s', seq_o.state, seq_state);
+    seq_o.state = seq_state;
   }
   track_ack(lbuffer){
     let ts = Date.now();
@@ -299,7 +314,14 @@ export default class Router extends EventEmitter {
     let seq_o = state[dir][seq];
     if (!seq_o)
       return xerr('ack: req_id %s seq %s not found', req_id, seq);
-    seq_o.state = 'ack';
+    if (dir=='>' && state.dst.s==msg.from){
+      state.state = 'open';
+      seq_o.state = 'done';
+    } else if (dir=='<' && state.src.s==msg.from)
+      seq_o.state = 'done';
+    else
+      seq_o.state = 'ack';
+    seq_o.last_ts = ts;
   }
   destroy(){ this.node_map.destroy(); }
 }

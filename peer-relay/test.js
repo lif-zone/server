@@ -755,7 +755,8 @@ class FakeChannel extends EventEmitter {
     cmd = cmd||'';
     fuzzy = fuzzy||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
-    assert(msg.msgid, 'missing msg msgid '+data);
+    // XXX: why missing msgid for type=='ack'?
+    assert(msg.type=='ack' || msg.msgid, 'missing msg msgid '+data);
     xerr.notice('*** send%s msg %s %s', fwd ? ' fwd '+fwd : '',
       from.t.name+to.t.name+'>'+cmd, stringify(msg));
     return etask(function*send(){
@@ -1306,6 +1307,7 @@ function cmd_test(opt){
     state = o.cmd;
     s = o.s;
     d = o.d;
+    let not_exist;
     xutil.forEach(xtest.test_parse(arg[1].arg), a=>{
       switch (a.cmd){
       case 'id':
@@ -1314,19 +1316,25 @@ function cmd_test(opt){
         seq = seq_from_req_id(a.arg);
         v = v_from_req_id(a.arg);
         break;
+      case '!id':
+        dir = dir_from_req_id(a.arg);
+        id = id_from_req_id(a.arg);
+        seq = seq_from_req_id(a.arg);
+        not_exist = true;
+        break;
       default: assert(0, 'unknown arg '+a.cmd);
       }
     });
     if (!node.t.fake){
       assert.equal(node.router.state[id]?.state, state);
-      if (node.router.state[id]){
+      if (not_exist){
+        assert(!node.router.state[id][dir][seq], 'must not exists '+seq);
+      } else {
         assert(!!node.router.state[id][dir][seq], 'missing seq '+seq);
-        if (v)
-          assert.equal(node.router.state[id][dir][seq].state, 'ack');
-        else {
-          assert(node.router.state[id][dir][seq].state!='ack',
-            'expected !ack but got ack');
-        }
+        let seq_state = node.router.state[id][dir][seq].state;
+        assert(v=='vv' ? seq_state=='done' : v=='v' ? seq_state=='ack' :
+          ['in', 'out'].includes(seq_state), 'wrong state '+seq_state+
+          (v ? ' '+v : '')+' '+c.orig);
       }
     }
     // XXX xerr('XXX %s%s%s id %s seq %s state %s', s, d, dir, id, seq, state);
@@ -1653,8 +1661,11 @@ function cmd_ack(opt){
   });
   if (!t_pre_process)
     return;
-  if (t_mode.msg)
-    set_orig(c, build_cmd_o(dir_c(c)+'msg', {id, type: 'ack', seq, dir}));
+  if (!t_mode.msg)
+    return;
+  let s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' :
+    dir_c(c)+'msg', {id, type: 'ack', seq ,dir});
+  set_push_cmd(c, s);
 }
 
 function cmd_node_ring_join(opt){
@@ -1756,7 +1767,7 @@ function cmd_msg(opt){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  if (type=='ack'){
+  if (type=='ack' && !c.fwd){
     assert(msgack, 'cannot use !msgack for type:ack (already implied)');
     msgack = false;
   }
@@ -1796,8 +1807,10 @@ function cmd_msg(opt){
       type: ['req_next', 'req_end'].includes(type) ? 'res' : 'req',
       keep: t_mode.req && t_mode.msg || !c.fwd || fwd_d(c.fwd, 0)!=d.t.name});
   }
-  if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
+  if (['req', 'res'].includes(type)) // XXX HACK: rm
     seq = seq||0;
+  if (type=='res') // XXX HACK: rm
+    ack = ack||0;
   assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
     {id, type, cmd, seq, ack, dir, body}), c.fwd, event, false);
   if (type=='req'){
@@ -3400,6 +3413,7 @@ describe('peer-relay', function(){
           TT('ab<ack', `ab<msg(type(ack))`);
           T('ab>msg', `ab>msg(!msgack) ab<ack`);
           T('ab<msg', `ab<msg(!msgack) ab>ack`);
+          T('abc>ack', `abc>msg(type(ack))`);
         });
         describe('fwd', function(){
           TT('ab>fwd(ac>msg !msgack)', `ab>fwd(ac>msg !msgack)`);
@@ -3409,14 +3423,11 @@ describe('peer-relay', function(){
           // ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack)
           T('abc>msg(type:req cmd:ping)', `ab[c]:ac>msg(type:req cmd:ping)
             bc:ab[c]:ac>msg(type:req cmd:ping)`);
-          T('!abc>msg(type:req cmd:ping)',
-            `ab[!c]:ac>msg(type:req cmd:ping)
+          T('!abc>msg(type:req cmd:ping)', `ab[!c]:ac>msg(type:req cmd:ping)
             bc:ab[!c]:ac>msg(type:req cmd:ping)`);
-          T('?abc>msg(type:req cmd:ping)',
-            `ab[?c]:ac>msg(type:req cmd:ping)
+          T('?abc>msg(type:req cmd:ping)', `ab[?c]:ac>msg(type:req cmd:ping)
             bc:ab[?c]:ac>msg(type:req cmd:ping)`);
-          T('abc.def>msg(type:req cmd:ping)',
-            `ab[c]:af>msg(type:req cmd:ping)
+          T('abc.def>msg(type:req cmd:ping)', `ab[c]:af>msg(type:req cmd:ping)
             bc:ab[c]:af>msg(type:req cmd:ping)
             cd[ef]:bc:ab[c]:af>msg(type:req cmd:ping)
             de[f]:cd[ef]:bc:ab[c]:af>msg(type:req cmd:ping)
@@ -4621,13 +4632,14 @@ describe('peer-relay', function(){
       bc<fwd(ac<msg(type:res cmd:ping) rt:a !msgack) bc>msg(type:ack)
       ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
     `);
-    t('xxx2', `conf(a-c rtt:50)
+    t('xxx2', `mode:msg conf(a-c rtt:50)
       ab>!connect bc>!connect cb.a~c>!ring_join
       ab.c~a>!ring_join ba.bc~b>!ring_join abc>!req(body:ping res:ping_r)
       conf(!autoack)
       // XXX: r1 > 1
       // XXX a# b# c#
       // XXX a#ab[c]:ac>opening(id:>1.0) b# c#
+      // XXX calc rtt from ack messages
       a#!id(>1.0) b#!id(1.0) c#!id(1.0)
       ac>!req_start(id:r1 !e)
       a#ac>opening(id(>1.0)) b#!id(1.0) c#!id(1.0)
@@ -4636,14 +4648,25 @@ describe('peer-relay', function(){
       ab<ack(id(>1.0)) // XXX: verify rt is c
       a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#!id(1.0)
       bc:ab[c]:ac>req_start(id:1.0)
-      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#ac>opening(id(>1.0))
-      // c#abc>opening(id:>1.0v)
-      bc<ack(id(>1.0))
-      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0v)) c#ac>opening(id(>1.0))
-      // XXX abc:bc<ack(id:>1.1V)
-      // abc<ack(id:>1.1v)
-      ac>*req_start
-      20s a>*fail(id:r1 seq:0 error:timeout)
+      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#ac>open(id(>1.0vv))
+      abc<ack(id(>1.0))
+      // XXX ac>*req_start
+      a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
+      ac<!res_start(id:r1 !e)
+      // XXX bc[a]:ac<res_start(id:1.0)
+      bc<fwd(ac<res_start(id:1.0) rt:a)
+      bc>ack(id(<1.0))
+      // XXX unit: a#ac>open(id(>1.0vv) !id(<1.0))
+      a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
+      a#ac>open(!id(<1.0)) b#ac>open(id(<1.0)) c#ac>open(id(<1.0v))
+      // XXX ab:bc[a]:ac<res_start(id:1.0)
+      ab<fwd(bc<fwd(ac<res_start(id:1.0) rt:a))
+      abc>ack(id(<1.0))
+      a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
+      a#ac>open(id(<1.0vv)) b#ac>open(id(<1.0vv)) c#ac>open(id(<1.0vv))
+      20s
+      c>*fail(id:r1 seq:0 error:timeout)
+      a>*fail(id:r1 seq:0 error:timeout)
     `);
     if (true) return; // XXX WIP
     // XXX: update rtt on each ack (and how to handle time diff 0)?
