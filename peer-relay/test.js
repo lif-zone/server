@@ -1290,9 +1290,39 @@ function cmd_test_node_graph(opt){
 
 function cmd_test(opt){
   // XXX: wrap logic. similar in cmd_dbg, cmd_comment
-  let {event} = opt;
+  let {c, event} = opt;
+  let arg = xtest.test_parse_plugin(c.arg);
+  let node = N(arg[0].cmd), state, s, d, id, seq, dir, v;
   if (t_pre_process)
     return;
+  if (arg[1]){ // eg. ac>opening(...)
+    let o = xtest.parse_cmd_dir(arg[1].cmd);
+    state = o.cmd;
+    s = o.s;
+    d = o.d;
+    xutil.forEach(xtest.test_parse(arg[1].arg), a=>{
+      switch (a.cmd){
+      case 'id':
+        dir = a.arg[0];
+        assert(/[<>]/.test(dir), 'invalid req_id dir '+a.arg);
+        id = id_from_req_id(a.arg.substr(1));
+        seq = seq_from_req_id(a.arg.substr(1));
+        v = v_from_req_id(a.arg.substr(1));
+        break;
+      default: assert(0, 'unknown arg '+a.cmd);
+      }
+    });
+    if (!node.t.fake){
+      assert.equal(''+node.router.state[id]?.state, state);
+      if (node.router.state[id]){
+        assert(!!node.router.state[id][dir][seq], 'missing seq '+seq);
+      }
+    }
+    // XXX xerr('XXX %s%s%s id %s seq %s state %s', s, d, dir, id, seq, state);
+  } else if (0) { // XXX: TODO
+    if (!node.t.fake)
+      assert.equal(node.router.state[id]?.state, undefined);
+  }
   if (t_i<t_cmds.length)
     return cmd_run(event);
   assert(!event, 'unexpected event '+event);
@@ -1783,13 +1813,18 @@ function cmd_msg(opt){
 }
 
 function id_from_req_id(s){
-  let a = s.match(/(^[^.]+).([0-9]+)$/);
-  return a?.length==3 ? 'r'+a[1] : s;
+  let a = s.match(/(^[^.]+).([0-9]+)([v]*)$/);
+  return a?.length==4 ? 'r'+a[1] : s;
 }
 
 function seq_from_req_id(s){
-  let a = s.match(/(^[^.]+).([0-9]+)$/);
-  return a?.length==3 ? a[2] : undefined;
+  let a = s.match(/(^[^.]+).([0-9]+)([v]*)$/);
+  return a?.length==4 ? a[2] : undefined;
+}
+
+function v_from_req_id(s){
+  let a = s.match(/(^[^.]+).([0-9]+)([v]*)$/);
+  return a?.length==4 ? a[3] : undefined;
 }
 
 function cmd_req(opt){
@@ -2429,6 +2464,8 @@ function test_transform_hash(s){
 }
 
 function test_transform(s){
+  if (s.substr(0, 2)=='//')
+    return s;
   if (s.search('#')!=-1)
     return test_transform_hash(s);
   let _d = s.search(/[<>]/);
@@ -2929,6 +2966,7 @@ describe('api', function(){
    t('a#bc>msg', `test(a bc>msg)`);
    t('a#ab[c]:ac>opening(id:>1.1)', `test(a ab[c]:ac>opening(id:>1.1))`);
    t('test(a ab[c]:ac>opening(id:>1.1))', `test(a ab[c]:ac>opening(id:>1.1))`);
+   t('// a#ab[c]:ac>opening(id:>1.1)', `// a#ab[c]:ac>opening(id:>1.1)`);
    // XXX: add test for invalid
   });
   it('normalize', ()=>{
@@ -3538,6 +3576,7 @@ describe('peer-relay', function(){
           T('ab.c>fwd(ac>ring_join_r)', `ab.c>ring_join_r`);
         });
         describe('test', ()=>{
+          T('a#ac>opening(id:>1.1)', `test(a ac>opening(id:>1.1))`);
           T('a#ab[c]:ac>opening(id:>1.1)',
             `test(a ab[c]:ac>opening(id:>1.1))`);
         });
@@ -4560,12 +4599,20 @@ describe('peer-relay', function(){
       ab.c~a>!ring_join ba.bc~b>!ring_join abc>!req(body:ping res:ping_r)
       conf(!autoack)
       // XXX: r1 > 1
-      ac>!req_start(id:r1 !e) a# b# c#
-      ab[c]:ac>req_start(id:1.0) a#ab[c]:ac>opening(id:>1.1) b# c#
-      ab<ack
-      bc:ab[c]:ac>req_start(id:1.0) c#abc>opening(id:>1.1v)
+      // XXX a# b# c#
+      // XXX a#ab[c]:ac>opening(id:>1.0) b# c#
+      ac>!req_start(id:r1 !e)
+      a#ac>opening(id(>1.0v)) b#undefined(id(>1.0)) c#undefined(id(>1.0))
+      ab[c]:ac>req_start(id:1.0)
+      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#undefined(id(>1.0))
+      ab<ack // XXX: verify rt is c
+      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#undefined(id(>1.0))
+      bc:ab[c]:ac>req_start(id:1.0)
+      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#ac>opening(id(>1.0))
+      // c#abc>opening(id:>1.0v)
       bc<ack
       // XXX abc:bc<ack(id:>1.1V)
+      // abc<ack(id:>1.1v)
       ac>*req_start
       20s a>*fail(id:r1 seq:0 error:timeout)
     `);
@@ -4574,7 +4621,9 @@ describe('peer-relay', function(){
     t('xxx', `conf(rtt:50)
       !abc>!req // teach rtt
       ac>!req_start
-      ab[c]:ac>req_start(id:>1.1) a#ab[c]:ac>opening(id:>1.1) b# c#
+      ab[c]:ac>req_start(id:>1.1)
+      a#ac>opening(id:>1.1)
+      // a#ab[c]:ac>opening(id:>1.1) b# c#
       ab<ack(id:>1.1) a#abc>opening(id:>1.1+) b#abc:ac>opening(id:>1.1)
       bc:ab[c]:ac>req_start c#abc>opening(id:>1.1v)
       abc:bc<ack(id:>1.1V)

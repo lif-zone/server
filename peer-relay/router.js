@@ -268,11 +268,21 @@ export default class Router extends EventEmitter {
     return a;
   }
   track(lbuffer){
-    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
+    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), type = msg.type;
+    let dir = ['req', 'req_start', 'req_next', 'req_end'].includes(type) ?
+      '>' : ['res', 'res_start', 'res_next', 'res_end'].includes(type) ?  '<' :
+      '';
+    if (!dir)
+      return;
     let req_id = ''+msg.req_id, seq = +msg.seq;
     let ts = Date.now();
     let src = NodeId.from(msg.from), dst = NodeId.from(msg.to);
-    let state = this.state[req_id]||{req_id, ts, src, dst, status: 'opening'};
+    let state = this.state[req_id] = this.state[req_id]|| {req_id, ts,
+      last_ts: ts, src, dst, state: 'opening', '>': {}, '<': {}};
+    state.last_ts = ts;
+    let seq_o = state[dir][seq] = state[dir][seq] || {ts, last_ts: ts};
+    seq_o.last_ts = ts;
+    seq_o.state = this.id.eq(NodeId.from(msg0.from)) ? 'out' : 'in';
   }
   destroy(){ this.node_map.destroy(); }
 }
