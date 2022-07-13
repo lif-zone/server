@@ -1640,7 +1640,7 @@ function cmd_ack(opt){
   let {c, event} = opt;
   assert(!event, 'unexpected event');
   assert(!c.fwd, 'invalid fwd '+c.fwd);
-  let arg = xtest.test_parse(c.arg), seq, id, dir
+  let arg = xtest.test_parse(c.arg), seq, id, dir;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id':
