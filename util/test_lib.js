@@ -525,7 +525,7 @@ E.test_parse_cmd_single = function(s){
     else {
       let m = cmd.match(/(^[^:]+):([^:]+$)/);
       assert_invalid(m, cmd, cmd.lastIndexOf(':'));
-      cmd = ret.cmd = m[1];
+      ret.cmd = m[1];
       ret.arg = m[2];
     }
   }
@@ -730,6 +730,9 @@ E.test_parse_rm_meta_orig = function(a){
 
 E.test_parse = function(s){
   return E.test_run_plugin(E.test_parse_cmd_multi(s), E.plugin_cmd_dir); };
+
+E.test_parse_plugin = function(s, plugin){
+  return E.test_run_plugin(E.test_parse_cmd_multi(s), plugin); };
 
 E.arg_to_val = function(arg){
   if (!arg)
