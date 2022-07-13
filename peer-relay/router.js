@@ -151,17 +151,21 @@ export default class Router extends EventEmitter {
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track(lbuffer);
     if (msg.type!='ack')
-      _this.ack(channel, msg0.msgid);
+      _this.ack(channel, msg);
     if (!path && msg.to==_this.id.s)
       _this.emit('message', lbuffer);
     else
       yield _this._send(lbuffer);
   });
-  ack(channel, ack_msgid){
+  ack(channel, msg){
+    let dir = type_to_dir(msg.type);
+    if (!dir)
+      return;
     let msgid = this.msgid();
-    let msg = {to: channel.id.s, from: this.id.s, msgid, type: 'ack'};
-    msg.sign = this.wallet.sign(msg);
-    let lbuffer2 = new LBuffer(msg);
+    let msg2 = {msgid, to: channel.id.s, from: this.id.s, type: 'ack',
+      req_id: msg.req_id, seq: msg.seq, dir};
+    msg2.sign = this.wallet.sign(msg2);
+    let lbuffer2 = new LBuffer(msg2);
     return channel.send(lbuffer2.to_str());
   }
   _onChannelAdded(channel){
@@ -268,14 +272,14 @@ export default class Router extends EventEmitter {
     return a;
   }
   track(lbuffer){
+    let ts = Date.now();
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), type = msg.type;
-    let dir = ['req', 'req_start', 'req_next', 'req_end'].includes(type) ?
-      '>' : ['res', 'res_start', 'res_next', 'res_end'].includes(type) ?  '<' :
-      '';
+    if (type=='ack')
+      return this.track_ack(lbuffer);
+    let dir = type_to_dir(type);
     if (!dir)
       return;
     let req_id = ''+msg.req_id, seq = +msg.seq;
-    let ts = Date.now();
     let src = NodeId.from(msg.from), dst = NodeId.from(msg.to);
     let state = this.state[req_id] = this.state[req_id]|| {req_id, ts,
       last_ts: ts, src, dst, state: 'opening', '>': {}, '<': {}};
@@ -283,6 +287,19 @@ export default class Router extends EventEmitter {
     let seq_o = state[dir][seq] = state[dir][seq] || {ts, last_ts: ts};
     seq_o.last_ts = ts;
     seq_o.state = this.id.eq(NodeId.from(msg0.from)) ? 'out' : 'in';
+  }
+  track_ack(lbuffer){
+    let ts = Date.now();
+    let msg = lbuffer.msg(), {dir, seq} = msg, req_id = ''+msg.req_id;
+    let state = this.state[req_id];
+    if (!state) // XXX: change to ERR
+      return xerr.notice('ack: req_id %s not found', req_id);
+    if (!['<', '>'].includes(dir))
+      return xerr('ack: req_id %s invalid dir %s', req_id, dir);
+    let seq_o = state[dir][seq];
+    if (!seq_o)
+      return xerr('ack: req_id %s seq %s not found', req_id, seq);
+    seq_o.state = 'ack';
   }
   destroy(){ this.node_map.destroy(); }
 }
@@ -294,6 +311,13 @@ function path_eq(p1, p2){
   let i;
   for (i=0; i<p1.length && p1[i]==p2[i]; i++);
   return i==p1.length;
+}
+
+// XXX: mv to other place
+function type_to_dir(type){
+  return ['req', 'req_start', 'req_next', 'req_end'].includes(type) ?
+    '>' : ['res', 'res_start', 'res_next', 'res_end'].includes(type) ? '<' :
+    '';
 }
 
 Router.t = {};

@@ -751,7 +751,7 @@ class FakeChannel extends EventEmitter {
     if (!t_mode.msg)
       return;
     let e, fwd = fwd_from_lbuffer(lbuffer);
-    let {fuzzy, req_id, type, cmd, ack, seq, body} = msg;
+    let {fuzzy, req_id, type, cmd, ack, seq, dir, body} = msg;
     cmd = cmd||'';
     fuzzy = fuzzy||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
@@ -783,7 +783,9 @@ class FakeChannel extends EventEmitter {
         'unexpected msg type '+type);
       }
       e = build_cmd_o(from.t.name+fuzzy+to.t.name+'>msg',
-        {id: req_id, type, cmd, seq, ack: ack && ack.join(','), body});
+        {id: req_id, type, cmd, seq, ack: ack && ack.join(','), dir, body});
+      if (type=='ack' && !t_conf.no_autoack) // XXX: WIP (return req_id/seq)
+        e = build_cmd_o(from.t.name+fuzzy+to.t.name+'>msg', {type, cmd, body});
       if (fwd){
         let path = [msg.from];
         let i = lbuffer.size()-2;
@@ -1295,7 +1297,11 @@ function cmd_test(opt){
   let node = N(arg[0].cmd), state, s, d, id, seq, dir, v;
   if (t_pre_process)
     return;
-  if (arg[1]){ // eg. ac>opening(...)
+  if (arg[1]?.cmd=='!id'){ // eg. !id(1)
+    id = id_from_req_id(arg[1].arg);
+    if (!node.t.fake)
+      assert.equal(node.router.state[id], undefined);
+  } else if (arg[1]){ // eg. ac>opening(...)
     let o = xtest.parse_cmd_dir(arg[1].cmd);
     state = o.cmd;
     s = o.s;
@@ -1303,23 +1309,28 @@ function cmd_test(opt){
     xutil.forEach(xtest.test_parse(arg[1].arg), a=>{
       switch (a.cmd){
       case 'id':
-        dir = a.arg[0];
-        assert(/[<>]/.test(dir), 'invalid req_id dir '+a.arg);
-        id = id_from_req_id(a.arg.substr(1));
-        seq = seq_from_req_id(a.arg.substr(1));
-        v = v_from_req_id(a.arg.substr(1));
+        dir = dir_from_req_id(a.arg);
+        id = id_from_req_id(a.arg);
+        seq = seq_from_req_id(a.arg);
+        v = v_from_req_id(a.arg);
         break;
       default: assert(0, 'unknown arg '+a.cmd);
       }
     });
     if (!node.t.fake){
-      assert.equal(''+node.router.state[id]?.state, state);
+      assert.equal(node.router.state[id]?.state, state);
       if (node.router.state[id]){
         assert(!!node.router.state[id][dir][seq], 'missing seq '+seq);
+        if (v)
+          assert.equal(node.router.state[id][dir][seq].state, 'ack');
+        else {
+          assert(node.router.state[id][dir][seq].state!='ack',
+            'expected !ack but got ack');
+        }
       }
     }
     // XXX xerr('XXX %s%s%s id %s seq %s state %s', s, d, dir, id, seq, state);
-  } else if (0) { // XXX: TODO
+  } else if (0){ // XXX: TODO
     if (!node.t.fake)
       assert.equal(node.router.state[id]?.state, undefined);
   }
@@ -1628,12 +1639,22 @@ function cmd_ping_r(opt){
 function cmd_ack(opt){
   let {c, event} = opt;
   assert(!event, 'unexpected event');
-  assert(!c.arg, 'invalid arg '+c.orig);
   assert(!c.fwd, 'invalid fwd '+c.fwd);
+  let arg = xtest.test_parse(c.arg), seq, id, dir
+  xutil.forEach(arg, a=>{
+    switch (a.cmd){
+    case 'id':
+      dir = dir_from_req_id(a.arg);
+      id = id_from_req_id(a.arg);
+      seq = seq_from_req_id(a.arg);
+      break;
+    default: assert(0, 'unknown arg '+a.cmd);
+    }
+  });
   if (!t_pre_process)
     return;
   if (t_mode.msg)
-    set_orig(c, build_cmd_o(dir_c(c)+'msg', {type: 'ack'}));
+    set_orig(c, build_cmd_o(dir_c(c)+'msg', {id, type: 'ack', seq, dir}));
 }
 
 function cmd_node_ring_join(opt){
@@ -1718,7 +1739,7 @@ function cmd_msg(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse(c.arg), body;
-  let id, type, cmd, seq, ack, a, msgack=!c.fwd;
+  let id, type, cmd, seq, dir, ack, a, msgack=!c.fwd;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id':
@@ -1729,6 +1750,7 @@ function cmd_msg(opt){
     case 'cmd': cmd = a.arg||''; break;
     case 'ack': ack = assert_ack(a.arg); break;
     case 'seq': seq = assert_int(a.arg); break;
+    case 'dir': dir = a.arg; break;
     case '!msgack': msgack = !assert_bool(a.arg); break;
     case 'body': body = a.arg; break;
     default: assert(0, 'unknown arg '+a.cmd);
@@ -1743,7 +1765,7 @@ function cmd_msg(opt){
     if (c.loop)
       c = expand_loop_fwd(c);
     else {
-      set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, type, cmd, seq, ack,
+      set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, type, cmd, seq, ack, dir,
         body, '!msgack': c.fwd||type=='ack' ? undefined : true}));
       if (!t_conf.no_autoack && msgack)
         push_cmd(rev_c(c)+'ack');
@@ -1777,7 +1799,7 @@ function cmd_msg(opt){
   if (['req', 'res'].includes(type)) // XXX: need auto-mode for seq
     seq = seq||0;
   assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
-    {id, type, cmd, seq, ack, body}), c.fwd, event, false);
+    {id, type, cmd, seq, ack, dir, body}), c.fwd, event, false);
   if (type=='req'){
     switch (cmd){
     case 'conn_info': break;
@@ -1809,22 +1831,27 @@ function cmd_msg(opt){
   let rt; // XXX: rm this logic. just pass c.rt
   if (c.rt)
     rt = {path: parse_path(path_to_str(c.rt), c.dir)};
-  fake_send_msg(c, {rt, req_id: id, type, seq, ack, cmd, body});
+  fake_send_msg(c, {rt, req_id: id, type, seq, ack, dir, cmd, body});
+}
+
+function dir_from_req_id(s){
+  let a = s.match(/^([<>]?)([^.]+).([0-9]+)([v]*)$/);
+  return a?.length==5 ? a[1] : undefined;
 }
 
 function id_from_req_id(s){
-  let a = s.match(/(^[^.]+).([0-9]+)([v]*)$/);
-  return a?.length==4 ? 'r'+a[1] : s;
+  let a = s.match(/^([<>]?)([^.]+).([0-9]+)([v]*)$/);
+  return a?.length==5 ? 'r'+a[2] : s;
 }
 
 function seq_from_req_id(s){
-  let a = s.match(/(^[^.]+).([0-9]+)([v]*)$/);
-  return a?.length==4 ? a[2] : undefined;
+  let a = s.match(/^([<>]?)([^.]+).([0-9]+)([v]*)$/);
+  return a?.length==5 ? a[3] : undefined;
 }
 
 function v_from_req_id(s){
-  let a = s.match(/(^[^.]+).([0-9]+)([v]*)$/);
-  return a?.length==4 ? a[3] : undefined;
+  let a = s.match(/^([<>]?)([^.]+).([0-9]+)([v]*)$/);
+  return a?.length==5 ? a[4] : undefined;
 }
 
 function cmd_req(opt){
@@ -4601,16 +4628,18 @@ describe('peer-relay', function(){
       // XXX: r1 > 1
       // XXX a# b# c#
       // XXX a#ab[c]:ac>opening(id:>1.0) b# c#
+      a#!id(>1.0) b#!id(1.0) c#!id(1.0)
       ac>!req_start(id:r1 !e)
-      a#ac>opening(id(>1.0v)) b#undefined(id(>1.0)) c#undefined(id(>1.0))
+      a#ac>opening(id(>1.0)) b#!id(1.0) c#!id(1.0)
       ab[c]:ac>req_start(id:1.0)
-      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#undefined(id(>1.0))
-      ab<ack // XXX: verify rt is c
-      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#undefined(id(>1.0))
+      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#!id(1.0)
+      ab<ack(id(>1.0)) // XXX: verify rt is c
+      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#!id(1.0)
       bc:ab[c]:ac>req_start(id:1.0)
-      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#ac>opening(id(>1.0))
+      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#ac>opening(id(>1.0))
       // c#abc>opening(id:>1.0v)
-      bc<ack
+      bc<ack(id(>1.0))
+      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0v)) c#ac>opening(id(>1.0))
       // XXX abc:bc<ack(id:>1.1V)
       // abc<ack(id:>1.1v)
       ac>*req_start
