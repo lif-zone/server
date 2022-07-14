@@ -4667,11 +4667,14 @@ describe('peer-relay', function(){
       a#ac>opening(>1.0v) b#ac>opening(>1.0) c#!id:1
       bc:ab[c]:ac>req_start(id:1.0)
       a#ac>opening(>1.0v) b#ac>opening(>1.0) c#ac>open(>1.0vv)
+      // XXX: a,b#same c#ac>open(>1.0vv)
       abc<ack(id(>1.0))
-      // XXX ac>*req_start
       a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
-      ac<!res_start(id:1 !e)
-      bc[a]:ac<res_start(id:1.0)
+      ac<!res_start(id:1 !e) a#ac>open(>1.0vv !id(<1.0))
+      b#ac>open(>1.0vv !id(<1.0)) c#ac>open(>1.0vv <1.0)
+      bc[a]:ac<res_start(id:1.0) a#ac>open(>1.0vv !id(<1.0))
+      b#ac>open(>1.0vv <1.0) c#ac>open(>1.0vv <1.0)
+      // XXX a#same b#ac>open(>1.0vv <1.0) c#same
       bc>ack(id(<1.0)) a#ac>open(id(>1.0vv) !id(<1.0))
       b#ac>open(>1.0vv <1.0) c#ac>open(>1.0vv <1.0v)
       ab:bc[a]:ac<res_start(id:1.0)
