@@ -4647,11 +4647,11 @@ describe('peer-relay', function(){
     // vv - msg arrived final dst
     t('xxx2', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!req(id:1 !e) a#ab>opening(>1.0) b#!id:1
-      ab>req(id:1) a#ab>opening(>1.0) b#ab>open(>1.0vv)
-      ab<ack(id(>1.0)) a#ab>open(>1.0vv) b#ab>open(>1.0vv)
+      ab>req(id:1) a#same b#ab>open(>1.0vv)
+      ab<ack(id(>1.0)) a#ab>open(>1.0vv) b#same
       ab<!res(id:1 !e) a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
-      ab<res(id:1) a#ab>close(<1.0vv) b#ab>closing(<1.0)
-      ab>ack(id(<1.0)) a#ab>close(<1.0vv) b#ab>close(<1.0vv)
+      ab<res(id:1) a#ab>close(<1.0vv) b#same
+      ab>ack(id(<1.0)) a#same b#ab>close(<1.0vv)
       // XXX: 19s a#ab>close(<1.0vv) b#ab>close(<1.0vv)
       // 1s a#!id:1 b#!id:1
     `);
@@ -4666,8 +4666,7 @@ describe('peer-relay', function(){
       ac>!req_start(id:1 !e) a#ac>opening(>1.0) b#same c#same
       ab[c]:ac>req_start(id:1.0) a#ac>opening(>1.0) b#ac>opening(>1.0) c#same
       // XXX: verify rt is c
-      ab<ack(id(>1.0))
-      a#ac>opening(>1.0v) b#same c#same
+      ab<ack(id(>1.0)) a#ac>opening(>1.0v) b#same c#same
       bc:ab[c]:ac>req_start(id:1.0)
       // XXX: a,b#same c#ac>open(>1.0vv)
       a#same b#same c#ac>open(>1.0vv)
