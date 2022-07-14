@@ -290,10 +290,10 @@ export default class Router extends EventEmitter {
       return;
     let req_id = ''+msg.req_id, seq = +msg.seq;
     let src = NodeId.from(msg.from), dst = NodeId.from(msg.to);
-    let state = this.state[req_id] = this.state[req_id]|| {req_id, ts,
+    let state_o = this.state[req_id] = this.state[req_id]|| {req_id, ts,
       last_ts: ts, src, dst, state: 'opening', '>': {}, '<': {}};
-    state.last_ts = ts;
-    let seq_o = state[dir][seq] = state[dir][seq] || {ts, last_ts: ts};
+    state_o.last_ts = ts;
+    let seq_o = state_o[dir][seq] = state_o[dir][seq]||{ts, last_ts: ts, type};
     seq_o.last_ts = ts;
     let seq_state = this.id.eq(NodeId.from(msg0.from)) ? 'out' : 'in';
     if (false && seq_o.state && seq_o.state!='in') // XXX: TODO
@@ -301,6 +301,8 @@ export default class Router extends EventEmitter {
     if (seq_o.state=='ack')
       xerr('invalid seq state %s->%s', seq_o.state, seq_state);
     seq_o.state = seq_state;
+    if (['res', 'req_end', 'res_end'].includes(type))
+      state_o.state = 'closing';
   }
   track_ack(lbuffer){
     let ts = Date.now();
@@ -314,10 +316,16 @@ export default class Router extends EventEmitter {
     if (!seq_o)
       return xerr('ack: req_id %s seq %s not found', req_id, seq);
     if (dir=='>' && state.dst.s==msg.from){
-      state.state = 'open';
+      if (['res', 'req_end', 'res_end'].includes(seq_o.type))
+        state.state = 'close';
+      else
+        state.state = 'open';
       seq_o.state = 'done';
-    } else if (dir=='<' && state.src.s==msg.from)
+    } else if (dir=='<' && state.src.s==msg.from){
+      if (['res', 'req_end', 'res_end'].includes(seq_o.type))
+        state.state = 'close';
       seq_o.state = 'done';
+    }
     else
       seq_o.state = 'ack';
     seq_o.last_ts = ts;

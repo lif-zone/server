@@ -4633,7 +4633,22 @@ describe('peer-relay', function(){
       bc<fwd(ac<msg(type:res cmd:ping) rt:a !msgack) bc>msg(type:ack)
       ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
     `);
-    t('xxx2', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
+    t = (name, test)=>t_roles(name, 'ab', test);
+    // XXX: legand
+    // v - msg arrived next hop (ie got ack)
+    // vv - msg arrived final dst
+    t('xxx2', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
+      ab>!req(id:1 !e) a#ab>opening(id(>1.0)) b#!id:1
+      ab>req(id:1) a#ab>opening(id(>1.0)) b#ab>open(id(>1.0vv))
+      ab<ack(id(>1.0)) a#ab>open(id(>1.0vv)) b#ab>open(id(>1.0vv))
+      ab<!res(id:1 !e) a#ab>open(!id(<1.0)) b#ab>closing(id(<1.0))
+      ab<res(id:1) a#ab>close(id(<1.0vv)) b#ab>closing(id(<1.0))
+      ab>ack(id(<1.0)) a#ab>close(id(<1.0vv)) b#ab>close(id(<1.0vv))
+      // XXX: 19s a#ab>close(id(<1.0vv)) b#ab>close(id(<1.0vv))
+      // 1s a#!id:1 b#!id:1
+    `);
+    t = (name, test)=>t_roles(name, 'abc', test);
+    t('xxx3', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       cb.a~c>!ring_join ab.c~a>!ring_join ba.bc~b>!ring_join
       abc>!req(body:ping res:ping_r) conf(!autoack)
       // XXX a# b# c#
