@@ -50,7 +50,7 @@ xerr.set_exception_handler('test', (prefix, o, err)=>xerr.xexit(err));
 let t_nodes = {}, t_ids = {}, t_msg, t_msgid, t_req, t_cmds, t_i, t_role;
 let t_port=4000, t_pending;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
-let t_reprocess, t_conf, t_req_id_last;
+let t_reprocess, t_conf, t_req_id_last, t_test_prev;
 NodeMap.t.t_nodes = Router.t.t_nodes = t_nodes;
 NodeMap.t.node_from_id = Router.t.node_from_id = node_from_id;
 
@@ -1297,20 +1297,23 @@ function cmd_test(opt){
   // XXX: wrap logic. similar in cmd_dbg, cmd_comment
   let {c, event} = opt;
   let arg = xtest.test_parse_plugin(c.arg);
-  let node = N(arg[0].cmd), state, s, d, id, seq, dir, v;
+  let node = N(arg[0].cmd), state, s, d, id, seq, dir, v, curr;
   if (t_pre_process)
     return;
-  if (arg[1]?.cmd=='!id'){ // eg. !id(1)
-    id = id_from_req_id(arg[1].arg);
+  assert(arg.length==2, 'invalid '+c.orig);
+  curr = arg[1]?.cmd=='same' ? t_test_prev[node.t.name] : arg[1];
+  t_test_prev[node.t.name] = assign({}, arg[1]);
+  if (curr?.cmd=='!id'){ // eg. !id(1)
+    id = id_from_req_id(curr.arg);
     if (!node.t.fake)
       assert.equal(node.router.state[id], undefined);
-  } else if (arg[1]){ // eg. ac>opening(...)
-    let o = xtest.parse_cmd_dir(arg[1].cmd);
+  } else if (curr){ // eg. ac>opening(...)
+    let o = xtest.parse_cmd_dir(curr.cmd);
     state = o.cmd;
     s = N(o.s);
     d = N(o.d);
     let not_exist;
-    xutil.forEach(xtest.test_parse_plugin(arg[1].arg), a=>{
+    xutil.forEach(xtest.test_parse_plugin(curr.arg), a=>{
       switch (a.cmd){
       case 'id':
         dir = dir_from_req_id(a.arg);
@@ -2392,6 +2395,7 @@ function test_start(role){
   t_cmds_processed = [];
   t_msgid = {};
   t_req = {};
+  t_test_prev = {};
   t_conf = {rtt: {def: DEF_RTT, conn: {}}};
   NodeMap.t.t_conf = Router.t.t_conf = t_conf;
   set_id_bits(10);
@@ -4659,15 +4663,14 @@ describe('peer-relay', function(){
       // XXX a#ab[c]:ac>opening(id:>1.0) b# c#
       // XXX calc rtt from ack messages
       a#!id:1 b#!id:1 c#!id:1
-      ac>!req_start(id:1 !e)
-      a#ac>opening(>1.0) b#!id:1 c#!id:1
-      ab[c]:ac>req_start(id:1.0)
-      a#ac>opening(>1.0) b#ac>opening(>1.0) c#!id:1
-      ab<ack(id(>1.0)) // XXX: verify rt is c
-      a#ac>opening(>1.0v) b#ac>opening(>1.0) c#!id:1
+      ac>!req_start(id:1 !e) a#ac>opening(>1.0) b#same c#same
+      ab[c]:ac>req_start(id:1.0) a#ac>opening(>1.0) b#ac>opening(>1.0) c#same
+      // XXX: verify rt is c
+      ab<ack(id(>1.0))
+      a#ac>opening(>1.0v) b#same c#same
       bc:ab[c]:ac>req_start(id:1.0)
-      a#ac>opening(>1.0v) b#ac>opening(>1.0) c#ac>open(>1.0vv)
       // XXX: a,b#same c#ac>open(>1.0vv)
+      a#same b#same c#ac>open(>1.0vv)
       abc<ack(id(>1.0))
       a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
       ac<!res_start(id:1 !e) a#ac>open(>1.0vv !id(<1.0))
