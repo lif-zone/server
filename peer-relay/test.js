@@ -1310,7 +1310,7 @@ function cmd_test(opt){
     s = N(o.s);
     d = N(o.d);
     let not_exist;
-    xutil.forEach(xtest.test_parse(arg[1].arg), a=>{
+    xutil.forEach(xtest.test_parse_plugin(arg[1].arg), a=>{
       switch (a.cmd){
       case 'id':
         dir = dir_from_req_id(a.arg);
@@ -1324,7 +1324,12 @@ function cmd_test(opt){
         seq = seq_from_req_id(a.arg);
         not_exist = true;
         break;
-      default: assert(0, 'unknown arg '+a.cmd);
+      default:
+        assert(!a.arg, 'unknown arg '+a.arg);
+        dir = dir_from_req_id(a.cmd);
+        id = id_from_req_id(a.cmd);
+        seq = seq_from_req_id(a.cmd);
+        v = v_from_req_id(a.cmd);
       }
     });
     if (!node.t.fake){
@@ -4638,13 +4643,13 @@ describe('peer-relay', function(){
     // v - msg arrived next hop (ie got ack)
     // vv - msg arrived final dst
     t('xxx2', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
-      ab>!req(id:1 !e) a#ab>opening(id(>1.0)) b#!id:1
-      ab>req(id:1) a#ab>opening(id(>1.0)) b#ab>open(id(>1.0vv))
-      ab<ack(id(>1.0)) a#ab>open(id(>1.0vv)) b#ab>open(id(>1.0vv))
-      ab<!res(id:1 !e) a#ab>open(!id(<1.0)) b#ab>closing(id(<1.0))
-      ab<res(id:1) a#ab>close(id(<1.0vv)) b#ab>closing(id(<1.0))
-      ab>ack(id(<1.0)) a#ab>close(id(<1.0vv)) b#ab>close(id(<1.0vv))
-      // XXX: 19s a#ab>close(id(<1.0vv)) b#ab>close(id(<1.0vv))
+      ab>!req(id:1 !e) a#ab>opening(>1.0) b#!id:1
+      ab>req(id:1) a#ab>opening(>1.0) b#ab>open(>1.0vv)
+      ab<ack(id(>1.0)) a#ab>open(>1.0vv) b#ab>open(>1.0vv)
+      ab<!res(id:1 !e) a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
+      ab<res(id:1) a#ab>close(<1.0vv) b#ab>closing(<1.0)
+      ab>ack(id(<1.0)) a#ab>close(<1.0vv) b#ab>close(<1.0vv)
+      // XXX: 19s a#ab>close(<1.0vv) b#ab>close(<1.0vv)
       // 1s a#!id:1 b#!id:1
     `);
     t = (name, test)=>t_roles(name, 'abc', test);
@@ -4654,28 +4659,28 @@ describe('peer-relay', function(){
       // XXX a# b# c#
       // XXX a#ab[c]:ac>opening(id:>1.0) b# c#
       // XXX calc rtt from ack messages
-      a#!id(>1.0) b#!id(1.0) c#!id(1.0)
+      a#!id:1 b#!id:1 c#!id:1
       ac>!req_start(id:1 !e)
-      a#ac>opening(id(>1.0)) b#!id:1 c#!id:1
+      a#ac>opening(>1.0) b#!id:1 c#!id:1
       ab[c]:ac>req_start(id:1.0)
-      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#!id:1
+      a#ac>opening(>1.0) b#ac>opening(>1.0) c#!id:1
       ab<ack(id(>1.0)) // XXX: verify rt is c
-      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#!id:1
+      a#ac>opening(>1.0v) b#ac>opening(>1.0) c#!id:1
       bc:ab[c]:ac>req_start(id:1.0)
-      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#ac>open(id(>1.0vv))
+      a#ac>opening(>1.0v) b#ac>opening(>1.0) c#ac>open(>1.0vv)
       abc<ack(id(>1.0))
       // XXX ac>*req_start
-      a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
+      a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
       ac<!res_start(id:1 !e)
       bc[a]:ac<res_start(id:1.0)
       bc>ack(id(<1.0))
       // XXX unite: a#ac>open(id(>1.0vv) !id(<1.0))
-      a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
-      a#ac>open(!id(<1.0)) b#ac>open(id(<1.0)) c#ac>open(id(<1.0v))
+      a#ac>open(id(>1.0vv)) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
+      a#ac>open(!id(<1.0)) b#ac>open(<1.0) c#ac>open(<1.0v)
       ab:bc[a]:ac<res_start(id:1.0)
       abc>ack(id(<1.0))
-      a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
-      a#ac>open(id(<1.0vv)) b#ac>open(id(<1.0vv)) c#ac>open(id(<1.0vv))
+      a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
+      a#ac>open(<1.0vv) b#ac>open(<1.0vv) c#ac>open(<1.0vv)
       20s
       c>*fail(id:1 seq:0 error:timeout)
       a>*fail(id:1 seq:0 error:timeout)
