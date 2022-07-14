@@ -4641,11 +4641,11 @@ describe('peer-relay', function(){
       // XXX calc rtt from ack messages
       a#!id(>1.0) b#!id(1.0) c#!id(1.0)
       ac>!req_start(id:1 !e)
-      a#ac>opening(id(>1.0)) b#!id(1) c#!id(1)
+      a#ac>opening(id(>1.0)) b#!id:1 c#!id:1
       ab[c]:ac>req_start(id:1.0)
-      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#!id(1)
+      a#ac>opening(id(>1.0)) b#ac>opening(id(>1.0)) c#!id:1
       ab<ack(id(>1.0)) // XXX: verify rt is c
-      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#!id(1)
+      a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#!id:1
       bc:ab[c]:ac>req_start(id:1.0)
       a#ac>opening(id(>1.0v)) b#ac>opening(id(>1.0)) c#ac>open(id(>1.0vv))
       abc<ack(id(>1.0))
