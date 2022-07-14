@@ -1,14 +1,5 @@
 VP:
-+ implement fuzzy routing with node_itr/range
-+ path selection:
-  + calc_rtt_ob_via
-+ exact/optional routing modes for both fuzzy/regular routing
-  + send rtt_pb with route info
-  + if router can calculate all rtt (either it knows it or it get it) and have
-    better route, use it (eg, connected directly)
-+ ring_join to neighbours (with exclude to itself)
-+ rename get_peer -> ring_join
-- c>!node.ring_join
+- fix req_id handling - make it unique per node (not network wide)
 - ack every pkt
 - conn disconnected: update tables
 - handle failures
@@ -32,7 +23,6 @@ VP:
 - move ring_join to be automatic in Node
   - get 8 closets nodes to me (in tests, default is 2)
   - keep virtual connection open with the neighbours to handle disconnect
-+ rm warning React... in eslint
 - manual-connect/auto-connect when two nodes learn on each other (wrtc)
 - rtt calculation - calculate it during the connection and pass it along fwd
 - connect to network - after disconnect
