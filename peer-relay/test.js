@@ -1331,22 +1331,21 @@ function cmd_test(opt){
         seq = seq_from_req_id(a.cmd);
         v = v_from_req_id(a.cmd);
       }
-    });
-    if (!node.t.fake){
-      assert.equal(node.router.state[id]?.src.s, s?.id.s);
-      assert.equal(node.router.state[id]?.dst.s, d?.id.s);
-      assert.equal(node.router.state[id]?.state, state);
-      if (not_exist){
-        assert(!node.router.state[id][dir][seq], 'must not exists '+seq);
-      } else {
-        assert(!!node.router.state[id][dir][seq], 'missing seq '+seq);
-        let seq_state = node.router.state[id][dir][seq].state;
-        assert(v=='vv' ? seq_state=='done' : v=='v' ? seq_state=='ack' :
-          ['in', 'out'].includes(seq_state), 'wrong state '+seq_state+
-          (v ? ' '+v : '')+' '+c.orig);
+      if (!node.t.fake){
+        assert.equal(node.router.state[id]?.src.s, s?.id.s);
+        assert.equal(node.router.state[id]?.dst.s, d?.id.s);
+        assert.equal(node.router.state[id]?.state, state);
+        if (not_exist){
+          assert(!node.router.state[id][dir][seq], 'must not exists '+seq);
+        } else {
+          assert(!!node.router.state[id][dir][seq], 'missing seq '+seq);
+          let seq_state = node.router.state[id][dir][seq].state;
+          assert(v=='vv' ? seq_state=='done' : v=='v' ? seq_state=='ack' :
+            ['in', 'out'].includes(seq_state), 'wrong state '+seq_state+
+            (v ? ' '+v : '')+' '+c.orig);
+        }
       }
-    }
-    // XXX xerr('XXX %s%s%s id %s seq %s state %s', s, d, dir, id, seq, state);
+    });
   } else if (0){ // XXX: TODO
     if (!node.t.fake)
       assert.equal(node.router.state[id]?.state, undefined);
@@ -4673,16 +4672,12 @@ describe('peer-relay', function(){
       a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
       ac<!res_start(id:1 !e)
       bc[a]:ac<res_start(id:1.0)
-      bc>ack(id(<1.0))
-      // XXX unite: a#ac>open(id(>1.0vv) !id(<1.0))
-      a#ac>open(id(>1.0vv)) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
-      a#ac>open(!id(<1.0)) b#ac>open(<1.0) c#ac>open(<1.0v)
+      bc>ack(id(<1.0)) a#ac>open(id(>1.0vv) !id(<1.0))
+      b#ac>open(>1.0vv <1.0) c#ac>open(>1.0vv <1.0v)
       ab:bc[a]:ac<res_start(id:1.0)
-      abc>ack(id(<1.0))
-      a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
-      a#ac>open(<1.0vv) b#ac>open(<1.0vv) c#ac>open(<1.0vv)
-      20s
-      c>*fail(id:1 seq:0 error:timeout)
+      abc>ack(id(<1.0)) a#ac>open(>1.0vv <1.0vv) b#ac>open(>1.0vv <1.0vv)
+      c#ac>open(>1.0vv <1.0vv)
+      20s c>*fail(id:1 seq:0 error:timeout)
       a>*fail(id:1 seq:0 error:timeout)
     `);
     if (true) return; // XXX WIP
