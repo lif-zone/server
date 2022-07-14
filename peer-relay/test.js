@@ -1305,8 +1305,8 @@ function cmd_test(opt){
   } else if (arg[1]){ // eg. ac>opening(...)
     let o = xtest.parse_cmd_dir(arg[1].cmd);
     state = o.cmd;
-    s = o.s;
-    d = o.d;
+    s = N(o.s);
+    d = N(o.d);
     let not_exist;
     xutil.forEach(xtest.test_parse(arg[1].arg), a=>{
       switch (a.cmd){
@@ -1326,6 +1326,8 @@ function cmd_test(opt){
       }
     });
     if (!node.t.fake){
+      assert.equal(node.router.state[id]?.src.s, s?.id.s);
+      assert.equal(node.router.state[id]?.dst.s, d?.id.s);
       assert.equal(node.router.state[id]?.state, state);
       if (not_exist){
         assert(!node.router.state[id][dir][seq], 'must not exists '+seq);
@@ -1664,7 +1666,7 @@ function cmd_ack(opt){
   if (!t_mode.msg)
     return;
   let s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' :
-    dir_c(c)+'msg', {id, type: 'ack', seq ,dir});
+    dir_c(c)+'msg', {id, type: 'ack', seq, dir});
   set_push_cmd(c, s);
 }
 
@@ -2540,13 +2542,8 @@ function test_transform(s){
   rt = rt ? ' rt('+rt+')' : '';
   range = range ? ' range('+range+')' : '';
   let ret = '';
-  if (dir=='>'){
-    a.push({pre: p+dir+post, rt, range});
-    a = a.reverse();
-  } else {
-    a.push({pre: p+dir, rt, range});
-    a[0].pre += post;
-  }
+  a.push({pre: p+dir+post, rt, range});
+  a = a.reverse();
   a.forEach((c, i)=>ret = !i ? c.pre : c.pre+'fwd('+ret+c.rt+c.range+')');
   return ret;
 }
@@ -2995,15 +2992,17 @@ describe('api', function(){
      `cd>fwd(bc>fwd(ab>fwd(ad>msg rt(z)) rt(y)) rt(x))`);
    t('cd{e-f}:bc{g-h}:ab{i-j}:ad>msg',
      `cd>fwd(bc>fwd(ab>fwd(ad>msg range(i-j)) range(g-h)) range(e-f))`);
-   t('ab:ad<msg', `ad<fwd(ab<msg)`);
-   t('bc:ab:ad<msg', `ad<fwd(ab<fwd(bc<msg))`);
-   t('cd:bc:ab:ad<msg', `ad<fwd(ab<fwd(bc<fwd(cd<msg)))`);
-   t('da:ba[c]<msg', `ba<fwd(da<msg rt(c))`);
-   t('da:ba[cd]<msg', `ba<fwd(da<msg rt(cd))`);
-   t('da:ba[x]:cb[y]:dc[z]<msg',
-     `dc<fwd(cb<fwd(ba<fwd(da<msg rt(x)) rt(y)) rt(z))`);
+   t('ab:ad<msg', `ab<fwd(ad<msg)`);
+   t('bc:ab:ad<msg', `bc<fwd(ab<fwd(ad<msg))`);
+   t('cd:bc:ab:ad<msg', `cd<fwd(bc<fwd(ab<fwd(ad<msg)))`);
+   t('da[c]:ba<msg', `da<fwd(ba<msg rt(c))`);
+   t('da[cd]:ba<msg', `da<fwd(ba<msg rt(cd))`);
+   t('da[z]:ba[y]:cb[x]:dc<msg',
+     `da<fwd(ba<fwd(cb<fwd(dc<msg rt(x)) rt(y)) rt(z))`);
    t('ab[cd].e>msg', `ab[cd].e>msg`);
+   t('ab[cd].e<msg', `ab[cd].e<msg`);
    t('a#bc>msg', `test(a bc>msg)`);
+   t('a#bc<msg', `test(a bc<msg)`);
    t('a#ab[c]:ac>opening(id:>1.1)', `test(a ab[c]:ac>opening(id:>1.1))`);
    t('test(a ab[c]:ac>opening(id:>1.1))', `test(a ab[c]:ac>opening(id:>1.1))`);
    t('// a#ab[c]:ac>opening(id:>1.1)', `// a#ab[c]:ac>opening(id:>1.1)`);
@@ -3418,6 +3417,8 @@ describe('peer-relay', function(){
         describe('fwd', function(){
           TT('ab>fwd(ac>msg !msgack)', `ab>fwd(ac>msg !msgack)`);
           TT('ab>fwd(ac>msg)', `ab>fwd(ac>msg !msgack) ab<msg(type(ack))`);
+          T('bc:ac>msg', `bc>fwd(ac>msg)`);
+          T('bc:ac<msg', `bc<fwd(ac<msg)`);
           // XXX derry: idea for !msgack in this case?
           // ab[c]:ac>msg(type:req cmd:ping)
           // ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack)
@@ -3450,35 +3451,33 @@ describe('peer-relay', function(){
               cd[!ef]:bc:ab[!c]:af>msg(type:req cmd:ping)
               de[!f]:cd[!ef]:bc:ab[!c]:af>msg(type:req cmd:ping)
               ef:de[!f]:cd[!ef]:bc:ab[!c]:af>msg(type:req cmd:ping)`);
-          T('abc<msg(type:req cmd:ping)', `ac:bc[a]<msg(type:req cmd:ping)
-            ac:bc[a]:ab<msg(type:req cmd:ping)`);
-          T('!abc<msg(type:req cmd:ping)', `
-            ac:bc[a!]<msg(type:req cmd:ping)
-            ac:bc[a!]:ab<msg(type:req cmd:ping)`);
-          T('abc.def<msg(type:req cmd:ping)', `
-              af:ef[d]<msg(type:req cmd:ping)
-              af:ef[d]:de<msg(type:req cmd:ping)
-              af:ef[d]:de:cd[ab]<msg(type:req cmd:ping)
-              af:ef[d]:de:cd[ab]:bc[a]<msg(type:req cmd:ping)
-              af:ef[d]:de:cd[ab]:bc[a]:ab<msg(type:req cmd:ping)`);
+          T('abc<msg(type:req cmd:ping)', `bc[a]:ac<msg(type:req cmd:ping)
+            ab:bc[a]:ac<msg(type:req cmd:ping)`);
+          T('!abc<msg(type:req cmd:ping)', `bc[a!]:ac<msg(type:req cmd:ping)
+            ab:bc[a!]:ac<msg(type:req cmd:ping)`);
+          T('abc.def<msg(type:req cmd:ping)', `ef[d]:af<msg(type:req cmd:ping)
+              de:ef[d]:af<msg(type:req cmd:ping)
+              cd[ab]:de:ef[d]:af<msg(type:req cmd:ping)
+              bc[a]:cd[ab]:de:ef[d]:af<msg(type:req cmd:ping)
+              ab:bc[a]:cd[ab]:de:ef[d]:af<msg(type:req cmd:ping)`);
           T('!abc.def<msg(type:req cmd:ping)', `
-              af:ef[d]<msg(type:req cmd:ping)
-              af:ef[d]:de<msg(type:req cmd:ping)
-              af:ef[d]:de:cd[ab!]<msg(type:req cmd:ping)
-              af:ef[d]:de:cd[ab!]:bc[a!]<msg(type:req cmd:ping)
-              af:ef[d]:de:cd[ab!]:bc[a!]:ab<msg(type:req cmd:ping)`);
+              ef[d]:af<msg(type:req cmd:ping)
+              de:ef[d]:af<msg(type:req cmd:ping)
+              cd[ab!]:de:ef[d]:af<msg(type:req cmd:ping)
+              bc[a!]:cd[ab!]:de:ef[d]:af<msg(type:req cmd:ping)
+              ab:bc[a!]:cd[ab!]:de:ef[d]:af<msg(type:req cmd:ping)`);
           T('abc.!def<msg(type:req cmd:ping)', `
-              af:ef[d!]<msg(type:req cmd:ping)
-              af:ef[d!]:de<msg(type:req cmd:ping)
-              af:ef[d!]:de:cd[ab]<msg(type:req cmd:ping)
-              af:ef[d!]:de:cd[ab]:bc[a]<msg(type:req cmd:ping)
-              af:ef[d!]:de:cd[ab]:bc[a]:ab<msg(type:req cmd:ping)`);
+              ef[d!]:af<msg(type:req cmd:ping)
+              de:ef[d!]:af<msg(type:req cmd:ping)
+              cd[ab]:de:ef[d!]:af<msg(type:req cmd:ping)
+              bc[a]:cd[ab]:de:ef[d!]:af<msg(type:req cmd:ping)
+              ab:bc[a]:cd[ab]:de:ef[d!]:af<msg(type:req cmd:ping)`);
           T('!abc.!def<msg(type:req cmd:ping)', `
-              af:ef[d!]<msg(type:req cmd:ping)
-              af:ef[d!]:de<msg(type:req cmd:ping)
-              af:ef[d!]:de:cd[ab!]<msg(type:req cmd:ping)
-              af:ef[d!]:de:cd[ab!]:bc[a!]<msg(type:req cmd:ping)
-              af:ef[d!]:de:cd[ab!]:bc[a!]:ab<msg(type:req cmd:ping)`);
+              ef[d!]:af<msg(type:req cmd:ping)
+              de:ef[d!]:af<msg(type:req cmd:ping)
+              cd[ab!]:de:ef[d!]:af<msg(type:req cmd:ping)
+              bc[a!]:cd[ab!]:de:ef[d!]:af<msg(type:req cmd:ping)
+              ab:bc[a!]:cd[ab!]:de:ef[d!]:af<msg(type:req cmd:ping)`);
           T('ab[cd].e>msg(type:req cmd:ping)', `
             ab[cd]:ae>msg(type:req cmd:ping)
             be:ab[cd]:ae>msg(type:req cmd:ping)`);
@@ -4653,14 +4652,12 @@ describe('peer-relay', function(){
       // XXX ac>*req_start
       a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
       ac<!res_start(id:r1 !e)
-      // XXX bc[a]:ac<res_start(id:1.0)
-      bc<fwd(ac<res_start(id:1.0) rt:a)
+      bc[a]:ac<res_start(id:1.0)
       bc>ack(id(<1.0))
-      // XXX unit: a#ac>open(id(>1.0vv) !id(<1.0))
+      // XXX unite: a#ac>open(id(>1.0vv) !id(<1.0))
       a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
       a#ac>open(!id(<1.0)) b#ac>open(id(<1.0)) c#ac>open(id(<1.0v))
-      // XXX ab:bc[a]:ac<res_start(id:1.0)
-      ab<fwd(bc<fwd(ac<res_start(id:1.0) rt:a))
+      ab:bc[a]:ac<res_start(id:1.0)
       abc>ack(id(<1.0))
       a#ac>open(id(>1.0vv)) b#ac>open(id(>1.0vv)) c#ac>open(id(>1.0vv))
       a#ac>open(id(<1.0vv)) b#ac>open(id(<1.0vv)) c#ac>open(id(<1.0vv))

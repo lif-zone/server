@@ -273,13 +273,12 @@ export default class Router extends EventEmitter {
       msg2.sign = this.wallet.sign(msg2);
       let lbuffer2 = new LBuffer(msg2);
       return this._send(lbuffer2);
-    } else {
-      let msg2 = {msgid, to: channel.id.s, from: this.id.s, type: 'ack',
-        req_id: msg.req_id, seq: msg.seq, dir};
-      msg2.sign = this.wallet.sign(msg2);
-      let lbuffer2 = new LBuffer(msg2);
-      return channel.send(lbuffer2.to_str());
     }
+    let msg2 = {msgid, to: channel.id.s, from: this.id.s, type: 'ack',
+      req_id: msg.req_id, seq: msg.seq, dir};
+    msg2.sign = this.wallet.sign(msg2);
+    let lbuffer2 = new LBuffer(msg2);
+    return channel.send(lbuffer2.to_str());
   }
   track(lbuffer){
     let ts = Date.now();
