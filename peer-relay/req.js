@@ -14,7 +14,7 @@ const assign = Object.assign;
 const REQ_TIMEOUT = 20*date.ms.SEC;
 
 const reqs = {};
-let free_req_id = util.is_mocha() ? 1000 : 1;
+let free_req_id = util.is_mocha() ? 10000 : 1;
 
 function res_handler(lbuffer){
   let msg = lbuffer.msg(); // XXX WIP

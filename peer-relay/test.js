@@ -651,6 +651,7 @@ function track_msg(lbuffer){
 function get_req_id(o){
   let match;
   for (let req_id in t_msg){
+    req_id = ''+req_id;
     let o2 = t_msg[req_id];
     if (o.cmd==o2.cmd && (o.s==o2.s&&o.d==o2.d || o.s==o2.d&&o.d==o2.s ||
       // XXX HACK: hack for ring_join becaue when fuzzy dst, the response is
@@ -667,6 +668,7 @@ function get_req_id(o){
 
 function get_ack(o){
   let {type, req_id, keep} = o;
+  req_id = ''+req_id;
   if (!t_msg[req_id])
     return;
   let ack = t_msg[req_id].seq[type];
@@ -884,7 +886,6 @@ function req_send_hook(msg){
 function fail_hook(o){
   let id = typeof o.req_id=='string' && +o.req_id<1000 ? o.req_id :
     undefined;
-  debugger;
   let seq = o.req.stream ? o.seq : undefined;
   cmd_run(build_cmd_o(o.req.node.t.name+'>*fail', {id, seq, error: o.error}));
 }
