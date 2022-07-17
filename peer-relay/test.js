@@ -1295,14 +1295,14 @@ function cmd_test_node_graph(opt){
 
 function cmd_test(opt){
   // XXX: wrap logic. similar in cmd_dbg, cmd_comment
-  let {c, event} = opt;
+  let {c, event} = opt, node = N(c.s);
   let arg = xtest.test_parse_plugin(c.arg);
-  let node = N(arg[0].cmd), state, s, d, id, seq, dir, v, curr;
+  let state, src, dst, id, seq, dir, v, curr;
   if (t_pre_process)
     return;
-  assert(arg.length==2, 'invalid '+c.orig);
-  curr = arg[1]?.cmd=='same' ? t_test_prev[node.t.name] : arg[1];
-  t_test_prev[node.t.name] = assign({}, arg[1]);
+  assert(arg.length==1, 'invalid '+c.orig);
+  curr = arg[0]?.cmd=='same' ? t_test_prev[node.t.name] : arg[0];
+  t_test_prev[node.t.name] = assign({}, curr);
   if (curr?.cmd=='!id'){ // eg. !id(1)
     id = id_from_req_id(curr.arg);
     if (!node.t.fake)
@@ -1310,8 +1310,8 @@ function cmd_test(opt){
   } else if (curr){ // eg. ac>opening(...)
     let o = xtest.parse_cmd_dir(curr.cmd);
     state = o.cmd;
-    s = N(o.s);
-    d = N(o.d);
+    src = N(o.s);
+    dst = N(o.d);
     let not_exist;
     xutil.forEach(xtest.test_parse_plugin(curr.arg), a=>{
       switch (a.cmd){
@@ -1335,8 +1335,8 @@ function cmd_test(opt){
         v = v_from_req_id(a.cmd);
       }
       if (!node.t.fake){
-        assert.equal(node.router.state[id]?.src.s, s?.id.s);
-        assert.equal(node.router.state[id]?.dst.s, d?.id.s);
+        assert.equal(node.router.state[id]?.src.s, src?.id.s);
+        assert.equal(node.router.state[id]?.dst.s, dst?.id.s);
         assert.equal(node.router.state[id]?.state, state);
         if (not_exist){
           assert(!node.router.state[id][dir][seq], 'must not exists '+seq);
@@ -2510,9 +2510,10 @@ function test_transform_hash(s){
   let i = s.search('#');
   if (i==-1)
     return s;
-  let arg = s.substr(0, i);
-  arg += (arg ? ' ' : '')+s.substr(i+1);
-  return 'test('+arg+')';
+  let pre = s.substr(0, i), post = s.substr(i+1);
+  if (!pre)
+    return 'test('+post+')';
+  return pre+'>test('+post+')';
 }
 
 function test_transform(s){
@@ -3011,10 +3012,11 @@ describe('api', function(){
      `da<fwd(ba<fwd(cb<fwd(dc<msg rt(x)) rt(y)) rt(z))`);
    t('ab[cd].e>msg', `ab[cd].e>msg`);
    t('ab[cd].e<msg', `ab[cd].e<msg`);
-   t('a#bc>msg', `test(a bc>msg)`);
-   t('a#bc<msg', `test(a bc<msg)`);
-   t('a#ab[c]:ac>opening(id:>1.1)', `test(a ab[c]:ac>opening(id:>1.1))`);
-   t('test(a ab[c]:ac>opening(id:>1.1))', `test(a ab[c]:ac>opening(id:>1.1))`);
+   t('a#bc>msg', `a>test(bc>msg)`);
+   t('a#bc<msg', `a>test(bc<msg)`);
+   t('a,b#bc>msg', `a,b>test(bc>msg)`);
+   t('a#ab[c]:ac>opening(id:>1.1)', `a>test(ab[c]:ac>opening(id:>1.1))`);
+   t('a>test(ab[c]:ac>opening(id:>1.1))', `a>test(ab[c]:ac>opening(id:>1.1))`);
    t('// a#ab[c]:ac>opening(id:>1.1)', `// a#ab[c]:ac>opening(id:>1.1)`);
    // XXX: add test for invalid
   });
@@ -3623,9 +3625,11 @@ describe('peer-relay', function(){
           T('ab.c>fwd(ac>ring_join_r)', `ab.c>ring_join_r`);
         });
         describe('test', ()=>{
-          T('a#ac>opening(id:>1.1)', `test(a ac>opening(id:>1.1))`);
+          T('a#ac>opening(id:>1.1)', `a>test(ac>opening(id:>1.1))`);
           T('a#ab[c]:ac>opening(id:>1.1)',
-            `test(a ab[c]:ac>opening(id:>1.1))`);
+            `a>test(ab[c]:ac>opening(id:>1.1))`);
+          T('a,b#ac>opening(id:>1.1)', `a>test(ac>opening(id:>1.1))
+            b>test(ac>opening(id:>1.1))`);
         });
       });
     });
@@ -4642,9 +4646,6 @@ describe('peer-relay', function(){
       ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
     `);
     t = (name, test)=>t_roles(name, 'ab', test);
-    // XXX: legand
-    // v - msg arrived next hop (ie got ack)
-    // vv - msg arrived final dst
     t('xxx2', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!req(id:1 !e) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#same b#ab>open(>1.0vv)
@@ -4652,6 +4653,7 @@ describe('peer-relay', function(){
       ab<!res(id:1 !e) a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
       ab<res(id:1) a#ab>close(<1.0vv) b#same
       ab>ack(id(<1.0)) a#same b#ab>close(<1.0vv)
+      // XXX: change to 10s
       // XXX: 19s a#ab>close(<1.0vv) b#ab>close(<1.0vv)
       // 1s a#!id:1 b#!id:1
     `);
@@ -4659,26 +4661,21 @@ describe('peer-relay', function(){
     t('xxx3', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       cb.a~c>!ring_join ab.c~a>!ring_join ba.bc~b>!ring_join
       abc>!req(body:ping res:ping_r) conf(!autoack)
-      // XXX a# b# c#
       // XXX a#ab[c]:ac>opening(id:>1.0) b# c#
       // XXX calc rtt from ack messages
       a#!id:1 b#!id:1 c#!id:1
-      ac>!req_start(id:1 !e) a#ac>opening(>1.0) b#same c#same
-      ab[c]:ac>req_start(id:1.0) a#ac>opening(>1.0) b#ac>opening(>1.0) c#same
+      ac>!req_start(id:1 !e) a#ac>opening(>1.0) b,c#same
+      ab[c]:ac>req_start(id:1.0) b#ac>opening(>1.0) a,c#same
       // XXX: verify rt is c
-      ab<ack(id(>1.0)) a#ac>opening(>1.0v) b#same c#same
-      bc:ab[c]:ac>req_start(id:1.0)
-      // XXX: a,b#same c#ac>open(>1.0vv)
-      a#same b#same c#ac>open(>1.0vv)
-      abc<ack(id(>1.0))
-      a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#ac>open(>1.0vv)
+      ab<ack(id(>1.0)) a#ac>opening(>1.0v) b,c#same
+      bc:ab[c]:ac>req_start(id:1.0) a,b#same c#ac>open(>1.0vv)
+      abc<ack(id(>1.0)) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
       ac<!res_start(id:1 !e) a#ac>open(>1.0vv !id(<1.0))
       b#ac>open(>1.0vv !id(<1.0)) c#ac>open(>1.0vv <1.0)
       bc[a]:ac<res_start(id:1.0) a#ac>open(>1.0vv !id(<1.0))
       b#ac>open(>1.0vv <1.0) c#ac>open(>1.0vv <1.0)
       // XXX a#same b#ac>open(>1.0vv <1.0) c#same
-      bc>ack(id(<1.0)) a#ac>open(id(>1.0vv) !id(<1.0))
-      b#ac>open(>1.0vv <1.0) c#ac>open(>1.0vv <1.0v)
+      bc>ack(id(<1.0)) a,b#same c#ac>open(>1.0vv <1.0v)
       ab:bc[a]:ac<res_start(id:1.0)
       abc>ack(id(<1.0)) a#ac>open(>1.0vv <1.0vv) b#ac>open(>1.0vv <1.0vv)
       c#ac>open(>1.0vv <1.0vv)
