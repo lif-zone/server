@@ -1335,9 +1335,9 @@ function cmd_test(opt){
         v = v_from_req_id(a.cmd);
       }
       if (!node.t.fake){
-        assert.equal(node.router.state[id]?.src.s, src?.id.s);
-        assert.equal(node.router.state[id]?.dst.s, dst?.id.s);
-        assert.equal(node.router.state[id]?.state, state);
+        assert.equal(node.router.state[id]?.src.s, src?.id.s, 'at '+c.orig);
+        assert.equal(node.router.state[id]?.dst.s, dst?.id.s, 'at '+c.orig);
+        assert.equal(node.router.state[id]?.state, state, 'at '+c.orig);
         if (not_exist){
           assert(!node.router.state[id][dir][seq], 'must not exists '+seq);
         } else {
@@ -4646,6 +4646,7 @@ describe('peer-relay', function(){
       ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
     `);
     t = (name, test)=>t_roles(name, 'ab', test);
+    // XXX: rm !autoack and !msgack (mv to request)
     t('xxx2', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!req(id:1 !e) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#same b#ab>open(>1.0vv)
@@ -4679,8 +4680,16 @@ describe('peer-relay', function(){
       ab:bc[a]:ac<res_start(id:1.0)
       abc>ack(id(<1.0)) a#ac>open(>1.0vv <1.0vv) b#ac>open(>1.0vv <1.0vv)
       c#ac>open(>1.0vv <1.0vv)
-      20s c>*fail(id:1 seq:0 error:timeout)
-      a>*fail(id:1 seq:0 error:timeout)
+      ac>!req_next(!e) a#ac>open(>1.1) b#same c#same
+      ab[c]:ac>req_next(id:1.1) a#same b#ac>open(>1.1) c#same
+      ab<ack(id(>1.1)) a#ac>open(>1.1v) b#ac>open(>1.1) c#same
+      bc:ab[c]:ac>req_next(id:1.1) a#same b#same c#ac>open(>1.1vv)
+      abc<ack(id(>1.1)) a,b#ac>open(>1.1vv)
+      ac>!req_end(!e) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
+      ab[c]:ac>req_end(id(>1.2)) a,c#same b#ac>closing(>1.2)
+      ab<ack(id(>1.2)) a#ac>closing(>1.2v) b#ac>closing(>1.2) c#same
+      bc:ab[c]:ac>req_end(id(>1.2)) a#ac>closing(>1.2v) b#ac>closing(>1.2)
+      c#ac>close(>1.2vv) abc<ack(id(>1.2)) a,b,c#ac>close(>1.2vv)
     `);
     if (true) return; // XXX WIP
     // XXX: update rtt on each ack (and how to handle time diff 0)?
