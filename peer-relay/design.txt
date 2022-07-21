@@ -1,6 +1,11 @@
 VP:
 - fix req_id handling - make it unique per node (not network wide)
 - ack every pkt
+  - calc rtt from ack packets
+  - return path selection decision on every ack
+  - fix req_id to be unique per node (not globablly in the network)
+  - notify backwards when ack response is taking longer than ~2*rtt
+  - a#test api - test also routing information
 - conn disconnected: update tables
 - handle failures
   - conn dead (timeouts): zero incoming pkts, mark dead, retry?
