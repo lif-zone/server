@@ -277,13 +277,14 @@ export default class Router extends EventEmitter {
     return a;
   }
   ack(channel, lbuffer){
+    if (!Router.t.t_conf?.no_autoack) // XXX: rm
+      return;
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
     let rt = msg0.rt, path = rt?.path, dir = type_to_dir(msg.type);
     if (!dir)
       return;
     let msgid = this.msgid();
-    // XXX: rm no_autoack
-    if (!path && msg.to==this.id.s && Router.t.t_conf?.no_autoack){
+    if (!path && msg.to==this.id.s){
       let msg2 = {msgid, to: msg.from, from: this.id.s, type: 'ack',
         req_id: msg.req_id, seq: msg.seq, dir};
       // XXX: set rt/path from incoming packet to make sure we do same path

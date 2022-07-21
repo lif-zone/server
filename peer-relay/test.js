@@ -1768,7 +1768,7 @@ function cmd_msg(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse(c.arg), body;
-  let id, type, cmd, seq, dir, ack, a, msgack=!c.fwd;
+  let id, type, cmd, seq, dir, ack, a;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id':
@@ -1780,24 +1780,17 @@ function cmd_msg(opt){
     case 'ack': ack = assert_ack(a.arg); break;
     case 'seq': seq = assert_int(a.arg); break;
     case 'dir': dir = a.arg; break;
-    case '!msgack': msgack = !assert_bool(a.arg); break;
     case 'body': body = a.arg; break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  if (type=='ack' && !c.fwd){
-    assert(msgack, 'cannot use !msgack for type:ack (already implied)');
-    msgack = false;
-  }
   cmd = cmd||'';
   if (t_pre_process){
     if (c.loop)
       c = expand_loop_fwd(c);
     else {
       set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, type, cmd, seq, ack, dir,
-        body, '!msgack': c.fwd||type=='ack' ? undefined : true}));
-      if (!t_conf.no_autoack && msgack)
-        push_cmd(rev_c(c)+'ack');
+        body}));
     }
     return;
   }
@@ -2172,13 +2165,11 @@ function fill_rtt(c, rt){
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
   let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range;
-  let msgack = !c.fwd;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     // XXX: replace null with correct src in assert_rt
     case 'rt': rt = assert_rt(null, a.arg, c.dir); break;
     case 'range': range = assert_range(a.arg); break;
-    case '!msgack': msgack = !assert_bool(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
@@ -2198,10 +2189,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
     return;
   set_orig(c, _build_cmd(f.orig+
     (rt ? ' '+build_cmd('rt', rt_to_str(rt, c.dir)) : '')+
-    (range ? ' '+build_cmd('range', range_to_str(range, c.dir)) : '')+
-    (c.fwd ? '' : ' !msgack'), [dir_c(c)]));
-  if (!t_conf.no_autoack && msgack)
-    push_cmd(rev_c(c)+'ack');
+    (range ? ' '+build_cmd('range', range_to_str(range, c.dir)) : ''),
+    [dir_c(c)]));
 });
 
 const cmd_ms = opt=>etask(function*cmd_ms(){
@@ -3421,21 +3410,12 @@ describe('peer-relay', function(){
           T('!ring(a-c de)', `ab>!connect bc>!connect ca>!connect
             de>!connect`);
         });
-        describe('msg', function(){
-          // XXX: rename !msgack > '!ack' or '!'
-          TT('ab>msg(!msgack)', `ab>msg(!msgack)`);
-          TT('ab<msg(!msgack)', `ab<msg(!msgack)`);
-          TT('ab>msg', `ab>msg(!msgack) ab<msg(type(ack))`);
-          TT('ab<msg', `ab<msg(!msgack) ab>msg(type(ack))`);
+        describe('ack', function(){
           TT('ab>ack', `ab>msg(type(ack))`);
           TT('ab<ack', `ab<msg(type(ack))`);
-          T('ab>msg', `ab>msg(!msgack) ab<ack`);
-          T('ab<msg', `ab<msg(!msgack) ab>ack`);
           T('abc>ack', `abc>msg(type(ack))`);
         });
         describe('fwd', function(){
-          TT('ab>fwd(ac>msg !msgack)', `ab>fwd(ac>msg !msgack)`);
-          TT('ab>fwd(ac>msg)', `ab>fwd(ac>msg !msgack) ab<msg(type(ack))`);
           T('bc:ac>msg', `bc>fwd(ac>msg)`);
           T('bc:ac<msg', `bc<fwd(ac<msg)`);
           // XXX derry: idea for !msgack in this case?
@@ -3576,12 +3556,12 @@ describe('peer-relay', function(){
           T('bc[defg].g>!ping(rt(cdefg))', `bg>!ping(!e rt(cdefg))
             bc[defg].g>ping bg>*ping bcg<ping_r bg<*ping_r`);
           TT('abc>!ping', `ac>!ping(!e)
-            ab>fwd(ac>msg(type(req) cmd(ping)) rt(c) !msgack) ab<msg(type(ack))
-            bc>fwd(ab>fwd(ac>msg(type(req) cmd(ping)) rt(c)) !msgack)
-            bc<msg(type(ack)) ac>*req(cmd(ping))
-            cb>fwd(ca>msg(type(res) cmd(ping)) rt(a) !msgack) cb<msg(type(ack))
-            ba>fwd(cb>fwd(ca>msg(type(res) cmd(ping)) rt(a)) !msgack)
-            ba<msg(type(ack)) ac<*res(cmd(ping))`);
+            ab>fwd(ac>msg(type(req) cmd(ping)) rt(c))
+            bc>fwd(ab>fwd(ac>msg(type(req) cmd(ping)) rt(c)))
+            ac>*req(cmd(ping))
+            cb>fwd(ca>msg(type(res) cmd(ping)) rt(a))
+            ba>fwd(cb>fwd(ca>msg(type(res) cmd(ping)) rt(a)))
+            ac<*res(cmd(ping))`);
         });
         describe('ring_join', function(){
           T('bX.a~b>ring_join(!e !r)', `bX{X-X}:b~b>msg(type:req cmd:ring_join)
@@ -3829,8 +3809,8 @@ describe('peer-relay', function(){
     describe('ping', ()=>{
       let t = (name, test)=>t_roles(name, 'ab', test);
       t('2_nodes_raw', `setup:2_nodes ab>!req(cmd:ping !e)
-        ab>msg(type:req cmd:ping !msgack) ab<ack ab>*req(cmd:ping)
-        ab<msg(type:res cmd:ping !msgack) ab>ack ab<*res(cmd:ping)`);
+        ab>msg(type:req cmd:ping) ab>*req(cmd:ping)
+        ab<msg(type:res cmd:ping) ab<*res(cmd:ping)`);
       t('2_nodes_long', `setup:2_nodes ab>!ping(!e) ab>ping
         ab>*ping ab<ping_r ab<*ping_r`);
       t('2_nodes_short', `setup:2_nodes ab>!ping`);
@@ -4641,10 +4621,12 @@ describe('peer-relay', function(){
     // XXX: add net_stats for real/virtual connection to check stats at given
     // state
     // XXX shortcuts: nonce -> msgid
+    if (0)
     t('ab', `mode:msg conf(a-b) ab>!connect ab>!req(cmd:ping !e)
       ab>msg(type:req cmd:ping !msgack) ab<msg(type:ack)
       ab<msg(type:res cmd:ping !msgack) ab>msg(type:ack)`);
     t = (name, test)=>t_roles(name, 'abc', test);
+    if (0)
     t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect cb.a~c>!ring_join
       ac>!req(cmd:ping !e)
       ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack) ab<msg(type:ack)
