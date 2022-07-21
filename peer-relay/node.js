@@ -128,7 +128,8 @@ export default class Node extends EventEmitter {
   }
   ping(dst, opt){
     opt = opt||{};
-    let req = new Req({node: this, dst, cmd: 'ping', rt: opt.rt});
+    let req = new Req({node: this, dst, cmd: 'ping', req_id: opt.req_id,
+      rt: opt.rt});
     req.send('');
     return req;
   }
