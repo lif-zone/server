@@ -1,7 +1,13 @@
 VP:
 - fix req_id handling - make it unique per node (not network wide)
+- fix parser
+  - !e --> !!
+  - ab<ack(id:>1.0)
 - ack every pkt
-  - calc rtt from ack packets
+  - automatic ack - send ack transparently
+  - calc rtt from ack packets - each packet takes conn-rtt time to arrive
+    destination.
+  - unite ack from stream level with router ack tracking
   - return path selection decision on every ack
   - fix req_id to be unique per node (not globablly in the network)
   - notify backwards when ack response is taking longer than ~2*rtt
