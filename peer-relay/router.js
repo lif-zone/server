@@ -51,8 +51,13 @@ export default class Router extends EventEmitter {
     this._send(lbuffer);
   }
   _send = lbuffer=>etask({_: this}, function*(){
-    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
     let _this = this._, channel;
+    if (_this.pending_ack){
+      let pending = _this.pending_ack;
+      _this.pending_ack = null;
+      _this.ack(pending.channel, pending.lbuffer);
+    }
+    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
     let rt = msg0.rt, path = rt?.path;
     let to = NodeId.from(msg.to), from = NodeId.from(msg.from), best;
     if (lbuffer.path().length >= _this.maxHops)
@@ -150,12 +155,23 @@ export default class Router extends EventEmitter {
       return log('invalid message msgid %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
     _this.track(lbuffer);
-    if (msg.type!='ack')
-      _this.ack(channel, lbuffer);
-    if (!path && msg.to==_this.id.s)
+    if (!path && msg.to==_this.id.s){
+      assert(!_this.pending_ack);
+      if (msg.type!='ack')
+        _this.pending_ack = {channel, lbuffer}; // XXX: rm channel
       _this.emit('message', lbuffer);
-    else
+      if (_this.pending_ack)
+      {
+        let pending = _this.pending_ack;
+        _this.pending_ack = null;
+        _this.ack(pending.channel, pending.lbuffer);
+      }
+    }
+    else {
+      if (msg.type!='ack')
+        _this.ack(channel, lbuffer);
       yield _this._send(lbuffer);
+    }
   });
   _onChannelAdded(channel){
     let dst = channel.id;
@@ -270,6 +286,7 @@ export default class Router extends EventEmitter {
     if (!path && msg.to==this.id.s && Router.t.t_conf?.no_autoack){
       let msg2 = {msgid, to: msg.from, from: this.id.s, type: 'ack',
         req_id: msg.req_id, seq: msg.seq, dir};
+      // XXX: set rt/path from incoming packet to make sure we do same path
       msg2.sign = this.wallet.sign(msg2);
       let lbuffer2 = new LBuffer(msg2);
       return this._send(lbuffer2);

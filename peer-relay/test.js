@@ -1599,12 +1599,13 @@ function cmd_conn_info_r(opt){
 function cmd_ping(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   assert(!event, 'unexpected event '+event);
-  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt;
+  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt, id;
   let arg = xtest.test_parse(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case '!e': e = !assert_bool(a.arg); break;
     case 'rt': rt = assert_rt(s, a.arg, c.dir); break;
+    case 'id': id = id_from_req_id(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
@@ -1613,21 +1614,21 @@ function cmd_ping(opt){
     let s;
     if (basic){
       s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
-        {type: 'req', cmd: 'ping'});
+        {id, type: 'req', cmd: 'ping'});
       set_push_cmd(c, s);
     } else if (call && e){
       s = build_cmd_o(c.s+c.d+'>!ping', {'!e': e,
         'rt': rt && rt_to_str(rt)});
       s += t_mode.msg ? ' '+build_cmd_o(
         c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
-        {type: 'req', cmd: 'ping'}) : '';
-      s += t_mode.req ? build_cmd_o(dir_c(c)+'*req', {cmd: 'ping'}) : '';
+        {id, type: 'req', cmd: 'ping'}) : '';
+      s += build_cmd_o(dir_c(c)+'*req', {id, cmd: 'ping'});
       s += t_mode.msg ? ' '+build_cmd_o(
         c.loop ? rev_loop_str(c.loop)+'>msg' : rev_c(c)+'msg',
-        {type: 'res', cmd: 'ping'}) : '';
-      s += t_mode.req ? build_cmd_o(rev_c(c)+'*res', {cmd: 'ping'}) : '';
+        {id, type: 'res', cmd: 'ping'}) : '';
+      s += build_cmd_o(rev_c(c)+'*res', {id, cmd: 'ping'});
     } else if (c.cmd[0]=='*')
-      s = t_mode.req ? build_cmd_o(dir_c(c)+'*req', {cmd: 'ping'}) : '';
+      s = build_cmd_o(dir_c(c)+'*req', {id, cmd: 'ping'});
     if (s)
       set_push_cmd(c, s);
     return;
@@ -1635,20 +1636,26 @@ function cmd_ping(opt){
   if (!call)
     return;
   if (!s.t.fake)
-    s.ping(d.id, {rt});
+    s.ping(d.id, {req_id: id, rt});
 }
 
 function cmd_ping_r(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
-  assert(!event, 'unexpected event');
-  assert(!c.arg, 'invalid arg '+c.orig);
+  assert(!event, 'unexpected event '+event);
+  let arg = xtest.test_parse(c.arg), id;
+  xutil.forEach(arg, a=>{
+    switch (a.cmd){
+    case 'id': id = id_from_req_id(a.arg); break;
+    default: assert(0, 'unknown arg '+a.cmd);
+    }
+  });
   if (t_pre_process){
     let s = '';
     if (basic){
       s = t_mode.msg ? build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' :
-        dir_c(c)+'msg', {type: 'res', cmd: 'ping'}) : '';
+        dir_c(c)+'msg', {id, type: 'res', cmd: 'ping'}) : '';
     } else if (c.cmd[0]=='*')
-      s = t_mode.req ? build_cmd_o(dir_c(c)+'*res', {cmd: 'ping'}) : '';
+      s = build_cmd_o(dir_c(c)+'*res', {id, cmd: 'ping'});
     if (s)
       set_push_cmd(c, s);
     return;
@@ -4646,7 +4653,21 @@ describe('peer-relay', function(){
       ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
     `);
     t = (name, test)=>t_roles(name, 'ab', test);
+    // XXX derry:
+    // 1. logic for sending ack on response
+    // 2. unite previous ack from stream level
+    // 3. how automatic ack in test works (in parser, add missing ack, or
+    // send tranparently ack)
+    // 4. calc rtt from ack messages? -- according to rtt between connection.
+    // each msg takes time to arrive according to rtt
+    t('xxx_ping', `mode(msg req) conf(a-c rtt:50) ab>!connect conf(!autoack)
+      ab>!ping(id:1 !e) ab>ping(id:1.0) ab>*ping
+      // XXX: we send both ack and ping_r
+      ab<ack(id(>1.0)) ab<ping_r(id:1.0) ab<*ping_r ab>ack(id(<1.0))
+    `);
+    t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: rm !autoack and !msgack (mv to request)
+    // XXX: !e --> !!
     t('xxx2', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!req(id:1 !e) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#same b#ab>open(>1.0vv)
