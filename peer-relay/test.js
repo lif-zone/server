@@ -4632,7 +4632,6 @@ describe('peer-relay', function(){
     `);
     t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: rm !autoack and !msgack (mv to request)
-    // XXX: !e --> !!
     t('xxx2a', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!req(id:1 !!) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#same b#ab>open(>1.0vv)
@@ -4706,7 +4705,7 @@ describe('peer-relay', function(){
       a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id(>1.2))
       bc:ab[c]:ac>req_end(id(>1.2)) a,b,c#ac>close(>1.2vv)
     `);
-    // XXX derry: review fin
+    // XXX derry: vv -> fin
     t('xxx4a', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
       cb{b-b}:c~c>req(id:1 cmd:ring_join) a#!id:1 b,c#c~c>opening(id(>1.0))
@@ -4724,6 +4723,8 @@ describe('peer-relay', function(){
       cba>ack(id(<1.0) fin) a,b,c#c~c>close(id(<1.0vv))
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
+    // XXX fix test: how to know its fin ack
+    // ba{b-a vv}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
     t('xxx4b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
       cb{b-b}:c~c>req(id:1 cmd:ring_join)
