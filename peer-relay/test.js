@@ -1660,7 +1660,7 @@ function cmd_ping(opt){
   let arg = xtest.test_parse(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
-    case '!e': e = !assert_bool(a.arg); break;
+    case '!!': e = !assert_bool(a.arg); break;
     case 'rt': rt = assert_rt(s, a.arg, c.dir); break;
     case 'id': id = id_from_req_id(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
@@ -1674,7 +1674,7 @@ function cmd_ping(opt){
         {id, type: 'req', cmd: 'ping'});
       set_push_cmd(c, s);
     } else if (call && e){
-      s = build_cmd_o(c.s+c.d+'>!ping', {'!e': e,
+      s = build_cmd_o(c.s+c.d+'>!ping', {'!!': e,
         'rt': rt && rt_to_str(rt)});
       s += t_mode.msg ? ' '+build_cmd_o(
         c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
@@ -1765,7 +1765,7 @@ function cmd_ring_join(opt){
     switch (a.cmd){
     case 'id': id = id_from_req_id(a.arg); break;
     case '!r': r = false; break;
-    case '!e': e = false; break;
+    case '!!': e = false; break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
@@ -1953,7 +1953,7 @@ function cmd_req(opt){
       seq = seq_from_req_id(a.arg);
       break;
     case 'body': body = a.arg; break;
-    case '!e': e = !assert_bool(a.arg); break;
+    case '!!': e = !assert_bool(a.arg); break;
     case 'emit_api': emit_api = assert_bool(a.arg); break;
     case 'ooo': ooo = assert_bool(a.arg); break;
     case 'dup': dup = assert_bool(a.arg); break;
@@ -1969,7 +1969,7 @@ function cmd_req(opt){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  assert(call || !e, 'e only avail for call mode');
+  assert(call || !e, '!! only avail for call mode');
   assert(!emit_api || call && type=='req_start',
     'emit_api only avail for !req_start');
   cmd = cmd||'';
@@ -1985,7 +1985,7 @@ function cmd_req(opt){
     }
     set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, cmd, seq, ack, body, res,
       rt: call && rt ? rt_to_str(rt, c.dir) : undefined,
-      '!e': !call ? undefined : true, emit_api, ooo, dup, close}));
+      '!!': !call ? undefined : true, emit_api, ooo, dup, close}));
     if (e){
       let s = '';
       if (c.loop){
@@ -2118,7 +2118,7 @@ function cmd_res(opt){
       id = id_from_req_id(a.arg);
       seq = seq_from_req_id(a.arg);
       break;
-    case '!e': e = !assert_bool(a.arg); break;
+    case '!!': e = !assert_bool(a.arg); break;
     case 'ooo': ooo = assert_bool(a.arg); break;
     case 'dup': dup = assert_bool(a.arg); break;
     case 'close': close = assert_bool(a.arg); break;
@@ -2129,7 +2129,7 @@ function cmd_res(opt){
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
-  assert(call || !e, 'e only avail for call mode');
+  assert(call || !e, '!! only avail for call mode');
   if (t_pre_process){
     if (basic){
       s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
@@ -2141,7 +2141,7 @@ function cmd_res(opt){
       return;
     }
     set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, cmd, seq, ack,
-      body, '!e': !call ? undefined : true, ooo, dup, close}));
+      body, '!!': !call ? undefined : true, ooo, dup, close}));
     if (e){
       let s = '';
       if (c.loop){
@@ -3356,45 +3356,45 @@ describe('peer-relay', function(){
         t('ab,cd>ef>msg(hi)', `ab>fwd(ef>msg(hi)) cd>fwd(msg(hi))`);
         // XXX TODO: dcb>fwd(da>msg(hi)) - db>!msg(hi) - dc>!msg(hi)`);
         t('ab>*req(id:1 body:ping)', `ab>*req(id(1) body(ping))`);
-        t('ab>!req(body:hi !e)', `ab>!req(body(hi) !e)`);
-        t('ab>!req(id(0) body:hi !e)', `ab>!req(id(0) body(hi) !e)`);
+        t('ab>!req(body:hi !!)', `ab>!req(body(hi) !!)`);
+        t('ab>!req(id(0) body:hi !!)', `ab>!req(id(0) body(hi) !!)`);
         if (0) // XXX: rm
-        t('ab>!req(id:0 body:ping)', `ab>!req(id(0) body(ping) !e)
+        t('ab>!req(id:0 body:ping)', `ab>!req(id(0) body(ping) !!)
           ab>*req(id(0) body(ping))`);
         _t('conf(id(all)) mode(msg)', 'ab>!req(id:0 body:ping)',
-          `ab>!req(id(0) body(ping) !e) ab>msg(id(0) type(req) body(ping))`,
+          `ab>!req(id(0) body(ping) !!) ab>msg(id(0) type(req) body(ping))`,
           true);
-        t('ab>!req(id:0 body:ping)', `ab>!req(id(0) body(ping) !e)
+        t('ab>!req(id:0 body:ping)', `ab>!req(id(0) body(ping) !!)
           ab>msg(id(0) type(req) body(ping)) ab>*req(id(0) body(ping))`);
         if (0) // XXX: rm
         t('ab>!req(id:1 body:ping res:ping_r)', `
-          ab>!req(id(1) body(ping) res(ping_r) !e)
+          ab>!req(id(1) body(ping) res(ping_r) !!)
           ab>*req(id(1) body(ping)) ab<*res(id(1) body(ping_r))`);
         t('ab>!req(id:1 cmd:test seq:1 ack:2 body:ping res:ping_r)', `
-          ab>!req(id(1) cmd(test) seq(1) ack(2) body(ping) res(ping_r) !e)
+          ab>!req(id(1) cmd(test) seq(1) ack(2) body(ping) res(ping_r) !!)
           ab>msg(id(1) type(req) cmd(test) seq(1) ack(2) body(ping))
           ab>*req(id(1) cmd(test) seq(1) ack(2) body(ping))
           ab<msg(id(1) type(res) cmd(test) body(ping_r))
           ab<*res(id(1) cmd(test) body(ping_r))`);
-        t('abc>!req(id:0 !e)', `ac>!req(id(0) !e)`);
-        t('abc<!req(id:0 !e)', `ac<!req(id(0) !e)`);
-        t('abc>!req(id:0)', `ac>!req(id(0) !e)
+        t('abc>!req(id:0 !!)', `ac>!req(id(0) !!)`);
+        t('abc<!req(id:0 !!)', `ac<!req(id(0) !!)`);
+        t('abc>!req(id:0)', `ac>!req(id(0) !!)
           ab>fwd(ac>msg(id(0) type(req)) rt(c))
           bc>fwd(ab>fwd(ac>msg(id(0) type(req)) rt(c)))
           ac>*req(id(0))`);
-        t('abc<!req(id:0)', `ac<!req(id(0) !e)
+        t('abc<!req(id:0)', `ac<!req(id(0) !!)
           cb>fwd(ac<msg(id(0) type(req)) rt(a))
           ba>fwd(cb>fwd(ac<msg(id(0) type(req)) rt(a)))
           ac<*req(id(0))`);
         t('abc>!req(id:0 cmd:test seq:1 ack:2 body:ping)',
-          `ac>!req(id(0) cmd(test) seq(1) ack(2) body(ping) !e)
+          `ac>!req(id(0) cmd(test) seq(1) ack(2) body(ping) !!)
           ab>fwd(ac>msg(id(0) type(req) cmd(test) seq(1) ack(2) body(ping)) `+
           `rt(c))
           bc>fwd(ab>fwd(ac>msg(id(0) type(req) cmd(test) seq(1) `+
           `ack(2) body(ping)) rt(c)))
            ac>*req(id(0) cmd(test) seq(1) ack(2) body(ping))`);
         t('abc>!req(id:1 cmd:test seq:1 ack:2 body:ping res:ping_r)', `
-          ac>!req(id(1) cmd(test) seq(1) ack(2) body(ping) res(ping_r) !e)
+          ac>!req(id(1) cmd(test) seq(1) ack(2) body(ping) res(ping_r) !!)
           ab>fwd(ac>msg(id(1) type(req) cmd(test) seq(1) ack(2) body(ping)) `+
           `rt(c)) bc>fwd(ab>fwd(ac>msg(id(1) type(req) cmd(test) seq(1) `+
           `ack(2) body(ping)) rt(c)))
@@ -3404,7 +3404,7 @@ describe('peer-relay', function(){
           ac<*res(id(1) cmd(test) body(ping_r))`);
          // XXX WIP: check why change cb> bc< and ba to ab< breaks test
          t('ab.c>!req(body:ping res:ping_r)', `
-           ac>!req(body(ping) res(ping_r) !e)
+           ac>!req(body(ping) res(ping_r) !!)
            ab>fwd(ac>msg(type(req) body(ping)))
            bc>fwd(ab>fwd(ac>msg(type(req) body(ping))))
            ac>*req(body(ping))
@@ -3413,28 +3413,28 @@ describe('peer-relay', function(){
            ac<*res(body(ping_r))
          `);
         t('ab>*res(id:1 body:ping)', `ab>*res(id(1) body(ping))`);
-        t('ab>!res(body:hi !e)', `ab>!res(body(hi) !e)`);
-        t('ab>!res(id(0) body:hi !e)', `ab>!res(id(0) body(hi) !e)`);
+        t('ab>!res(body:hi !!)', `ab>!res(body(hi) !!)`);
+        t('ab>!res(id(0) body:hi !!)', `ab>!res(id(0) body(hi) !!)`);
         if (0) // XXX: rm
-        t('ab>!res(id:0 body:ping)', `ab>!res(id(0) body(ping) !e)
+        t('ab>!res(id:0 body:ping)', `ab>!res(id(0) body(ping) !!)
           ab>*res(id(0) body(ping))`);
         _t('conf(id(all)) mode(msg)', 'ab>!res(id:0 body:ping)',
-          `ab>!res(id(0) body(ping) !e) ab>msg(id(0) type(res) body(ping))`,
+          `ab>!res(id(0) body(ping) !!) ab>msg(id(0) type(res) body(ping))`,
           true);
         t('ab>!res(id:0 cmd:test seq:1 ack:2 body:ping)',
-          `ab>!res(id(0) cmd(test) seq(1) ack(2) body(ping) !e)
+          `ab>!res(id(0) cmd(test) seq(1) ack(2) body(ping) !!)
           ab>msg(id(0) type(res) cmd(test) seq(1) ack(2) body(ping))
            ab>*res(id(0) cmd(test) seq(1) ack(2) body(ping))`);
-        t('abc>!res(id:0 !e)', `ac>!res(id(0) !e)`);
-        t('abc<!res(id:0 !e)', `ac<!res(id(0) !e)`);
-        t('abc>!res(id:0)', `ac>!res(id(0) !e)
+        t('abc>!res(id:0 !!)', `ac>!res(id(0) !!)`);
+        t('abc<!res(id:0 !!)', `ac<!res(id(0) !!)`);
+        t('abc>!res(id:0)', `ac>!res(id(0) !!)
           ab>fwd(ac>msg(id(0) type(res)) rt(c))
           bc>fwd(ab>fwd(ac>msg(id(0) type(res)) rt(c))) ac>*res(id(0))`);
-        t('abc<!res(id:0)', `ac<!res(id(0) !e)
+        t('abc<!res(id:0)', `ac<!res(id(0) !!)
           cb>fwd(ac<msg(id(0) type(res)) rt(a))
           ba>fwd(cb>fwd(ac<msg(id(0) type(res)) rt(a))) ac<*res(id(0))`);
         t('abc>!res(id:0 cmd:test seq:1 ack:2 body:ping)',
-          `ac>!res(id(0) cmd(test) seq(1) ack(2) body(ping) !e)
+          `ac>!res(id(0) cmd(test) seq(1) ack(2) body(ping) !!)
           ab>fwd(ac>msg(id(0) type(res) cmd(test) seq(1) ack(2) body(ping)) `+
           `rt(c)) bc>fwd(ab>fwd(ac>msg(id(0) type(res) cmd(test) seq(1) `+
           `ack(2) body(ping)) rt(c)))
@@ -3450,16 +3450,16 @@ describe('peer-relay', function(){
         t('a>*fail(id:1 error:timeout)', `a>*fail(id(1) error(timeout))`);
         t('a>*req_start(id:0 cmd:test seq:1 ack:2 body:b0)',
           `a>*req_start(id(0) cmd(test) seq(1) ack(2) body(b0))`);
-        t('ab>!req_start(id:1 cmd:test !e)',
-          `ab>!req_start(id(1) cmd(test) !e)`);
+        t('ab>!req_start(id:1 cmd:test !!)',
+          `ab>!req_start(id(1) cmd(test) !!)`);
         if (0) // XXX: rm
-        t('ab>!req_start(id:1 cmd:test)', `ab>!req_start(id(1) cmd(test) !e)
+        t('ab>!req_start(id:1 cmd:test)', `ab>!req_start(id(1) cmd(test) !!)
           ab>*req_start(id(1) cmd(test))`);
         if (0) // XXX: rm
-        t('ab>!res_start(id:1 cmd:test !e)',
-          `ab>!res_start(id(1) cmd(test) !e)`);
+        t('ab>!res_start(id:1 cmd:test !!)',
+          `ab>!res_start(id(1) cmd(test) !!)`);
         if (0) // XXX: rm
-        t('ab>!res_start(id:1 cmd:test)', `ab>!res_start(id(1) cmd(test) !e)
+        t('ab>!res_start(id:1 cmd:test)', `ab>!res_start(id(1) cmd(test) !!)
           ab>*res_start(id(1) cmd(test))`);
         _t('', 'x,y=node:wss', `x=node(wss) y=node(wss)`);
         t('ab,bc>!connect', `ab>!connect bc>!connect`);
@@ -3604,21 +3604,21 @@ describe('peer-relay', function(){
           t('!abc.!def<ping', `!fed.!cba>msg(type:req cmd:ping)`);
           t('bc[defg].g>ping', `bc[defg]:bg>msg(type:req cmd:ping)
             cg:bc[defg]:bg>msg(type:req cmd:ping)`);
-          t('ab>!ping(!e)', `ab>!ping(!e)`);
-          t('ab>!ping', `ab>!ping(!e) ab>ping ab>*ping ab<ping_r ab<*ping_r`);
-          t('abc>!ping', `ac>!ping(!e) abc>ping ac>*ping abc<ping_r
+          t('ab>!ping(!!)', `ab>!ping(!!)`);
+          t('ab>!ping', `ab>!ping(!!) ab>ping ab>*ping ab<ping_r ab<*ping_r`);
+          t('abc>!ping', `ac>!ping(!!) abc>ping ac>*ping abc<ping_r
             ac<*ping_r`);
           t('abc>!ping(rt:d)',
-            `ac>!ping(!e rt(d)) abc>ping ac>*ping abc<ping_r ac<*ping_r`);
-          t('!abc>!ping(rt:!bc)', `ac>!ping(!e rt(!bc)) !abc>ping ac>*ping
+            `ac>!ping(!! rt(d)) abc>ping ac>*ping abc<ping_r ac<*ping_r`);
+          t('!abc>!ping(rt:!bc)', `ac>!ping(!! rt(!bc)) !abc>ping ac>*ping
             abc<ping_r ac<*ping_r`);
-          t('abc<!ping(rt:cd!)', `ca>!ping(!e rt(!dc)) cba>ping ac<*ping
+          t('abc<!ping(rt:cd!)', `ca>!ping(!! rt(!dc)) cba>ping ac<*ping
             abc>ping_r ac>*ping_r`);
-          t('abc[def].ef>!ping', `af>!ping(!e) abc[def].ef>ping af>*ping
+          t('abc[def].ef>!ping', `af>!ping(!!) abc[def].ef>ping af>*ping
             abcef<ping_r af<*ping_r`);
-          t('bc[defg].g>!ping(rt(cdefg))', `bg>!ping(!e rt(cdefg))
+          t('bc[defg].g>!ping(rt(cdefg))', `bg>!ping(!! rt(cdefg))
             bc[defg].g>ping bg>*ping bcg<ping_r bg<*ping_r`);
-          T('abc>!ping', `ac>!ping(!e)
+          T('abc>!ping', `ac>!ping(!!)
             ab>fwd(ac>msg(type(req) cmd(ping)) rt(c))
             bc>fwd(ab>fwd(ac>msg(type(req) cmd(ping)) rt(c)))
             ac>*req(cmd(ping))
@@ -3627,7 +3627,7 @@ describe('peer-relay', function(){
             ac<*res(cmd(ping))`);
         });
         describe('ring_join', function(){
-          t('bX.a~b>ring_join(!e !r)', `bX{X-X}:b~b>msg(type:req cmd:ring_join)
+          t('bX.a~b>ring_join(!! !r)', `bX{X-X}:b~b>msg(type:req cmd:ring_join)
              Xa{a-X}:bX{X-X}:b~b>msg(type:req cmd:ring_join)`);
           t('p.Xno~p>fwd(p~p>msg)', `pX[no]:p~p>msg Xn[o]:pX[no]:p~p>msg
             no{o-o}:Xn[o]:pX[no]:p~p>msg`);
@@ -3657,17 +3657,17 @@ describe('peer-relay', function(){
           t('~dc.ba<msg(type:req cmd:ring_join)',
             `~dc.ba<fwd(~da<msg(type:req cmd:ring_join))`);
           t('ab>ring_join_r', `ab>msg(type:res cmd:ring_join)`);
-          t('ab.c~d>ring_join(!e !r)', `ab.c~d>msg(type:req cmd:ring_join)`);
-          t('ab.c~d>ring_join(!e !r)', `ab{b-b}:a~d>msg(type:req cmd:ring_join)
+          t('ab.c~d>ring_join(!! !r)', `ab.c~d>msg(type:req cmd:ring_join)`);
+          t('ab.c~d>ring_join(!! !r)', `ab{b-b}:a~d>msg(type:req cmd:ring_join)
             bc{c-b}:ab{b-b}:a~d>msg(type:req cmd:ring_join)`);
           t('ab.c>ring_join_r', `ab.c>msg(type:res cmd:ring_join)`);
-          t('ab~d>ring_join(!e !r)',
+          t('ab~d>ring_join(!! !r)',
             `ab{b-b}:a~d>msg(type:req cmd:ring_join)`);
           t('ab.c>ring_join_r', `ab.c>msg(type:res cmd:ring_join)`);
           t('ab~c>!ring_join', `a~c>!ring_join
             ab{b-b}:a~c>msg(type:req cmd:ring_join) ab>*ring_join
             ba>ring_join_r ab<*ring_join_r`);
-          t('ab~c>!ring_join(!e)', `a~c>!ring_join
+          t('ab~c>!ring_join(!!)', `a~c>!ring_join
             ab{b-b}:a~c>msg(type:req cmd:ring_join) ba>ring_join_r`);
           t('ab~c>!ring_join(!r)', `a~c>!ring_join
             ab{b-b}:a~c>msg(type:req cmd:ring_join) ab>*ring_join`);
@@ -3871,10 +3871,10 @@ describe('peer-relay', function(){
   describe('router', ()=>{
     describe('ping', ()=>{
       let t = (name, test)=>t_roles(name, 'ab', test);
-      t('2_nodes_raw', `setup:2_nodes ab>!req(cmd:ping !e)
+      t('2_nodes_raw', `setup:2_nodes ab>!req(cmd:ping !!)
         ab>msg(type:req cmd:ping) ab>*req(cmd:ping)
         ab<msg(type:res cmd:ping) ab<*res(cmd:ping)`);
-      t('2_nodes_long', `setup:2_nodes ab>!ping(!e) ab>ping
+      t('2_nodes_long', `setup:2_nodes ab>!ping(!!) ab>ping
         ab>*ping ab<ping_r ab<*ping_r`);
       t('2_nodes_short', `setup:2_nodes ab>!ping`);
       t('2_nodes_wss', `a,b=node:wss ab>!connect ab>!ping`);
@@ -3882,10 +3882,10 @@ describe('peer-relay', function(){
       t('3_nodes', `conf(id:a-mXYZn-z) !ring(a-c) !abc>!ping(rt:!bc)`);
       t = (name, test)=>t_roles(name, 'abcd', test);
       t('4_nodes_raw', `conf(id:a-mXYZn-z) !ring(a-d) ab.c>!ping abc>!ping
-        ac>!ping(!e rt:!bc) ab[!c]:ac>msg(type:req cmd:ping)
+        ac>!ping(!! rt:!bc) ab[!c]:ac>msg(type:req cmd:ping)
         bc:ab[!c]:ac>msg(type:req cmd:ping) ac>*ping
         cb[a]:ca>msg(type:res cmd:ping) ba:cb[a]:ca>msg(type:res cmd:ping)
-        ca>*ping_r ac>!ping(!e rt:!dc) ad[!c]:ac>msg(type:req cmd:ping)
+        ca>*ping_r ac>!ping(!! rt:!dc) ad[!c]:ac>msg(type:req cmd:ping)
         dc:ad[!c]:ac>msg(type:req cmd:ping) ac>*ping
         cd[a]:ca>msg(type:res cmd:ping) da:cd[a]:ca>msg(type:res cmd:ping)
         ca>*ping_r`);
@@ -3895,16 +3895,16 @@ describe('peer-relay', function(){
       let t = (name, test)=>t_roles(name, 'abc', test);
       t('3_nodes', `a,b,c=node:wss ab,ac>!connect ab>!ping ac>!ping`);
       t('3_nodes_route_b', `conf(id(a:10 b:20 c:30 d:21 e:31))
-        ab,ac>!connect ad>!req(id:1 body:ping !e)
+        ab,ac>!connect ad>!req(id:1 body:ping !!)
         ab>fwd(ad>msg(id:1 type:req body:ping)) -
         20s a>*fail(id:1 error:timeout)`);
       t('3_nodes_route_c', `conf(id(a:10 b:20 c:30 d:21 e:31))
-        ab,ac>!connect ae>!req(id:1 body:ping !e)
+        ab,ac>!connect ae>!req(id:1 body:ping !!)
         ac:ae>req(body:ping) - 20s
         a>*fail(id:1 error:timeout)`);
       t('3_nodes_ring', `conf(id(a:10 b:20 c:30)) !ring(a-c) ab>!ping
         ac>!ping -`);
-      t('3_nodes_no_exit', `conf(a-c) ab>!connect bc>!connect ac>!req(!e)
+      t('3_nodes_no_exit', `conf(a-c) ab>!connect bc>!connect ac>!req(!!)
         20s a>*fail(error:timeout)`);
       t = (name, test)=>t_roles(name, 'abcd', test);
       // XXX: check why if we change to ping it fails (req tracking bug)
@@ -4142,21 +4142,21 @@ describe('peer-relay', function(){
     // XXX: need auto
     describe('manual', ()=>{
       t('msg', `mode:msg setup:2_nodes
-        ab>!req(id:0 body:ping !e) ab>msg(id:0 type:req body:ping) -
-        ab<!res(id:0 ack:0 body:ping_r !e)
+        ab>!req(id:0 body:ping !!) ab>msg(id:0 type:req body:ping) -
+        ab<!res(id:0 ack:0 body:ping_r !!)
         ab<msg(id:0 type:res ack:0 body:ping_r)
-        20s - ab>!req(id:1 body:ping !e) ab>msg(id:1 type:req body:ping) -
-        ab<!res(id:1 ack:0 body:ping_r !e)
+        20s - ab>!req(id:1 body:ping !!) ab>msg(id:1 type:req body:ping) -
+        ab<!res(id:1 ack:0 body:ping_r !!)
         ab<msg(id:1 type:res ack:0 body:ping_r)`);
       t('msg,req', `mode(msg req) setup:2_nodes
-        ab>!req(id:0 body:ping !e) ab>msg(id:0 type:req body:ping)
+        ab>!req(id:0 body:ping !!) ab>msg(id:0 type:req body:ping)
         ab>*req(id:0 body:ping) -
-        ab<!res(id:0 ack:0 body:ping_r !e)
+        ab<!res(id:0 ack:0 body:ping_r !!)
         ab<msg(id:0 type:res ack:0 body:ping_r)
         ab<*res(id:0 ack:0 body:ping_r) 20s -
-        ab>!req(id:1 body:ping !e) ab>msg(id:1 type:req body:ping)
+        ab>!req(id:1 body:ping !!) ab>msg(id:1 type:req body:ping)
         ab>*req(id:1 body:ping) -
-        ab<!res(id:1 ack:0 body:ping_r !e)
+        ab<!res(id:1 ack:0 body:ping_r !!)
         ab<msg(id:1 type:res ack:0 body:ping_r)
         ab<*res(id:1 ack:0 body:ping_r)`);
     });
@@ -4172,11 +4172,11 @@ describe('peer-relay', function(){
     describe('2_nodes', ()=>{
       t('msg', `mode:msg a=node b=node(wss(port:4000)) ab>!connect(wss !r)
         ab>connect(wss !r) ab<connected -
-        ab>!req(id:0 body:ping res:ping_r !e)
+        ab>!req(id:0 body:ping res:ping_r !!)
         ab>msg(type:req id:0 body:ping) ab<msg(type:res id:0 body:ping_r)`);
       t('msg,req', `mode(msg req) a=node b=node(wss(port:4000))
         ab>!connect(wss !r) ab>connect(wss !r) ab<connected -
-        ab>!req(id:0 body:ping res:ping_r !e) ab>msg(type:req id:0 body:ping)
+        ab>!req(id:0 body:ping res:ping_r !!) ab>msg(type:req id:0 body:ping)
         ab>*req(id:0 body:ping) ab<msg(type:res id:0 body:ping_r)
         ab<*res(id:0 body:ping_r)`);
     });
@@ -4215,7 +4215,7 @@ describe('peer-relay', function(){
           1ms a>*fail(id:0 error:timeout)`);
       });
       describe('no_route', ()=>{
-        t('msg', `mode:msg setup:2_nodes c=node cb>!req(id:0 body:ping !e) -
+        t('msg', `mode:msg setup:2_nodes c=node cb>!req(id:0 body:ping !!) -
         19999ms - 1ms c>*fail(id:0 error:timeout)`);
         if (0) // XXX: fixme
         t('msg,req', `mode(msg req) setup:2_nodes c=node
@@ -4229,69 +4229,69 @@ describe('peer-relay', function(){
     // XXX: add msg and msg,req versions
     describe('manual', ()=>{
       t('msg', `mode:msg setup:2_nodes
-        ab>!req_start(id:0 seq:0 cmd:test body:b0 !e)
+        ab>!req_start(id:0 seq:0 cmd:test body:b0 !!)
         ab>msg(id:0 type:req_start cmd:test seq:0 body:b0)
-        ab<!res_start(id:0 seq:0 ack:0 body:c0 !e)
+        ab<!res_start(id:0 seq:0 ack:0 body:c0 !!)
         ab<msg(id:0 type:res_start cmd:test seq:0 ack:0 body:c0)
-        ab>!req_next(id:0 seq:1 ack:0 body:b1 !e)
+        ab>!req_next(id:0 seq:1 ack:0 body:b1 !!)
         ab>msg(id:0 type:req_next cmd:test seq:1 ack:0 body:b1)
-        ab<!res_next(id:0 seq:1 ack:1 body:c1 !e)
+        ab<!res_next(id:0 seq:1 ack:1 body:c1 !!)
         ab<msg(id:0 type:res_next cmd:test seq:1 ack:1 body:c1)
-        ab>!req_end(id:0 seq:2 ack:1 body:b2 !e)
+        ab>!req_end(id:0 seq:2 ack:1 body:b2 !!)
         ab>msg(id:0 type:req_end cmd:test ack:1 seq:2 body:b2)
-        ab<!res_end(id:0 seq:2 ack:2 body:c2 !e)
+        ab<!res_end(id:0 seq:2 ack:2 body:c2 !!)
         ab<msg(id:0 type:res_end cmd:test seq:2 ack:2 body:c2)`);
       t('msg,req', `mode(msg req) setup:2_nodes
-        ab>!req_start(id:0 seq:0 cmd:test body:b0 !e)
+        ab>!req_start(id:0 seq:0 cmd:test body:b0 !!)
         ab>msg(id:0 type:req_start cmd:test seq:0 body:b0)
         ab>*req_start(id:0 seq:0 cmd:test body:b0)
-        ab<!res_start(id:0 seq:0 ack:0 body:c0 !e)
+        ab<!res_start(id:0 seq:0 ack:0 body:c0 !!)
         ab<msg(id:0 type:res_start cmd:test seq:0 ack:0 body:c0)
         ab<*res_start(id:0 seq:0 ack:0 cmd:test body:c0)
-        ab>!req_next(id:0 seq:1 ack:0 body:b1 !e)
+        ab>!req_next(id:0 seq:1 ack:0 body:b1 !!)
         ab>msg(id:0 type:req_next cmd:test seq:1 ack:0 body:b1)
         ab>*req_next(id:0 seq:1 ack:0 cmd:test body:b1) -
-        ab<!res_next(id:0 seq:1 ack:1 body:c1 !e)
+        ab<!res_next(id:0 seq:1 ack:1 body:c1 !!)
         ab<msg(id:0 type:res_next cmd:test seq:1 ack:1 body:c1)
         ab<*res_next(id:0 seq:1 ack:1 cmd:test body:c1)
-        ab>!req_end(id:0 seq:2 ack:1 body:b2 !e)
+        ab>!req_end(id:0 seq:2 ack:1 body:b2 !!)
         ab>msg(id:0 type:req_end cmd:test ack:1 seq:2 body:b2)
         ab>*req_end(id:0 seq:2 ack:1 cmd:test body:b2)
-        ab<!res_end(id:0 seq:2 ack:2 body:c2 !e)
+        ab<!res_end(id:0 seq:2 ack:2 body:c2 !!)
         ab<msg(id:0 type:res_end cmd:test seq:2 ack:2 body:c2)
         ab<*res_end(id:0 seq:2 ack:2 cmd:test body:c2)`);
     });
     describe('auto', ()=>{
       t('msg', `mode:msg setup:2_nodes
-        ab>!req_start(id:0 cmd:test body:b0 !e)
+        ab>!req_start(id:0 cmd:test body:b0 !!)
         ab>msg(id:0 type:req_start cmd:test seq:0 body:b0)
-        ab<!res_start(id:0 ack:0 body:c0 !e)
+        ab<!res_start(id:0 ack:0 body:c0 !!)
         ab<msg(id:0 type:res_start cmd:test seq:0 ack:0 body:c0)
-        ab>!req_next(id:0 ack:0 body:b1 !e)
+        ab>!req_next(id:0 ack:0 body:b1 !!)
         ab>msg(id:0 type:req_next cmd:test seq:1 ack:0 body:b1)
-        ab<!res_next(id:0 ack:1 body:c1 !e)
+        ab<!res_next(id:0 ack:1 body:c1 !!)
         ab<msg(id:0 type:res_next cmd:test seq:1 ack:1 body:c1)
-        ab>!req_end(id:0 ack:1 body:b2 !e)
+        ab>!req_end(id:0 ack:1 body:b2 !!)
         ab>msg(id:0 type:req_end cmd:test ack:1 seq:2 body:b2)
-        ab<!res_end(id:0 ack:2 body:c2 !e)
+        ab<!res_end(id:0 ack:2 body:c2 !!)
         ab<msg(id:0 type:res_end cmd:test seq:2 ack:2 body:c2)`);
       t('msg,req', `mode(msg req) setup:2_nodes
-        ab>!req_start(id:0 cmd:test body:b0 !e)
+        ab>!req_start(id:0 cmd:test body:b0 !!)
         ab>msg(id:0 type:req_start cmd:test seq:0 body:b0)
         ab>*req_start(id:0 cmd:test body:b0)
-        ab<!res_start(id:0 ack:0 body:c0 !e)
+        ab<!res_start(id:0 ack:0 body:c0 !!)
         ab<msg(id:0 type:res_start cmd:test seq:0 ack:0 body:c0)
         ab<*res_start(id:0 cmd:test body:c0)
-        ab>!req_next(id:0 ack:0 body:b1 !e)
+        ab>!req_next(id:0 ack:0 body:b1 !!)
         ab>msg(id:0 type:req_next cmd:test seq:1 ack:0 body:b1)
         ab>*req_next(id:0 cmd:test body:b1) -
-        ab<!res_next(id:0 ack:1 body:c1 !e)
+        ab<!res_next(id:0 ack:1 body:c1 !!)
         ab<msg(id:0 type:res_next cmd:test seq:1 ack:1 body:c1)
         ab<*res_next(id:0 cmd:test body:c1)
-        ab>!req_end(id:0 ack:1 body:b2 !e)
+        ab>!req_end(id:0 ack:1 body:b2 !!)
         ab>msg(id:0 type:req_end cmd:test ack:1 seq:2 body:b2)
         ab>*req_end(id:0 cmd:test body:b2)
-        ab<!res_end(id:0 ack:2 body:c2 !e)
+        ab<!res_end(id:0 ack:2 body:c2 !!)
         ab<msg(id:0 type:res_end cmd:test seq:2 ack:2 body:c2)
         ab<*res_end(id:0 cmd:test body:c2)`);
     });
@@ -4605,13 +4605,13 @@ describe('peer-relay', function(){
     // state
     // XXX shortcuts: nonce -> msgid
     if (0)
-    t('ab', `mode:msg conf(a-b) ab>!connect ab>!req(cmd:ping !e)
+    t('ab', `mode:msg conf(a-b) ab>!connect ab>!req(cmd:ping !!)
       ab>msg(type:req cmd:ping !msgack) ab<msg(type:ack)
       ab<msg(type:res cmd:ping !msgack) ab>msg(type:ack)`);
     t = (name, test)=>t_roles(name, 'abc', test);
     if (0)
     t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect cb.a~c>!ring_join
-      ac>!req(cmd:ping !e)
+      ac>!req(cmd:ping !!)
       ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack) ab<msg(type:ack)
       bc>fwd(ab>fwd(ac>msg(type:req cmd:ping) rt:c) !msgack) bc<msg(type:ack)
       bc<fwd(ac<msg(type:res cmd:ping) rt:a !msgack) bc>msg(type:ack)
@@ -4626,7 +4626,7 @@ describe('peer-relay', function(){
     // 4. calc rtt from ack messages? -- according to rtt between connection.
     // each msg takes time to arrive according to rtt
     t('xxx_ping', `mode(msg req) conf(a-c rtt:50) ab>!connect conf(!autoack)
-      ab>!ping(id:1 !e) ab>ping(id:1.0) ab>*ping
+      ab>!ping(id:1 !!) ab>ping(id:1.0) ab>*ping
       // XXX: we send both ack and ping_r
       ab<ack(id(>1.0) fin) ab<ping_r(id:1.0) ab<*ping_r ab>ack(id(<1.0) fin)
     `);
@@ -4634,10 +4634,10 @@ describe('peer-relay', function(){
     // XXX: rm !autoack and !msgack (mv to request)
     // XXX: !e --> !!
     t('xxx2a', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
-      ab>!req(id:1 !e) a#ab>opening(>1.0) b#!id:1
+      ab>!req(id:1 !!) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#same b#ab>open(>1.0vv)
       ab<ack(id(>1.0) fin) a#ab>open(>1.0vv) b#same
-      ab<!res(id:1 !e) // a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
+      ab<!res(id:1 !!) // a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
       ab<res(id:1) // a#ab>close(<1.0vv) b#same
       ab>ack(id(<1.0) fin) // a#same b#ab>close(<1.0vv)
       // XXX: change to 10s
@@ -4645,9 +4645,9 @@ describe('peer-relay', function(){
       // 1s a#!id:1 b#!id:1
     `);
     t('xxx2b', `mode:msg conf(a-c rtt:50) ab>!connect
-      ab>!req(id:1 !e) a#ab>opening(>1.0) b#!id:1
+      ab>!req(id:1 !!) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#ab>open(>1.0vv) b#ab>open(>1.0vv)
-      ab<!res(id:1 !e) a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
+      ab<!res(id:1 !!) a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
       ab<res(id:1) a#ab>close(<1.0vv) b#ab>close(<1.0vv)
       // XXX: change to 10s
       // XXX: 19s a#ab>close(<1.0vv) b#ab>close(<1.0vv)
@@ -4660,13 +4660,13 @@ describe('peer-relay', function(){
       // XXX a#ab[c]:ac>opening(id:>1.0) b# c#
       // XXX calc rtt from ack messages
       a#!id:1 b#!id:1 c#!id:1
-      ac>!req_start(id:1 !e) a#ac>opening(>1.0) b,c#same
+      ac>!req_start(id:1 !!) a#ac>opening(>1.0) b,c#same
       ab[c]:ac>req_start(id:1.0) b#ac>opening(>1.0) a,c#same
       // XXX: verify rt is c
       ab<ack(id(>1.0)) a#ac>opening(>1.0v) b,c#same
       bc:ab[c]:ac>req_start(id:1.0) a,b#same c#ac>open(>1.0vv)
       abc<ack(id(>1.0) fin) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
-      ac<!res_start(id:1 !e) a#ac>open(>1.0vv !id(<1.0))
+      ac<!res_start(id:1 !!) a#ac>open(>1.0vv !id(<1.0))
       b#ac>open(>1.0vv !id(<1.0)) c#ac>open(>1.0vv <1.0)
       bc[a]:ac<res_start(id:1.0) a#ac>open(>1.0vv !id(<1.0))
       b#ac>open(>1.0vv <1.0) c#ac>open(>1.0vv <1.0)
@@ -4675,12 +4675,12 @@ describe('peer-relay', function(){
       ab:bc[a]:ac<res_start(id:1.0)
       abc>ack(id(<1.0) fin) a#ac>open(>1.0vv <1.0vv) b#ac>open(>1.0vv <1.0vv)
       c#ac>open(>1.0vv <1.0vv)
-      ac>!req_next(!e) a#ac>open(>1.1) b#same c#same
+      ac>!req_next(!!) a#ac>open(>1.1) b#same c#same
       ab[c]:ac>req_next(id:1.1) a#same b#ac>open(>1.1) c#same
       ab<ack(id(>1.1)) a#ac>open(>1.1v) b#ac>open(>1.1) c#same
       bc:ab[c]:ac>req_next(id:1.1) a#same b#same c#ac>open(>1.1vv)
       abc<ack(id(>1.1) fin) a,b#ac>open(>1.1vv)
-      ac>!req_end(!e) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
+      ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
       ab[c]:ac>req_end(id(>1.2)) a,c#same b#ac>closing(>1.2)
       ab<ack(id(>1.2)) a#ac>closing(>1.2v) b#ac>closing(>1.2) c#same
       bc:ab[c]:ac>req_end(id(>1.2)) a#ac>closing(>1.2v) b#ac>closing(>1.2)
@@ -4690,18 +4690,18 @@ describe('peer-relay', function(){
       cb.a~c>!ring_join ab.c~a>!ring_join ba.bc~b>!ring_join
       abc>!req(body:ping res:ping_r)
       a#!id:1 b#!id:1 c#!id:1
-      ac>!req_start(id:1 !e) a#ac>opening(>1.0) b,c#same
+      ac>!req_start(id:1 !!) a#ac>opening(>1.0) b,c#same
       ab[c]:ac>req_start(id:1.0) a#ac>opening(>1.0v) b#ac>opening(>1.0) c#same
       bc:ab[c]:ac>req_start(id:1.0) a,b,c#ac>open(>1.0vv)
-      ac<!res_start(id:1 !e) a,b#ac>open(!id(<1.0)) c#ac>open(<1.0)
+      ac<!res_start(id:1 !!) a,b#ac>open(!id(<1.0)) c#ac>open(<1.0)
       bc[a]:ac<res_start(id:1.0)
       a#ac>open(!id(<1.0)) b#ac>open(<1.0) c#ac>open(<1.0v)
       ab:bc[a]:ac<res_start(id:1.0) a,b,c#ac>open(<1.0vv)
-      ac>!req_next(!e) a#ac>open(>1.1) b,c#ac>open(!id(>1.1))
+      ac>!req_next(!!) a#ac>open(>1.1) b,c#ac>open(!id(>1.1))
       ab[c]:ac>req_next(id:1.1)
       a#ac>open(>1.1v) b#ac>open(>1.1) c#ac>open(!id(>1.1))
       bc:ab[c]:ac>req_next(id:1.1) a,b,c#ac>open(>1.1vv)
-      ac>!req_end(!e) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
+      ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
       ab[c]:ac>req_end(id(>1.2))
       a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id(>1.2))
       bc:ab[c]:ac>req_end(id(>1.2)) a,b,c#ac>close(>1.2vv)
@@ -4720,10 +4720,19 @@ describe('peer-relay', function(){
       ba>ack(id(<1.0))
       a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
       cb:ba[c]:ca<res(id:1 cmd:ring_join)
-      a#c~c>closing(id(<1.0v))
-      b#c~c>closing(id(<1.0))
-      c#c~c>close(id(<1.0vv))
-      cba>ack(id(<1.0) fin)
+      a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>close(id(<1.0vv))
+      cba>ack(id(<1.0) fin) a,b,c#c~c>close(id(<1.0vv))
+      // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
+    `);
+    t('xxx4b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
+      a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
+      cb{b-b}:c~c>req(id:1 cmd:ring_join)
+      a#!id:1 b#c~c>opening(id(>1.0)) c#c~c>opening(id(>1.0v))
+      ba{b-a}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
+      // a#c~c>closing(id(>1.0vv)) b#c~c>open(id(>1.0vv)) c#c~c>open(id(>1.0vv))
+      ba[c]:ca<res(id:1 cmd:ring_join)
+      // a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
+      cb:ba[c]:ca<res(id:1 cmd:ring_join)
       a,b,c#c~c>close(id(<1.0vv))
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);

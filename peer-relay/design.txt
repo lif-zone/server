@@ -1,7 +1,7 @@
 VP:
 - fix req_id handling - make it unique per node (not network wide)
 - fix parser
-  - !e --> !!
+  + !e --> !!
   - ab<ack(id:>1.0)
 - ack every pkt
   - automatic ack
