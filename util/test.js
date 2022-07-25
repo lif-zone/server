@@ -3350,6 +3350,9 @@ describe('test_lib', ()=>{
       t('ab:cd<e', {cmd: 'ab:cd<e'}, 7);
       t('ab:cd>e(a:d)', {cmd: 'ab:cd>e', arg: 'a:d'}, 12);
       t('ab:cd<e(a:d)', {cmd: 'ab:cd<e', arg: 'a:d'}, 12);
+      t('ab[c]:cd>e', {cmd: 'ab[c]:cd>e'}, 10);
+      t('ab{c-d}:cd>e', {cmd: 'ab{c-d}:cd>e'}, 12);
+      t('ab{c-d,vv}:cd>e', {cmd: 'ab{c-d,vv}:cd>e'}, 15);
       t('// XXX', {cmd: '//', arg: ' XXX'}, 6);
       t(' // XXX ', {cmd: '//', arg: ' XXX '}, 8);
       t(`// XXX XXX2
