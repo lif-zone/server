@@ -56,9 +56,10 @@ export default class Router extends EventEmitter {
     if (!_this._channels.size) // XXX: verify and test it
       return _this._queue.push(lbuffer);
     let o = _this.send_prepare(lbuffer);
+    _this.track(lbuffer, o?.fin);
     if (o?.channel)
       yield o.channel.send(lbuffer.to_str());
-    else if (o?.emit_message)
+    else if (o?.fin)
       _this.emit('message', lbuffer);
   });
   send_prepare = function(lbuffer){
@@ -93,7 +94,7 @@ export default class Router extends EventEmitter {
         path = best?.path;
         channel = this.get_channel_from_path(path);
         if (!channel)
-          return {emit_message: true};
+          return {fin: true};
       }
       if (!path || path.length==1){
         if (!range)
@@ -146,7 +147,6 @@ export default class Router extends EventEmitter {
         msg2.range = NodeId.range_to_msg(range);
       lbuffer.add_json(msg2);
     }
-    this.track(lbuffer);
     return {channel, lbuffer};
   }
   _on_msg = (data, channel)=>etask({_: this},
@@ -158,17 +158,18 @@ export default class Router extends EventEmitter {
     if (!msgid && msg.type!='ack') // XXX: TODO ack
       return log('invalid message msgid %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
-    _this.track(lbuffer);
     if (!path && msg.to==_this.id.s){
       assert(!_this.pending_ack);
       if (msg.type!='ack')
         _this.pending_ack = {channel, lbuffer, fin: true};
+      _this.track(lbuffer, true);
       _this.emit('message', lbuffer);
       yield _this.ack_pending();
     }
     else {
       let o = _this.send_prepare(lbuffer);
-      if (o?.emit_message){
+      _this.track(lbuffer, o?.fin);
+      if (o?.fin){
         if (msg.type!='ack')
           _this.pending_ack = {channel, lbuffer, fin: true};
         _this.emit('message', lbuffer);
@@ -298,7 +299,7 @@ export default class Router extends EventEmitter {
     let msgid = this.msgid();
     if (fin){
       let msg2 = {msgid, to: msg.from, from: this.id.s, type: 'ack',
-        req_id: msg.req_id, seq: msg.seq, dir};
+        req_id: msg.req_id, seq: msg.seq, dir, fin: true};
       // XXX: set rt/path from incoming packet to make sure we do same path
       msg2.sign = this.wallet.sign(msg2);
       let lbuffer2 = new LBuffer(msg2);
@@ -310,16 +311,16 @@ export default class Router extends EventEmitter {
     let lbuffer2 = new LBuffer(msg2);
     return channel.send(lbuffer2.to_str());
   }
-  track(lbuffer){
+  track(lbuffer, fin){
     let ts = Date.now();
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), type = msg.type;
     let req_id = ''+msg.req_id, seq = +msg.seq;
     if (type=='ack')
-      return this.track_ack(msg.from, req_id, msg.dir, seq);
+      return this.track_ack(msg.from, req_id, msg.dir, seq, msg.fin);
     if (Array.isArray(msg.ack)){
       let rdir = type_to_rdir(type);
       if (rdir)
-        msg.ack.forEach(s=>this.track_ack(msg.from, req_id, rdir, s));
+        msg.ack.forEach(s=>this.track_ack(msg.from, req_id, rdir, s, true));
     }
     let dir = type_to_dir(type);
     if (!dir)
@@ -341,7 +342,7 @@ export default class Router extends EventEmitter {
     if (['res', 'req_end', 'res_end'].includes(type))
       state_o.state = 'closing';
   }
-  track_ack(from, req_id, dir, seq){
+  track_ack(from, req_id, dir, seq, fin){
     let ts = Date.now();
     let state = this.state[req_id];
     // XXX: don't allow change from close to open
@@ -352,13 +353,13 @@ export default class Router extends EventEmitter {
     let seq_o = state[dir][seq];
     if (!seq_o)
       return xerr('ack: req_id %s seq %s not found', req_id, seq);
-    if (dir=='>' && state.dst.s==from){
+    if (dir=='>' && fin){
       if (['res', 'req_end', 'res_end'].includes(seq_o.type))
         state.state = 'close';
       else
         state.state = 'open';
       seq_o.state = 'done';
-    } else if (dir=='<' && state.src.s==from){
+    } else if (dir=='<' && fin){
       if (['res', 'req_end', 'res_end'].includes(seq_o.type))
         state.state = 'close';
       seq_o.state = 'done';
