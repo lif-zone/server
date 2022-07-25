@@ -56,10 +56,10 @@ export default class Router extends EventEmitter {
     if (!_this._channels.size) // XXX: verify and test it
       return _this._queue.push(lbuffer);
     let o = _this.send_prepare(lbuffer);
-    _this.track(lbuffer, o?.fin);
+    _this.track(lbuffer, o?.vv);
     if (o?.channel)
       yield o.channel.send(lbuffer.to_str());
-    else if (o?.fin)
+    else if (o?.vv)
       _this.emit('message', lbuffer);
   });
   send_prepare = function(lbuffer){
@@ -94,7 +94,7 @@ export default class Router extends EventEmitter {
         path = best?.path;
         channel = this.get_channel_from_path(path);
         if (!channel)
-          return {fin: true};
+          return {vv: true};
       }
       if (!path || path.length==1){
         if (!range)
@@ -161,17 +161,17 @@ export default class Router extends EventEmitter {
     if (!path && msg.to==_this.id.s){
       assert(!_this.pending_ack);
       if (msg.type!='ack')
-        _this.pending_ack = {channel, lbuffer, fin: true};
+        _this.pending_ack = {channel, lbuffer, vv: true};
       _this.track(lbuffer, true);
       _this.emit('message', lbuffer);
       yield _this.ack_pending();
     }
     else {
       let o = _this.send_prepare(lbuffer);
-      _this.track(lbuffer, o?.fin);
-      if (o?.fin){
+      _this.track(lbuffer, o?.vv);
+      if (o?.vv){
         if (msg.type!='ack')
-          _this.pending_ack = {channel, lbuffer, fin: true};
+          _this.pending_ack = {channel, lbuffer, vv: true};
         _this.emit('message', lbuffer);
         yield _this.ack_pending();
       } else {
@@ -187,7 +187,7 @@ export default class Router extends EventEmitter {
       return;
     let pending = this.pending_ack;
     this.pending_ack = null;
-    return this.ack(pending.channel, pending.lbuffer, pending.fin);
+    return this.ack(pending.channel, pending.lbuffer, pending.vv);
   }
   _onChannelAdded(channel){
     let dst = channel.id;
@@ -292,14 +292,14 @@ export default class Router extends EventEmitter {
     }
     return a;
   }
-  ack(channel, lbuffer, fin){
+  ack(channel, lbuffer, vv){
     let msg = lbuffer.msg(), dir = type_to_dir(msg.type);
     if (!dir)
       return;
     let msgid = this.msgid();
-    if (fin){
+    if (vv){
       let msg2 = {msgid, to: msg.from, from: this.id.s, type: 'ack',
-        req_id: msg.req_id, seq: msg.seq, dir, fin: true};
+        req_id: msg.req_id, seq: msg.seq, dir, vv: true};
       // XXX: set rt/path from incoming packet to make sure we do same path
       msg2.sign = this.wallet.sign(msg2);
       let lbuffer2 = new LBuffer(msg2);
@@ -311,12 +311,12 @@ export default class Router extends EventEmitter {
     let lbuffer2 = new LBuffer(msg2);
     return channel.send(lbuffer2.to_str());
   }
-  track(lbuffer, fin){
+  track(lbuffer, vv){
     let ts = Date.now();
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), type = msg.type;
     let req_id = ''+msg.req_id, seq = +msg.seq;
     if (type=='ack')
-      return this.track_ack(msg.from, req_id, msg.dir, seq, msg.fin);
+      return this.track_ack(msg.from, req_id, msg.dir, seq, msg.vv);
     if (Array.isArray(msg.ack)){
       let rdir = type_to_rdir(type);
       if (rdir)
@@ -342,7 +342,7 @@ export default class Router extends EventEmitter {
     if (['res', 'req_end', 'res_end'].includes(type))
       state_o.state = 'closing';
   }
-  track_ack(from, req_id, dir, seq, fin){
+  track_ack(from, req_id, dir, seq, vv){
     let ts = Date.now();
     let state = this.state[req_id];
     // XXX: don't allow change from close to open
@@ -353,13 +353,13 @@ export default class Router extends EventEmitter {
     let seq_o = state[dir][seq];
     if (!seq_o)
       return xerr('ack: req_id %s seq %s not found', req_id, seq);
-    if (dir=='>' && fin){
+    if (dir=='>' && vv){
       if (['res', 'req_end', 'res_end'].includes(seq_o.type))
         state.state = 'close';
       else
         state.state = 'open';
       seq_o.state = 'done';
-    } else if (dir=='<' && fin){
+    } else if (dir=='<' && vv){
       if (['res', 'req_end', 'res_end'].includes(seq_o.type))
         state.state = 'close';
       seq_o.state = 'done';

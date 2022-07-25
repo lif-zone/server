@@ -753,7 +753,7 @@ class FakeChannel extends EventEmitter {
     if (!t_mode.msg)
       return;
     let e, fwd = fwd_from_lbuffer(lbuffer);
-    let {fuzzy, req_id, type, cmd, ack, seq, dir, fin, body} = msg;
+    let {fuzzy, req_id, type, cmd, ack, seq, dir, vv, body} = msg;
     cmd = cmd||'';
     fuzzy = fuzzy||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
@@ -786,7 +786,7 @@ class FakeChannel extends EventEmitter {
         'unexpected msg type '+type);
       }
       e = build_cmd_o(from.t.name+fuzzy+to.t.name+'>msg',
-        {id: req_id, type, cmd, seq, ack: ack && ack.join(','), dir, fin,
+        {id: req_id, type, cmd, seq, ack: ack && ack.join(','), dir, vv,
         body});
       if (fwd){
         let path = [msg.from];
@@ -849,7 +849,7 @@ function do_autoack(lbuffer){
     return;
   if (!path && msg.to==to0.id.s && lbuffer.size()>1){
     let msg2 = {msgid, to: from0.id.s, from: to0.id.s, type: 'ack',
-      req_id: msg.req_id, seq: msg.seq, dir, fin: true};
+      req_id: msg.req_id, seq: msg.seq, dir, vv: true};
     let lbuffer2 = new LBuffer(msg2);
     let path2 = Array.from(lbuffer.path());
     path2.reverse();
@@ -870,7 +870,7 @@ function do_autoack(lbuffer){
     return;
   msgid = to0.msgid();
   let msg2 = {msgid, to: from0.id.s, from: to0.id.s, type: 'ack',
-    req_id: msg.req_id, seq: msg.seq, dir, fin: msg.to==to0.id.s};
+    req_id: msg.req_id, seq: msg.seq, dir, vv: msg.to==to0.id.s};
   let lbuffer2 = new LBuffer(msg2);
   return send_msg(to0.t.name, from0.t.name, lbuffer2);
 }
@@ -1723,10 +1723,10 @@ function cmd_ack(opt){
   let {c, event} = opt;
   assert(!event, 'unexpected event');
   assert(!c.fwd, 'invalid fwd '+c.fwd);
-  let arg = xtest.test_parse(c.arg), seq, id, dir, fin;
+  let arg = xtest.test_parse(c.arg), seq, id, dir, vv;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
-    case 'fin': fin = assert_bool(a.arg); break;
+    case 'vv': vv = assert_bool(a.arg); break;
     case 'id':
       dir = dir_from_req_id(a.arg);
       id = id_from_req_id(a.arg);
@@ -1740,7 +1740,7 @@ function cmd_ack(opt){
   if (!t_mode.msg)
     return;
   let s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' :
-    dir_c(c)+'msg', {id, type: 'ack', seq, dir, fin});
+    dir_c(c)+'msg', {id, type: 'ack', seq, dir, vv});
   set_push_cmd(c, s);
 }
 
@@ -1827,7 +1827,7 @@ function cmd_msg(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse(c.arg), body;
-  let id, type, cmd, seq, dir, ack, a, fin;
+  let id, type, cmd, seq, dir, ack, a, vv;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id':
@@ -1835,7 +1835,7 @@ function cmd_msg(opt){
       seq = seq_from_req_id(a.arg);
       break;
     case 'type': type = a.arg; break;
-    case 'fin': fin = assert_bool(a.arg); break;
+    case 'vv': vv = assert_bool(a.arg); break;
     case 'cmd': cmd = a.arg||''; break;
     case 'ack': ack = assert_ack(a.arg); break;
     case 'seq': seq = assert_int(a.arg); break;
@@ -1850,7 +1850,7 @@ function cmd_msg(opt){
       c = expand_loop_fwd(c);
     else {
       set_orig(c, build_cmd_o(dir_c(c)+c.cmd, {id, type, cmd, seq, ack, dir,
-        fin, body}));
+        vv, body}));
     }
     return;
   }
@@ -1883,7 +1883,7 @@ function cmd_msg(opt){
   if (type=='res') // XXX HACK: rm
     ack = ack||0;
   assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
-    {id, type, cmd, seq, ack, dir, fin, body}), c.fwd, event, false);
+    {id, type, cmd, seq, ack, dir, vv, body}), c.fwd, event, false);
   if (type=='req'){
     switch (cmd){
     case 'conn_info': break;
@@ -1915,7 +1915,7 @@ function cmd_msg(opt){
   let rt; // XXX: rm this logic. just pass c.rt
   if (c.rt)
     rt = {path: parse_path(path_to_str(c.rt), c.dir)};
-  fake_send_msg(c, {rt, req_id: id, type, seq, ack, dir, cmd, fin, body});
+  fake_send_msg(c, {rt, req_id: id, type, seq, ack, dir, cmd, vv, body});
 }
 
 function dir_from_req_id(s){
@@ -4628,17 +4628,17 @@ describe('peer-relay', function(){
     t('xxx_ping', `mode(msg req) conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!ping(id:1 !!) ab>ping(id:1.0) ab>*ping
       // XXX: we send both ack and ping_r
-      ab<ack(id(>1.0) fin) ab<ping_r(id:1.0) ab<*ping_r ab>ack(id(<1.0) fin)
+      ab<ack(id(>1.0) vv) ab<ping_r(id:1.0) ab<*ping_r ab>ack(id(<1.0) vv)
     `);
     t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: rm !autoack and !msgack (mv to request)
     t('xxx2a', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!req(id:1 !!) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#same b#ab>open(>1.0vv)
-      ab<ack(id(>1.0) fin) a#ab>open(>1.0vv) b#same
+      ab<ack(id(>1.0) vv) a#ab>open(>1.0vv) b#same
       ab<!res(id:1 !!) // a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
       ab<res(id:1) // a#ab>close(<1.0vv) b#same
-      ab>ack(id(<1.0) fin) // a#same b#ab>close(<1.0vv)
+      ab>ack(id(<1.0) vv) // a#same b#ab>close(<1.0vv)
       // XXX: change to 10s
       // XXX: 19s a#ab>close(<1.0vv) b#ab>close(<1.0vv)
       // 1s a#!id:1 b#!id:1
@@ -4664,7 +4664,7 @@ describe('peer-relay', function(){
       // XXX: verify rt is c
       ab<ack(id(>1.0)) a#ac>opening(>1.0v) b,c#same
       bc:ab[c]:ac>req_start(id:1.0) a,b#same c#ac>open(>1.0vv)
-      abc<ack(id(>1.0) fin) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
+      abc<ack(id(>1.0) vv) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
       ac<!res_start(id:1 !!) a#ac>open(>1.0vv !id(<1.0))
       b#ac>open(>1.0vv !id(<1.0)) c#ac>open(>1.0vv <1.0)
       bc[a]:ac<res_start(id:1.0) a#ac>open(>1.0vv !id(<1.0))
@@ -4672,18 +4672,18 @@ describe('peer-relay', function(){
       // XXX a#same b#ac>open(>1.0vv <1.0) c#same
       bc>ack(id(<1.0)) a,b#same c#ac>open(>1.0vv <1.0v)
       ab:bc[a]:ac<res_start(id:1.0)
-      abc>ack(id(<1.0) fin) a#ac>open(>1.0vv <1.0vv) b#ac>open(>1.0vv <1.0vv)
+      abc>ack(id(<1.0) vv) a#ac>open(>1.0vv <1.0vv) b#ac>open(>1.0vv <1.0vv)
       c#ac>open(>1.0vv <1.0vv)
       ac>!req_next(!!) a#ac>open(>1.1) b#same c#same
       ab[c]:ac>req_next(id:1.1) a#same b#ac>open(>1.1) c#same
       ab<ack(id(>1.1)) a#ac>open(>1.1v) b#ac>open(>1.1) c#same
       bc:ab[c]:ac>req_next(id:1.1) a#same b#same c#ac>open(>1.1vv)
-      abc<ack(id(>1.1) fin) a,b#ac>open(>1.1vv)
+      abc<ack(id(>1.1) vv) a,b#ac>open(>1.1vv)
       ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
       ab[c]:ac>req_end(id(>1.2)) a,c#same b#ac>closing(>1.2)
       ab<ack(id(>1.2)) a#ac>closing(>1.2v) b#ac>closing(>1.2) c#same
       bc:ab[c]:ac>req_end(id(>1.2)) a#ac>closing(>1.2v) b#ac>closing(>1.2)
-      c#ac>close(>1.2vv) abc<ack(id(>1.2) fin) a,b,c#ac>close(>1.2vv)
+      c#ac>close(>1.2vv) abc<ack(id(>1.2) vv) a,b,c#ac>close(>1.2vv)
     `);
     t('xxx3b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       cb.a~c>!ring_join ab.c~a>!ring_join ba.bc~b>!ring_join
@@ -4712,7 +4712,7 @@ describe('peer-relay', function(){
       cb<ack(id(>1.0)) a#!id:1 b#c~c>opening(id(>1.0)) c#c~c>opening(id(>1.0v))
       ba{b-a}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
       a#c~c>open(id(>1.0vv)) b#c~c>opening(id(>1.0)) c#c~c>opening(id(>1.0v))
-      cba<ack(id(>1.0) fin)
+      cba<ack(id(>1.0) vv)
       a#c~c>closing(id(>1.0vv)) b#c~c>open(id(>1.0vv)) c#c~c>open(id(>1.0vv))
       ba[c]:ca<res(id:1 cmd:ring_join)
       a,b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
@@ -4720,10 +4720,10 @@ describe('peer-relay', function(){
       a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
       cb:ba[c]:ca<res(id:1 cmd:ring_join)
       a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>close(id(<1.0vv))
-      cba>ack(id(<1.0) fin) a,b,c#c~c>close(id(<1.0vv))
+      cba>ack(id(<1.0) vv) a,b,c#c~c>close(id(<1.0vv))
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
-    // XXX fix test: how to know its fin ack
+    // XXX fix test: how to know its vv ack
     // ba{b-a vv}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
     t('xxx4b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
