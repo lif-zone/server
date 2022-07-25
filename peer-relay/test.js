@@ -838,7 +838,7 @@ const cmd_run_if_next_fake = ()=>etask(function*send(){
   }
 });
 
-function do_autoack(lbuffer){
+function do_autoack(lbuffer, vv){
   let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
   let from0 = node_from_id(msg0.from), to0 = node_from_id(msg0.to);
   let rt = msg0.rt, path = rt?.path, msgid;
@@ -847,7 +847,7 @@ function do_autoack(lbuffer){
   let dir = Router.type_to_dir(msg.type);
   if (!dir)
     return;
-  if (!path && msg.to==to0.id.s && lbuffer.size()>1){
+  if (vv || !path && msg.to==to0.id.s && lbuffer.size()>1){
     let msg2 = {msgid, to: from0.id.s, from: to0.id.s, type: 'ack',
       req_id: msg.req_id, seq: msg.seq, dir, vv: true};
     let lbuffer2 = new LBuffer(msg2);
@@ -1136,7 +1136,7 @@ function fake_send_msg(c, msg){
   if (!d.t.fake)
     send_msg(s.t.name, d.t.name, lbuffer);
   if (msg.type!='ack' && !t_conf.no_autoack)
-    do_autoack(lbuffer);
+    do_autoack(lbuffer, c.vv);
 }
 
 const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
@@ -2224,12 +2224,13 @@ function fill_rtt(c, rt){
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
-  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range;
+  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range, vv;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     // XXX: replace null with correct src in assert_rt
     case 'rt': rt = assert_rt(null, a.arg, c.dir); break;
     case 'range': range = assert_range(a.arg); break;
+    case 'vv': vv = assert_bool(a.arg); break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
@@ -2237,6 +2238,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
     if (c.loop)
       return expand_loop_fwd(c);
   }
+  f.vv = vv||c.vv;
   f.fwd = Array.from(c.fwd||[]);
   f.fwd.push(dir_c(c));
   f.rt2 = Array.from(c.rt2||[]); // XXX: rm from here!
@@ -2249,8 +2251,8 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
     return;
   set_orig(c, _build_cmd(f.orig+
     (rt ? ' '+build_cmd('rt', rt_to_str(rt, c.dir)) : '')+
-    (range ? ' '+build_cmd('range', range_to_str(range, c.dir)) : ''),
-    [dir_c(c)]));
+    (range ? ' '+build_cmd('range', range_to_str(range, c.dir)) : '')+
+    (vv ? ' vv' : ''), [dir_c(c)]));
 });
 
 const cmd_ms = opt=>etask(function*cmd_ms(){
@@ -2600,8 +2602,17 @@ function test_transform(s){
       range += ch;
     else if (ch==':'){
       assert(!open, 'missing '+open+' close for '+s);
+      let m = rt.split(','), extra;
+      assert(m.length<3, 'invalid '+rt);
+      rt = m[0];
+      extra = m[1] ? ' '+m[1] : '';
+      m = range.split(',');
+      assert(m.length<3, 'invalid '+range);
+      range = m[0];
+      extra += m[1] ? ' '+m[1] : '';
       a.push({pre: p+dir, rt: rt ? ' rt('+rt+')' : '',
-        range: range ? ' range('+range+')' : ''});
+        range: range ? ' range('+range+')' : '',
+        extra});
       p = rt = range = '';
     } else
       p += ch;
@@ -2611,7 +2622,8 @@ function test_transform(s){
   let ret = '';
   a.push({pre: p+dir+post, rt, range});
   a = a.reverse();
-  a.forEach((c, i)=>ret = !i ? c.pre : c.pre+'fwd('+ret+c.rt+c.range+')');
+  a.forEach((c, i)=>ret = !i ? c.pre :
+    c.pre+'fwd('+ret+c.rt+c.range+c.extra+')');
   return ret;
 }
 
@@ -3052,7 +3064,9 @@ describe('api', function(){
    t('bc:ab:ad>msg', `bc>fwd(ab>fwd(ad>msg))`);
    t('cd:bc:ab:ad>msg', `cd>fwd(bc>fwd(ab>fwd(ad>msg)))`);
    t('ab[c]:ad>msg', `ab>fwd(ad>msg rt(c))`);
+   t('ab[c,vv]:ad>msg', `ab>fwd(ad>msg rt(c) vv)`);
    t('ab{c-d}:ad>msg', `ab>fwd(ad>msg range(c-d))`);
+   t('ab{c-d,vv}:ad>msg', `ab>fwd(ad>msg range(c-d) vv)`);
    t('ab[abc]{c-d}:ad>msg', `ab>fwd(ad>msg rt(abc) range(c-d))`);
    t('ab[cd]:ad>msg', `ab>fwd(ad>msg rt(cd))`);
    t('cd[x]:bc[y]:ab[z]:ad>msg',
@@ -3554,6 +3568,10 @@ describe('peer-relay', function(){
             fa:ba[fedc]:cd[fed]<msg(type:req cmd:ping)
             fa:ba[fedc]:cd[fed]:ec[f]<msg(type:req cmd:ping)
             fa:ba[fedc]:cd[fed]:ec[f]:fe<msg(type:req cmd:ping)`);
+          t('ab{c-d}:ef>msg(type:req cmd:ping)',
+            `ab>fwd(ef>msg(type:req cmd:ping) range:c-d)`);
+          t('ab{c-d,vv}:ef>msg(type:req cmd:ping)',
+            `ab>fwd(ef>msg(type:req cmd:ping) range:c-d vv)`);
         });
         describe('req', function(){
           t('ab>req(id:1)', `ab>msg(type:req id:1)`);
@@ -4705,7 +4723,6 @@ describe('peer-relay', function(){
       a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id(>1.2))
       bc:ab[c]:ac>req_end(id(>1.2)) a,b,c#ac>close(>1.2vv)
     `);
-    // XXX derry: vv -> fin
     t('xxx4a', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
       cb{b-b}:c~c>req(id:1 cmd:ring_join) a#!id:1 b,c#c~c>opening(id(>1.0))
@@ -4723,17 +4740,15 @@ describe('peer-relay', function(){
       cba>ack(id(<1.0) vv) a,b,c#c~c>close(id(<1.0vv))
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
-    // XXX fix test: how to know its vv ack
-    // ba{b-a vv}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
     t('xxx4b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
       cb{b-b}:c~c>req(id:1 cmd:ring_join)
       a#!id:1 b#c~c>opening(id(>1.0)) c#c~c>opening(id(>1.0v))
-      ba{b-a}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
-      // a#c~c>closing(id(>1.0vv)) b#c~c>open(id(>1.0vv)) c#c~c>open(id(>1.0vv))
+      ba{b-a,vv}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
+      a#c~c>closing(id(>1.0vv)) b#c~c>open(id(>1.0vv)) c#c~c>open(id(>1.0vv))
       ba[c]:ca<res(id:1 cmd:ring_join)
-      // a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
-      cb:ba[c]:ca<res(id:1 cmd:ring_join)
+      a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
+      cb:ba[c,vv]:ca<res(id:1 cmd:ring_join)
       a,b,c#c~c>close(id(<1.0vv))
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
