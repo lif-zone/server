@@ -816,10 +816,26 @@ class FakeChannel extends EventEmitter {
         t_pending = null;
       }
       yield cmd_run(e);
+      yield cmd_run_if_next_fake();
     });
   };
   destroy(){}
 }
+
+const cmd_run_if_next_fake = ()=>etask(function*send(){
+  while (t_i<t_cmds.length){
+    if (t_pending)
+      break;
+    let c = t_cmds[t_i];
+    let s = c.s && N(c.s);
+    let d = c.d && N(c.d);
+    if (s && !s?.t.fake)
+      break;
+    if (d && !d?.t.fake)
+      break;
+    yield cmd_run();
+  }
+});
 
 function do_autoack(lbuffer){
   let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
@@ -1423,7 +1439,7 @@ function cmd_comment(opt){
   let {c, event} = opt;
   if (t_pre_process)
     return set_orig(c, c.cmd+c.arg+'\r');
-  if (t_i<t_cmds.length)
+  if (event && t_i<t_cmds.length)
     return cmd_run(event);
   assert(!event, 'unexpected event '+event);
 }
@@ -1433,7 +1449,7 @@ function cmd_dbg(opt){
   if (t_pre_process)
     return;
   debugger; // eslint-disable-line no-debugger
-  if (t_i<t_cmds.length)
+  if (event && t_i<t_cmds.length)
     return cmd_run(event);
 }
 
@@ -1741,10 +1757,11 @@ function cmd_node_ring_join(opt){
 function cmd_ring_join(opt){
   let {c, event} = opt;
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
-  let fuzzy = get_fuzzy(c.d), r = true, e = true;
+  let fuzzy = get_fuzzy(c.d), r = true, e = true, id;
   let arg = xtest.test_parse(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
+    case 'id': id = id_from_req_id(a.arg); break;
     case '!r': r = false; break;
     case '!e': e = false; break;
     default: assert(0, 'unknown arg '+a.cmd);
@@ -1769,11 +1786,11 @@ function cmd_ring_join(opt){
     return;
   }
   if (call){
-    let id = get_req_id({s: s.t.name, d: d.t.name, cmd: 'ring_join'});
+    id = id||get_req_id({s: s.t.name, d: d.t.name, cmd: 'ring_join'});
     if (id && t_msg[id] && t_msg[id].active)
       delete t_msg[id];
     if (!s.t.fake)
-      s.ring_join_single(d.id, {fuzzy});
+      s.ring_join_single(d.id, {req_id: id, fuzzy});
     return;
   }
   assert_event_c(c, event);
@@ -4685,6 +4702,36 @@ describe('peer-relay', function(){
       ab[c]:ac>req_end(id(>1.2))
       a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id(>1.2))
       bc:ab[c]:ac>req_end(id(>1.2)) a,b,c#ac>close(>1.2vv)
+    `);
+      // XXX: change to <ack and check why we need explicit dir
+    t('xxx4a', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect bc>!connect
+      a,b,c#!id:1
+      c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
+      cb{b-b}:c~c>req(id:1 cmd:ring_join) a#!id:1 b,c#c~c>opening(id(>1.0))
+      cb<ack(id(>1.0)) a#!id:1 b#c~c>opening(id(>1.0)) c#c~c>opening(id(>1.0v))
+      ba{b-a}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
+      a#c~c>opening(id(>1.0v)) // XXX bug: we reached final (so vv)
+      b#c~c>opening(id(>1.0))
+      c#c~c>opening(id(>1.0v))
+      cba<msg(type:ack id(>1.0) dir(>))
+      a#c~c>closing(id(>1.0v))
+      b#c~c>opening(id(>1.0v))
+      c#c~c>opening(id(>1.0v))
+      ba[c]:ca<res(id:1 cmd:ring_join)
+      a#c~c>closing(id(<1.0))
+      b#c~c>closing(id(<1.0))
+      c#c~c>opening(!id(<1.0))
+      ba>ack(id(<1.0))
+      a#c~c>closing(id(<1.0v))
+      b#c~c>closing(id(<1.0))
+      c#c~c>opening(!id(<1.0))
+      cb:ba[c]:ca<res(id:1 cmd:ring_join)
+      a#c~c>closing(id(<1.0v))
+      b#c~c>closing(id(<1.0))
+      c#c~c>close(id(<1.0vv))
+      cba>ack(id(<1.0))
+      a,b,c#c~c>close(id(<1.0vv))
+      // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
     if (true) return; // XXX WIP
     // XXX: update rtt on each ack (and how to handle time diff 0)?

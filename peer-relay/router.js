@@ -51,32 +51,36 @@ export default class Router extends EventEmitter {
     this._send(lbuffer);
   }
   _send = lbuffer=>etask({_: this}, function*(){
-    let _this = this._, channel;
-    if (_this.pending_ack){
-      let pending = _this.pending_ack;
-      _this.pending_ack = null;
-      _this.ack(pending.channel, pending.lbuffer);
-    }
+    let _this = this._;
+    yield _this.ack_pending();
+    if (!_this._channels.size) // XXX: verify and test it
+      return _this._queue.push(lbuffer);
+    let o = _this.send_prepare(lbuffer);
+    if (o?.channel)
+      yield o.channel.send(lbuffer.to_str());
+    else if (o?.emit_message)
+      _this.emit('message', lbuffer);
+  });
+  send_prepare = function(lbuffer){
+    let channel;
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
     let rt = msg0.rt, path = rt?.path;
     let to = NodeId.from(msg.to), from = NodeId.from(msg.from), best;
-    if (lbuffer.path().length >= _this.maxHops)
+    if (lbuffer.path().length >= this.maxHops)
       return xerr('drop msg max hop reached');
-    if (!_this._channels.size) // XXX: verify and test it
-      return _this._queue.push(lbuffer);
     if (msg.fuzzy){
       range = lbuffer.range();
       if (path){
-        if (!(channel = _this.get_channel_from_path(path)))
+        if (!(channel = this.get_channel_from_path(path)))
           return xerr('channel not found in route');
         if (0) // XXX: decide if to enable
         if (['req', 'req_start'].includes(msg.type) && rt?.opt!='!'){
-          let rtt_pb_o = _this.id.rtt_pb_via(to,
-            NodeId.from(path[path.length-1]), _this.calc_path_rtt(path));
-          best = _this.node_map.get_best_route(
+          let rtt_pb_o = this.id.rtt_pb_via(to,
+            NodeId.from(path[path.length-1]), this.calc_path_rtt(path));
+          best = this.node_map.get_best_route(
             NodeId.from(path[path.length-1]));
           let path2 = best?.path;
-          let channel2 = _this.get_channel_from_path(path2);
+          let channel2 = this.get_channel_from_path(path2);
           if (channel2 && path2 &&
             (!rtt_pb_o?.good || best.rtt_pb < rtt_pb_o.rtt_pb)){
             channel = channel2;
@@ -84,12 +88,12 @@ export default class Router extends EventEmitter {
           }
         }
       } else {
-        best = _this.node_map.get_route_by_range(to, from.eq(to) ? to :
+        best = this.node_map.get_route_by_range(to, from.eq(to) ? to :
           [from, to], range);
         path = best?.path;
-        channel = _this.get_channel_from_path(path);
+        channel = this.get_channel_from_path(path);
         if (!channel)
-          return _this.emit('message', lbuffer);
+          return {emit_message: true};
       }
       if (!path || path.length==1){
         if (!range)
@@ -101,15 +105,15 @@ export default class Router extends EventEmitter {
         }
       }
     } else {
-      if (channel = _this.get_channel_from_path(path)){
+      if (channel = this.get_channel_from_path(path)){
         // XXX WIP
         if (['req', 'req_start'].includes(msg.type) && rt?.opt!='!'){
           // XXX: copy logic to fuzzy
-          let rtt_pb_o = _this.id.rtt_pb_via(to,
-            NodeId.from(path[path.length-1]), _this.calc_path_rtt(path));
-          best = _this.node_map.get_best_route(to);
+          let rtt_pb_o = this.id.rtt_pb_via(to,
+            NodeId.from(path[path.length-1]), this.calc_path_rtt(path));
+          best = this.node_map.get_best_route(to);
           let path2 = best?.path;
-          let channel2 = _this.get_channel_from_path(path2);
+          let channel2 = this.get_channel_from_path(path2);
           if (channel2 && path2 &&
             (!rtt_pb_o?.good || best.rtt_pb < rtt_pb_o.rtt_pb)){
             channel = channel2;
@@ -118,33 +122,33 @@ export default class Router extends EventEmitter {
         }
       }
       // XXX: decide if we need short-path
-      // else if (channel = _this.get_channel_from_id(to));
+      // else if (channel = this.get_channel_from_id(to));
       /* eslint-disable */
-      else if ((path = _this.get_route(msg.to)) &&
-        (channel = _this.get_channel_from_path(path))); /* eslint-enable */
+      else if ((path = this.get_route(msg.to)) &&
+        (channel = this.get_channel_from_path(path))); /* eslint-enable */
       else {
-        best = _this.node_map.get_best_route(to);
+        best = this.node_map.get_best_route(to);
         path = best?.path;
-        if (!(channel = _this.get_channel_from_path(path)))
+        if (!(channel = this.get_channel_from_path(path)))
           return;
       }
     }
     if (msg0.type=='fwd' || range || path?.length>1 || !channel.id.eq(to)){
-      let msg2 = {from: _this.id.s, to: channel.id.s, type: 'fwd',
+      let msg2 = {from: this.id.s, to: channel.id.s, type: 'fwd',
         rtt: channel.rtt||DEF_RTT};
       if (path && path.length>1){
         path = Array.from(path);
         path.splice(0, 1);
-        msg2.rt = {path, rtt: _this.build_rtt_array(path)};
+        msg2.rt = {path, rtt: this.build_rtt_array(path)};
         if (rt?.opt)
           msg2.rt.opt = rt.opt;
       } else if (range)
         msg2.range = NodeId.range_to_msg(range);
       lbuffer.add_json(msg2);
     }
-    _this.track(lbuffer);
-    yield channel.send(lbuffer.to_str());
-  });
+    this.track(lbuffer);
+    return {channel, lbuffer};
+  }
   _on_msg = (data, channel)=>etask({_: this},
     function*_on_msg(){
     let lbuffer = LBuffer.from(data), msg = lbuffer.msg();
@@ -158,21 +162,32 @@ export default class Router extends EventEmitter {
     if (!path && msg.to==_this.id.s){
       assert(!_this.pending_ack);
       if (msg.type!='ack')
-        _this.pending_ack = {channel, lbuffer}; // XXX: rm channel
+        _this.pending_ack = {channel, lbuffer, fin: true};
       _this.emit('message', lbuffer);
-      if (_this.pending_ack)
-      {
-        let pending = _this.pending_ack;
-        _this.pending_ack = null;
-        _this.ack(pending.channel, pending.lbuffer);
-      }
+      yield _this.ack_pending();
     }
     else {
-      if (msg.type!='ack')
-        _this.ack(channel, lbuffer);
-      yield _this._send(lbuffer);
+      let o = _this.send_prepare(lbuffer);
+      if (o?.emit_message){
+        if (msg.type!='ack')
+          _this.pending_ack = {channel, lbuffer, fin: true};
+        _this.emit('message', lbuffer);
+        yield _this.ack_pending();
+      } else {
+        if (msg.type!='ack')
+          yield _this.ack(channel, lbuffer);
+        if (o?.channel)
+          yield o.channel.send(lbuffer.to_str());
+      }
     }
   });
+  ack_pending(){
+    if (!this.pending_ack)
+      return;
+    let pending = this.pending_ack;
+    this.pending_ack = null;
+    return this.ack(pending.channel, pending.lbuffer, pending.fin);
+  }
   _onChannelAdded(channel){
     let dst = channel.id;
     this.node_map.update_conn({ids: [this.id, dst], self: channel,
@@ -276,13 +291,12 @@ export default class Router extends EventEmitter {
     }
     return a;
   }
-  ack(channel, lbuffer){
-    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
-    let rt = msg0.rt, path = rt?.path, dir = type_to_dir(msg.type);
+  ack(channel, lbuffer, fin){
+    let msg = lbuffer.msg(), dir = type_to_dir(msg.type);
     if (!dir)
       return;
     let msgid = this.msgid();
-    if (!path && msg.to==this.id.s){
+    if (fin){
       let msg2 = {msgid, to: msg.from, from: this.id.s, type: 'ack',
         req_id: msg.req_id, seq: msg.seq, dir};
       // XXX: set rt/path from incoming packet to make sure we do same path

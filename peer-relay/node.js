@@ -128,7 +128,7 @@ export default class Node extends EventEmitter {
   }
   ping(dst, opt){
     opt = opt||{};
-    let req = new Req({node: this, dst, cmd: 'ping', req_id: opt.req_id,
+    let req = new Req({node: this, dst, req_id: opt.req_id, cmd: 'ping',
       rt: opt.rt});
     req.send('');
     return req;
@@ -137,7 +137,8 @@ export default class Node extends EventEmitter {
     opt = opt||{};
     if (opt.fuzzy===undefined)
       opt.fuzzy = '~';
-    return Req.etask({node: this, dst, fuzzy: opt.fuzzy, cmd: 'ring_join'});
+    return Req.etask({node: this, dst, fuzzy: opt.fuzzy, req_id: opt.req_id,
+      cmd: 'ring_join'});
   }
   ring_join(opt){
     opt = opt||{};
