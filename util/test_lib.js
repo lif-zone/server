@@ -450,7 +450,8 @@ function assert_invalid(exp, s, i){
     throw_invalid(s, i);
 }
 
-E.test_parse_cmd_single = function(s){
+E.test_parse_cmd_single = function(s, opt){
+  opt = opt||{};
   let state = 'pre', i, ret={}, cmd_s=0, cmd_e = s.length, arg_s=0, arg_e=0;
   let parentesis = 0, done, comment;
   for (i=0; i<s.length && !done; i++)
@@ -520,8 +521,10 @@ E.test_parse_cmd_single = function(s){
     ret.arg = s.substr(arg_s, arg_e-arg_s);
   else if (cmd.includes(':'))
   {
-    if (cmd.includes('>') && cmd.indexOf('>') > cmd.indexOf(':'));
-    else if (cmd.includes('<') && cmd.indexOf('<') > cmd.indexOf(':'));
+    if (!opt.no_dir &&
+      cmd.includes('>') && cmd.indexOf('>') > cmd.indexOf(':'));
+    else if (!opt.no_dir && cmd.includes('<') &&
+      cmd.indexOf('<') > cmd.indexOf(':'));
     else {
       let m = cmd.match(/(^[^:]+):([^:]+$)/);
       assert_invalid(m, cmd, cmd.lastIndexOf(':'));
@@ -534,10 +537,10 @@ E.test_parse_cmd_single = function(s){
   return ret;
 };
 
-E.test_parse_cmd_multi = function(s){
+E.test_parse_cmd_multi = function(s, opt){
   if (!s)
     return [];
-  let ret = [], t = E.test_parse_cmd_single(s);
+  let ret = [], t = E.test_parse_cmd_single(s, opt);
   if (!t)
     return;
   ret.push(t);
@@ -577,6 +580,8 @@ E.test_run_plugin = function(a, cb){
 };
 
 E.parse_cmd_dir = function(s){
+  if (!/^[^(^:]*[<>=]/.test(s))
+    return {cmd: s};
   let _d = s.search(/[<>=]/);
   if (_d==-1)
     return {cmd: s};
@@ -586,7 +591,7 @@ E.parse_cmd_dir = function(s){
   for (let i=0; i<_d+1; i++)
   {
     let ch = s[i];
-    assert_invalid(/[a-zA-Z,.<>=~!?[\]]/i.test(ch), s, i);
+    assert_invalid(/[:a-zA-Z,.<>=~!?[\]]/i.test(ch), s, i);
     if (ch=='['){
       assert_invalid(!rt_path && !rt_path_open, s, i);
       rt_path_open = true;
@@ -731,8 +736,13 @@ E.test_parse_rm_meta_orig = function(a){
 E.test_parse = function(s){
   return E.test_run_plugin(E.test_parse_cmd_multi(s), E.plugin_cmd_dir); };
 
-E.test_parse_plugin = function(s, plugin){
-  return E.test_run_plugin(E.test_parse_cmd_multi(s), plugin); };
+E.test_parse_no_dir = function(s){
+  return E.test_run_plugin(E.test_parse_cmd_multi(s, {no_dir: true}),
+    E.plugin_cmd_dir);
+};
+
+E.test_parse_plugin = function(s, plugin, opt){
+  return E.test_run_plugin(E.test_parse_cmd_multi(s, opt), plugin); };
 
 E.arg_to_val = function(arg){
   if (!arg)

@@ -134,7 +134,7 @@ function ch_diff(s, e){
 
 function gen_ids(s, e, val){
   val = val||'head(0-1)';
-  let _type = xtest.test_parse(val);
+  let _type = xtest.test_parse_no_dir(val);
   assert(_type.length==1, 'inavlid ids '+val);
   let mode = _type[0].cmd, range = _type[0].arg;
   if (!range){
@@ -307,7 +307,7 @@ function assert_int(val){
 
 function assert_node_ids(val){
   let ret = {};
-  let arg = xtest.test_parse(val);
+  let arg = xtest.test_parse_no_dir(val);
   xutil.forEach(arg, a=>{
     let cmd = a.cmd, arg2 = a.arg;
     switch (cmd){
@@ -319,7 +319,7 @@ function assert_node_ids(val){
       assert_node_ids('X-Z(exact(0.5-0.506))'));
     default:
       if (/:/.test(cmd)){ // XXX HACK: bug in parser
-        let aa = xtest.test_parse(cmd);
+        let aa = xtest.test_parse_no_dir(cmd);
         assert(aa.length==1, 'invalid conf '+cmd);
         cmd = aa[0].cmd;
         arg2 = build_cmd(aa[0].arg, arg2);
@@ -440,7 +440,7 @@ function assert_support_wrtc(name){
 }
 
 function assert_wss(val){
-  let host = 'lif.zone', port, arg = xtest.test_parse(val);
+  let host = 'lif.zone', port, arg = xtest.test_parse_no_dir(val);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'host': host = assert_host(a.arg); break;
@@ -1148,7 +1148,7 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
 });
 
 function cmd_mode(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg);
+  let {c, event} = opt, arg = xtest.test_parse_no_dir(c.arg);
   let mode = {req: false, msg: false}, pop;
   assert(!event, 'got unexpected '+event);
   xutil.forEach(arg, m=>{
@@ -1172,7 +1172,7 @@ function cmd_mode(opt){
 }
 
 function cmd_conf(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg);
+  let {c, event} = opt, arg = xtest.test_parse_no_dir(c.arg);
   let ids, no_node=false;
   assert(!event, 'got unexpected '+event);
   // XXX conf(id:a-mXYZn-z)
@@ -1191,7 +1191,7 @@ function cmd_conf(opt){
     case 'xerr': xtest.xerr_level(arg2); break;
     default:
       if (/:/.test(cmd)){ // XXX HACK: bug in parser
-        let aa = xtest.test_parse(cmd);
+        let aa = xtest.test_parse_no_dir(cmd);
         assert(aa.length==1, 'invalid conf '+cmd);
         cmd = aa[0].cmd;
         arg2 = build_cmd(aa[0].arg, arg2);
@@ -1233,7 +1233,7 @@ function setup_ring(arg){
 }
 
 function cmd_ring(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg), s='';
+  let {c, event} = opt, arg = xtest.test_parse_no_dir(c.arg), s='';
   assert(!event, 'got unexpected '+event);
   if (!t_pre_process)
     return;
@@ -1263,7 +1263,7 @@ function cmd_sp(opt){
 }
 
 function cmd_test_node_conn(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg), s, exp = {};
+  let {c, event} = opt, arg = xtest.test_parse_no_dir(c.arg), s, exp = {};
   assert(!event, 'got unexpected '+event);
   xutil.forEach(arg, a=>{
     if (!s)
@@ -1293,8 +1293,8 @@ function cmd_test_node_conn(opt){
 }
 
 function cmd_test_node_find(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg), s, target, next, prev;
-  let bidi;
+  let {c, event} = opt, arg = xtest.test_parse_no_dir(c.arg);
+  let s, target, next, prev, bidi;
   assert(!event, 'got unexpected '+event);
   xutil.forEach(arg, a=>{
     if (!s){
@@ -1329,7 +1329,7 @@ function cmd_test_node_find(opt){
 }
 
 function cmd_test_node_graph(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg), s, exp = {};
+  let {c, event} = opt, arg = xtest.test_parse_no_dir(c.arg), s, exp = {};
   assert(!event, 'got unexpected '+event);
   xutil.forEach(arg, a=>{
     if (!s){
@@ -1353,7 +1353,7 @@ function cmd_test_node_graph(opt){
 function cmd_test(opt){
   // XXX: wrap logic. similar in cmd_dbg, cmd_comment
   let {c, event} = opt, node = N(c.s);
-  let arg = xtest.test_parse_plugin(c.arg);
+  let arg = xtest.test_parse_plugin(c.arg, null, {no_dir: true});
   let state, src, dst, id, seq, dir, v, curr;
   if (t_pre_process)
     return;
@@ -1370,7 +1370,7 @@ function cmd_test(opt){
     src = N(o.s);
     dst = N(o.d);
     let not_exist;
-    xutil.forEach(xtest.test_parse_plugin(curr.arg), a=>{
+    xutil.forEach(xtest.test_parse_plugin(curr.arg, null, {no_dir: true}), a=>{
       switch (a.cmd){
       case 'id':
         dir = dir_from_req_id(a.arg);
@@ -1416,7 +1416,7 @@ function cmd_test(opt){
 }
 
 function cmd_rt_add(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg);
+  let {c, event} = opt, arg = xtest.test_parse_no_dir(c.arg);
   let routes = {};
   assert(!event, 'got unexpected '+event);
   xutil.forEach(arg, a=>{
@@ -1455,7 +1455,7 @@ function cmd_dbg(opt){
 }
 
 function cmd_setup(opt){
-  let {c, event} = opt, arg = xtest.test_parse(c.arg);
+  let {c, event} = opt, arg = xtest.test_parse_no_dir(c.arg);
   let M = s=>push_cmd(s+' - ');
   assert(!event);
   if (!t_pre_process)
@@ -1485,7 +1485,7 @@ function cmd_setup(opt){
 
 function cmd_node(opt){
   let {c} = opt, name, wss, wrtc, bootstrap, id, key;
-  let arg = xtest.test_parse(c.arg);
+  let arg = xtest.test_parse_no_dir(c.arg);
   if (c.dir=='=')
     name = c.s;
   xutil.forEach(arg, a=>{
@@ -1521,7 +1521,7 @@ function cmd_node(opt){
 // once b gets a.id, it emits 'connection' - we emit ab<connected
 const cmd_connect = opt=>etask(function*(){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
-  let wss, wrtc, arg = xtest.test_parse(c.arg), call = c.cmd[0]=='!';
+  let wss, wrtc, arg = xtest.test_parse_no_dir(c.arg), call = c.cmd[0]=='!';
   let r = true;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
@@ -1582,7 +1582,7 @@ function cmd_connected(opt){
 
 function cmd_conn_info(opt){
   let {c, event} = opt, r, nr, basic = !/[*!]/.test(c.cmd[0]);
-  let arg = xtest.test_parse(c.arg);
+  let arg = xtest.test_parse_no_dir(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case '!r': nr = true; break;
@@ -1621,7 +1621,7 @@ function cmd_conn_info(opt){
 
 function cmd_conn_info_r(opt){
   let {c, event} = opt, s = N(c.s), basic = !/[*!]/.test(c.cmd[0]);
-  let arg = xtest.test_parse(c.arg), ws, wrtc;
+  let arg = xtest.test_parse_no_dir(c.arg), ws, wrtc;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     // XXX: assert and verify ws is correct url
@@ -1657,7 +1657,7 @@ function cmd_ping(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   assert(!event, 'unexpected event '+event);
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt, id;
-  let arg = xtest.test_parse(c.arg);
+  let arg = xtest.test_parse_no_dir(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case '!!': e = !assert_bool(a.arg); break;
@@ -1699,7 +1699,7 @@ function cmd_ping(opt){
 function cmd_ping_r(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   assert(!event, 'unexpected event '+event);
-  let arg = xtest.test_parse(c.arg), id;
+  let arg = xtest.test_parse_no_dir(c.arg), id;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = id_from_req_id(a.arg); break;
@@ -1723,7 +1723,7 @@ function cmd_ack(opt){
   let {c, event} = opt;
   assert(!event, 'unexpected event');
   assert(!c.fwd, 'invalid fwd '+c.fwd);
-  let arg = xtest.test_parse(c.arg), seq, id, dir, vv;
+  let arg = xtest.test_parse_no_dir(c.arg), seq, id, dir, vv;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'vv': vv = assert_bool(a.arg); break;
@@ -1760,7 +1760,7 @@ function cmd_ring_join(opt){
   let {c, event} = opt;
   let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d, {fuzzy: call});
   let fuzzy = get_fuzzy(c.d), r = true, e = true, id;
-  let arg = xtest.test_parse(c.arg);
+  let arg = xtest.test_parse_no_dir(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = id_from_req_id(a.arg); break;
@@ -1801,7 +1801,7 @@ function cmd_ring_join(opt){
 
 function cmd_ring_join_r(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
-  let arg = xtest.test_parse(c.arg);
+  let arg = xtest.test_parse_no_dir(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     default: assert(0, 'unknown arg '+a.cmd);
@@ -1826,7 +1826,7 @@ function cmd_ring_join_r(opt){
 function cmd_msg(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && d, 'invalid event '+c.orig);
-  let arg = xtest.test_parse(c.arg), body;
+  let arg = xtest.test_parse_no_dir(c.arg), body;
   let id, type, cmd, seq, dir, ack, a, vv;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
@@ -1942,7 +1942,8 @@ function cmd_req(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
   assert(t_pre_process||!c.loop);
   let emit_api=false, ooo=false, dup=false, close=false, rt;
-  let call = c.cmd[0]=='!', body, id, res, arg = xtest.test_parse(c.arg), cmd;
+  let call = c.cmd[0]=='!', body, id, res;
+  let arg = xtest.test_parse_no_dir(c.arg), cmd;
   let type = c.cmd.replace(/[!*]/, ''), e=call, basic = !/[*!]/.test(c.cmd[0]);
   assert(['req', 'req_start', 'req_next', 'req_end'].includes(type),
     'invalid type '+c.cmd);
@@ -2106,7 +2107,8 @@ function cmd_req(opt){
 function cmd_res(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(t_pre_process||!c.loop);
-  let call = c.cmd[0]=='!', body, id, _id, arg = xtest.test_parse(c.arg);
+  let call = c.cmd[0]=='!', body, id, _id;
+  let arg = xtest.test_parse_no_dir(c.arg);
   let type = c.cmd.replace(/[!*]/, ''), cmd='', seq, ack, e=call;
   let ooo=false, dup=false, close=false, basic = !/[*!]/.test(c.cmd[0]);
   assert(s, 'invalid event '+c.orig);
@@ -2191,7 +2193,7 @@ function cmd_res(opt){
 function cmd_fail(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && !d, 'invalid event '+c.orig);
-  let error, id, seq, arg = xtest.test_parse(c.arg);
+  let error, id, seq, arg = xtest.test_parse_no_dir(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case 'id': id = a.arg; break;
@@ -2224,7 +2226,7 @@ function fill_rtt(c, rt){
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
   let {c, event} = opt;
-  let arg = xtest.test_parse(c.arg), f = arg.shift(), rt, range, vv;
+  let arg = xtest.test_parse_no_dir(c.arg), f = arg.shift(), rt, range, vv;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     // XXX: replace null with correct src in assert_rt
@@ -3491,6 +3493,8 @@ describe('peer-relay', function(){
           T('ab>ack', `ab>msg(type(ack))`);
           T('ab<ack', `ab<msg(type(ack))`);
           t('abc>ack', `abc>msg(type(ack))`);
+          t('ab<ack(id(>1.0))', `ab<msg(id:1 type:ack seq:0 dir(>))`);
+          t('ab<ack(id:>1.0)', `ab<msg(id:1 type:ack seq:0 dir(>))`);
         });
         describe('fwd', function(){
           t('bc:ac>msg', `bc>fwd(ac>msg)`);
@@ -4646,17 +4650,17 @@ describe('peer-relay', function(){
     t('xxx_ping', `mode(msg req) conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!ping(id:1 !!) ab>ping(id:1.0) ab>*ping
       // XXX: we send both ack and ping_r
-      ab<ack(id(>1.0) vv) ab<ping_r(id:1.0) ab<*ping_r ab>ack(id(<1.0) vv)
+      ab<ack(id:>1.0 vv) ab<ping_r(id:1.0) ab<*ping_r ab>ack(id:<1.0 vv)
     `);
     t = (name, test)=>t_roles(name, 'ab', test);
     // XXX: rm !autoack and !msgack (mv to request)
     t('xxx2a', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!req(id:1 !!) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#same b#ab>open(>1.0vv)
-      ab<ack(id(>1.0) vv) a#ab>open(>1.0vv) b#same
-      ab<!res(id:1 !!) // a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
+      ab<ack(id:>1.0 vv) a#ab>open(>1.0vv) b#same
+      ab<!res(id:1 !!) // a#ab>open(!id:<1.0) b#ab>closing(<1.0)
       ab<res(id:1) // a#ab>close(<1.0vv) b#same
-      ab>ack(id(<1.0) vv) // a#same b#ab>close(<1.0vv)
+      ab>ack(id:<1.0 vv) // a#same b#ab>close(<1.0vv)
       // XXX: change to 10s
       // XXX: 19s a#ab>close(<1.0vv) b#ab>close(<1.0vv)
       // 1s a#!id:1 b#!id:1
@@ -4664,7 +4668,7 @@ describe('peer-relay', function(){
     t('xxx2b', `mode:msg conf(a-c rtt:50) ab>!connect
       ab>!req(id:1 !!) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#ab>open(>1.0vv) b#ab>open(>1.0vv)
-      ab<!res(id:1 !!) a#ab>open(!id(<1.0)) b#ab>closing(<1.0)
+      ab<!res(id:1 !!) a#ab>open(!id:<1.0) b#ab>closing(<1.0)
       ab<res(id:1) a#ab>close(<1.0vv) b#ab>close(<1.0vv)
       // XXX: change to 10s
       // XXX: 19s a#ab>close(<1.0vv) b#ab>close(<1.0vv)
@@ -4680,28 +4684,28 @@ describe('peer-relay', function(){
       ac>!req_start(id:1 !!) a#ac>opening(>1.0) b,c#same
       ab[c]:ac>req_start(id:1.0) b#ac>opening(>1.0) a,c#same
       // XXX: verify rt is c
-      ab<ack(id(>1.0)) a#ac>opening(>1.0v) b,c#same
+      ab<ack(id:>1.0) a#ac>opening(>1.0v) b,c#same
       bc:ab[c]:ac>req_start(id:1.0) a,b#same c#ac>open(>1.0vv)
-      abc<ack(id(>1.0) vv) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
+      abc<ack(id:>1.0 vv) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
       ac<!res_start(id:1 !!) a#ac>open(>1.0vv !id(<1.0))
       b#ac>open(>1.0vv !id(<1.0)) c#ac>open(>1.0vv <1.0)
       bc[a]:ac<res_start(id:1.0) a#ac>open(>1.0vv !id(<1.0))
       b#ac>open(>1.0vv <1.0) c#ac>open(>1.0vv <1.0)
       // XXX a#same b#ac>open(>1.0vv <1.0) c#same
-      bc>ack(id(<1.0)) a,b#same c#ac>open(>1.0vv <1.0v)
+      bc>ack(id:<1.0) a,b#same c#ac>open(>1.0vv <1.0v)
       ab:bc[a]:ac<res_start(id:1.0)
-      abc>ack(id(<1.0) vv) a#ac>open(>1.0vv <1.0vv) b#ac>open(>1.0vv <1.0vv)
+      abc>ack(id:<1.0 vv) a#ac>open(>1.0vv <1.0vv) b#ac>open(>1.0vv <1.0vv)
       c#ac>open(>1.0vv <1.0vv)
       ac>!req_next(!!) a#ac>open(>1.1) b#same c#same
       ab[c]:ac>req_next(id:1.1) a#same b#ac>open(>1.1) c#same
-      ab<ack(id(>1.1)) a#ac>open(>1.1v) b#ac>open(>1.1) c#same
+      ab<ack(id:>1.1) a#ac>open(>1.1v) b#ac>open(>1.1) c#same
       bc:ab[c]:ac>req_next(id:1.1) a#same b#same c#ac>open(>1.1vv)
-      abc<ack(id(>1.1) vv) a,b#ac>open(>1.1vv)
+      abc<ack(id:>1.1 vv) a,b#ac>open(>1.1vv)
       ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
-      ab[c]:ac>req_end(id(>1.2)) a,c#same b#ac>closing(>1.2)
-      ab<ack(id(>1.2)) a#ac>closing(>1.2v) b#ac>closing(>1.2) c#same
-      bc:ab[c]:ac>req_end(id(>1.2)) a#ac>closing(>1.2v) b#ac>closing(>1.2)
-      c#ac>close(>1.2vv) abc<ack(id(>1.2) vv) a,b,c#ac>close(>1.2vv)
+      ab[c]:ac>req_end(id:>1.2) a,c#same b#ac>closing(>1.2)
+      ab<ack(id:>1.2) a#ac>closing(>1.2v) b#ac>closing(>1.2) c#same
+      bc:ab[c]:ac>req_end(id:>1.2) a#ac>closing(>1.2v) b#ac>closing(>1.2)
+      c#ac>close(>1.2vv) abc<ack(id:>1.2 vv) a,b,c#ac>close(>1.2vv)
     `);
     t('xxx3b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       cb.a~c>!ring_join ab.c~a>!ring_join ba.bc~b>!ring_join
@@ -4719,37 +4723,36 @@ describe('peer-relay', function(){
       a#ac>open(>1.1v) b#ac>open(>1.1) c#ac>open(!id(>1.1))
       bc:ab[c]:ac>req_next(id:1.1) a,b,c#ac>open(>1.1vv)
       ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
-      ab[c]:ac>req_end(id(>1.2))
+      ab[c]:ac>req_end(id:>1.2)
       a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id(>1.2))
-      bc:ab[c]:ac>req_end(id(>1.2)) a,b,c#ac>close(>1.2vv)
+      bc:ab[c]:ac>req_end(id:>1.2) a,b,c#ac>close(>1.2vv)
     `);
     t('xxx4a', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect bc>!connect
-      a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
-      cb{b-b}:c~c>req(id:1 cmd:ring_join) a#!id:1 b,c#c~c>opening(id(>1.0))
-      cb<ack(id(>1.0)) a#!id:1 b#c~c>opening(id(>1.0)) c#c~c>opening(id(>1.0v))
+      a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id:>1.0)
+      cb{b-b}:c~c>req(id:1 cmd:ring_join) a#!id:1 b,c#c~c>opening(id:>1.0)
+      cb<ack(id:>1.0) a#!id:1 b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)
       ba{b-a}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
-      a#c~c>open(id(>1.0vv)) b#c~c>opening(id(>1.0)) c#c~c>opening(id(>1.0v))
-      cba<ack(id(>1.0) vv)
-      a#c~c>closing(id(>1.0vv)) b#c~c>open(id(>1.0vv)) c#c~c>open(id(>1.0vv))
+      a#c~c>open(id:>1.0vv) b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)
+      cba<ack(id:>1.0 vv)
+      a#c~c>closing(id:>1.0vv) b#c~c>open(id:>1.0vv) c#c~c>open(id:>1.0vv)
       ba[c]:ca<res(id:1 cmd:ring_join)
-      a,b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
-      ba>ack(id(<1.0))
-      a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
+      a,b#c~c>closing(id:<1.0) c#c~c>open(!id:<1.0)
+      ba>ack(id:<1.0)
+      a#c~c>closing(id:<1.0v) b#c~c>closing(id:<1.0) c#c~c>open(!id:<1.0)
       cb:ba[c]:ca<res(id:1 cmd:ring_join)
-      a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>close(id(<1.0vv))
-      cba>ack(id(<1.0) vv) a,b,c#c~c>close(id(<1.0vv))
+      a#c~c>closing(id:<1.0v) b#c~c>closing(id:<1.0) c#c~c>close(id(<1.0vv))
+      cba>ack(id:<1.0 vv) a,b,c#c~c>close(id:<1.0vv)
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
     t('xxx4b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
-      a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id(>1.0))
+      a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id:>1.0)
       cb{b-b}:c~c>req(id:1 cmd:ring_join)
-      a#!id:1 b#c~c>opening(id(>1.0)) c#c~c>opening(id(>1.0v))
+      a#!id:1 b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)
       ba{b-a,vv}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
-      a#c~c>closing(id(>1.0vv)) b#c~c>open(id(>1.0vv)) c#c~c>open(id(>1.0vv))
+      a#c~c>closing(id:>1.0vv) b#c~c>open(id:>1.0vv) c#c~c>open(id:>1.0vv)
       ba[c]:ca<res(id:1 cmd:ring_join)
-      a#c~c>closing(id(<1.0v)) b#c~c>closing(id(<1.0)) c#c~c>open(!id(<1.0))
-      cb:ba[c,vv]:ca<res(id:1 cmd:ring_join)
-      a,b,c#c~c>close(id(<1.0vv))
+      a#c~c>closing(id:<1.0v) b#c~c>closing(id:<1.0) c#c~c>open(!id:<1.0)
+      cb:ba[c,vv]:ca<res(id:1 cmd:ring_join) a,b,c#c~c>close(id:<1.0vv)
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
     if (true) return; // XXX WIP

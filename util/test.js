@@ -3298,8 +3298,8 @@ describe('test_lib', ()=>{
   });
   describe('test_parse', function(){
      it('cmd_single_valid', ()=>{
-      const t = (s, exp, exp_last)=>{
-        let ret = xtest.test_parse_cmd_single(s);
+      const _t = (opt, s, exp, exp_last)=>{
+        let ret = xtest.test_parse_cmd_single(s, opt);
         if (ret)
         {
           let {last} = ret.meta;
@@ -3309,6 +3309,10 @@ describe('test_lib', ()=>{
         }
         assert.deepEqual(ret, exp);
       };
+      const t = (s, exp, exp_last)=>{
+        _t({no_dir: true}, s, exp, exp_last);
+        _t(undefined, s, exp, exp_last);
+      };
       t('', undefined);
       t(' ', undefined);
       t(`
@@ -3317,6 +3321,8 @@ describe('test_lib', ()=>{
       t('open ', {cmd: 'open'}, 5);
       t('open b', {cmd: 'open'}, 5);
       t('open:a', {cmd: 'open', arg: 'a'}, 6);
+      _t({}, 'open:>a', {cmd: 'open:>a'}, 7);
+      _t({no_dir: true}, 'open:>a', {cmd: 'open', arg: '>a'}, 7);
       t('open:ab', {cmd: 'open', arg: 'ab'}, 7);
       t('open()', {cmd: 'open'}, 6);
       t('open() ', {cmd: 'open'}, 6);
@@ -3346,13 +3352,14 @@ describe('test_lib', ()=>{
       t('abc>d', {cmd: 'abc>d'}, 5);
       t('abc>d(f)', {cmd: 'abc>d', arg: 'f'}, 8);
       t('abc~>d', {cmd: 'abc~>d'}, 6);
-      t('ab:cd>e', {cmd: 'ab:cd>e'}, 7);
-      t('ab:cd<e', {cmd: 'ab:cd<e'}, 7);
-      t('ab:cd>e(a:d)', {cmd: 'ab:cd>e', arg: 'a:d'}, 12);
-      t('ab:cd<e(a:d)', {cmd: 'ab:cd<e', arg: 'a:d'}, 12);
-      t('ab[c]:cd>e', {cmd: 'ab[c]:cd>e'}, 10);
-      t('ab{c-d}:cd>e', {cmd: 'ab{c-d}:cd>e'}, 12);
-      t('ab{c-d,vv}:cd>e', {cmd: 'ab{c-d,vv}:cd>e'}, 15);
+      _t({}, 'ab:cd>e', {cmd: 'ab:cd>e'}, 7);
+      _t({}, 'ab:cd<e', {cmd: 'ab:cd<e'}, 7);
+      _t({}, 'ab:cd>e(id:>1.0)', {cmd: 'ab:cd>e', arg: 'id:>1.0'}, 16);
+      _t({}, 'ab:cd>e(a:d)', {cmd: 'ab:cd>e', arg: 'a:d'}, 12);
+      _t({}, 'ab:cd<e(a:d)', {cmd: 'ab:cd<e', arg: 'a:d'}, 12);
+      _t({}, 'ab[c]:cd>e', {cmd: 'ab[c]:cd>e'}, 10);
+      _t({}, 'ab{c-d}:cd>e', {cmd: 'ab{c-d}:cd>e'}, 12);
+      _t({}, 'ab{c-d,vv}:cd>e', {cmd: 'ab{c-d,vv}:cd>e'}, 15);
       t('// XXX', {cmd: '//', arg: ' XXX'}, 6);
       t(' // XXX ', {cmd: '//', arg: ' XXX '}, 8);
       t(`// XXX XXX2
@@ -3502,8 +3509,16 @@ describe('test_lib', ()=>{
       t('a>!b', {s: 'a', d: '', dir: '>', cmd: '!b'});
       t('ab>!c', {s: 'a', d: 'b', dir: '>', cmd: '!c'});
       t('ab>!c(d)', {s: 'a', d: 'b', dir: '>', cmd: '!c(d)'});
+      t('ab>c(id:1.0)', {s: 'a', d: 'b', dir: '>', cmd: 'c(id:1.0)'});
+      t('ab>c(id:>1.0)', {s: 'a', d: 'b', dir: '>', cmd: 'c(id:>1.0)'});
       t('ab<c', {s: 'b', d: 'a', dir: '<', cmd: 'c'});
       t('a=b(c)', {s: 'a', d: '', dir: '=', cmd: 'b(c)'});
+      t('id', {cmd: 'id'});
+      t('id(1.0)', {cmd: 'id(1.0)'});
+      t('id:1.0', {cmd: 'id:1.0'});
+      t('id(>1.0)', {cmd: 'id(>1.0)'});
+      t('ab>id:>1.0', {s: 'a', d: 'b', dir: '>', cmd: 'id:>1.0'});
+      t('id:>1.0', {cmd: 'id:>1.0'});
       t('ab,bc>d', {comma: true, loop: [
         {s: 'a', d: 'b', dir: '>'}, {s: 'b', d: 'c', dir: '>'}], cmd: 'd'});
       t('bc,ab>d', {comma: true, loop: [{s: 'b', d: 'c', dir: '>'},
