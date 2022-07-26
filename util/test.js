@@ -3395,11 +3395,12 @@ describe('test_lib', ()=>{
         [{cmd: 'aa', arg: [{cmd: 'cc'}]}, {cmd: 'bb', arg: [{cmd: 'dd'}]}]);
     });
     it('cmd_multi_valid', ()=>{
-      const t = (s, exp)=>{
-        let ret = xtest.test_parse_cmd_multi(s);
+      const _t = (opt, s, exp)=>{
+        let ret = xtest.test_parse_cmd_multi(s, opt);
         ret = xtest.test_parse_rm_meta_orig(ret);
         assert.deepEqual(ret, exp);
       };
+      const t = (s, exp)=>_t(undefined, s, exp);
       t('a', [{cmd: 'a'}]);
       t('a\n', [{cmd: 'a'}]);
       t(`a
@@ -3416,6 +3417,14 @@ describe('test_lib', ()=>{
       t('a(c) // XXX', [{cmd: 'a', arg: 'c'}, {cmd: '//', arg: ' XXX'}]);
       t(`a(c) // XXX
         b`, [{cmd: 'a', arg: 'c'}, {cmd: '//', arg: ' XXX'}, {cmd: 'b'}]);
+      _t({no_dir: true}, 'id(<1.0) xxx',
+        [{cmd: 'id', arg: '<1.0'}, {cmd: 'xxx'}]);
+      _t({no_dir: true}, 'xxx id(<1.0)',
+        [{cmd: 'xxx'}, {cmd: 'id', arg: '<1.0'}]);
+      _t({no_dir: true}, 'id:<1.0 xxx',
+        [{cmd: 'id', arg: '<1.0'}, {cmd: 'xxx'}]);
+      _t({no_dir: true}, 'xxx id:<1.0',
+        [{cmd: 'xxx'}, {cmd: 'id', arg: '<1.0'}]);
     });
     it('cmd_multi_level_valid', ()=>{
       const t = (s, exp)=>{

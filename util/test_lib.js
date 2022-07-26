@@ -544,7 +544,7 @@ E.test_parse_cmd_multi = function(s, opt){
   if (!t)
     return;
   ret.push(t);
-  let rest = E.test_parse_cmd_multi(s.substr(t.meta.last));
+  let rest = E.test_parse_cmd_multi(s.substr(t.meta.last), opt);
   if (rest)
     ret = ret.concat(rest);
   return ret;

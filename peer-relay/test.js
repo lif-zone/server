@@ -3702,6 +3702,9 @@ describe('peer-relay', function(){
             `a>test(ab[c]:ac>opening(id:>1.1))`);
           t('a,b#ac>opening(id:>1.1)', `a>test(ac>opening(id:>1.1))
             b>test(ac>opening(id:>1.1))`);
+          t('a#ac>open(>1.0vv !id(<1.0))',
+          `a>test(ac>open(>1.0vv !id(<1.0)))`);
+          t('a#ac>open(>1.0vv !id:<1.0)', `a>test(ac>open(>1.0vv !id:<1.0))`);
         });
       });
     });
@@ -4687,9 +4690,9 @@ describe('peer-relay', function(){
       ab<ack(id:>1.0) a#ac>opening(>1.0v) b,c#same
       bc:ab[c]:ac>req_start(id:1.0) a,b#same c#ac>open(>1.0vv)
       abc<ack(id:>1.0 vv) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
-      ac<!res_start(id:1 !!) a#ac>open(>1.0vv !id(<1.0))
-      b#ac>open(>1.0vv !id(<1.0)) c#ac>open(>1.0vv <1.0)
-      bc[a]:ac<res_start(id:1.0) a#ac>open(>1.0vv !id(<1.0))
+      ac<!res_start(id:1 !!) a#ac>open(>1.0vv !id:<1.0)
+      b#ac>open(>1.0vv !id:<1.0) c#ac>open(>1.0vv <1.0)
+      bc[a]:ac<res_start(id:1.0) a#ac>open(>1.0vv !id:<1.0)
       b#ac>open(>1.0vv <1.0) c#ac>open(>1.0vv <1.0)
       // XXX a#same b#ac>open(>1.0vv <1.0) c#same
       bc>ack(id:<1.0) a,b#same c#ac>open(>1.0vv <1.0v)
@@ -4701,7 +4704,7 @@ describe('peer-relay', function(){
       ab<ack(id:>1.1) a#ac>open(>1.1v) b#ac>open(>1.1) c#same
       bc:ab[c]:ac>req_next(id:1.1) a#same b#same c#ac>open(>1.1vv)
       abc<ack(id:>1.1 vv) a,b#ac>open(>1.1vv)
-      ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
+      ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id:>1.2)
       ab[c]:ac>req_end(id:>1.2) a,c#same b#ac>closing(>1.2)
       ab<ack(id:>1.2) a#ac>closing(>1.2v) b#ac>closing(>1.2) c#same
       bc:ab[c]:ac>req_end(id:>1.2) a#ac>closing(>1.2v) b#ac>closing(>1.2)
@@ -4714,17 +4717,17 @@ describe('peer-relay', function(){
       ac>!req_start(id:1 !!) a#ac>opening(>1.0) b,c#same
       ab[c]:ac>req_start(id:1.0) a#ac>opening(>1.0v) b#ac>opening(>1.0) c#same
       bc:ab[c]:ac>req_start(id:1.0) a,b,c#ac>open(>1.0vv)
-      ac<!res_start(id:1 !!) a,b#ac>open(!id(<1.0)) c#ac>open(<1.0)
+      ac<!res_start(id:1 !!) a,b#ac>open(!id:<1.0) c#ac>open(<1.0)
       bc[a]:ac<res_start(id:1.0)
-      a#ac>open(!id(<1.0)) b#ac>open(<1.0) c#ac>open(<1.0v)
+      a#ac>open(!id:<1.0) b#ac>open(<1.0) c#ac>open(<1.0v)
       ab:bc[a]:ac<res_start(id:1.0) a,b,c#ac>open(<1.0vv)
-      ac>!req_next(!!) a#ac>open(>1.1) b,c#ac>open(!id(>1.1))
+      ac>!req_next(!!) a#ac>open(>1.1) b,c#ac>open(!id:>1.1)
       ab[c]:ac>req_next(id:1.1)
-      a#ac>open(>1.1v) b#ac>open(>1.1) c#ac>open(!id(>1.1))
+      a#ac>open(>1.1v) b#ac>open(>1.1) c#ac>open(!id:>1.1)
       bc:ab[c]:ac>req_next(id:1.1) a,b,c#ac>open(>1.1vv)
-      ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id(>1.2))
+      ac>!req_end(!!) a#ac>closing(>1.2) b,c#ac>open(!id:>1.2)
       ab[c]:ac>req_end(id:>1.2)
-      a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id(>1.2))
+      a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id:>1.2)
       bc:ab[c]:ac>req_end(id:>1.2) a,b,c#ac>close(>1.2vv)
     `);
     t('xxx4a', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect bc>!connect
@@ -4740,7 +4743,7 @@ describe('peer-relay', function(){
       ba>ack(id:<1.0)
       a#c~c>closing(id:<1.0v) b#c~c>closing(id:<1.0) c#c~c>open(!id:<1.0)
       cb:ba[c]:ca<res(id:1 cmd:ring_join)
-      a#c~c>closing(id:<1.0v) b#c~c>closing(id:<1.0) c#c~c>close(id(<1.0vv))
+      a#c~c>closing(id:<1.0v) b#c~c>closing(id:<1.0) c#c~c>close(id:<1.0vv)
       cba>ack(id:<1.0 vv) a,b,c#c~c>close(id:<1.0vv)
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
