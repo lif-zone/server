@@ -4623,25 +4623,8 @@ describe('peer-relay', function(){
        cba.e.d~b>ring_join cbae.a.b~d>ring_join cb.ae~a>ring_join
        cd.ea~e>ring_join`);
   });
-  describe('xxx_ack', function(){
+  describe('ack', function(){
     let t = (name, test)=>t_roles(name, 'ab', test);
-    // XXX: msg uniqe id (nonce?)
-    // XXX: add net_stats for real/virtual connection to check stats at given
-    // state
-    // XXX shortcuts: nonce -> msgid
-    if (0)
-    t('ab', `mode:msg conf(a-b) ab>!connect ab>!req(cmd:ping !!)
-      ab>msg(type:req cmd:ping !msgack) ab<msg(type:ack)
-      ab<msg(type:res cmd:ping !msgack) ab>msg(type:ack)`);
-    t = (name, test)=>t_roles(name, 'abc', test);
-    if (0)
-    t('abc', `mode:msg conf(a-c) ab>!connect bc>!connect cb.a~c>!ring_join
-      ac>!req(cmd:ping !!)
-      ab>fwd(ac>msg(type:req cmd:ping) rt:c !msgack) ab<msg(type:ack)
-      bc>fwd(ab>fwd(ac>msg(type:req cmd:ping) rt:c) !msgack) bc<msg(type:ack)
-      bc<fwd(ac<msg(type:res cmd:ping) rt:a !msgack) bc>msg(type:ack)
-      ab<fwd(bc<fwd(ac<msg(type:res cmd:ping) rt:a) !msgack) ab>msg(type:ack)
-    `);
     t = (name, test)=>t_roles(name, 'ab', test);
     // XXX derry:
     // 1. logic for sending ack on response
@@ -4650,14 +4633,12 @@ describe('peer-relay', function(){
     // send tranparently ack)
     // 4. calc rtt from ack messages? -- according to rtt between connection.
     // each msg takes time to arrive according to rtt
-    t('xxx_ping', `mode(msg req) conf(a-c rtt:50) ab>!connect conf(!autoack)
+    t('ping', `mode(msg req) conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!ping(id:1 !!) ab>ping(id:1.0) ab>*ping
-      // XXX: we send both ack and ping_r
       ab<ack(id:>1.0 vv) ab<ping_r(id:1.0) ab<*ping_r ab>ack(id:<1.0 vv)
     `);
     t = (name, test)=>t_roles(name, 'ab', test);
-    // XXX: rm !autoack and !msgack (mv to request)
-    t('xxx2a', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
+    t('2_nodes_manual', `mode:msg conf(a-c rtt:50) ab>!connect conf(!autoack)
       ab>!req(id:1 !!) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#same b#ab>open(>1.0vv)
       ab<ack(id:>1.0 vv) a#ab>open(>1.0vv) b#same
@@ -4668,7 +4649,7 @@ describe('peer-relay', function(){
       // XXX: 19s a#ab>close(<1.0vv) b#ab>close(<1.0vv)
       // 1s a#!id:1 b#!id:1
     `);
-    t('xxx2b', `mode:msg conf(a-c rtt:50) ab>!connect
+    t('2_nodes_auto', `mode:msg conf(a-c rtt:50) ab>!connect
       ab>!req(id:1 !!) a#ab>opening(>1.0) b#!id:1
       ab>req(id:1) a#ab>open(>1.0vv) b#ab>open(>1.0vv)
       ab<!res(id:1 !!) a#ab>open(!id:<1.0) b#ab>closing(<1.0)
@@ -4678,7 +4659,7 @@ describe('peer-relay', function(){
       // 1s a#!id:1 b#!id:1
     `);
     t = (name, test)=>t_roles(name, 'abc', test);
-    t('xxx3a', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
+    t('3_nodes_manual', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       cb.a~c>!ring_join ab.c~a>!ring_join ba.bc~b>!ring_join
       abc>!req(body:ping res:ping_r) conf(!autoack)
       // XXX a#ab[c]:ac>opening(id:>1.0) b# c#
@@ -4710,7 +4691,7 @@ describe('peer-relay', function(){
       bc:ab[c]:ac>req_end(id:>1.2) a#ac>closing(>1.2v) b#ac>closing(>1.2)
       c#ac>close(>1.2vv) abc<ack(id:>1.2 vv) a,b,c#ac>close(>1.2vv)
     `);
-    t('xxx3b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
+    t('3_nodes_auto', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       cb.a~c>!ring_join ab.c~a>!ring_join ba.bc~b>!ring_join
       abc>!req(body:ping res:ping_r)
       a#!id:1 b#!id:1 c#!id:1
@@ -4730,7 +4711,7 @@ describe('peer-relay', function(){
       a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id:>1.2)
       bc:ab[c]:ac>req_end(id:>1.2) a,b,c#ac>close(>1.2vv)
     `);
-    t('xxx4a', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect bc>!connect
+    t('fuzzy_auto', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id:>1.0)
       cb{b-b}:c~c>req(id:1 cmd:ring_join) a#!id:1 b,c#c~c>opening(id:>1.0)
       cb<ack(id:>1.0) a#!id:1 b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)
@@ -4747,7 +4728,7 @@ describe('peer-relay', function(){
       cba>ack(id:<1.0 vv) a,b,c#c~c>close(id:<1.0vv)
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
-    t('xxx4b', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
+    t('fuzzy_manual', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id:>1.0)
       cb{b-b}:c~c>req(id:1 cmd:ring_join)
       a#!id:1 b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)

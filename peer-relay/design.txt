@@ -2,11 +2,11 @@ VP:
 - fix req_id handling - make it unique per node (not network wide)
 - fix parser
   + !e --> !!
-  - ab<ack(id:>1.0)
+  + ab<ack(id:>1.0)
 - ack every pkt
   - automatic ack
     + send ack transparently if enabled
-    - test ack behavior with fuzzy
+    + test ack behavior with fuzzy
     - add # test for request staus in cmd_req/cmd_res
   - calc rtt from ack packets - each packet takes conn-rtt time to arrive
     destination.
