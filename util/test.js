@@ -195,7 +195,7 @@ describe('sinon', function(){
         yield etask.sleep(0);
         assert.strictEqual(Date.now(), now);
         yield etask.sleep(0);
-        assert.strictEqual(Date.now(), now+1); // XXX: BUG!!!
+        assert.strictEqual(Date.now(), now);
         xsinon.uninit();
     }));
     describe('sinon_patch', ()=>{

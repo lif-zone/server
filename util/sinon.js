@@ -15,8 +15,9 @@ var clock_tick;
 var clock;
 const IDLE_TIME = 1;
 var idle_time;
+let timer_funcs = ['setTimeout', 'setInterval', 'setImmediate'];
 var event_funcs = [
-    {obj: global, funcs: ['setTimeout', 'setInterval', 'setImmediate']},
+    {obj: global, funcs: timer_funcs},
     {obj: global.process, funcs: ['nextTick']},
 ];
 var orig = {
@@ -30,6 +31,8 @@ var idle_listeners = new events();
 
 // XXX: use lolex's clock.next() from newer lolex
 function auto_inc(){
+    if (!clock)
+      return;
     var next = clock.firstTimerInRange(clock.now, Number.MAX_VALUE);
     if (next)
         clock_tick.call(clock, next.callAt-clock.now);
@@ -160,20 +163,33 @@ E.clock_set = function(opt){
     if (is_auto_inc)
     {
         event_funcs.forEach(function(elem){
-            if (!elem.obj)
-                return;
-            elem.funcs.forEach(function(func){
-                var _orig = elem.obj[func];
-                elem.obj[func] = function(){
-                    timer_set();
-                    return _orig.apply(this, arguments);
-                };
-                elem.obj[func]._orig = _orig;
-            });
-        });
-    }
-    timer_set();
-    return clock;
+          if (!elem.obj)
+            return;
+          elem.funcs.forEach(function(func){
+            var _orig = elem.obj[func];
+            elem.obj[func] = function(){
+              timer_set();
+              // sinon/lolex.js has a bug when adding timers inside tick().
+              // when adding timer with ms==0, it will add it 1ms after
+              // current time. See lolex.js:addTimer():
+              // timer.callAt = clock.now +
+              //   (timer.delay || (clock.duringTick ? 1 : 0));
+              if (timer_funcs.includes(func)){
+                let ms = arguments[1]||0, ret = _orig.apply(this, arguments);
+                if (clock.duringTick && !ms){
+                  clock.timers[ret.id].callAt =
+                    clock.timers[ret.id].createdAt+ms;
+                }
+                return ret;
+              }
+              return _orig.apply(this, arguments);
+            };
+            elem.obj[func]._orig = _orig;
+          });
+      });
+  }
+  timer_set();
+  return clock;
 };
 E.clock_restore = function(){ return clock.restore(); };
 E.create_sandbox = function(opt){
