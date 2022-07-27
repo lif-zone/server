@@ -4623,6 +4623,38 @@ describe('peer-relay', function(){
        cba.e.d~b>ring_join cbae.a.b~d>ring_join cb.ae~a>ring_join
        cd.ea~e>ring_join`);
   });
+  describe('xxx_rtt', function(){
+    if (true) return; // XXX: TODO
+    let t = (name, test)=>t_roles(name, 'ab', test);
+    // XXX: add time for connect as well
+    t('ping', `mode(msg) conf(a-c rtt:100) ab>!connect()
+      ab>!ping:!! #0ms ab>ping #+100ms ab<ping_r #+100ms`);
+    t('ping_ack', `mode(msg) conf(a-c rtt:100 !autoack) ab>!connect()
+      ab>!ping:!! #=ms
+      ab>ping #100ms
+      ab<ack #100ms
+      ab<ping_r #100ms
+      ab<ack #100ms
+    `);
+    t('role a', `
+      a-100ms-b>ping 0ms
+      a- ab<ping_r -100ms-b<ack 0ms
+      a-100ms-b<ack
+    `);
+    t('role a', `
+      ab>ping
+      ab<ack + #0 ab<ping_r #100
+      ab<ack +0ms #0 ab<ping_r #100
+
+      ab<ack +50ms #50 ab<ping_r #100 // mixed 50ms
+
+      ab<ack #100 ab<ping_r #100
+      ab<ack +100ms #100 ab<ping_r #100
+
+      // together(ab<ack ab<ping_r)
+      ab<ack
+    `);
+  });
   describe('ack', function(){
     let t = (name, test)=>t_roles(name, 'ab', test);
     t = (name, test)=>t_roles(name, 'ab', test);
