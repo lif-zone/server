@@ -4653,17 +4653,19 @@ describe('peer-relay', function(){
   describe('xxx_rtt', function(){
     let t = (name, test)=>t_roles(name, 'ab', test);
     t('time', `#ms 1ms #1ms 10ms #10ms 1ms #ms 1ms #1ms`);
+    t('ping_ack', `mode(msg) conf(a-c rtt:200 !autoack) ab>!connect()
+      #ms
+      // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
+      ab>!ping(id:1 !!) #0ms
+      ab>ping(id:1.0) #0ms
+      ab<ack(id:>1.0 vv) #0ms
+      ab<ping_r(id:1.0) #0ms
+      ab>ack(id:<1.0 vv) #0ms
+    `);
     if (true) return; // XXX: TODO
     // XXX: add time for connect as well
     t('ping', `mode(msg) conf(a-c rtt:100) ab>!connect()
       ab>!ping:!! #0ms ab>ping #+100ms ab<ping_r #+100ms`);
-    t('ping_ack', `mode(msg) conf(a-c rtt:100 !autoack) ab>!connect()
-      ab>!ping:!! #=ms
-      ab>ping #100ms
-      ab<ack #100ms
-      ab<ping_r #100ms
-      ab<ack #100ms
-    `);
     t('role a', `
       a-100ms-b>ping 0ms
       a- ab<ping_r -100ms-b<ack 0ms
