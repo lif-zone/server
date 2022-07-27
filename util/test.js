@@ -188,6 +188,16 @@ describe('sinon', function(){
         assert.strictEqual(Date.now(), now+1000+10);
         xsinon.uninit();
     }));
+    it('etask_sleep_bug', etask.fn(function*(){
+        let now = 100;
+        xsinon.clock_set({now, auto_inc: true, idle_time: 30});
+        assert.strictEqual(Date.now(), now);
+        yield etask.sleep(0);
+        assert.strictEqual(Date.now(), now);
+        yield etask.sleep(0);
+        assert.strictEqual(Date.now(), now+1); // XXX: BUG!!!
+        xsinon.uninit();
+    }));
     describe('sinon_patch', ()=>{
         let clock;
         beforeEach(()=>clock = xsinon.clock_set());
