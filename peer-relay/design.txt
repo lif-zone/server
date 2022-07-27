@@ -1,8 +1,5 @@
 VP:
 - fix req_id handling - make it unique per node (not network wide)
-- fix parser
-  + !e --> !!
-  + ab<ack(id:>1.0)
 - ack every pkt
   - automatic ack
     + send ack transparently if enabled
@@ -10,6 +7,7 @@ VP:
     - add # test for request staus in cmd_req/cmd_res
   - calc rtt from ack packets - each packet takes conn-rtt time to arrive
     destination.
+    + add #1ms api for testing Date.now()
   - unite ack from stream level with router ack tracking
     - fix stream out of order tests
   - return path selection decision on every ack

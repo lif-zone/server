@@ -51,6 +51,7 @@ let t_nodes = {}, t_ids = {}, t_msg, t_msgid, t_req, t_cmds, t_i, t_role;
 let t_port=4000, t_pending;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_reprocess, t_conf, t_req_id_last, t_test_prev;
+let t_prev_time;
 NodeMap.t.t_nodes = Router.t.t_nodes = t_nodes;
 NodeMap.t.node_from_id = Router.t.node_from_id = node_from_id;
 
@@ -1352,13 +1353,37 @@ function cmd_test_node_graph(opt){
 
 function cmd_test(opt){
   // XXX: wrap logic. similar in cmd_dbg, cmd_comment
-  let {c, event} = opt, node = N(c.s);
+  let {c, event} = opt;
   let arg = xtest.test_parse_plugin(c.arg, null, {no_dir: true});
-  let state, src, dst, id, seq, dir, v, curr;
   if (t_pre_process)
     return;
   assert(arg.length==1, 'invalid '+c.orig);
-  curr = arg[0]?.cmd=='same' ? t_test_prev[node.t.name] : arg[0];
+
+  if (/(^\d*)ms$/.test(arg[0].cmd))
+    cmd_test_time(c, arg[0]);
+  else
+    cmd_test_state(c, arg[0]);
+  if (t_i<t_cmds.length)
+    return cmd_run(event);
+  assert(!event, 'unexpected event '+event);
+}
+
+function cmd_test_time(c, arg){
+  let a = arg.cmd.match(/(^\d*)ms$/);
+  let ms = a[1];
+  if (ms=='')
+    t_prev_time = Date.now();
+  else {
+    assert(t_prev_time!==undefined, 't_prev_time not defined, use #ms');
+    assert.equal(Date.now()-t_prev_time, ms);
+    t_prev_time = Date.now();
+  }
+}
+
+function cmd_test_state(c, arg){
+  let node = N(c.s);
+  let state, src, dst, id, seq, dir, v, curr;
+  curr = arg?.cmd=='same' ? t_test_prev[node.t.name] : arg;
   t_test_prev[node.t.name] = assign({}, curr);
   if (curr?.cmd=='!id'){ // eg. !id(1)
     id = id_from_req_id(curr.arg);
@@ -1410,9 +1435,6 @@ function cmd_test(opt){
     if (!node.t.fake)
       assert.equal(node.router.state[id]?.state, undefined);
   }
-  if (t_i<t_cmds.length)
-    return cmd_run(event);
-  assert(!event, 'unexpected event '+event);
 }
 
 function cmd_rt_add(opt){
@@ -2457,6 +2479,7 @@ function test_start(role){
   t_req = {};
   t_test_prev = {};
   t_conf = {rtt: {def: DEF_RTT, conn: {}}};
+  t_prev_time = undefined;
   NodeMap.t.t_conf = Router.t.t_conf = t_conf;
   set_id_bits(10);
   set_node_ids(assert_node_ids('a-mXYZn-z'));
@@ -3061,7 +3084,7 @@ describe('node_id', function(){
 
 describe('api', function(){
   it('transform', ()=>{
-    let t = (s, exp)=>assert.equal(test_transform(s), exp);
+   let t = (s, exp)=>assert.equal(test_transform(s), exp);
    t('ab:ad>msg', `ab>fwd(ad>msg)`);
    t('bc:ab:ad>msg', `bc>fwd(ab>fwd(ad>msg))`);
    t('cd:bc:ab:ad>msg', `cd>fwd(bc>fwd(ab>fwd(ad>msg)))`);
@@ -3084,6 +3107,8 @@ describe('api', function(){
      `da<fwd(ba<fwd(cb<fwd(dc<msg rt(x)) rt(y)) rt(z))`);
    t('ab[cd].e>msg', `ab[cd].e>msg`);
    t('ab[cd].e<msg', `ab[cd].e<msg`);
+   t('#ms', `test(ms)`);
+   t('#1ms', `test(1ms)`);
    t('a#bc>msg', `a>test(bc>msg)`);
    t('a#bc<msg', `a>test(bc<msg)`);
    t('a,b#bc>msg', `a,b>test(bc>msg)`);
@@ -3697,6 +3722,8 @@ describe('peer-relay', function(){
           t('ab.c>fwd(ac>ring_join_r)', `ab.c>ring_join_r`);
         });
         describe('test', ()=>{
+          t('#ms', `test(ms)`);
+          t('#1ms', `test(1ms)`);
           t('a#ac>opening(id:>1.1)', `a>test(ac>opening(id:>1.1))`);
           t('a#ab[c]:ac>opening(id:>1.1)',
             `a>test(ab[c]:ac>opening(id:>1.1))`);
@@ -4624,8 +4651,9 @@ describe('peer-relay', function(){
        cd.ea~e>ring_join`);
   });
   describe('xxx_rtt', function(){
-    if (true) return; // XXX: TODO
     let t = (name, test)=>t_roles(name, 'ab', test);
+    t('time', `#ms 1ms #1ms 10ms #10ms 1ms #ms 1ms #1ms`);
+    if (true) return; // XXX: TODO
     // XXX: add time for connect as well
     t('ping', `mode(msg) conf(a-c rtt:100) ab>!connect()
       ab>!ping:!! #0ms ab>ping #+100ms ab<ping_r #+100ms`);
