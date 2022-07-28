@@ -51,7 +51,7 @@ let t_nodes = {}, t_ids = {}, t_msg, t_msgid, t_req, t_cmds, t_i, t_role;
 let t_port=4000, t_pending;
 let t_pre_process, t_cmds_processed, t_mode, t_mode_prev, t_req_id;
 let t_reprocess, t_conf, t_req_id_last, t_test_prev;
-let t_prev_time;
+let t_prev_time, t_event;
 NodeMap.t.t_nodes = Router.t.t_nodes = t_nodes;
 NodeMap.t.node_from_id = Router.t.node_from_id = node_from_id;
 
@@ -830,8 +830,10 @@ class FakeChannel extends EventEmitter {
         t_pending = null;
         return;
       }
-      yield cmd_run(e);
-      yield cmd_run_if_next_fake();
+      t_event.push(e);
+      yield cmd_run();
+      if (0) // XXX: rm
+        yield cmd_run_if_next_fake();
     });
   };
   destroy(){}
@@ -848,9 +850,7 @@ const cmd_run_if_next_fake = ()=>etask(function*send(){
       break;
     if (d && !d?.t.fake)
       break;
-    xerr.notice('XXX cmd_run_if_next_fake A');
     yield cmd_run();
-    xerr.notice('XXX cmd_run_if_next_fake B');
   }
 });
 
@@ -1177,6 +1177,7 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   if (t_pre_process)
     return;
   yield xsinon.wait();
+  assert(!t_event.length, 'pending events '+t_event);
 });
 
 function cmd_mode(opt){
@@ -1389,7 +1390,7 @@ function cmd_test_node_graph(opt){
 
 function cmd_test(opt){
   // XXX: wrap logic. similar in cmd_dbg, cmd_comment
-  let {c, event} = opt;
+  let {c} = opt;
   let arg = xtest.test_parse_plugin(c.arg, null, {no_dir: true});
   if (t_pre_process)
     return;
@@ -1399,9 +1400,6 @@ function cmd_test(opt){
     cmd_test_time(c, arg[0]);
   else
     cmd_test_state(c, arg[0]);
-  if (event && t_i<t_cmds.length)
-    return cmd_run(event);
-  assert(!event, 'unexpected event '+event);
 }
 
 function cmd_test_time(c, arg){
@@ -1495,21 +1493,15 @@ function cmd_rt_add(opt){
 }
 
 function cmd_comment(opt){
-  let {c, event} = opt;
+  let {c} = opt;
   if (t_pre_process)
     return set_orig(c, c.cmd+c.arg+'\r');
-  if (event && t_i<t_cmds.length)
-    return cmd_run(event);
-  assert(!event, 'unexpected event '+event);
 }
 
 function cmd_dbg(opt){
-  let {event} = opt;
   if (t_pre_process)
     return;
   debugger; // eslint-disable-line no-debugger
-  if (event && t_i<t_cmds.length)
-    return cmd_run(event);
 }
 
 function cmd_setup(opt){
@@ -1915,12 +1907,16 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   let _s = s;
   if (c.fwd)
     _s = N(fwd_s(c.fwd, 0));
-  if (!_s.t.fake && !event){
-    assert(!t_pending, 'already pending');
-    xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
-      t_i, c.orig, c.fwd);
-    t_pending = etask.wait();
-    event = yield t_pending;
+  if (!_s.t.fake){
+    assert(!event || !t_event.length, 'queue:\n'+t_event+'\ngot:\n'+event);
+    event = event||t_event.shift();
+    if (!event){
+      assert(!t_pending, 'already pending');
+      xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
+        t_i, c.orig, c.fwd);
+      t_pending = etask.wait();
+      event = yield t_pending;
+    }
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
     id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
@@ -2282,7 +2278,7 @@ function fill_rtt(c, rt){
 }
 
 const cmd_fwd = opt=>etask(function*cmd_fwd(){
-  let {c, event} = opt;
+  let {c} = opt;
   let arg = xtest.test_parse_no_dir(c.arg), f = arg.shift(), rt, range, vv;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
@@ -2305,7 +2301,7 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
   f.rt2.push(rt);
   f.range2 = Array.from(c.range2||[]); // XXX: rm from here!
   f.range2.push(range);
-  yield cmd_run_single({c: f, event});
+  yield cmd_run_single({c: f});
   if (!t_pre_process)
     return;
   set_orig(c, _build_cmd(f.orig+
@@ -2327,12 +2323,8 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
 });
 
 function cmd_time(opt){
-  let {event} = opt;
   if (t_pre_process)
     return;
-  if (event && t_i<t_cmds.length)
-    return cmd_run(event);
-  assert(!event, 'unexpected event '+event);
 }
 
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
@@ -2529,6 +2521,7 @@ function test_start(role){
   t_test_prev = {};
   t_conf = {rtt: {def: DEF_RTT, conn: {}}};
   t_prev_time = undefined;
+  t_event = [];
   NodeMap.t.t_conf = Router.t.t_conf = t_conf;
   set_id_bits(10);
   set_node_ids(assert_node_ids('a-mXYZn-z'));
@@ -4789,7 +4782,6 @@ describe('peer-relay', function(){
       ac>!req_start(id:1 !!) a#ac>opening(>1.0) b,c#same
       ab[c]:ac>req_start(id:1.0) b#ac>opening(>1.0) a,c#same
       // XXX: verify rt is c
-      dbg
       ab<ack(id:>1.0) a#ac>opening(>1.0v) b,c#same
       bc:ab[c]:ac>req_start(id:1.0) a,b#same c#ac>open(>1.0vv)
       abc<ack(id:>1.0 vv) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
