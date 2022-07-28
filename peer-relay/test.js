@@ -1398,7 +1398,7 @@ function cmd_test(opt){
     cmd_test_time(c, arg[0]);
   else
     cmd_test_state(c, arg[0]);
-  if (t_i<t_cmds.length && event)
+  if (event && t_i<t_cmds.length)
     return cmd_run(event);
   assert(!event, 'unexpected event '+event);
 }
