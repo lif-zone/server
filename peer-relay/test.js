@@ -588,6 +588,14 @@ function track_seq_res(s, d, id, type, seq, call){
 
 function rtt_hash(a, b){ return string.sort_char(a+b); }
 
+function conf_rtt(a, b){
+  let hash = rtt_hash(a, b);
+  return t_conf.rtt.conn[hash]||t_conf.rtt.def;
+}
+
+function conf_rtt_from_id(id1, id2){
+  return conf_rtt(node_from_id(id1).t.name, node_from_id(id2).t.name); }
+
 function track_rtt(lbuffer){
   track_rtt_fwd(lbuffer);
   track_rtt_path(lbuffer);
@@ -742,9 +750,7 @@ class FakeChannel extends EventEmitter {
     this.t = {};
     if (!t_conf) // XXX HACK: rm it, needed for channels test
       return;
-    let conn = rtt_hash(node_from_id(this.id.s).t.name,
-      node_from_id(this.local_id.s).t.name);
-    this.rtt = t_conf.rtt.conn[conn]||t_conf.rtt.def;
+    this.rtt = conf_rtt_from_id(this.id, this.local_id);
   }
   send = data=>{
     let lbuffer = LBuffer.from(data); // XXX WIP
@@ -1133,8 +1139,7 @@ function fake_send_msg(c, msg){
   msg.sign = node_from_id(from).wallet.sign(msg);
   if (c.fwd){
     for (let i=c.fwd.length-1; i>=0; i--){
-      let rtt = t_conf.rtt.conn[
-        rtt_hash(fwd_s(c.fwd, i), fwd_d(c.fwd, i))]||t_conf.rtt.def;
+      let rtt = conf_rtt(fwd_s(c.fwd, i), fwd_d(c.fwd, i));
       let msg2 = {from: fwd_s_id(c.fwd, i), to: fwd_d_id(c.fwd, i),
         type: 'fwd', rtt, rt: c.rt2[i],
         range: NodeId.range_to_msg(c.range2[i])};
