@@ -831,7 +831,6 @@ class FakeChannel extends EventEmitter {
         return;
       }
       t_event.push(e);
-      yield cmd_run();
       if (0) // XXX: rm
         yield cmd_run_if_next_fake();
     });
@@ -4825,12 +4824,13 @@ describe('peer-relay', function(){
       a#ac>closing(>1.2v) b#ac>closing(>1.2) c#ac>open(!id:>1.2)
       bc:ab[c]:ac>req_end(id:>1.2) a,b,c#ac>close(>1.2vv)
     `);
-    t('fuzzy_auto', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect bc>!connect
+    t('fuzzy_manual', `mode:msg conf(a-c rtt:50 !autoack) ab>!connect
+      bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id:>1.0)
       cb{b-b}:c~c>req(id:1 cmd:ring_join) a#!id:1 b,c#c~c>opening(id:>1.0)
       cb<ack(id:>1.0) a#!id:1 b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)
       ba{b-a}:cb{b-b}:c~c>req(id:1 cmd:ring_join)
-      a#c~c>open(id:>1.0vv) b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)
+      a#c~c>closing(id:>1.0vv) b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)
       cba<ack(id:>1.0 vv)
       a#c~c>closing(id:>1.0vv) b#c~c>open(id:>1.0vv) c#c~c>open(id:>1.0vv)
       ba[c]:ca<res(id:1 cmd:ring_join)
@@ -4842,7 +4842,7 @@ describe('peer-relay', function(){
       cba>ack(id:<1.0 vv) a,b,c#c~c>close(id:<1.0vv)
       // XXX TODO: ab.c~a>!ring_join ba.bc~b>!ring_join
     `);
-    t('fuzzy_manual', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
+    t('fuzzy_auto', `mode:msg conf(a-c rtt:50) ab>!connect bc>!connect
       a,b,c#!id:1 c~c>!ring_join(id:1) a,b#!id:1 c#c~c>opening(id:>1.0)
       cb{b-b}:c~c>req(id:1 cmd:ring_join)
       a#!id:1 b#c~c>opening(id:>1.0) c#c~c>opening(id:>1.0v)
