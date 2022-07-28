@@ -921,7 +921,7 @@ function req_hook(lbuffer){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.msgid, 'missing msg msgid '+stringify(msg));
-  cmd_run(_build_cmd(e, '', ''));
+  cmd_run(e);
 }
 
 // XXX NOW: rm it
@@ -949,7 +949,7 @@ function req_send_hook(msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.msgid, 'missing msg msgid '+stringify(msg));
-  cmd_run(_build_cmd(e, '', ''));
+  cmd_run(e);
 }
 
 function fail_hook(o){
@@ -986,7 +986,7 @@ function res_hook(msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.msgid, 'missing msg msgid %s', stringify(msg));
-  cmd_run(_build_cmd(e, '', ''));
+  cmd_run(e);
 }
 
 // XXX NOW: rm it
@@ -1013,7 +1013,7 @@ function res_send_hook(router, msg){
   default: assert(0, 'invalid cmd '+cmd);
   }
   assert(msg.msgid, 'missing msg msgid '+stringify(msg));
-  cmd_run(_build_cmd(e, '', ''));
+  cmd_run(e);
 }
 
 function new_res_hook(res){
@@ -1992,6 +1992,7 @@ function v_from_req_id(s){
 
 function cmd_req(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
+  event = event||t_event.shift();
   assert(t_pre_process||!c.loop);
   let emit_api=false, ooo=false, dup=false, close=false, rt;
   let call = c.cmd[0]=='!', body, id, res;
