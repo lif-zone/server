@@ -819,11 +819,6 @@ class FakeChannel extends EventEmitter {
       track_msg(lbuffer);
       if (msg.type=='ack' && !t_conf.no_autoack)
         return;
-      if (t_conf.msg_delay){ // XXX WIP
-        xerr.notice('XXX send sleep 100 PRE');
-        yield etask.sleep(conf_rtt_from_node(from, to)/2);
-        xerr.notice('XXX send sleep 100 POST');
-      }
       t_event.push(e);
       if (t_pending){
         xerr.notice('FakeChannel send resume pending t_i %s', t_i);
@@ -1874,6 +1869,7 @@ function cmd_ring_join_r(opt){
 
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
+  assert(!event, 'invalid event - need to get from t_event');
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse_no_dir(c.arg), body;
   let id, type, cmd, seq, dir, ack, a, vv;
@@ -1903,9 +1899,11 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
     return;
   }
-  let _s = s;
-  if (c.fwd)
+  let _s = s, _d = d;
+  if (c.fwd){
     _s = N(fwd_s(c.fwd, 0));
+    _d = N(fwd_d(c.fwd, 0));
+  }
   if (!_s.t.fake){
     assert(!event || !t_event.length, 'queue:\n'+t_event+'\ngot:\n'+event);
     event = event||t_event.shift();
@@ -1916,6 +1914,11 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       t_pending = etask.wait();
       yield t_pending;
       event = t_event.shift();
+    }
+    if (t_conf.msg_delay){ // XXX WIP
+      xerr.notice('XXX send sleep 100 PRE');
+      yield etask.sleep(conf_rtt_from_node(_s, _d)/2);
+      xerr.notice('XXX send sleep 100 POST');
     }
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
