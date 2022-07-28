@@ -824,13 +824,13 @@ class FakeChannel extends EventEmitter {
         yield etask.sleep(conf_rtt_from_node(from, to)/2);
         xerr.notice('XXX send sleep 100 POST');
       }
+      t_event.push(e);
       if (t_pending){
         xerr.notice('FakeChannel send resume pending t_i %s', t_i);
-        t_pending.continue(e);
+        t_pending.continue();
         t_pending = null;
         return;
       }
-      t_event.push(e);
       if (0) // XXX: rm
         yield cmd_run_if_next_fake();
     });
@@ -1914,7 +1914,8 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
         t_i, c.orig, c.fwd);
       t_pending = etask.wait();
-      event = yield t_pending;
+      yield t_pending;
+      event = t_event.shift();
     }
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
@@ -2065,11 +2066,6 @@ function cmd_req(opt){
       }
       push_cmd(s);
     }
-    return;
-  }
-  if (!d){
-    assert_event_c2(c, build_cmd_o(dir_c(c)+c.cmd,
-      {id, cmd, seq, ack, body, ooo, dup, close}), c.fwd, event, call);
     return;
   }
   id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
