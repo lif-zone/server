@@ -1138,7 +1138,6 @@ function fake_send_msg(c, msg){
       ''+s.msgid();
   }
   let lbuffer = new LBuffer(msg);
-  msg.sign = node_from_id(from).wallet.sign(msg);
   if (c.fwd){
     for (let i=c.fwd.length-1; i>=0; i--){
       let rtt = conf_rtt(fwd_s(c.fwd, i), fwd_d(c.fwd, i));
@@ -2327,6 +2326,15 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
   yield xsinon.wait();
 });
 
+function cmd_time(opt){
+  let {event} = opt;
+  if (t_pre_process)
+    return;
+  if (event && t_i<t_cmds.length)
+    return cmd_run(event);
+  assert(!event, 'unexpected event '+event);
+}
+
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
   let c = opt.c;
   if (t_pre_process){
@@ -2406,6 +2414,7 @@ const cmd_run_single = opt=>etask(function*cmd_run_single(){
   case '*res_end': yield cmd_res(opt); break;
   case '*fail': yield cmd_fail(opt); break;
   case 'ms': yield cmd_ms(opt); break;
+  case '+': yield cmd_time(opt); break;
   case '!sp': yield cmd_sp(opt); break;
   case 'test_node_conn': yield cmd_test_node_conn(opt); break;
   case 'test_node_find': yield cmd_test_node_find(opt); break;

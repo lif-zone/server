@@ -46,7 +46,6 @@ export default class Router extends EventEmitter {
     msg.from = this.id.s;
     msg.to = dst.s;
     msg.msgid = msgid; // XXX: need test that will fail is this is missing
-    msg.sign = this.wallet.sign(msg);
     let lbuffer = new LBuffer(msg); // XXX: WIP
     this._send(lbuffer);
   }
@@ -194,7 +193,7 @@ export default class Router extends EventEmitter {
     this.node_map.update_conn({ids: [this.id, dst], self: channel,
       rtt: channel.rtt||DEF_RTT});
     channel.on('message', this._on_msg);
-    // XXX: check if this can happen during test and add yield
+    // XXX: check if this can happen during test
     while (this._queue.length)
       this._send(this._queue.shift());
   }
@@ -301,13 +300,11 @@ export default class Router extends EventEmitter {
       let msg2 = {msgid, to: msg.from, from: this.id.s, type: 'ack',
         req_id: msg.req_id, seq: msg.seq, dir, vv: true};
       // XXX: set rt/path from incoming packet to make sure we do same path
-      msg2.sign = this.wallet.sign(msg2);
       let lbuffer2 = new LBuffer(msg2);
       return this._send(lbuffer2);
     }
     let msg2 = {msgid, to: channel.id.s, from: this.id.s, type: 'ack',
       req_id: msg.req_id, seq: msg.seq, dir};
-    msg2.sign = this.wallet.sign(msg2);
     let lbuffer2 = new LBuffer(msg2);
     return channel.send(lbuffer2.to_str());
   }
