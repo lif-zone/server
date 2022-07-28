@@ -2548,9 +2548,9 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   t_cmds = cmds;
   for (t_i=0; t_i<t_cmds.length;){
     if (xxx_sleep)
-      yield xxx_sleep;
-    else if (t_pending)
-      yield etask.sleep(0); // XXX yield this.wait_ext(t_pending);
+      yield this.wait_ext(xxx_sleep);
+    else if (t_pending) // XXX: is it needed?
+      yield this.wait_ext(t_pending);
     else
       yield cmd_run();
   }
