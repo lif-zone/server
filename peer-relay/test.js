@@ -1142,23 +1142,6 @@ function fake_send_msg(c, msg){
     }
   }
   track_msg(lbuffer);
-  if (t_conf.msg_delay){ // XXX WIP
-    return etask(function*fake_send_msg(){
-      if (!d.t.fake){
-        assert(!xxx_sleep, 'already sleeping');
-        xxx_sleep = etask.wait();
-        xerr.notice('XXX fake_send sleep 100 PRE');
-        yield etask.sleep(conf_rtt_from_node(s, d)/2);
-        xerr.notice('XXX fake_send sleep 100 POST');
-        send_msg(s.t.name, d.t.name, lbuffer);
-        xxx_sleep.continue();
-        xxx_sleep = null;
-        xerr.notice('XXX fake_send sleep 100 CONTINUE');
-      }
-      if (msg.type!='ack' && !t_conf.no_autoack)
-        do_autoack(lbuffer, c.vv);
-    });
-  }
   if (!d.t.fake)
     send_msg(s.t.name, d.t.name, lbuffer);
   if (msg.type!='ack' && !t_conf.no_autoack)
@@ -1915,11 +1898,11 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       yield t_pending;
       event = t_event.shift();
     }
-    if (t_conf.msg_delay){ // XXX WIP
-      xerr.notice('XXX send sleep 100 PRE');
-      yield etask.sleep(conf_rtt_from_node(_s, _d)/2);
-      xerr.notice('XXX send sleep 100 POST');
-    }
+  }
+  if (t_conf.msg_delay){ // XXX WIP
+    xerr.notice('XXX send sleep 100 PRE');
+    yield etask.sleep(conf_rtt_from_node(_s, _d)/2);
+    xerr.notice('XXX send sleep 100 POST');
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
     id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
@@ -2477,7 +2460,6 @@ function expand_loop_repeat(c){
 }
 
 let t_depth = 0;
-let xxx_sleep;
 const cmd_run = event=>etask(function*cmd_run(){
   assert(!t_pending, 'cmd_run while pending with event '+event);
   assert(t_cmds && t_i<t_cmds.length, event ? 'unexpected event '+event :
@@ -2548,9 +2530,7 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   test_start(role);
   t_cmds = cmds;
   for (t_i=0; t_i<t_cmds.length;){
-    if (xxx_sleep)
-      yield this.wait_ext(xxx_sleep);
-    else if (t_pending) // XXX: is it needed?
+    if (t_pending) // XXX: is it needed?
       yield this.wait_ext(t_pending);
     else
       yield cmd_run();
