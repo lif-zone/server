@@ -812,13 +812,9 @@ class FakeChannel extends EventEmitter {
       if (msg.type=='ack' && !t_conf.no_autoack)
         return;
       if (t_conf.msg_delay){ // XXX WIP
-        assert(!xxx_sleep, 'already sleeping');
-        while (!t_pending) // eslint-disable-line no-unmodified-loop-condition
-          yield etask.sleep();
-        xxx_sleep = etask.wait();
+        xerr.notice('XXX send sleep 100 PRE');
         yield etask.sleep(100);
-        xxx_sleep.continue();
-        xxx_sleep = null;
+        xerr.notice('XXX send sleep 100 POST');
       }
       if (t_pending){
         xerr.notice('FakeChannel send resume pending t_i %s', t_i);
@@ -844,15 +840,9 @@ const cmd_run_if_next_fake = ()=>etask(function*send(){
       break;
     if (d && !d?.t.fake)
       break;
-    if (xxx_sleep)
-      break; // XXX: yield xxx_sleep;
-    else if (t_pending)
-      break; // XXX: yield t_pending;
-    else {
-      xerr.notice('XXX cmd_run_if_next_fake A');
-      yield cmd_run();
-      xerr.notice('XXX cmd_run_if_next_fake B');
-    }
+    xerr.notice('XXX cmd_run_if_next_fake A');
+    yield cmd_run();
+    xerr.notice('XXX cmd_run_if_next_fake B');
   }
 });
 
@@ -1108,6 +1098,7 @@ function fake_emit(c, msg){
 }
 
 function fake_send_msg(c, msg){
+  xerr.notice('XXX fake_send %s %s', c.fwd, c.orig);
   let s = N(c.s), d = N(c.d), f = s, t = d, fuzzy = get_fuzzy(c.d);
   let to = d.id.s, from = s.id.s;
   msg.to = to;
@@ -1153,15 +1144,19 @@ function fake_send_msg(c, msg){
   track_msg(lbuffer);
   if (t_conf.msg_delay){ // XXX WIP
     return etask(function*fake_send_msg(){
-      assert(!xxx_sleep, 'already sleeping');
-      xxx_sleep = etask.wait();
-      yield etask.sleep(100);
-      if (!d.t.fake)
+      if (!d.t.fake){
+        assert(!xxx_sleep, 'already sleeping');
+        xxx_sleep = etask.wait();
+        xerr.notice('XXX fake_send sleep 100 PRE');
+        yield etask.sleep(100);
+        xerr.notice('XXX fake_send sleep 100 POST');
         send_msg(s.t.name, d.t.name, lbuffer);
+        xxx_sleep.continue();
+        xxx_sleep = null;
+        xerr.notice('XXX fake_send sleep 100 CONTINUE');
+      }
       if (msg.type!='ack' && !t_conf.no_autoack)
         do_autoack(lbuffer, c.vv);
-      xxx_sleep.continue();
-      xxx_sleep = null;
     });
   }
   if (!d.t.fake)
@@ -4693,7 +4688,6 @@ describe('peer-relay', function(){
     let t = (name, test)=>t_roles(name, 'ab', test);
     t('time_manual', `#ms 1ms #1ms 10ms #10ms 1ms #ms 1ms #1ms`);
     t('time_auto', `conf(auto_time) #ms 1ms #1ms 10ms #10ms 1ms #ms 1ms #1ms`);
-    if (true) return; // XXX: WIP
     t('xxx1a', `mode(msg) conf(auto_time msg_delay a-c rtt:200) ab>!connect()
       #ms
       // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
@@ -4701,14 +4695,14 @@ describe('peer-relay', function(){
       ab>ping(id:1.0) #100ms
       ab<ping_r(id:1.0) #100ms
     `);
-    if (true) return; // XXX: WIP
-    t('xxx1b', `mode(msg) conf(auto_time a-c rtt:200 !autoack) ab>!connect()
+    t('xxx1b', `mode(msg) conf(auto_time msg_delay a-c rtt:200 !autoack)
+      ab>!connect()
       #ms
       // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
       ab>!ping(id:1 !!) #0ms
       ab>ping(id:1.0) #100ms
-      ab<ack(id:>1.0 vv) #0ms
-      ab<ping_r(id:1.0) #0ms
+      ab<ack(id:>1.0 vv) #100ms
+      ab<ping_r(id:1.0) #100ms
       ab>ack(id:<1.0 vv) #100ms
     `);
     if (true) return; // XXX: TODO
