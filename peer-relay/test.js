@@ -593,6 +593,8 @@ function conf_rtt(a, b){
   return t_conf.rtt.conn[hash]||t_conf.rtt.def;
 }
 
+function conf_rtt_from_node(s, d){ return conf_rtt(s.t.name, d.t.name); }
+
 function conf_rtt_from_id(id1, id2){
   return conf_rtt(node_from_id(id1).t.name, node_from_id(id2).t.name); }
 
@@ -819,7 +821,7 @@ class FakeChannel extends EventEmitter {
         return;
       if (t_conf.msg_delay){ // XXX WIP
         xerr.notice('XXX send sleep 100 PRE');
-        yield etask.sleep(100);
+        yield etask.sleep(conf_rtt_from_node(from, to)/2);
         xerr.notice('XXX send sleep 100 POST');
       }
       if (t_pending){
@@ -1153,7 +1155,7 @@ function fake_send_msg(c, msg){
         assert(!xxx_sleep, 'already sleeping');
         xxx_sleep = etask.wait();
         xerr.notice('XXX fake_send sleep 100 PRE');
-        yield etask.sleep(100);
+        yield etask.sleep(conf_rtt_from_node(s, d)/2);
         xerr.notice('XXX fake_send sleep 100 POST');
         send_msg(s.t.name, d.t.name, lbuffer);
         xxx_sleep.continue();
