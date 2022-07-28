@@ -811,11 +811,20 @@ class FakeChannel extends EventEmitter {
       track_msg(lbuffer);
       if (msg.type=='ack' && !t_conf.no_autoack)
         return;
+      if (t_conf.msg_delay){ // XXX WIP
+        assert(!xxx_sleep, 'already sleeping');
+        while (!t_pending) // eslint-disable-line no-unmodified-loop-condition
+          yield etask.sleep();
+        xxx_sleep = etask.wait();
+        yield etask.sleep(100);
+        xxx_sleep.continue();
+        xxx_sleep = null;
+      }
       if (t_pending){
         xerr.notice('FakeChannel send resume pending t_i %s', t_i);
-        t_i--;
-        t_pending.continue();
+        t_pending.continue(e);
         t_pending = null;
+        return;
       }
       yield cmd_run(e);
       yield cmd_run_if_next_fake();
@@ -835,7 +844,15 @@ const cmd_run_if_next_fake = ()=>etask(function*send(){
       break;
     if (d && !d?.t.fake)
       break;
-    yield cmd_run();
+    if (xxx_sleep)
+      break; // XXX: yield xxx_sleep;
+    else if (t_pending)
+      break; // XXX: yield t_pending;
+    else {
+      xerr.notice('XXX cmd_run_if_next_fake A');
+      yield cmd_run();
+      xerr.notice('XXX cmd_run_if_next_fake B');
+    }
   }
 });
 
@@ -1134,6 +1151,19 @@ function fake_send_msg(c, msg){
     }
   }
   track_msg(lbuffer);
+  if (t_conf.msg_delay){ // XXX WIP
+    return etask(function*fake_send_msg(){
+      assert(!xxx_sleep, 'already sleeping');
+      xxx_sleep = etask.wait();
+      yield etask.sleep(100);
+      if (!d.t.fake)
+        send_msg(s.t.name, d.t.name, lbuffer);
+      if (msg.type!='ack' && !t_conf.no_autoack)
+        do_autoack(lbuffer, c.vv);
+      xxx_sleep.continue();
+      xxx_sleep = null;
+    });
+  }
   if (!d.t.fake)
     send_msg(s.t.name, d.t.name, lbuffer);
   if (msg.type!='ack' && !t_conf.no_autoack)
@@ -1189,6 +1219,11 @@ function cmd_conf(opt){
     case 'rtt': assert_rtt(arg2); break;
     case '!node': no_node = assert_bool(arg2); break;
     case '!autoack': t_conf.no_autoack = assert_bool(arg2); break;
+    case 'msg_delay': t_conf.msg_delay = assert_bool(arg2); break;
+    case 'auto_time':
+      t_conf.auto_time = assert_bool(arg2);
+      xsinon.clock_set({now: Date.now(), auto_inc: true});
+      break;
     case 'xerr': xtest.xerr_level(arg2); break;
     default:
       if (/:/.test(cmd)){ // XXX HACK: bug in parser
@@ -1363,7 +1398,7 @@ function cmd_test(opt){
     cmd_test_time(c, arg[0]);
   else
     cmd_test_state(c, arg[0]);
-  if (t_i<t_cmds.length)
+  if (t_i<t_cmds.length && event)
     return cmd_run(event);
   assert(!event, 'unexpected event '+event);
 }
@@ -1845,7 +1880,7 @@ function cmd_ring_join_r(opt){
   fake_emit(c, {type: 'res', cmd: 'ring_join_r', body: ''});
 }
 
-function cmd_msg(opt){
+const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(s && d, 'invalid event '+c.orig);
   let arg = xtest.test_parse_no_dir(c.arg), body;
@@ -1884,8 +1919,7 @@ function cmd_msg(opt){
     xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
       t_i, c.orig, c.fwd);
     t_pending = etask.wait();
-    t_pending.expected = (c.fwd||[]).join('').replace(/>/g, ':')+c.orig;
-    return;
+    event = yield t_pending;
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
     id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
@@ -1938,7 +1972,7 @@ function cmd_msg(opt){
   if (c.rt)
     rt = {path: parse_path(path_to_str(c.rt), c.dir)};
   fake_send_msg(c, {rt, req_id: id, type, seq, ack, dir, cmd, vv, body});
-}
+});
 
 function dir_from_req_id(s){
   let a = s.match(/^([<>]?)([^.]+).([0-9]+)([v]*)$/);
@@ -2285,6 +2319,8 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
     return;
   assert(!event, 'unexpected event for ms cmd '+event);
   let ms = assert_int(c.arg);
+  if (t_conf.auto_time)
+    return yield etask.sleep(ms);
   yield xsinon.tick(ms);
   yield xsinon.wait();
 });
@@ -2439,6 +2475,7 @@ function expand_loop_repeat(c){
 }
 
 let t_depth = 0;
+let xxx_sleep;
 const cmd_run = event=>etask(function*cmd_run(){
   assert(!t_pending, 'cmd_run while pending with event '+event);
   assert(t_cmds && t_i<t_cmds.length, event ? 'unexpected event '+event :
@@ -2465,6 +2502,7 @@ function set_id_bits(bits){ t_conf.id_bits = bits; }
 function set_node_ids(ids){ t_conf.node_ids = ids||{}; }
 
 function test_start(role){
+  xerr.notice('test start role %s pre_process %s', role, t_pre_process);
   t_role = role;
   t_port = 4000;
   assert(!Object.keys(t_nodes).length, 'nodes exists on test start '+
@@ -2507,12 +2545,12 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   test_start(role);
   t_cmds = cmds;
   for (t_i=0; t_i<t_cmds.length;){
-    if (t_pending){
-      xerr.notice('test_run wait for t_pending t_i %s', t_i);
-      yield t_pending;
-      xerr.notice('test_run done wait for t_pending t_i %s', t_i);
-    }
-    yield cmd_run();
+    if (xxx_sleep)
+      yield xxx_sleep;
+    else if (t_pending)
+      yield etask.sleep(0); // XXX yield this.wait_ext(t_pending);
+    else
+      yield cmd_run();
   }
   yield test_end();
 });
@@ -2561,7 +2599,8 @@ const test_end = ()=>etask(function*(){
   assert(t_cmds, 'test not running');
   assert.equal(t_i, t_cmds.length, 'not all cmds run');
   if (!t_pre_process){
-    yield xsinon.tick(date.ms.YEAR);
+    if (!t_conf.auto_time)
+      yield xsinon.tick(date.ms.YEAR);
     yield xsinon.wait();
   }
   yield cmd_ensure_no_events();
@@ -4652,15 +4691,25 @@ describe('peer-relay', function(){
   });
   describe('xxx_rtt', function(){
     let t = (name, test)=>t_roles(name, 'ab', test);
-    t('time', `#ms 1ms #1ms 10ms #10ms 1ms #ms 1ms #1ms`);
-    t('ping_ack', `mode(msg) conf(a-c rtt:200 !autoack) ab>!connect()
+    t('time_manual', `#ms 1ms #1ms 10ms #10ms 1ms #ms 1ms #1ms`);
+    t('time_auto', `conf(auto_time) #ms 1ms #1ms 10ms #10ms 1ms #ms 1ms #1ms`);
+    if (true) return; // XXX: WIP
+    t('xxx1a', `mode(msg) conf(auto_time msg_delay a-c rtt:200) ab>!connect()
       #ms
       // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
       ab>!ping(id:1 !!) #0ms
-      ab>ping(id:1.0) #0ms
+      ab>ping(id:1.0) #100ms
+      ab<ping_r(id:1.0) #100ms
+    `);
+    if (true) return; // XXX: WIP
+    t('xxx1b', `mode(msg) conf(auto_time a-c rtt:200 !autoack) ab>!connect()
+      #ms
+      // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
+      ab>!ping(id:1 !!) #0ms
+      ab>ping(id:1.0) #100ms
       ab<ack(id:>1.0 vv) #0ms
       ab<ping_r(id:1.0) #0ms
-      ab>ack(id:<1.0 vv) #0ms
+      ab>ack(id:<1.0 vv) #100ms
     `);
     if (true) return; // XXX: TODO
     // XXX: add time for connect as well
@@ -4730,6 +4779,7 @@ describe('peer-relay', function(){
       ac>!req_start(id:1 !!) a#ac>opening(>1.0) b,c#same
       ab[c]:ac>req_start(id:1.0) b#ac>opening(>1.0) a,c#same
       // XXX: verify rt is c
+      dbg
       ab<ack(id:>1.0) a#ac>opening(>1.0v) b,c#same
       bc:ab[c]:ac>req_start(id:1.0) a,b#same c#ac>open(>1.0vv)
       abc<ack(id:>1.0 vv) a#ac>open(>1.0vv) b#ac>open(>1.0vv) c#same
