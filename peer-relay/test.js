@@ -4766,6 +4766,16 @@ describe('peer-relay', function(){
       ab<ack(id:>1.0 vv) + #0ms + ab<ping_r(id:1.0) + 100ms #100ms
       ab>ack(id:<1.0 vv) + 100ms #100ms
     `);
+    t = (name, test)=>t_roles(name, 'abc', test);
+    // XXX: add test with !autoack
+    t('xxx2a', `mode(msg) conf(auto_time msg_delay a-d rtt:200) !ring(a-d)
+      #ms
+      abc>!ping(id:1 !!) #0ms
+      ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
+      bc:ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
+      bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
+      ab:bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
+    `);
     if (true) return; // XXX: TODO
     // XXX: add time for connect as well
     t('ping', `mode(msg) conf(a-c rtt:100) ab>!connect()
