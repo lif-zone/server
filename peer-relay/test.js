@@ -55,6 +55,18 @@ let t_prev_time, t_event;
 NodeMap.t.t_nodes = Router.t.t_nodes = t_nodes;
 NodeMap.t.node_from_id = Router.t.node_from_id = node_from_id;
 
+function push_event(event){ t_event.push({ts: Date.now(), event}); }
+
+function shift_event(dur){
+  let o = t_event.shift();
+  if (!o)
+    return;
+  if (dur===undefined)
+    return o.event;
+  assert.equal(Date.now(), o.ts+dur, 'wrong timing for event '+o.event);
+  return o.event;
+}
+
 // XXX: need test
 function fwd_from_lbuffer(lbuffer){
   let fwd = [], m;
@@ -819,7 +831,7 @@ class FakeChannel extends EventEmitter {
       track_msg(lbuffer);
       if (msg.type=='ack' && !t_conf.no_autoack)
         return;
-      t_event.push(e);
+      push_event(e);
       if (t_pending){
         xerr.notice('FakeChannel send resume pending t_i %s', t_i);
         t_pending.continue();
@@ -1157,7 +1169,7 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   yield this.wait_ext(xxx_sleep);
   yield this.wait_ext(xxx_pause);
   yield xsinon.wait();
-  assert(!t_event.length, 'pending events '+t_event);
+  assert(!t_event.length, 'pending events '+stringify(t_event, null, '\t'));
 });
 
 function cmd_mode(opt){
@@ -1891,18 +1903,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     _s = N(fwd_s(c.fwd, 0));
     _d = N(fwd_d(c.fwd, 0));
   }
-  if (!_s.t.fake){
-    assert(!event || !t_event.length, 'queue:\n'+t_event+'\ngot:\n'+event);
-    event = event||t_event.shift();
-    if (!event){
-      assert(!t_pending, 'already pending');
-      xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
-        t_i, c.orig, c.fwd);
-      t_pending = etask.wait();
-      yield t_pending;
-      event = t_event.shift();
-    }
-  }
+  let dur_ms = t_conf.msg_delay ? conf_rtt_from_node(_s, _d)/2 : undefined;
   if (t_conf.msg_delay){ // XXX WIP
     assert(!xxx_pause, 'already paused');
     let xxx;
@@ -1914,7 +1915,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
     else {
       xerr.notice('XXX sleep NEW 100 PRE %s %s', c.fwd, c.orig);
-      xxx_sleep = etask.sleep(conf_rtt_from_node(_s, _d)/2);
+      xxx_sleep = etask.sleep(dur_ms);
       yield xxx_sleep;
       xxx_sleep = null;
       xerr.notice('XXX sleep NEW 100 POST %s %s', c.fwd, c.orig);
@@ -1922,6 +1923,18 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       xxx_pause = null;
       if (xxx)
         xxx.continue();
+    }
+  }
+  if (!_s.t.fake){
+    assert(!event || !t_event.length, 'queue:\n'+t_event+'\ngot:\n'+event);
+    event = event||shift_event(dur_ms);
+    if (!event){
+      assert(!t_pending, 'already pending');
+      xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
+        t_i, c.orig, c.fwd);
+      t_pending = etask.wait();
+      yield t_pending;
+      event = shift_event(dur_ms);
     }
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
@@ -1999,7 +2012,7 @@ function v_from_req_id(s){
 
 function cmd_req(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
-  event = event||t_event.shift();
+  event = event||shift_event();
   assert(t_pre_process||!c.loop);
   let emit_api=false, ooo=false, dup=false, close=false, rt;
   let call = c.cmd[0]=='!', body, id, res;
@@ -4728,7 +4741,14 @@ describe('peer-relay', function(){
       ab>ping(id:1.0) #100ms
       ab<ping_r(id:1.0) #100ms
     `);
-    t('xxx1b', `mode(msg) conf(auto_time msg_delay a-c rtt:200 !autoack)
+    t('xxx1b', `mode(msg) conf(msg_delay a-c rtt:200) ab>!connect()
+      #ms
+      // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
+      ab>!ping(id:1 !!) #0ms
+      ab>ping(id:1.0) + 100ms #100ms
+      ab<ping_r(id:1.0) + 100ms #100ms
+    `);
+    t('xxx1c', `mode(msg) conf(auto_time msg_delay !autoack a-c rtt:200)
       ab>!connect()
       #ms
       // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
@@ -4737,7 +4757,7 @@ describe('peer-relay', function(){
       ab<ack(id:>1.0 vv) + #0ms + ab<ping_r(id:1.0) #100ms
       ab>ack(id:<1.0 vv) #100ms
     `);
-    t('xxx1c', `mode(msg) conf(msg_delay a-c rtt:200 !autoack)
+    t('xxx1d', `mode(msg) conf(msg_delay a-c rtt:200 !autoack)
       ab>!connect()
       #ms
       // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
