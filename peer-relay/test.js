@@ -1153,6 +1153,9 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   assert(!event, 'unexpected event '+event);
   if (t_pre_process)
     return;
+  yield this.wait_ext(t_pending);
+  yield this.wait_ext(xxx_sleep);
+  yield this.wait_ext(xxx_pause);
   yield xsinon.wait();
   assert(!t_event.length, 'pending events '+t_event);
 });
@@ -1850,6 +1853,7 @@ function cmd_ring_join_r(opt){
   fake_emit(c, {type: 'res', cmd: 'ring_join_r', body: ''});
 }
 
+let xxx_sleep;
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(!event, 'invalid event - need to get from t_event');
@@ -1900,9 +1904,25 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     }
   }
   if (t_conf.msg_delay){ // XXX WIP
-    xerr.notice('XXX send sleep 100 PRE');
-    yield etask.sleep(conf_rtt_from_node(_s, _d)/2);
-    xerr.notice('XXX send sleep 100 POST');
+    assert(!xxx_pause, 'already paused');
+    let xxx;
+    assert(!xxx_pause);
+    if (xxx_sleep){
+      xerr.notice('XXX sleep EXISTING 100 PRE %s %s', c.fwd, c.orig);
+      yield this.wait_ext(xxx_sleep);
+      xerr.notice('XXX sleep EXISTING 100 POST %s %s', c.fwd, c.orig);
+    }
+    else {
+      xerr.notice('XXX sleep NEW 100 PRE %s %s', c.fwd, c.orig);
+      xxx_sleep = etask.sleep(conf_rtt_from_node(_s, _d)/2);
+      yield xxx_sleep;
+      xxx_sleep = null;
+      xerr.notice('XXX sleep NEW 100 POST %s %s', c.fwd, c.orig);
+      xxx = xxx_pause;
+      xxx_pause = null;
+      if (xxx)
+        xxx.continue();
+    }
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
     id = id||get_req_id({s: s.t.name, d: d.t.name, cmd});
@@ -2292,16 +2312,23 @@ const cmd_fwd = opt=>etask(function*cmd_fwd(){
     (vv ? ' vv' : ''), [dir_c(c)]));
 });
 
+let xxx_pause;
 const cmd_ms = opt=>etask(function*cmd_ms(){
   let {c, event} = opt;
   if (t_pre_process)
     return;
   assert(!event, 'unexpected event for ms cmd '+event);
   let ms = assert_int(c.arg);
+  assert(!xxx_pause, 'already paused');
+  let xxx = xxx_pause = etask.wait();
   if (t_conf.auto_time)
-    return yield etask.sleep(ms);
-  yield xsinon.tick(ms);
-  yield xsinon.wait();
+    yield etask.sleep(ms);
+  else {
+    yield xsinon.tick(ms);
+    yield xsinon.wait();
+  }
+  xxx_pause = null;
+  xxx.continue();
 });
 
 function cmd_time(opt){
@@ -2460,17 +2487,37 @@ function expand_loop_repeat(c){
 }
 
 let t_depth = 0;
+let prev_plus;
 const cmd_run = event=>etask(function*cmd_run(){
+//  assert(!xxx_pause, 'cmd_run while xxx_pause');
   assert(!t_pending, 'cmd_run while pending with event '+event);
   assert(t_cmds && t_i<t_cmds.length, event ? 'unexpected event '+event :
     'invalid t_i '+t_i+' event');
   let c = t_cmds[t_i];
+  t_i++;
+  t_depth++;
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   xerr.notice('%scmd %s: %s%s orig %s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '', c.orig);
-  t_i++;
-  t_depth++;
+  if (xxx_sleep && !xxx_pause){
+    if (c.cmd=='+' || prev_plus){
+      xerr.notice('XXX SKIP set xxx_pause %s', c.orig);
+    }
+    else {
+      xerr.notice('XXX set xxx_pause %s', c.orig);
+      xxx_pause = etask.wait();
+     }
+  }
+  if (xxx_pause){
+    xerr.notice('XXX wait PRE xxx_pause %s', c.orig);
+    yield this.wait_ext(xxx_pause);
+    xerr.notice('XXX wait POST xxx_pause %s', c.orig);
+  }
+  if (c.cmd=='+')
+    prev_plus = true;
+  else
+    prev_plus = false;
   t_reprocess = false;
   yield cmd_run_single({c, event});
   if (t_pre_process){
@@ -2532,8 +2579,10 @@ const _test_run = (role, cmds)=>etask(function*_test_run(){
   for (t_i=0; t_i<t_cmds.length;){
     if (t_pending) // XXX: is it needed?
       yield this.wait_ext(t_pending);
+    else if (xxx_pause)
+      yield this.wait_ext(xxx_pause);
     else
-      yield cmd_run();
+      cmd_run();
   }
   yield test_end();
 });
@@ -2580,7 +2629,7 @@ const test_end = ()=>etask(function*(){
   xerr.notice('*** test_end');
   yield cmd_ensure_no_events();
   assert(t_cmds, 'test not running');
-  assert.equal(t_i, t_cmds.length, 'not all cmds run');
+  assert.equal(t_i, t_cmds.length, 'not all cmds run: '+t_cmds[t_i]);
   if (!t_pre_process){
     if (!t_conf.auto_time)
       yield xsinon.tick(date.ms.YEAR);
@@ -4274,10 +4323,6 @@ describe('peer-relay', function(){
       });
       if (0)// XXX TODO
       describe('timeout_wrong_id', ()=>{
-        t('req', `mode:req setup:2_nodes ab>!req(id:0 body:ping)
-          ab>*req(id:0 body:ping) ab<!res(id:1 body:ping_r)
-          ab<*res(id:1 body:ping_r) - 19999ms -
-          1ms a>*fail(id:0 error:timeout)`);
         t('msg', `mode:msg setup:2_nodes ab>!req(id:0 body:ping)
           ab>msg(id:0 type:req body:ping) ab<!res(id:1 body:ping_r)
           ab<msg(id:1 type:res body:ping_r) - 19999ms -
@@ -4689,9 +4734,17 @@ describe('peer-relay', function(){
       // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
       ab>!ping(id:1 !!) #0ms
       ab>ping(id:1.0) #100ms
-      ab<ack(id:>1.0 vv) #100ms
-      ab<ping_r(id:1.0) #100ms
+      ab<ack(id:>1.0 vv) + #0ms + ab<ping_r(id:1.0) #100ms
       ab>ack(id:<1.0 vv) #100ms
+    `);
+    t('xxx1c', `mode(msg) conf(msg_delay a-c rtt:200 !autoack)
+      ab>!connect()
+      #ms
+      // XXX: auto-calc ack params (id, vv) in order to simplify test writing)
+      ab>!ping(id:1 !!) #0ms
+      ab>ping(id:1.0) + 100ms #100ms
+      ab<ack(id:>1.0 vv) + #0ms + ab<ping_r(id:1.0) + 100ms #100ms
+      ab>ack(id:<1.0 vv) + 100ms #100ms
     `);
     if (true) return; // XXX: TODO
     // XXX: add time for connect as well

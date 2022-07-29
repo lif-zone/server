@@ -2,7 +2,6 @@
 'use strict'; /*jslint node:true, browser:true*/
 import {EventEmitter} from 'events';
 import assert from 'assert';
-import etask from '../util/etask.js';
 import xerr from '../util/xerr.js';
 import NodeId from './node_id.js';
 import * as util from './util.js';
@@ -49,18 +48,17 @@ export default class Router extends EventEmitter {
     let lbuffer = new LBuffer(msg); // XXX: WIP
     this._send(lbuffer);
   }
-  _send = lbuffer=>etask({_: this}, function*(){
-    let _this = this._;
-    yield _this.ack_pending();
-    if (!_this._channels.size) // XXX: verify and test it
-      return _this._queue.push(lbuffer);
-    let o = _this.send_prepare(lbuffer);
-    _this.track(lbuffer, o?.vv);
+  _send(lbuffer){
+    this.ack_pending();
+    if (!this._channels.size) // XXX: verify and test it
+      return this._queue.push(lbuffer);
+    let o = this.send_prepare(lbuffer);
+    this.track(lbuffer, o?.vv);
     if (o?.channel)
-      yield o.channel.send(lbuffer.to_str());
+      o.channel.send(lbuffer.to_str());
     else if (o?.vv)
-      _this.emit('message', lbuffer);
-  });
+      this.emit('message', lbuffer);
+  }
   send_prepare = function(lbuffer){
     let channel;
     let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0), range;
@@ -148,39 +146,38 @@ export default class Router extends EventEmitter {
     }
     return {channel, lbuffer};
   }
-  _on_msg = (data, channel)=>etask({_: this},
-    function*_on_msg(){
+  _on_msg(data, channel){
     let lbuffer = LBuffer.from(data), msg = lbuffer.msg();
     let msg0 = lbuffer.get_json(0), rt = msg0.rt, path = rt?.path;
-    let _this = this._, msgid = msg.msgid;
-    _this.update_conn(lbuffer);
+    let msgid = msg.msgid;
+    this.update_conn(lbuffer);
     if (!msgid && msg.type!='ack') // XXX: TODO ack
       return log('invalid message msgid %s', dbg_msg(msg));
     log.debug('channel-msg %s', dbg_msg(msg));
-    if (!path && msg.to==_this.id.s){
-      assert(!_this.pending_ack);
+    if (!path && msg.to==this.id.s){
+      assert(!this.pending_ack);
       if (msg.type!='ack')
-        _this.pending_ack = {channel, lbuffer, vv: true};
-      _this.track(lbuffer, true);
-      _this.emit('message', lbuffer);
-      yield _this.ack_pending();
+        this.pending_ack = {channel, lbuffer, vv: true};
+      this.track(lbuffer, true);
+      this.emit('message', lbuffer);
+      this.ack_pending();
     }
     else {
-      let o = _this.send_prepare(lbuffer);
-      _this.track(lbuffer, o?.vv);
+      let o = this.send_prepare(lbuffer);
+      this.track(lbuffer, o?.vv);
       if (o?.vv){
         if (msg.type!='ack')
-          _this.pending_ack = {channel, lbuffer, vv: true};
-        _this.emit('message', lbuffer);
-        yield _this.ack_pending();
+          this.pending_ack = {channel, lbuffer, vv: true};
+        this.emit('message', lbuffer);
+        this.ack_pending();
       } else {
         if (msg.type!='ack')
-          yield _this.ack(channel, lbuffer);
+          this.ack(channel, lbuffer);
         if (o?.channel)
-          yield o.channel.send(lbuffer.to_str());
+          o.channel.send(lbuffer.to_str());
       }
     }
-  });
+  }
   ack_pending(){
     if (!this.pending_ack)
       return;
