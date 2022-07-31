@@ -57,13 +57,15 @@ NodeMap.t.node_from_id = Router.t.node_from_id = node_from_id;
 
 function push_event(event){ t_event.push({ts: Date.now(), event}); }
 
-function shift_event(dur){
+function shift_event(dur, c){
   let o = t_event.shift();
   if (!o)
     return;
   if (dur===undefined)
     return o.event;
-  assert.equal(Date.now(), o.ts+dur, 'wrong timing for event '+o.event);
+  assert.equal(Date.now(), o.ts+dur, 'wrong timing for event '+o.event+
+    'expected\n'+c.fwd+' '+c.orig+'\npending: '+
+    stringify(t_event, null, '\t'));
   return o.event;
 }
 
@@ -520,7 +522,8 @@ function assert_peers(peers){
 */
 
 function assert_event(event, exp){
-  assert.equal(normalize(event), normalize(exp)); }
+  assert.equal(normalize(event), normalize(exp), 't_pending:'+
+    stringify(t_event, null, '\t')); }
 
 // XXX: rm
 function assert_event_c(c, event, call){
@@ -1929,7 +1932,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   if (!_s.t.fake){
     assert(!event || !t_event.length, 'queue:\n'+t_event+'\ngot:\n'+event);
-    event = event||shift_event(dur_ms);
+    event = event||shift_event(dur_ms, c);
     if (!event){
       assert(!t_pending, 'already pending');
       xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
@@ -1994,6 +1997,7 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
 
 let t_sleep;
 const test_sleep = ms=>etask(function*test_sleep(){
+  xerr.notice('*** test_sleep %s', ms);
   let et = etask.sleep(ms);
   t_sleep.push(et);
   yield et;
@@ -4821,7 +4825,7 @@ describe('peer-relay', function(){
       !ring(a-d) #ms
       ac>!ping(id:1 !!) #0ms
       ab:ac>ping(id:1.0) + 100ms #100ms
-      ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) + 100ms #100ms
+      ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) + 10ms + 90ms #100ms
       bc[a]:ac<ack(id:>1.0 vv) +
       bc[a]:ac<ping_r(id:1.0) + 100ms #100ms
       ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
