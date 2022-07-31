@@ -1764,7 +1764,6 @@ function cmd_ping_r(opt){
 function cmd_ack(opt){
   let {c, event} = opt;
   assert(!event, 'unexpected event');
-  assert(!c.fwd, 'invalid fwd '+c.fwd);
   let arg = xtest.test_parse_no_dir(c.arg), seq, id, dir, vv;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
@@ -1779,10 +1778,21 @@ function cmd_ack(opt){
   });
   if (!t_pre_process)
     return;
-  if (!t_mode.msg)
-    return;
   let s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' :
     dir_c(c)+'msg', {id, type: 'ack', seq, dir, vv});
+  if (c.fwd){
+    s = build_cmd_o(normalize(dir_c(c))+'msg',
+      {id, type: 'ack', seq, dir, vv});
+    let _rt = Array.from(c.rt2||[]);
+    let _range = Array.from(c.range2||[]);
+    Array.from(c.fwd).reverse().forEach(f=>{
+      let rt = _rt.pop();
+      let range = _range.pop();
+      s = build_cmd(normalize(f)+'fwd', s+
+        (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
+        (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
+    });
+  }
   set_push_cmd(c, s);
 }
 
@@ -3604,6 +3614,8 @@ describe('peer-relay', function(){
           t('abc>ack', `abc>msg(type(ack))`);
           t('ab<ack(id(>1.0))', `ab<msg(id:1 type:ack seq:0 dir(>))`);
           t('ab<ack(id:>1.0)', `ab<msg(id:1 type:ack seq:0 dir(>))`);
+          t('bc[a]:ac<ack(id:>1.0 vv)',
+            `cb[a]:ca>msg(type:ack id:1.0 dir:> vv)`);
         });
         describe('fwd', function(){
           t('bc:ac>msg', `bc>fwd(ac>msg)`);
@@ -4782,12 +4794,12 @@ describe('peer-relay', function(){
       ac>!ping(id:1 !!) #0ms
       ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
       ab<ack(id:>1.0) + bc:ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
-      bc[a]:ac<msg(type:ack id:1.0 dir:> vv) +
+      bc[a]:ac<ack(id:>1.0 vv) +
       bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
-      ab:bc[a]:ac<msg(type:ack id:1.0 dir:> vv) + bc>ack(id:<1.0)
+      ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
       + ab:bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
-      ab[c]:ac>msg(type:ack id:1.0 dir:< vv) #ms
-      bc:ab[c]:ac>msg(type:ack id:1.0 dir:< vv)
+      ab[c]:ac>ack(id:<1.0 vv) #100ms
+      bc:ab[c]:ac>ack(id:<1.0 vv) #100ms
     `);
     if (true) return; // XXX: TODO
     // XXX: add time for connect as well
