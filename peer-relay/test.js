@@ -2531,10 +2531,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   if (is_sleeping() && !xxx_pause && c.cmd!='+' && !prev_plus)
     xxx_pause = etask.wait();
   yield this.wait_ext(xxx_pause);
-  if (c.cmd=='+')
-    prev_plus = true;
-  else
-    prev_plus = false;
+  prev_plus = c.cmd=='+';
   t_reprocess = false;
   yield cmd_run_single({c, event});
   if (t_pre_process){
