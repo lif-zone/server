@@ -842,13 +842,12 @@ class FakeChannel extends EventEmitter {
         t_pending = null;
         return;
       }
-      if (0) // XXX: rm
-        yield cmd_run_if_next_fake();
     });
   };
   destroy(){}
 }
 
+/* XXX: rm?
 const cmd_run_if_next_fake = ()=>etask(function*send(){
   while (t_i<t_cmds.length){
     if (t_pending)
@@ -863,6 +862,7 @@ const cmd_run_if_next_fake = ()=>etask(function*send(){
     yield cmd_run();
   }
 });
+*/
 
 function do_autoack(lbuffer, vv){
   let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
@@ -1169,10 +1169,10 @@ const cmd_ensure_no_events = opt=>etask(function*cmd_ensure_no_events(){
   assert(!event, 'unexpected event '+event);
   if (t_pre_process)
     return;
-  yield this.wait_ext(t_pending);
-  yield this.wait_ext(xxx_sleep);
-  yield this.wait_ext(xxx_pause);
   yield xsinon.wait();
+  yield this.wait_ext(t_pending);
+  yield this.wait_ext(xxx_pause);
+  assert(!is_sleeping());
   assert(!t_event.length, 'pending events '+stringify(t_event, null, '\t'));
 });
 
@@ -1884,7 +1884,6 @@ function cmd_ring_join_r(opt){
   fake_emit(c, {type: 'res', cmd: 'ring_join_r', body: ''});
 }
 
-let xxx_sleep;
 const cmd_msg = opt=>etask(function*cmd_msg(){
   let {c, event} = opt, s = N(c.s), d = N(c.d);
   assert(!event, 'invalid event - need to get from t_event');
@@ -1926,18 +1925,9 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   if (t_conf.msg_delay){ // XXX WIP
     assert(!xxx_pause, 'already paused');
     assert(!xxx_pause);
-    if (xxx_sleep){
-      xerr.notice('XXX sleep EXISTING 100 PRE %s %s', c.fwd, c.orig);
-      yield this.wait_ext(xxx_sleep);
-      xerr.notice('XXX sleep EXISTING 100 POST %s %s', c.fwd, c.orig);
-    }
-    else {
-      xerr.notice('XXX sleep NEW 100 PRE %s %s', c.fwd, c.orig);
-      xxx_sleep = etask.sleep(dur_ms);
-      yield xxx_sleep;
-      xxx_sleep = null;
-      xerr.notice('XXX sleep NEW 100 POST %s %s', c.fwd, c.orig);
-    }
+    xerr.notice('XXX sleep NEW 100 PRE %s %s', c.fwd, c.orig);
+    yield test_sleep(dur_ms);
+    xerr.notice('XXX sleep NEW 100 POST %s %s', c.fwd, c.orig);
   }
   if (!_s.t.fake){
     assert(!event || !t_event.length, 'queue:\n'+t_event+'\ngot:\n'+event);
@@ -2003,6 +1993,17 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     rt = {path: parse_path(path_to_str(c.rt), c.dir)};
   fake_send_msg(c, {rt, req_id: id, type, seq, ack, dir, cmd, vv, body});
 });
+
+let t_sleep;
+const test_sleep = ms=>etask(function*test_sleep(){
+  let et = etask.sleep(ms);
+  t_sleep.push(et);
+  yield et;
+  let i = t_sleep.indexOf(et);
+  t_sleep.splice(i, 1);
+});
+
+function is_sleeping(){ return !!t_sleep.length; }
 
 function dir_from_req_id(s){
   let a = s.match(/^([<>]?)([^.]+).([0-9]+)([v]*)$/);
@@ -2348,10 +2349,8 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
   let ms = assert_int(c.arg);
   assert(!xxx_pause, 'already paused');
   if (t_conf.auto_time){
-    assert(!xxx_sleep);
-    xxx_sleep = etask.sleep(ms);
-    yield xxx_sleep;
-    xxx_sleep = null;
+    assert(!is_sleeping());
+    yield test_sleep(ms);
   }
   else {
     let xxx = xxx_pause = etask.wait();
@@ -2531,7 +2530,7 @@ const cmd_run = event=>etask(function*cmd_run(){
   xerr.notice('%scmd %s: %s%s orig %s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '', c.orig);
-  if (xxx_sleep && !xxx_pause){
+  if (is_sleeping() && !xxx_pause){
     if (c.cmd=='+' || prev_plus){
       xerr.notice('XXX SKIP set xxx_pause %s', c.orig);
     }
@@ -2558,7 +2557,7 @@ const cmd_run = event=>etask(function*cmd_run(){
       t_cmds_processed.push(assign({}, c));
   }
   t_depth--;
-  if (!xxx_sleep){
+  if (!is_sleeping()){
     let xxx = xxx_pause;
     xxx_pause = null;
     if (xxx)
@@ -2584,6 +2583,7 @@ function test_start(role){
   t_msgid = {};
   t_req = {};
   t_test_prev = {};
+  t_sleep = [];
   t_conf = {rtt: {def: DEF_RTT, conn: {}}};
   t_prev_time = undefined;
   t_event = [];
@@ -2685,6 +2685,7 @@ const test_end = ()=>etask(function*(){
   assert(!Object.keys(ReqHandler.t.nodes).length,
     'req handler node exists on test end '+
     stringify(Object.keys(ReqHandler.t.nodes)));
+  assert(!t_sleep.length, 'pending sleep');
   xerr.notice('*** test_done');
   xtest.xerr_level(xerr.L.ERR);
 });
