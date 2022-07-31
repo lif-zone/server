@@ -4813,6 +4813,32 @@ describe('peer-relay', function(){
       ab[c]:ac>ack(id:<1.0 vv) #100ms
       bc:ab[c]:ac>ack(id:<1.0 vv) #100ms
     `);
+    t('xxx2c', `mode(msg) conf(!autoack msg_delay a-d rtt(200 bc:200))
+      !ring(a-d) #ms
+      ac>!ping(id:1 !!) #0ms
+      ab:ac>ping(id:1.0) + 100ms #100ms
+      ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) + 100ms #100ms
+      bc[a]:ac<ack(id:>1.0 vv) +
+      bc[a]:ac<ping_r(id:1.0) + 100ms #100ms
+      ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
+      + ab:bc[a]:ac<ping_r(id:1.0) + 100ms #100ms
+      ab[c]:ac>ack(id:<1.0 vv) + 100ms #100ms
+      bc:ab[c]:ac>ack(id:<1.0 vv) + 100ms #100ms
+    `);
+    // XXX: TODO: version with rtt(200 bc:20))
+    if (0)
+    t('xxx2d', `mode(msg) conf(!autoack msg_delay a-d rtt(200 bc:20))
+      !ring(a-d) #ms
+      ac>!ping(id:1 !!) #0ms
+      ab:ac>ping(id:1.0) + 100ms #100ms
+      ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) + 100ms #100ms
+      bc[a]:ac<ack(id:>1.0 vv) +
+      bc[a]:ac<ping_r(id:1.0) + 100ms #100ms
+      ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
+      + ab:bc[a]:ac<ping_r(id:1.0) + 100ms #100ms
+      ab[c]:ac>ack(id:<1.0 vv) + 100ms #100ms
+      bc:ab[c]:ac>ack(id:<1.0 vv) + 100ms #100ms
+    `);
     if (true) return; // XXX: TODO
     // XXX: add time for connect as well
     t('ping', `mode(msg) conf(a-c rtt:100) ab>!connect()
