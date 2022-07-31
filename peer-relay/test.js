@@ -1923,8 +1923,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   }
   let dur_ms = t_conf.msg_delay ? conf_rtt_from_node(_s, _d)/2 : undefined;
   if (t_conf.msg_delay){ // XXX WIP
-    assert(!xxx_pause, 'already paused');
-    assert(!xxx_pause);
     xerr.notice('XXX sleep NEW 100 PRE %s %s', c.fwd, c.orig);
     yield test_sleep(dur_ms);
     xerr.notice('XXX sleep NEW 100 POST %s %s', c.fwd, c.orig);
@@ -2353,11 +2351,10 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
     yield test_sleep(ms);
   }
   else {
-    let xxx = xxx_pause = etask.wait();
+    assert(!xxx_pause);
+    xxx_pause = etask.wait();
     yield xsinon.tick(ms);
     yield xsinon.wait();
-    xxx_pause = null;
-    xxx.continue();
   }
 });
 
@@ -2367,6 +2364,8 @@ function cmd_time(opt){
 }
 
 const cmd_run_single = opt=>etask(function*cmd_run_single(){
+  if (0) // XXX: TODO
+    assert(!xxx_pause, 'cmd_run_single while paused');
   let c = opt.c;
   if (t_pre_process){
     let a;
@@ -2519,7 +2518,6 @@ function expand_loop_repeat(c){
 let t_depth = 0;
 let prev_plus;
 const cmd_run = event=>etask(function*cmd_run(){
-//  assert(!xxx_pause, 'cmd_run while xxx_pause');
   assert(!t_pending, 'cmd_run while pending with event '+event);
   assert(t_cmds && t_i<t_cmds.length, event ? 'unexpected event '+event :
     'invalid t_i '+t_i+' event');
@@ -2539,11 +2537,7 @@ const cmd_run = event=>etask(function*cmd_run(){
       xxx_pause = etask.wait();
      }
   }
-  if (xxx_pause){
-    xerr.notice('XXX wait PRE xxx_pause %s', c.orig);
-    yield this.wait_ext(xxx_pause);
-    xerr.notice('XXX wait POST xxx_pause %s', c.orig);
-  }
+  yield this.wait_ext(xxx_pause);
   if (c.cmd=='+')
     prev_plus = true;
   else
