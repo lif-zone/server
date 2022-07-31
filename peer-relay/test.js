@@ -246,6 +246,19 @@ function build_cmd_o(cmd, fwd, o){
   return _build_cmd.apply(this, a);
 }
 
+function build_fwd(fwd, rt2, range2, s){
+  let _rt = Array.from(rt2||[]);
+  let _range = Array.from(range2||[]);
+  Array.from(fwd).reverse().forEach(f=>{
+    let rt = _rt.pop();
+    let range = _range.pop();
+    s = build_cmd(normalize(f)+'fwd', s+
+      (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
+      (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
+  });
+  return s;
+}
+
 function dir_str(s, d, dir){ return dir=='>' ? s+d+'>' :
   dir=='<' ? d+s+'<' : s+d+dir; }
 function dir_c(c){ return dir_str(c.s, c.d, c.dir); }
@@ -527,16 +540,7 @@ function assert_event_c2(c, orig, fwd, event, call){
   let expected = orig;
   if (fwd){
     assert(Array.isArray(fwd), 'invalid fwd '+stringify(fwd));
-    expected = normalize(orig);
-    let _rt = Array.from(c.rt2||[]);
-    let _range = Array.from(c.range2||[]);
-    Array.from(fwd).reverse().forEach(f=>{
-      let rt = _rt.pop();
-      let range = _range.pop();
-      expected = build_cmd(normalize(f)+'fwd', expected+
-        (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
-        (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
-    });
+    expected = build_fwd(c.fwd, c.rt2, c.range2, normalize(orig));
   }
   if (event)
     assert_event(event, expected);
@@ -1698,36 +1702,43 @@ function cmd_conn_info_r(opt){
 function cmd_ping(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   assert(!event, 'unexpected event '+event);
-  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt, id;
+  let call = c.cmd[0]=='!', s = N(c.s), d = N(c.d), e = true, rt, id, seq;
   let arg = xtest.test_parse_no_dir(c.arg);
   xutil.forEach(arg, a=>{
     switch (a.cmd){
     case '!!': e = !assert_bool(a.arg); break;
     case 'rt': rt = assert_rt(s, a.arg, c.dir); break;
-    case 'id': id = id_from_req_id(a.arg); break;
+    case 'id':
+      id = id_from_req_id(a.arg);
+      seq = seq_from_req_id(a.arg);
+      break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   assert(!rt || call, 'rt can only be used with call');
   if (t_pre_process){
     let s;
-    if (basic){
+    if (c.fwd){
+      s = build_fwd(c.fwd, c.rt2, c.range2,
+        build_cmd_o(normalize(dir_c(c))+'msg',
+        {id, seq, type: 'req', cmd: 'ping'}));
+    } else if (basic){
       s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
-        {id, type: 'req', cmd: 'ping'});
+        {id, seq, type: 'req', cmd: 'ping'});
       set_push_cmd(c, s);
     } else if (call && e){
       s = build_cmd_o(c.s+c.d+'>!ping', {'!!': e,
         'rt': rt && rt_to_str(rt)});
       s += t_mode.msg ? ' '+build_cmd_o(
         c.loop ? loop_str(c.loop)+'>msg' : dir_c(c)+'msg',
-        {id, type: 'req', cmd: 'ping'}) : '';
-      s += build_cmd_o(dir_c(c)+'*req', {id, cmd: 'ping'});
+        {id, seq, type: 'req', cmd: 'ping'}) : '';
+      s += build_cmd_o(dir_c(c)+'*req', {id, seq, cmd: 'ping'});
       s += t_mode.msg ? ' '+build_cmd_o(
         c.loop ? rev_loop_str(c.loop)+'>msg' : rev_c(c)+'msg',
-        {id, type: 'res', cmd: 'ping'}) : '';
-      s += build_cmd_o(rev_c(c)+'*res', {id, cmd: 'ping'});
+        {id, seq, type: 'res', cmd: 'ping'}) : '';
+      s += build_cmd_o(rev_c(c)+'*res', {id, seq, cmd: 'ping'});
     } else if (c.cmd[0]=='*')
-      s = build_cmd_o(dir_c(c)+'*req', {id, cmd: 'ping'});
+      s = build_cmd_o(dir_c(c)+'*req', {id, seq, cmd: 'ping'});
     if (s)
       set_push_cmd(c, s);
     return;
@@ -1741,20 +1752,27 @@ function cmd_ping(opt){
 function cmd_ping_r(opt){
   let {c, event} = opt, basic = !/[*!]/.test(c.cmd[0]);
   assert(!event, 'unexpected event '+event);
-  let arg = xtest.test_parse_no_dir(c.arg), id;
+  let arg = xtest.test_parse_no_dir(c.arg), id, seq;
   xutil.forEach(arg, a=>{
     switch (a.cmd){
-    case 'id': id = id_from_req_id(a.arg); break;
+    case 'id':
+      id = id_from_req_id(a.arg);
+      seq = seq_from_req_id(a.arg);
+      break;
     default: assert(0, 'unknown arg '+a.cmd);
     }
   });
   if (t_pre_process){
     let s = '';
-    if (basic){
+    if (c.fwd){
+      s = build_fwd(c.fwd, c.rt2, c.range2,
+        build_cmd_o(normalize(dir_c(c))+'msg',
+        {id, seq, type: 'res', cmd: 'ping'}));
+    } else if (basic){
       s = t_mode.msg ? build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' :
-        dir_c(c)+'msg', {id, type: 'res', cmd: 'ping'}) : '';
+        dir_c(c)+'msg', {id, seq, type: 'res', cmd: 'ping'}) : '';
     } else if (c.cmd[0]=='*')
-      s = build_cmd_o(dir_c(c)+'*res', {id, cmd: 'ping'});
+      s = build_cmd_o(dir_c(c)+'*res', {id, seq, cmd: 'ping'});
     if (s)
       set_push_cmd(c, s);
     return;
@@ -1781,17 +1799,8 @@ function cmd_ack(opt){
   let s = build_cmd_o(c.loop ? loop_str(c.loop)+'>msg' :
     dir_c(c)+'msg', {id, type: 'ack', seq, dir, vv});
   if (c.fwd){
-    s = build_cmd_o(normalize(dir_c(c))+'msg',
-      {id, type: 'ack', seq, dir, vv});
-    let _rt = Array.from(c.rt2||[]);
-    let _range = Array.from(c.range2||[]);
-    Array.from(c.fwd).reverse().forEach(f=>{
-      let rt = _rt.pop();
-      let range = _range.pop();
-      s = build_cmd(normalize(f)+'fwd', s+
-        (rt ? ' '+build_cmd('rt', rt_to_str(rt)) : '')+
-        (range ? ' '+build_cmd('range', range_to_str(range)) : ''));
-    });
+    s = build_fwd(c.fwd, c.rt2, c.range2,
+      build_cmd_o(normalize(dir_c(c))+'msg', {id, type: 'ack', seq, dir, vv}));
   }
   set_push_cmd(c, s);
 }
@@ -3768,6 +3777,9 @@ describe('peer-relay', function(){
             cb>fwd(ca>msg(type(res) cmd(ping)) rt(a))
             ba>fwd(cb>fwd(ca>msg(type(res) cmd(ping)) rt(a)))
             ac<*res(cmd(ping))`);
+          t('ab[c]:ac>ping_r(id:1.0)',
+            `ab[c]:ac>msg(id:1.0 type:res cmd:ping)`);
+          t('ab[c]:ac>ping(id:1.0)', `ab[c]:ac>msg(id:1.0 type:req cmd:ping)`);
         });
         describe('ring_join', function(){
           t('bX.a~b>ring_join(!! !r)', `bX{X-X}:b~b>msg(type:req cmd:ring_join)
@@ -4783,21 +4795,21 @@ describe('peer-relay', function(){
     t('xxx2a', `mode(msg) conf(auto_time msg_delay a-d rtt:200) !ring(a-d)
       #ms
       ac>!ping(id:1 !!) #0ms
-      ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
-      bc:ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
-      bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
-      ab:bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
+      ab:ac>ping(id:1.0) #100ms
+      bc:ab:ac>ping(id:1.0) #100ms
+      bc[a]:ac<ping_r(id:1.0) #100ms
+      ab:bc[a]:ac<ping_r(id:1.0) #100ms
     `);
     // XXX: TODO: version with rtt(200 bc:20))
     t('xxx2b', `mode(msg) conf(!autoack auto_time msg_delay a-d rtt:200)
       !ring(a-d) #ms
       ac>!ping(id:1 !!) #0ms
-      ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
-      ab<ack(id:>1.0) + bc:ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
+      ab:ac>ping(id:1.0) #100ms
+      ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) #100ms
       bc[a]:ac<ack(id:>1.0 vv) +
-      bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
+      bc[a]:ac<ping_r(id:1.0) #100ms
       ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
-      + ab:bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
+      + ab:bc[a]:ac<ping_r(id:1.0) #100ms
       ab[c]:ac>ack(id:<1.0 vv) #100ms
       bc:ab[c]:ac>ack(id:<1.0 vv) #100ms
     `);
