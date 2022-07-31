@@ -2528,15 +2528,8 @@ const cmd_run = event=>etask(function*cmd_run(){
   xerr.notice('%scmd %s: %s%s orig %s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '', c.orig);
-  if (is_sleeping() && !xxx_pause){
-    if (c.cmd=='+' || prev_plus){
-      xerr.notice('XXX SKIP set xxx_pause %s', c.orig);
-    }
-    else {
-      xerr.notice('XXX set xxx_pause %s', c.orig);
-      xxx_pause = etask.wait();
-     }
-  }
+  if (is_sleeping() && !xxx_pause && c.cmd!='+' && !prev_plus)
+    xxx_pause = etask.wait();
   yield this.wait_ext(xxx_pause);
   if (c.cmd=='+')
     prev_plus = true;
