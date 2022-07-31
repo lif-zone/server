@@ -1925,7 +1925,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
   let dur_ms = t_conf.msg_delay ? conf_rtt_from_node(_s, _d)/2 : undefined;
   if (t_conf.msg_delay){ // XXX WIP
     assert(!xxx_pause, 'already paused');
-    let xxx;
     assert(!xxx_pause);
     if (xxx_sleep){
       xerr.notice('XXX sleep EXISTING 100 PRE %s %s', c.fwd, c.orig);
@@ -1938,10 +1937,6 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
       yield xxx_sleep;
       xxx_sleep = null;
       xerr.notice('XXX sleep NEW 100 POST %s %s', c.fwd, c.orig);
-      xxx = xxx_pause;
-      xxx_pause = null;
-      if (xxx)
-        xxx.continue();
     }
   }
   if (!_s.t.fake){
@@ -2352,15 +2347,19 @@ const cmd_ms = opt=>etask(function*cmd_ms(){
   assert(!event, 'unexpected event for ms cmd '+event);
   let ms = assert_int(c.arg);
   assert(!xxx_pause, 'already paused');
-  let xxx = xxx_pause = etask.wait();
-  if (t_conf.auto_time)
-    yield etask.sleep(ms);
+  if (t_conf.auto_time){
+    assert(!xxx_sleep);
+    xxx_sleep = etask.sleep(ms);
+    yield xxx_sleep;
+    xxx_sleep = null;
+  }
   else {
+    let xxx = xxx_pause = etask.wait();
     yield xsinon.tick(ms);
     yield xsinon.wait();
+    xxx_pause = null;
+    xxx.continue();
   }
-  xxx_pause = null;
-  xxx.continue();
 });
 
 function cmd_time(opt){
@@ -2559,6 +2558,12 @@ const cmd_run = event=>etask(function*cmd_run(){
       t_cmds_processed.push(assign({}, c));
   }
   t_depth--;
+  if (!xxx_sleep){
+    let xxx = xxx_pause;
+    xxx_pause = null;
+    if (xxx)
+      xxx.continue();
+  }
 });
 
 function set_id_bits(bits){ t_conf.id_bits = bits; }
