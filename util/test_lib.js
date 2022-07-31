@@ -58,6 +58,7 @@ E.hook_assert = ()=>{
             msg += '\netask '+etask.ps()+'\n';
         if (xutil.is_mocha())
             msg += '*** test '+E.currentTest_title()+' FAILED:\n';
+        msg += 'Date.now '+Date.now()+'\n';
         if (err.message)
             msg += err.message+'\n';
         if (err.operator==='deepEqual'||err.operator=='deepStrictEqual')

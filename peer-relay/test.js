@@ -2533,11 +2533,13 @@ const cmd_run = event=>etask(function*cmd_run(){
   assert(t_cmds && t_i<t_cmds.length, event ? 'unexpected event '+event :
     'invalid t_i '+t_i+' event');
   let c = t_cmds[t_i];
-  if (is_sleeping() && !xxx_pause && c.cmd!='+' && !prev_plus){
+  if (xxx_pause)
+    return;
+  if (is_sleeping() && c.cmd!='+' && !prev_plus){
     xerr.notice('XXX set xxx_pause');
     xxx_pause = etask.wait();
+    return;
   }
-  yield this.wait_ext(xxx_pause);
   if (t_i>=t_cmds.length)
     return;
   t_i++;
@@ -4811,8 +4813,7 @@ describe('peer-relay', function(){
       ac>!ping(id:1 !!) #0ms
       ab:ac>ping(id:1.0) #100ms
       ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) #100ms
-      bc[a]:ac<ack(id:>1.0 vv) +
-      bc[a]:ac<ping_r(id:1.0) #100ms
+      bc[a]:ac<ack(id:>1.0 vv) + bc[a]:ac<ping_r(id:1.0) #100ms
       ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
       + ab:bc[a]:ac<ping_r(id:1.0) #100ms
       ab[c]:ac>ack(id:<1.0 vv) #100ms
@@ -4824,9 +4825,10 @@ describe('peer-relay', function(){
       !ring(a-d) #ms
       ac>!ping(id:1 !!) #0ms
       ab:ac>ping(id:1.0) #100ms
-      ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) #100ms
-      bc[a]:ac<ack(id:>1.0 vv) +
-      bc[a]:ac<ping_r(id:1.0) #10ms
+      bc:ab:ac>ping(id:1.0)
+      #10ms + bc[a]:ac<ack(id:>1.0 vv) + bc[a]:ac<ping_r(id:1.0)
+      #10ms + ab<ack(id:>1.0)
+      #12200ms
       ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
       + ab:bc[a]:ac<ping_r(id:1.0) #100ms
       ab[c]:ac>ack(id:<1.0 vv) #100ms
