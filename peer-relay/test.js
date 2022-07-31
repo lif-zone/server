@@ -55,17 +55,26 @@ let t_prev_time, t_event;
 NodeMap.t.t_nodes = Router.t.t_nodes = t_nodes;
 NodeMap.t.node_from_id = Router.t.node_from_id = node_from_id;
 
-function push_event(event){ t_event.push({ts: Date.now(), event}); }
+function push_event(event, dur){
+  assert(!t_conf.msg_delay || dur, 'invalid event dur');
+  t_event.push({ts: Date.now(), dur, event});
+}
 
-function shift_event(dur, c){
-  let o = t_event.shift();
-  if (!o)
+function shift_event(c){
+  if (!t_conf.msg_delay)
+    return t_event.shift()?.event;
+  if (!t_event.length)
     return;
-  if (dur===undefined)
-    return o.event;
-  assert.equal(Date.now(), o.ts+dur, 'wrong timing for event '+o.event+
-    'expected\n'+c.fwd+' '+c.orig+'\npending: '+
+  let o = t_event[0];
+  for (let i=1; i<t_event.length; i++){
+    let o2 = t_event[i];
+    if (o2.ts+o2.dur < o.ts+o.dur)
+      o = o2;
+  }
+  assert.equal(Date.now(), o.ts+o.dur, 'wrong timing for event '+o.event+
+    '\nexpected: '+c.fwd+' '+c.orig+'\npending: '+
     stringify(t_event, null, '\t'));
+  t_event.splice(t_event.indexOf(o), 1);
   return o.event;
 }
 
@@ -775,7 +784,7 @@ class FakeChannel extends EventEmitter {
   }
   send = data=>{
     let lbuffer = LBuffer.from(data); // XXX WIP
-    let msg = lbuffer.msg();
+    let msg = lbuffer.msg(), msg0 = lbuffer.get_json(0);
     assert(!t_pre_process, 'invalid send during pre_process');
     // XXX: need to filter out only test commands, other should fail test
     if (!t_mode.msg)
@@ -785,67 +794,67 @@ class FakeChannel extends EventEmitter {
     cmd = cmd||'';
     fuzzy = fuzzy||'';
     let from = node_from_id(msg.from), to = node_from_id(msg.to);
+    let from0 = node_from_id(msg0.from), to0 = node_from_id(msg0.to);
     // XXX: why missing msgid for type=='ack'?
     assert(msg.type=='ack' || msg.msgid, 'missing msg msgid '+data);
     xerr.notice('*** send%s msg %s %s', fwd ? ' fwd '+fwd : '',
       from.t.name+to.t.name+'>'+cmd, stringify(msg));
-    return etask(function*send(){
-      switch (type){
-      case 'req':
-        switch (cmd){
-        case 'conn_info': body= ''; break;
-        case 'ring_join': body= ''; break;
-        case 'ping': body= ''; break;
-        case '': break;
-        default: assert(0, 'invalid cmd '+cmd);
-        }
-        break;
-      case 'res':
-        switch (cmd){
-        case 'conn_info': body = conn_opts(body); break;
-        case 'ring_join': body= ''; break;
-        case 'ping': body= ''; break;
-        case '': break;
-        default: assert(0, 'invalid cmd ', cmd);
-        }
-        break;
-      default: assert(['req', 'res', 'req_start', 'res_start', 'req_next',
-        'res_next', 'req_end', 'res_end', 'ack'].includes(type),
-        'unexpected msg type '+type);
+    switch (type){
+    case 'req':
+      switch (cmd){
+      case 'conn_info': body= ''; break;
+      case 'ring_join': body= ''; break;
+      case 'ping': body= ''; break;
+      case '': break;
+      default: assert(0, 'invalid cmd '+cmd);
       }
-      e = build_cmd_o(from.t.name+fuzzy+to.t.name+'>msg',
-        {id: req_id, type, cmd, seq, ack: ack && ack.join(','), dir, vv,
-        body});
-      if (fwd){
-        let path = [msg.from];
-        let i = lbuffer.size()-2;
-        Array.from(fwd).reverse().forEach(f=>{
-          let m = lbuffer.get_json(i);
-          i--;
-          let srt = t_conf.rt&&fwd&&m.rt ?
-            build_cmd('rt', rt_to_str(m.rt)) : '';
-          if (!t_conf.rt && m.rt)
-            srt = build_cmd('rt', rt_to_str(m.rt));
-          let srange = m.range && build_cmd('range',
-            range_to_str(NodeId.range_from_msg(m.range)));
-          e = build_cmd(f+'fwd', e+
-            (srt ? ' '+srt : '')+(srange ? ' '+srange : ''));
-          path.push(fwd_d_id(f));
-        });
+      break;
+    case 'res':
+      switch (cmd){
+      case 'conn_info': body = conn_opts(body); break;
+      case 'ring_join': body= ''; break;
+      case 'ping': body= ''; break;
+      case '': break;
+      default: assert(0, 'invalid cmd ', cmd);
       }
-      if (msg.type!='ack') // XXX: review
-        t_msgid[msgid_hash(msg)] = msg.msgid;
-      track_msg(lbuffer);
-      if (msg.type=='ack' && !t_conf.no_autoack)
-        return;
-      push_event(e);
-      if (t_pending){
-        xerr.notice('FakeChannel send resume pending t_i %s', t_i);
-        t_pending.continue();
-        t_pending = null;
-        return;
-      }
-    });
+      break;
+    default: assert(['req', 'res', 'req_start', 'res_start', 'req_next',
+      'res_next', 'req_end', 'res_end', 'ack'].includes(type),
+      'unexpected msg type '+type);
+    }
+    e = build_cmd_o(from.t.name+fuzzy+to.t.name+'>msg',
+      {id: req_id, type, cmd, seq, ack: ack && ack.join(','), dir, vv,
+      body});
+    if (fwd){
+      let path = [msg.from];
+      let i = lbuffer.size()-2;
+      Array.from(fwd).reverse().forEach(f=>{
+        let m = lbuffer.get_json(i);
+        i--;
+        let srt = t_conf.rt&&fwd&&m.rt ?
+          build_cmd('rt', rt_to_str(m.rt)) : '';
+        if (!t_conf.rt && m.rt)
+          srt = build_cmd('rt', rt_to_str(m.rt));
+        let srange = m.range && build_cmd('range',
+          range_to_str(NodeId.range_from_msg(m.range)));
+        e = build_cmd(f+'fwd', e+
+          (srt ? ' '+srt : '')+(srange ? ' '+srange : ''));
+        path.push(fwd_d_id(f));
+      });
+    }
+    if (msg.type!='ack') // XXX: review
+      t_msgid[msgid_hash(msg)] = msg.msgid;
+    track_msg(lbuffer);
+    if (msg.type=='ack' && !t_conf.no_autoack)
+      return;
+    push_event(e,
+      t_conf.msg_delay ? conf_rtt_from_node(from0, to0)/2 : undefined);
+    if (t_pending){
+      xerr.notice('FakeChannel send resume pending t_i %s', t_i);
+      t_pending.continue();
+      t_pending = null;
+      return;
+    }
   };
   destroy(){}
 }
@@ -1925,21 +1934,18 @@ const cmd_msg = opt=>etask(function*cmd_msg(){
     _d = N(fwd_d(c.fwd, 0));
   }
   let dur_ms = t_conf.msg_delay ? conf_rtt_from_node(_s, _d)/2 : undefined;
-  if (t_conf.msg_delay){ // XXX WIP
-    xerr.notice('XXX sleep NEW 100 PRE %s %s', c.fwd, c.orig);
+  if (t_conf.msg_delay)
     yield test_sleep(dur_ms);
-    xerr.notice('XXX sleep NEW 100 POST %s %s', c.fwd, c.orig);
-  }
   if (!_s.t.fake){
     assert(!event || !t_event.length, 'queue:\n'+t_event+'\ngot:\n'+event);
-    event = event||shift_event(dur_ms, c);
+    event = event||shift_event(c);
     if (!event){
       assert(!t_pending, 'already pending');
       xerr.notice('cmd_msg set t_pending t_i %s c.orig %s c.fwd %s',
         t_i, c.orig, c.fwd);
       t_pending = etask.wait();
       yield t_pending;
-      event = shift_event(dur_ms);
+      event = shift_event(c);
     }
   }
   if (['req', 'req_start', 'req_next', 'req_end'].includes(type)){
@@ -2003,6 +2009,7 @@ const test_sleep = ms=>etask(function*test_sleep(){
   yield et;
   let i = t_sleep.indexOf(et);
   t_sleep.splice(i, 1);
+  xerr.notice('*** test_sleep %s DONE', ms);
 });
 
 function is_sleeping(){ return !!t_sleep.length; }
@@ -2029,7 +2036,7 @@ function v_from_req_id(s){
 
 function cmd_req(opt){
   let {c, event} = opt, s = N(c.s), d = N(c.d), seq, ack;
-  event = event||shift_event();
+  event = event||shift_event(c);
   assert(t_pre_process||!c.loop);
   let emit_api=false, ooo=false, dup=false, close=false, rt;
   let call = c.cmd[0]=='!', body, id, res;
@@ -2526,15 +2533,19 @@ const cmd_run = event=>etask(function*cmd_run(){
   assert(t_cmds && t_i<t_cmds.length, event ? 'unexpected event '+event :
     'invalid t_i '+t_i+' event');
   let c = t_cmds[t_i];
+  if (is_sleeping() && !xxx_pause && c.cmd!='+' && !prev_plus){
+    xerr.notice('XXX set xxx_pause');
+    xxx_pause = etask.wait();
+  }
+  yield this.wait_ext(xxx_pause);
+  if (t_i>=t_cmds.length)
+    return;
   t_i++;
   t_depth++;
   assert(c, event ? 'unexpected event '+event : 'empty cmd at '+t_i);
   xerr.notice('%scmd %s: %s%s orig %s', ' '.repeat(t_depth), t_i,
     c.s ? build_cmd(c.s+c.d+'>'+c.cmd, c.arg) : c.orig,
     event ? ' event '+event : '', c.orig);
-  if (is_sleeping() && !xxx_pause && c.cmd!='+' && !prev_plus)
-    xxx_pause = etask.wait();
-  yield this.wait_ext(xxx_pause);
   prev_plus = c.cmd=='+';
   t_reprocess = false;
   yield cmd_run_single({c, event});
@@ -4807,9 +4818,24 @@ describe('peer-relay', function(){
       ab[c]:ac>ack(id:<1.0 vv) #100ms
       bc:ab[c]:ac>ack(id:<1.0 vv) #100ms
     `);
-    t('xxx2c', `mode(msg) conf(!autoack msg_delay a-d rtt(200 bc:200))
+    if (0) // XXX WIP
+    t('xxx2c', `mode(msg)
+      conf(!autoack auto_time msg_delay a-d rtt(200 bc:20))
       !ring(a-d) #ms
       ac>!ping(id:1 !!) #0ms
+      ab:ac>ping(id:1.0) #100ms
+      ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) #100ms
+      bc[a]:ac<ack(id:>1.0 vv) +
+      bc[a]:ac<ping_r(id:1.0) #10ms
+      ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
+      + ab:bc[a]:ac<ping_r(id:1.0) #100ms
+      ab[c]:ac>ack(id:<1.0 vv) #100ms
+      bc:ab[c]:ac>ack(id:<1.0 vv) #10ms
+    `);
+    t('xxx3a', `mode(msg) conf(!autoack msg_delay a-d rtt(200 bc:200))
+      !ring(a-d) #ms
+      ac>!ping(id:1 !!) #0ms
+      // XXX: support ab:ac>ping(id:1.0) + 10ms + #10ms + 90ms #90ms
       ab:ac>ping(id:1.0) + 100ms #100ms
       ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) + 100ms #100ms
       bc[a]:ac<ack(id:>1.0 vv) +
@@ -4820,18 +4846,20 @@ describe('peer-relay', function(){
       bc:ab[c]:ac>ack(id:<1.0 vv) + 100ms #100ms
     `);
     // XXX: TODO: version with rtt(200 bc:20))
-    if (0)
-    t('xxx2d', `mode(msg) conf(!autoack msg_delay a-d rtt(200 bc:20))
+    if (0) // XXX WIP
+    t('xxx3b', `mode(msg) conf(!autoack msg_delay a-d rtt(200 bc:20))
       !ring(a-d) #ms
       ac>!ping(id:1 !!) #0ms
       ab:ac>ping(id:1.0) + 100ms #100ms
-      ab<ack(id:>1.0) + bc:ab:ac>ping(id:1.0) + 10ms + 90ms #100ms
+      bc:ab:ac>ping(id:1.0) + 10ms +
+      ab<ack(id:>1.0) + 90ms
+      #100ms
       bc[a]:ac<ack(id:>1.0 vv) +
-      bc[a]:ac<ping_r(id:1.0) + 100ms #100ms
+      bc[a]:ac<ping_r(id:1.0) + 10ms #10ms
       ab:bc[a]:ac<ack(id:>1.0 vv) + bc>ack(id:<1.0)
-      + ab:bc[a]:ac<ping_r(id:1.0) + 100ms #100ms
+      + ab:bc[a]:ac<ping_r(id:1.0) + 10ms + 90ms #100ms
       ab[c]:ac>ack(id:<1.0 vv) + 100ms #100ms
-      bc:ab[c]:ac>ack(id:<1.0 vv) + 100ms #100ms
+      bc:ab[c]:ac>ack(id:<1.0 vv) + 10ms #10ms
     `);
     if (true) return; // XXX: TODO
     // XXX: add time for connect as well
