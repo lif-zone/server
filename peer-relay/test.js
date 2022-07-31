@@ -4770,11 +4770,24 @@ describe('peer-relay', function(){
     // XXX: add test with !autoack
     t('xxx2a', `mode(msg) conf(auto_time msg_delay a-d rtt:200) !ring(a-d)
       #ms
-      abc>!ping(id:1 !!) #0ms
+      ac>!ping(id:1 !!) #0ms
       ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
       bc:ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
       bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
       ab:bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
+    `);
+    // XXX: TODO: version with rtt(200 bc:20))
+    t('xxx2b', `mode(msg) conf(!autoack auto_time msg_delay a-d rtt:200)
+      !ring(a-d) #ms
+      ac>!ping(id:1 !!) #0ms
+      ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
+      ab<ack(id:>1.0) + bc:ab:ac>msg(id:1.0 type:req cmd:ping) #100ms
+      bc[a]:ac<msg(type:ack id:1.0 dir:> vv) +
+      bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
+      ab:bc[a]:ac<msg(type:ack id:1.0 dir:> vv) + bc>ack(id:<1.0)
+      + ab:bc[a]:ac<msg(id:1.0 type:res cmd:ping) #100ms
+      ab[c]:ac>msg(type:ack id:1.0 dir:< vv) #ms
+      bc:ab[c]:ac>msg(type:ack id:1.0 dir:< vv)
     `);
     if (true) return; // XXX: TODO
     // XXX: add time for connect as well
